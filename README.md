@@ -1,2 +1,2 @@
-# lbl_dal
-Distributed Sequence Aligner
+# Distributed Sequence Aligner
+
