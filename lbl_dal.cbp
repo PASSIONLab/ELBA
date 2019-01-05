@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="lbl_dal"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="comb_blas">
+				<Option output="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/comb_blas" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Users/esaliya/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"/>
+					<Add directory="/usr/local/Cellar/openssl/1.0.2p/include"/>
+					<Add directory="/usr/local/Cellar/sqlite/3.25.2/include"/>
+					<Add directory="/usr/local/Cellar/libxml2/2.9.7/include"/>
+					<Add directory="/Users/esaliya/sali/software/builds/mpich3/include"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/../../../../../../include/c++/7.3.0"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/../../../../../../include/c++/7.3.0/x86_64-apple-darwin18.0.0"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/../../../../../../include/c++/7.3.0/backward"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/include"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/include-fixed"/>
+					<Add directory="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/usr/include"/>
+					<Add directory="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 comb_blas"/>
+					<CompileFile command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="comb_blas/fast">
+				<Option output="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/comb_blas" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Users/esaliya/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"/>
+					<Add directory="/usr/local/Cellar/openssl/1.0.2p/include"/>
+					<Add directory="/usr/local/Cellar/sqlite/3.25.2/include"/>
+					<Add directory="/usr/local/Cellar/libxml2/2.9.7/include"/>
+					<Add directory="/Users/esaliya/sali/software/builds/mpich3/include"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/../../../../../../include/c++/7.3.0"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/../../../../../../include/c++/7.3.0/x86_64-apple-darwin18.0.0"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/../../../../../../include/c++/7.3.0/backward"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/include"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/include-fixed"/>
+					<Add directory="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/usr/include"/>
+					<Add directory="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 comb_blas/fast"/>
+					<CompileFile command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="lbl_dal">
+				<Option output="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/lbl_dal" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Users/esaliya/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"/>
+					<Add directory="/usr/local/Cellar/openssl/1.0.2p/include"/>
+					<Add directory="/usr/local/Cellar/sqlite/3.25.2/include"/>
+					<Add directory="/usr/local/Cellar/libxml2/2.9.7/include"/>
+					<Add directory="/Users/esaliya/sali/software/builds/mpich3/include"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/../../../../../../include/c++/7.3.0"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/../../../../../../include/c++/7.3.0/x86_64-apple-darwin18.0.0"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/../../../../../../include/c++/7.3.0/backward"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/include"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/include-fixed"/>
+					<Add directory="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/usr/include"/>
+					<Add directory="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 lbl_dal"/>
+					<CompileFile command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="lbl_dal/fast">
+				<Option output="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/lbl_dal" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Users/esaliya/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"/>
+					<Add directory="/usr/local/Cellar/openssl/1.0.2p/include"/>
+					<Add directory="/usr/local/Cellar/sqlite/3.25.2/include"/>
+					<Add directory="/usr/local/Cellar/libxml2/2.9.7/include"/>
+					<Add directory="/Users/esaliya/sali/software/builds/mpich3/include"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/../../../../../../include/c++/7.3.0"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/../../../../../../include/c++/7.3.0/x86_64-apple-darwin18.0.0"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/../../../../../../include/c++/7.3.0/backward"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/include"/>
+					<Add directory="/usr/local/Cellar/gcc@7/7.3.0/lib/gcc/7/gcc/x86_64-apple-darwin18.0.0/7.3.0/include-fixed"/>
+					<Add directory="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/usr/include"/>
+					<Add directory="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 lbl_dal/fast"/>
+					<CompileFile command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/local/bin/gmake -j8 -f &quot;/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/ComBlasTest.cpp">
+			<Option target="comb_blas"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/constants.cpp">
+			<Option target="lbl_dal"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/constants.h">
+			<Option target="lbl_dal"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/main.cpp">
+			<Option target="lbl_dal"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/parallel_ops.cpp">
+			<Option target="lbl_dal"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/parallel_ops.h">
+			<Option target="lbl_dal"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>
