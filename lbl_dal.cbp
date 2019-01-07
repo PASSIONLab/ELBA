@@ -153,6 +153,18 @@
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/ComBlasTest.cpp">
 			<Option target="comb_blas"/>
 		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/ParallelFastaReader.cpp">
+			<Option target="lbl_dal"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/ParallelFastaReader.hpp">
+			<Option target="lbl_dal"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/ParallelOps.cpp">
+			<Option target="lbl_dal"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/ParallelOps.h">
+			<Option target="lbl_dal"/>
+		</Unit>
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/constants.cpp">
 			<Option target="lbl_dal"/>
 		</Unit>
@@ -160,12 +172,6 @@
 			<Option target="lbl_dal"/>
 		</Unit>
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/main.cpp">
-			<Option target="lbl_dal"/>
-		</Unit>
-		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/parallel_ops.cpp">
-			<Option target="lbl_dal"/>
-		</Unit>
-		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/parallel_ops.h">
 			<Option target="lbl_dal"/>
 		</Unit>
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/CMakeLists.txt">

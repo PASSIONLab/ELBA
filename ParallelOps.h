@@ -8,14 +8,12 @@
 #ifndef LBL_DAL_PARALLEL_OPS_H
 #define LBL_DAL_PARALLEL_OPS_H
 
-#endif //LBL_DAL_PARALLEL_OPS_H
-
-class parallel_ops {
+class ParallelOps {
 public:
-  static parallel_ops * initialize(int *argc, char ***argv);
+  static ParallelOps * initialize(int *argc, char ***argv);
 
   void teardown_parallelism();
-  ~parallel_ops();
+  ~ParallelOps();
 
   int world_proc_rank;
   int world_procs_count;
@@ -23,5 +21,8 @@ public:
   MPI_Comm MPI_COMM_INSTANCE;
 
 private:
-  parallel_ops(int world_proc_rank, int world_procs_count);
+  ParallelOps(int world_proc_rank, int world_procs_count);
 };
+
+#endif //LBL_DAL_PARALLEL_OPS_H
+
