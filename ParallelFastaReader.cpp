@@ -16,12 +16,6 @@ void ParallelFastaReader::readFasta(const char *file, int seq_count, int overlap
     exit(2);
   }
 
-  // Ideal local sequence count
-  int l_seq_count = seq_count / world_size;
-  int rem = seq_count % world_size;
-  // If there's a remainder disperse that, one each, among the ranks < rem
-  l_seq_count += rank < rem ? 1 : 0;
-
   /* The idea:
    * if sequence names and contents are roughly equal
    * then dividing the file size by the number of ranks
@@ -58,7 +52,6 @@ void ParallelFastaReader::readFasta(const char *file, int seq_count, int overlap
   l_chunk_size = static_cast<int>(g_end - g_start + 1);
 
   /* allocate memory */
-  // TODO: Saliya -- if chunk > what can be held in memory, do reading in multiple stages
   chunk = static_cast<char *>(malloc((l_chunk_size + 1) * sizeof(char)));
 
   /* everyone reads in their part */
@@ -83,21 +76,6 @@ void ParallelFastaReader::readFasta(const char *file, int seq_count, int overlap
     l_end -= 2; // minus 2 because we don't need '>' as well as the '\n' before that
   }
   l_chunk_size = l_end - l_start + 1;
-
-
-  // Test print
-  /*int flag;
-  if (rank > 0)
-    MPI_Recv(&flag, 1, MPI_INT, rank-1, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  std::cout<<"\nRank: "<<rank<<"\n-------------------------\n";
-  for (int i = l_start; i <= l_end; ++i){
-    std::cout<<chunk[i];
-  }
-  if (rank < world_size - 1) {
-    MPI_Send(&flag, 1, MPI_INT, rank + 1, 99, MPI_COMM_WORLD);
-  }*/
-
-
 }
 
 
