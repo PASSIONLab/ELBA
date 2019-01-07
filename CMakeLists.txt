@@ -7,7 +7,7 @@ find_package(MPI REQUIRED)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(lbl_dal main.cpp constants.h parallel_ops.cpp parallel_ops.h constants.cpp)
+add_executable(lbl_dal main.cpp constants.h ParallelOps.cpp ParallelOps.h constants.cpp ParallelFastaReader.cpp ParallelFastaReader.hpp)
 
 add_executable(comb_blas ComBlasTest.cpp)
 target_link_libraries(comb_blas CombBLAS GraphGenlib Usortlib)

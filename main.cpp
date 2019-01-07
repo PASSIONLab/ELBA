@@ -5,7 +5,8 @@
 //#include <boost/program_options/parsers.hpp>
 #include <cxxopts.hpp>
 #include "constants.h"
-#include "parallel_ops.h"
+#include "ParallelOps.h"
+#include "ParallelFastaReader.hpp"
 
 /* Namespace declarations */
 //namespace po = boost::program_options;
@@ -14,19 +15,23 @@
 int parse_args(int argc, char **argv);
 
 /* Global variables */
-parallel_ops *p_ops;
+ParallelOps *p_ops;
 std::string input_file;
+int input_overlap;
+int input_seq_count;
 
 int main(int argc, char **argv) {
-  p_ops = parallel_ops::initialize(&argc, &argv);
+  p_ops = ParallelOps::initialize(&argc, &argv);
   int ret = parse_args(argc, argv);
   if (ret < 0){
     p_ops->teardown_parallelism();
     return ret;
   }
 
+  ParallelFastaReader pfr;
+  pfr.readFasta(input_file.c_str(), input_seq_count, input_overlap, p_ops->world_proc_rank, p_ops->world_procs_count);
 
-  std::cout << "Hello, World!" << std::endl;
+//  std::cout << "Hello, World!" << std::endl;
   return 0;
 }
 
@@ -34,44 +39,35 @@ int parse_args(int argc, char **argv) {
   cxxopts::Options options("Distributed Aligner", "A distributed protein aligner");
 
   options.add_options()
-      (CMD_OPTION_SHORT_INPUT, CMD_OPTION_DESCRIPTION_INPUT, cxxopts::value<std::string>())
+      (CMD_OPTION_INPUT, CMD_OPTION_DESCRIPTION_INPUT, cxxopts::value<std::string>())
+      (CMD_OPTION_INPUT_SEQ_COUNT, CMD_OPTION_DESCRIPTION_INPUT_SEQ_COUNT, cxxopts::value<int>())
+      (CMD_OPTION_INPUT_OVERLAP, CMD_OPTION_DESCRIPTION_INPUT_OVERLAP, cxxopts::value<int>())
       ;
 
   auto result = options.parse(argc, argv);
 
   bool is_world_rank0 = p_ops->world_proc_rank == 0;
-  if (result.count(CMD_OPTION_SHORT_INPUT)){
-    input_file = result[CMD_OPTION_SHORT_INPUT].as<std::string>();
+  if (result.count(CMD_OPTION_INPUT)){
+    input_file = result[CMD_OPTION_INPUT].as<std::string>();
   }else {
     if (is_world_rank0)
       std::cout<<"ERROR: Input file not specified"<<std::endl;
     return -1;
   }
 
-  // Declare the supported options.
-//  po::options_description desc("lbl_dal");
-//  desc.add_options()
-//      ("help", "produce help message")
-//      ("-i", po::value<std::string>(), "input")
-//      ;
-//
-//  po::variables_map vm;
-//  po::store(po::parse_command_line(argc, (const char *const *) argv, desc), vm);
-//  po::notify(vm);
-//
-//  bool is_world_rank0 = p_ops->world_proc_rank == 0;
-//  if (vm.count("help")) {
-//    std::cout << desc << "\n";
-//    return 1;
-//  }
-//
-//  if (vm.count("-i")){
-//    input_file = vm["-i"].as<std::string>();
-//  }else {
-//    if (is_world_rank0)
-//      std::cout<<"ERROR: Input file not specified"<<std::endl;
-//    return -1;
-//  }
+  if (result.count(CMD_OPTION_INPUT_SEQ_COUNT)){
+    input_seq_count = result[CMD_OPTION_INPUT_SEQ_COUNT].as<int>();
+  }else {
+    if (is_world_rank0)
+      std::cout<<"ERROR: Input sequence count not specified"<<std::endl;
+    return -1;
+  }
+
+  if (result.count(CMD_OPTION_INPUT_OVERLAP)){
+    input_overlap = result[CMD_OPTION_INPUT_OVERLAP].as<int>();
+  }else {
+    input_overlap = 10000;
+  }
 
   return 0;
 }
