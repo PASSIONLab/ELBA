@@ -1,8 +1,4 @@
 #include <iostream>
-//#include <boost/program_options/options_description.hpp>
-//#include <boost/program_options/option.hpp>
-//#include <boost/program_options/variables_map.hpp>
-//#include <boost/program_options/parsers.hpp>
 #include <cxxopts.hpp>
 #include "constants.h"
 #include "ParallelOps.h"
@@ -28,10 +24,21 @@ int main(int argc, char **argv) {
     return ret;
   }
 
+  std::shared_ptr<FastaData> fd;
   ParallelFastaReader pfr;
-  pfr.readFasta(input_file.c_str(), input_seq_count, input_overlap, p_ops->world_proc_rank, p_ops->world_procs_count);
+  pfr.readFasta(input_file.c_str(), input_seq_count, input_overlap,
+                p_ops->world_proc_rank, p_ops->world_procs_count, fd);
 
-//  std::cout << "Hello, World!" << std::endl;
+  /* Test print */
+  int flag;
+  if (p_ops->world_proc_rank > 0)
+    MPI_Recv(&flag, 1, MPI_INT, p_ops->world_proc_rank-1, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  std::cout<<"\nRank: "<<p_ops->world_proc_rank<<"\n-------------------------\n";
+  fd->print();
+  if (p_ops->world_proc_rank < p_ops->world_procs_count - 1) {
+    MPI_Send(&flag, 1, MPI_INT, p_ops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
+  }
+
   return 0;
 }
 

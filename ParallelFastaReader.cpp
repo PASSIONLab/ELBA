@@ -4,12 +4,17 @@
 
 #include <iostream>
 #include <fstream>
+#include <memory>
 #include "ParallelFastaReader.hpp"
+#include "FastaData.hpp"
 
-void ParallelFastaReader::readFasta(const char *file, int seq_count, int overlap, int rank, int world_size) {
+void ParallelFastaReader::readFasta(
+    const char *file, int seq_count, int overlap, int rank, int world_size,
+    std::shared_ptr<FastaData> &fd) {
   MPI_File f;
 
-  int err = MPI_File_open(MPI_COMM_WORLD, file, MPI_MODE_RDONLY, MPI_INFO_NULL, &f);
+  int err = MPI_File_open(MPI_COMM_WORLD, file,
+      MPI_MODE_RDONLY, MPI_INFO_NULL, &f);
   if (err) {
     if (rank == 0) fprintf(stderr, "Couldn't open file %s\n", file);
     MPI_Finalize();
@@ -27,7 +32,6 @@ void ParallelFastaReader::readFasta(const char *file, int seq_count, int overlap
    * https://stackoverflow.com/a/12942718 */
   MPI_Offset g_start;
   int l_chunk_size;
-  char *chunk;
 
   /* read in relevant chunk of file into "chunk",
    * which starts at location in the file g_start
@@ -51,11 +55,14 @@ void ParallelFastaReader::readFasta(const char *file, int seq_count, int overlap
 
   l_chunk_size = static_cast<int>(g_end - g_start + 1);
 
-  /* allocate memory */
-  chunk = static_cast<char *>(malloc((l_chunk_size + 1) * sizeof(char)));
+  /* create shared pointer to data */
+  std::shared_ptr<char> data(
+      static_cast<char*>(malloc((l_chunk_size+1) * sizeof(char))), free);
 
   /* everyone reads in their part */
-  MPI_File_read_at_all(f, g_start, chunk, l_chunk_size, MPI_CHAR, MPI_STATUS_IGNORE);
+  char* chunk = data.get();
+  MPI_File_read_at_all(f, g_start, chunk, l_chunk_size,
+                       MPI_CHAR, MPI_STATUS_IGNORE);
   chunk[l_chunk_size] = '\0';
 
 
@@ -68,14 +75,15 @@ void ParallelFastaReader::readFasta(const char *file, int seq_count, int overlap
   int l_start = 0, l_end = l_chunk_size - 1;
   if (rank != 0) {
     while (chunk[l_start] != '>') l_start++;
-//    l_start++;
   }
   if (rank != world_size - 1) {
     l_end -= overlap;
     while (chunk[l_end] != '>') l_end++;
-    l_end -= 2; // minus 2 because we don't need '>' as well as the '\n' before that
+    // minus 2 because we don't need '>' as well as the '\n' before that
+    l_end -= 2;
   }
-  l_chunk_size = l_end - l_start + 1;
+
+  fd = std::make_shared<FastaData>(data, l_start, l_end);
 }
 
 
