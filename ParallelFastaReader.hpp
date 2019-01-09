@@ -7,10 +7,13 @@
 
 
 #include "ParallelOps.h"
+#include "FastaData.hpp"
 
 class ParallelFastaReader {
 public:
-  void readFasta(const char *file, int seq_count, int overlap, int rank, int world_size);
+  void readFasta(
+      const char *file, int seq_count, int overlap, int rank, int world_size,
+      std::shared_ptr<FastaData> &fd);
 };
 
 
