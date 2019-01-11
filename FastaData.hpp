@@ -20,6 +20,7 @@ public:
 private:
   std::shared_ptr<char> data;
   int l_seq_count;
+  int g_seq_offset;
   int l_start, l_end;
   std::vector<int>* id_starts = nullptr;
   std::vector<int>* seq_starts = nullptr;

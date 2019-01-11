@@ -3,6 +3,7 @@
 //
 
 #include <iostream>
+#include <mpi.h>
 #include "FastaData.hpp"
 
 FastaData::~FastaData() {
@@ -33,6 +34,10 @@ FastaData::FastaData(std::shared_ptr<char> data, int l_start, int l_end) {
       in_name = false;
     }
   }
+
+  g_seq_offset = 0;
+  MPI_Exscan(&l_seq_count, &g_seq_offset, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
 }
 
 void FastaData::print() {
@@ -42,6 +47,7 @@ void FastaData::print() {
   }
 
   std::cout<<"\n===========\n";
+  std::cout<<"l_seq_count: "<<l_seq_count<<" g_seq_offset: "<<g_seq_offset<<"\n";
   for (int i = 0; i < id_starts->size(); ++i){
     char *beg = data.get() + (*id_starts)[i];
     char *end = data.get() + ((*seq_starts)[i] - 1);
