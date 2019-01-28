@@ -150,8 +150,20 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Alphabet.cpp">
+			<Option target="lbl_dal"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Alphabet.hpp">
+			<Option target="lbl_dal"/>
+		</Unit>
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/ComBlasTest.cpp">
 			<Option target="comb_blas"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Constants.cpp">
+			<Option target="lbl_dal"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Constants.hpp">
+			<Option target="lbl_dal"/>
 		</Unit>
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/FastaData.cpp">
 			<Option target="lbl_dal"/>
@@ -168,13 +180,7 @@
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/ParallelOps.cpp">
 			<Option target="lbl_dal"/>
 		</Unit>
-		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/ParallelOps.h">
-			<Option target="lbl_dal"/>
-		</Unit>
-		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/constants.cpp">
-			<Option target="lbl_dal"/>
-		</Unit>
-		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/constants.h">
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/ParallelOps.hpp">
 			<Option target="lbl_dal"/>
 		</Unit>
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/main.cpp">

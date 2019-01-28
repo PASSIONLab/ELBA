@@ -1,0 +1,2 @@
+1. FASTA file is assumed to be correct.
+2. Sequences are assumed not to spill over multiple lines

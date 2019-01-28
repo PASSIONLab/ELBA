@@ -1,8 +1,9 @@
 #include <iostream>
 #include <cxxopts.hpp>
-#include "constants.h"
-#include "ParallelOps.h"
+#include "Constants.hpp"
+#include "ParallelOps.hpp"
 #include "ParallelFastaReader.hpp"
+#include "Alphabet.hpp"
 
 /* Namespace declarations */
 //namespace po = boost::program_options;
@@ -11,13 +12,13 @@
 int parse_args(int argc, char **argv);
 
 /* Global variables */
-ParallelOps *p_ops;
+std::shared_ptr<ParallelOps> p_ops;
 std::string input_file;
 int input_overlap;
 int input_seq_count;
 
 int main(int argc, char **argv) {
-  p_ops = ParallelOps::initialize(&argc, &argv);
+  p_ops = ParallelOps::init(&argc, &argv);
   int ret = parse_args(argc, argv);
   if (ret < 0){
     p_ops->teardown_parallelism();
@@ -29,16 +30,38 @@ int main(int argc, char **argv) {
   pfr.readFasta(input_file.c_str(), input_seq_count, input_overlap,
                 p_ops->world_proc_rank, p_ops->world_procs_count, fd);
 
-  /* Test print */
+
+  /* Find k-mers */
+
+
+  /* Test get fasta */
+  /*int len, start_offset, end_offset_inclusive;
+  std::shared_ptr<char> seq = fd->get_sequence(
+      1, false, len, start_offset, end_offset_inclusive);
+
   int flag;
+  if (p_ops->world_proc_rank > 0)
+    MPI_Recv(&flag, 1, MPI_INT, p_ops->world_proc_rank-1, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  std::cout<<"\nRank: "<<p_ops->world_proc_rank<<"\n-------------------------\n";
+  std::cout.write(seq.get()+start_offset, (end_offset_inclusive - start_offset)+1);
+  std::cout<< std::endl << start_offset << " " << end_offset_inclusive<<std::endl;
+  if (p_ops->world_proc_rank < p_ops->world_procs_count - 1) {
+    MPI_Send(&flag, 1, MPI_INT, p_ops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
+  }*/
+
+
+
+  /* Test print */
+  /*flag;
   if (p_ops->world_proc_rank > 0)
     MPI_Recv(&flag, 1, MPI_INT, p_ops->world_proc_rank-1, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   std::cout<<"\nRank: "<<p_ops->world_proc_rank<<"\n-------------------------\n";
   fd->print();
   if (p_ops->world_proc_rank < p_ops->world_procs_count - 1) {
     MPI_Send(&flag, 1, MPI_INT, p_ops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
-  }
+  }*/
 
+  p_ops->teardown_parallelism();
   return 0;
 }
 

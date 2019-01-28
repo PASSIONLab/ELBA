@@ -6,17 +6,12 @@ find_package(MPI REQUIRED)
 #find_package(Boost 1.68 COMPONENTS program_options REQUIRED)
 
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
-add_executable(lbl_dal main.cpp constants.h ParallelOps.cpp ParallelOps.h constants.cpp ParallelFastaReader.cpp ParallelFastaReader.hpp FastaData.cpp FastaData.hpp)
+add_executable(lbl_dal main.cpp Constants.hpp ParallelOps.cpp ParallelOps.hpp Constants.cpp ParallelFastaReader.cpp ParallelFastaReader.hpp FastaData.cpp FastaData.hpp Alphabet.hpp Alphabet.cpp)
 
 add_executable(comb_blas ComBlasTest.cpp)
 target_link_libraries(comb_blas CombBLAS GraphGenlib Usortlib)
-
-
-#if(Boost_FOUND)
-#    include_directories(${Boost_INCLUDE_DIR})
-#    target_link_libraries(lbl_dal ${Boost_LIBRARIES})
-#endif()
 
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
