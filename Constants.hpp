@@ -1,11 +1,9 @@
-//
 // Created by Saliya Ekanayake on 12/17/18.
-//
 
 #ifndef LBL_DAL_CONSTANTS_H
 #define LBL_DAL_CONSTANTS_H
 
-#include <iostream>
+#include <iosfwd>
 
 extern const char *PROGRAM_NAME;
 

@@ -19,6 +19,70 @@ public:
   typedef SpParMat < int64_t, NT, DCCols > MPI_DCCols;
 };
 
+struct CommonKmers {
+  int count = 0;
+  std::pair<int64_t, int64_t> first;
+  std::pair<int64_t, int64_t> second;
+
+  friend std::ostream & operator << (std::ostream &os, const CommonKmers &m){
+    return os;
+  }
+};
+
+
+template <typename IN, typename OUT>
+struct KmerIntersect
+{
+  static OUT id(){
+    OUT a;
+    return a;
+  }
+  static bool returnedSAID() { return false; }
+
+  static OUT add(const OUT& arg1, const OUT& arg2) {
+    OUT res;
+    res.count = arg1.count + arg2.count;
+    // TODO: perhaps improve this late with something that'll check how far
+    // apart are the kmers.
+    res.second.first = arg2.first.first;
+    res.second.second = arg2.first.second;
+    return arg1;
+  }
+  static OUT multiply(const IN &arg1, const IN &arg2) {
+    OUT a;
+    a.count++;
+    a.first.first = arg1;
+    a.first.second = arg1;
+    return a;
+  }
+  static void axpy(IN a, const IN & x, OUT & y)
+  {
+    y = add(y, multiply(a, x));
+  }
+
+  static MPI_Op mpi_op()
+  {
+    static MPI_Op mpiop;
+    static bool exists = false;
+    if (exists)
+      return mpiop;
+    else
+    {
+      MPI_Op_create(MPI_func, true, &mpiop);
+      exists = true;
+      return mpiop;
+    }
+  }
+
+  static void MPI_func(void * invec, void * inoutvec, int * len, MPI_Datatype *datatype)
+  {
+    for (int i = 0; i < *len; ++i){
+      *((OUT)inoutvec+i) = add(*((OUT)invec+i), *((OUT)inoutvec+1));
+    }
+
+  }
+};
+
 int main(int argc, char** argv){
   std::cout<<"hello";
   int world_size, world_rank;
@@ -27,7 +91,7 @@ int main(int argc, char** argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
   // construct objects
   MPI_Comm world = MPI_COMM_WORLD;
-  PSpMat<double>::MPI_DCCols A(world);
+
 
   /*
    * For testing let's create a sparse matrix as follows
@@ -73,7 +137,6 @@ int main(int argc, char** argv){
       lrow_ids.push_back(1); lcol_ids.push_back(1); lvals.push_back(1);
       lrow_ids.push_back(1); lcol_ids.push_back(2); lvals.push_back(1);
       lrow_ids.push_back(1); lcol_ids.push_back(3); lvals.push_back(1);
-      lrow_ids.push_back(2); lcol_ids.push_back(6); lvals.push_back(1);
       lrow_ids.push_back(2); lcol_ids.push_back(4); lvals.push_back(1);
       lrow_ids.push_back(2); lcol_ids.push_back(6); lvals.push_back(1);
       break;
@@ -117,6 +180,41 @@ int main(int argc, char** argv){
 
   std::shared_ptr<CommGrid> grid = std::make_shared<CommGrid>(MPI_COMM_WORLD, 2, 2);
   FullyDistVec<int64_t, int64_t> drows(lrow_ids, grid);
+  FullyDistVec<int64_t, int64_t> dcols(lcol_ids, grid);
+  FullyDistVec<int64_t, int64_t> dvals(lvals, grid);
+
+  int m = 7, n = 10;
+  PSpMat<int64_t >::MPI_DCCols A(m, n, drows, dcols, dvals, false);
+
+  std::printf("World rank |%d| \n", world_rank);
+  int64_t nnz = A.getnnz();
+  if (world_rank == 0){
+    std::printf("\nwow nnz %lli\n", nnz);
+  }
+
+  auto At = A;
+  At.Transpose();
+
+//  PSpMat<int64_t>::MPI_DCCols C =
+//      Mult_AnXBn_Synch<PlusTimesSRing<int64_t, int64_t >, int64_t, PSpMat<int64_t >::DCCols>(A, At);
+
+
+  typedef KmerIntersect<int64_t, CommonKmers> KmerIntersectSR_t;
+
+  PSpMat<CommonKmers>::MPI_DCCols C =
+      Mult_AnXBn_Synch<KmerIntersectSR_t, CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
+//  C.PrintInfo();
+
+  //
+  PSpMat<CommonKmers>::DCCols* arrays = C.seqptr();
+  auto a = arrays->GetArrays();
+  auto idx_arrays = a.indarrs;
+  std::cout<<idx_arrays.size();
+
+
+
+
+
 
 
 /* Hmm, someone else seems to call MPI_Finalize */

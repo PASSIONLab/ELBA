@@ -1,8 +1,6 @@
-//
 // Created by Saliya Ekanayake on 12/17/18.
-//
-#include <iostream>
 
+#include "Constants.hpp"
 const char *CMD_OPTION_INPUT = "i";
 const char *CMD_OPTION_DESCRIPTION_INPUT = "The input FASTA file";
 
