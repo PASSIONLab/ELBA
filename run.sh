@@ -1,2 +1,2 @@
 #!/bin/bash
-mpirun -np 2 ./lbl_dal -i /Users/esaliya/sali/data/metaclust_50/metaclust_50_head_5.fasta -c 10 -o 1000
+mpirun -np 4 ./lbl_dal -i /Users/esaliya/sali/data/metaclust_50/metaclust_50_head_5.fasta -c 10 -O 1000 -k 6 -s 1

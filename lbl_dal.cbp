@@ -171,6 +171,9 @@
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/FastaData.hpp">
 			<Option target="lbl_dal"/>
 		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Kmer.hpp">
+			<Option target="lbl_dal"/>
+		</Unit>
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/ParallelFastaReader.cpp">
 			<Option target="lbl_dal"/>
 		</Unit>
@@ -181,6 +184,9 @@
 			<Option target="lbl_dal"/>
 		</Unit>
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/ParallelOps.hpp">
+			<Option target="lbl_dal"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Utils.hpp">
 			<Option target="lbl_dal"/>
 		</Unit>
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/main.cpp">

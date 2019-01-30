@@ -16,4 +16,10 @@ extern const char *CMD_OPTION_DESCRIPTION_INPUT_SEQ_COUNT;
 extern const char *CMD_OPTION_INPUT_OVERLAP;
 extern const char *CMD_OPTION_DESCRIPTION_INPUT_OVERLAP;
 
+extern const char *CMD_OPTION_KMER_LENGTH;
+extern const char *CMD_OPTION_DESCRIPTION_KMER_LENGTH;
+
+extern const char *CMD_OPTION_KMER_STRIDE;
+extern const char *CMD_OPTION_DESCRIPTION_KMER_STRID;
+
 #endif //LBL_DAL_CONSTANTS_H

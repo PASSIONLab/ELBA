@@ -82,3 +82,7 @@ std::shared_ptr<char> FastaData::get_sequence(
   return data;
 }
 
+int FastaData::count() {
+  return l_seq_count;
+}
+
