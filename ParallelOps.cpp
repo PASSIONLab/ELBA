@@ -24,7 +24,11 @@ const std::shared_ptr<ParallelOps> ParallelOps::init(int *argc, char ***argv) {
 }
 
 void ParallelOps::teardown_parallelism() {
-  MPI_Finalize();
+  int flag;
+  MPI_Initialized(&flag);
+  if(!flag) {
+    MPI_Finalize();
+  }
 }
 
 ParallelOps::ParallelOps(int world_proc_rank, int world_procs_count) :
@@ -33,9 +37,9 @@ ParallelOps::ParallelOps(int world_proc_rank, int world_procs_count) :
 }
 
 ParallelOps::~ParallelOps() {
-  int *flag = nullptr;
-  MPI_Initialized(flag);
-  if (flag){
+  int flag;
+  MPI_Initialized(&flag);
+  if (!flag) {
     MPI_Finalize();
   }
 }

@@ -14,7 +14,12 @@ Alphabet::Alphabet(Alphabet::type t) {
   switch (t){
     case PROTEIN:
       init(protein);
-
+      size = 20;
+      break;
+    case DNA:
+      init(dna);
+      size = 4;
+      break;
   }
 }
 

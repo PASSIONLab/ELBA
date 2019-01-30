@@ -45,6 +45,12 @@ public:
                                      int &end_offset_inclusive);
 
   /*!
+   *
+   * @return The number of sequences local to this process.
+   */
+  int count();
+
+  /*!
    * A helper method to print information of the FastaData instance.
    */
   void print();

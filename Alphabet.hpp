@@ -18,8 +18,9 @@ struct Alphabet {
   void init(const std::string &letters);
 
   enum type {PROTEIN, DNA};
-  unsigned char char_to_code[10];
-  unsigned char code_to_char[10];
+  unsigned char char_to_code[capacity];
+  unsigned char code_to_char[capacity];
+  int size;
 
   Alphabet(type t);
 };
