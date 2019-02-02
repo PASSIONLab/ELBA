@@ -47,6 +47,7 @@ int main(int argc, char **argv) {
   int len, start_offset, end_offset_inclusive;
   //Note: Saliya - this can be parallelized using OpenMP
   std::vector<int64_t> lrow_ids, lcol_ids, lvals;
+
   for (int lseq_idx = 0; lseq_idx < fd->count(); ++lseq_idx){
     seq = fd->get_sequence(lseq_idx, false, len, start_offset,
         end_offset_inclusive);
@@ -89,10 +90,10 @@ int main(int argc, char **argv) {
   auto At = A;
   At.Transpose();
 
-  PSpMat<CommonKmers>::MPI_DCCols C =
+  /*PSpMat<CommonKmers>::MPI_DCCols C =
       Mult_AnXBn_Synch<KmerIntersectSR_t,
           CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
-
+*/
 
 
 //  int nnz = C.getnnz();
@@ -104,6 +105,7 @@ int main(int argc, char **argv) {
   /*! Test multiplication */
   /* rows and cols in the result */
 
+  /*
   int nrows = input_seq_count;
   int ncols = input_seq_count;
   int pr = static_cast<int>(sqrt(p_ops->world_procs_count));
@@ -139,6 +141,7 @@ int main(int argc, char **argv) {
     }
   }
 
+   */
 
   /* Test get fasta */
   /*int len, start_offset, end_offset_inclusive;
