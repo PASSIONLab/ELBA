@@ -11,12 +11,11 @@ using namespace combblas;
 // Simple helper class for declarations: Just the numerical type is templated
 // The index type and the sequential matrix type stays the same for the whole code
 // In this case, they are "int" and "SpDCCols"
-template <class NT>
-class PSpMat
-{
+template<class NT>
+class PSpMat {
 public:
-  typedef SpDCCols < int64_t, NT > DCCols;
-  typedef SpParMat < int64_t, NT, DCCols > MPI_DCCols;
+  typedef SpDCCols<int64_t, NT> DCCols;
+  typedef SpParMat<int64_t, NT, DCCols> MPI_DCCols;
 };
 
 struct CommonKmers {
@@ -24,24 +23,25 @@ struct CommonKmers {
   std::pair<int64_t, int64_t> first;
   std::pair<int64_t, int64_t> second;
 
-  friend std::ostream & operator << (std::ostream &os, const CommonKmers &m){
-    os << "|"<<m.count<<"(" << m.first.first <<","<<m.first.second<< ")("<<
-       m.second.first<<","<<m.second.second<<")| ";
+  friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m) {
+    os << "|" << m.count << "(" << m.first.first << "," << m.first.second
+       << ")(" <<
+       m.second.first << "," << m.second.second << ")| ";
     return os;
   }
 };
 
 
-template <typename IN, typename OUT>
-struct KmerIntersect
-{
-  static OUT id(){
+template<typename IN, typename OUT>
+struct KmerIntersect {
+  static OUT id() {
     OUT a;
     return a;
   }
+
   static bool returnedSAID() { return false; }
 
-  static OUT add(const OUT& arg1, const OUT& arg2) {
+  static OUT add(const OUT &arg1, const OUT &arg2) {
     OUT res;
     res.count = arg1.count + arg2.count;
     // TODO: perhaps improve this late with something that'll check how far
@@ -52,6 +52,7 @@ struct KmerIntersect
     res.second.second = arg2.first.second;
     return res;
   }
+
   static OUT multiply(const IN &arg1, const IN &arg2) {
     OUT a;
     a.count++;
@@ -59,36 +60,34 @@ struct KmerIntersect
     a.first.second = arg2;
     return a;
   }
-  static void axpy(IN a, const IN & x, OUT & y)
-  {
+
+  static void axpy(IN a, const IN &x, OUT &y) {
     y = add(y, multiply(a, x));
   }
 
-  static MPI_Op mpi_op()
-  {
+  static MPI_Op mpi_op() {
     static MPI_Op mpiop;
     static bool exists = false;
     if (exists)
       return mpiop;
-    else
-    {
+    else {
       MPI_Op_create(MPI_func, true, &mpiop);
       exists = true;
       return mpiop;
     }
   }
 
-  static void MPI_func(void * invec, void * inoutvec, int * len, MPI_Datatype *datatype)
-  {
-    for (int i = 0; i < *len; ++i){
-      *((OUT)inoutvec+i) = add(*((OUT)invec+i), *((OUT)inoutvec+1));
+  static void
+  MPI_func(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype) {
+    for (int i = 0; i < *len; ++i) {
+      *((OUT) inoutvec + i) = add(*((OUT) invec + i), *((OUT) inoutvec + 1));
     }
 
   }
 };
 
-int main(int argc, char** argv){
-  std::cout<<"hello";
+int main(int argc, char **argv) {
+  std::cout << "hello";
   int world_size, world_rank;
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -266,13 +265,14 @@ int main(int argc, char** argv){
     }
   }
 
-  std::shared_ptr<CommGrid> grid = std::make_shared<CommGrid>(MPI_COMM_WORLD, 2, 2);
+  std::shared_ptr<CommGrid> grid = std::make_shared<CommGrid>(MPI_COMM_WORLD, 2,
+                                                              2);
   FullyDistVec<int64_t, int64_t> drows(lrow_ids, grid);
   FullyDistVec<int64_t, int64_t> dcols(lcol_ids, grid);
   FullyDistVec<int64_t, int64_t> dvals(lvals, grid);
 
   int m = 10, n = 7;
-  PSpMat<int64_t >::MPI_DCCols A(m, n, drows, dcols, dvals, false);
+  PSpMat<int64_t>::MPI_DCCols A(m, n, drows, dcols, dvals, false);
 
 //  A.PrintInfo();
 
@@ -292,8 +292,20 @@ int main(int argc, char** argv){
   typedef KmerIntersect<int64_t, CommonKmers> KmerIntersectSR_t;
 
   PSpMat<CommonKmers>::MPI_DCCols C =
-      Mult_AnXBn_Synch<KmerIntersectSR_t, CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
+      Mult_AnXBn_Synch<KmerIntersectSR_t, CommonKmers, PSpMat<CommonKmers>::DCCols>(
+          A, At);
   C.PrintInfo();
+
+  PSpMat<CommonKmers>::DCCols *arrays = C.seqptr();
+  /* auto a = arrays->GetArrays();
+   auto idx_arrays = a.indarrs;
+ //  std::cout<<idx_arrays.size();
+   if (world_rank == 0){
+     for (auto &idx_array : idx_arrays) {
+       std::cout<< idx_array.count;
+     }
+     std::cout<<std::endl;
+   }*/
 
   //
   /*PSpMat<CommonKmers>::DCCols* arrays = C.seqptr();
@@ -301,8 +313,39 @@ int main(int argc, char** argv){
   auto idx_arrays = a.indarrs;
   std::cout<<idx_arrays.size();*/
 
+  /* rows and cols in the result */
+  int nrows = 10;
+  int ncols = 10;
+  int pr = 2;
+  int pc = 2;
 
+  //Information about the matrix distribution
+  //Assume that A is an nrow x ncol matrix
+  //The local submatrix is an lnrow x lncol matrix
+  int rowrank = grid->GetRankInProcRow();
+  int colrank = grid->GetRankInProcCol();
+  int64_t m_perproc = nrows / pr;
+  int64_t n_perproc = ncols / pc;
+  PSpMat<CommonKmers>::DCCols *spSeq = C.seqptr(); // local submatrix
+  int64_t localRowStart = colrank * m_perproc; // first row in this process
+  int64_t localColStart = rowrank * n_perproc; // first col in this process
 
+  if (world_rank == 0) {
+    for (auto colit = spSeq->begcol();
+         colit != spSeq->endcol(); ++colit) // iterate over columns
+    {
+      int64_t lj = colit.colid(); // local numbering
+      int64_t j = lj + localColStart;
+
+      for (auto nzit = spSeq->begnz(colit);
+           nzit < spSeq->endnz(colit); ++nzit) {
+
+        int64_t li = nzit.rowid();
+        int64_t i = li + localRowStart;
+        std::cout<<"r:"<<li<<" c:"<<lj<<" v:"<<nzit.value()<<std::endl;
+      }
+    }
+  }
 
 
 

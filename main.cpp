@@ -9,13 +9,16 @@
 #include "Utils.hpp"
 #include "CombBLAS/CombBLAS.h"
 
-/* Namespace declarations */
+/*! Namespace declarations */
 using namespace combblas;
 
-/* Function signatures */
+/*! Type definitions */
+typedef KmerIntersect<int64_t, CommonKmers> KmerIntersectSR_t;
+
+/*! Function signatures */
 int parse_args(int argc, char **argv);
 
-/* Global variables */
+/*! Global variables */
 std::shared_ptr<ParallelOps> p_ops;
 std::string input_file;
 int input_overlap;
@@ -47,15 +50,23 @@ int main(int argc, char **argv) {
   for (int lseq_idx = 0; lseq_idx < fd->count(); ++lseq_idx){
     seq = fd->get_sequence(lseq_idx, false, len, start_offset,
         end_offset_inclusive);
-    std::printf("rank: %d len %d\n", p_ops->world_proc_rank, len);
-    auto num_kmers = count_kmers(seq.get(), len, start_offset,
-        end_offset_inclusive, klength, kstride, alph, lcol_ids, lvals);
+//    std::printf("rank: %d len %d\n", p_ops->world_proc_rank, len);
+    auto num_kmers = add_kmers(seq.get(), len, start_offset,
+                               end_offset_inclusive, klength, kstride, alph,
+                               lcol_ids, lvals);
     lrow_ids.insert(lrow_ids.end(), num_kmers, lseq_idx);
   }
 
+  /*if (p_ops->world_proc_rank == 0) {
+    for (int64_t &row_id : lrow_ids) {
+      std::cout << row_id << " ";
+    }
+    std::cout << std::endl;
+  }*/
+
 //  assert(lrow_ids.size() == lcol_ids.size() == lvals.size());
-//  std::printf("Rank: %d lrow_ids %ld lcol_ids %ld lvals %ld\n",
-//              p_ops->world_proc_rank, lrow_ids.size(), lcol_ids.size(), lvals.size());
+  std::printf("Rank: %d lrow_ids %ld lcol_ids %ld lvals %ld\n",
+              p_ops->world_proc_rank, lrow_ids.size(), lcol_ids.size(), lvals.size());
 
 
   auto grid_size = static_cast<int>(sqrt(p_ops->world_procs_count));
@@ -65,11 +76,68 @@ int main(int argc, char **argv) {
   FullyDistVec<int64_t, int64_t> dcols(lcol_ids, grid);
   FullyDistVec<int64_t, int64_t> dvals(lvals, grid);
 
-  int64_t n_rows = fd->count();
+  int64_t n_rows = input_seq_count;
+  /*! Columns of the matrix are direct maps to kmers identified
+   * by their |alphabet| base number. E.g. for proteins this is
+   * base 20, so the direct map has to be 20^k in size.
+   */
   auto n_cols = static_cast<int64_t>(pow(alph.size, klength));
   PSpMat<int64_t >::MPI_DCCols A(n_rows, n_cols, drows, dcols, dvals, false);
 
-  A.PrintInfo();
+//  A.PrintInfo();
+
+  auto At = A;
+  At.Transpose();
+
+  PSpMat<CommonKmers>::MPI_DCCols C =
+      Mult_AnXBn_Synch<KmerIntersectSR_t,
+          CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
+
+
+
+//  int nnz = C.getnnz();
+//  if (p_ops->world_proc_rank == 0){
+//    std::cout<<nnz<<std::endl;
+//  }
+//  C.PrintInfo();
+
+  /*! Test multiplication */
+  /* rows and cols in the result */
+
+  int nrows = input_seq_count;
+  int ncols = input_seq_count;
+  int pr = static_cast<int>(sqrt(p_ops->world_procs_count));
+  int pc = pr;
+
+  //Information about the matrix distribution
+  //Assume that A is an nrow x ncol matrix
+  //The local submatrix is an lnrow x lncol matrix
+  int rowrank = grid->GetRankInProcRow();
+  int colrank = grid->GetRankInProcCol();
+  int64_t m_perproc = nrows / pr;
+  int64_t n_perproc = ncols / pc;
+  PSpMat<CommonKmers>::DCCols *spSeq = C.seqptr(); // local submatrix
+  int64_t localRowStart = colrank * m_perproc; // first row in this process
+  int64_t localColStart = rowrank * n_perproc; // first col in this process
+
+//  std::cout<<std::endl<<spSeq->begcol().colid()<<" " <<spSeq->endcol().colid()<<std::endl;
+  if (p_ops->world_proc_rank == 0) {
+    for (auto colit = spSeq->begcol();
+         colit != spSeq->endcol(); ++colit) // iterate over columns
+    {
+      std::cout<<"came here";
+      int64_t lj = colit.colid(); // local numbering
+      int64_t j = lj + localColStart;
+
+      for (auto nzit = spSeq->begnz(colit);
+           nzit < spSeq->endnz(colit); ++nzit) {
+
+        int64_t li = nzit.rowid();
+        int64_t i = li + localRowStart;
+        std::cout<<"r:"<<li<<" c:"<<lj<<" v:"<<nzit.value()<<std::endl;
+      }
+    }
+  }
 
 
   /* Test get fasta */
