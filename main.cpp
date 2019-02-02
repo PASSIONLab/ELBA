@@ -1,5 +1,4 @@
 #include <iostream>
-#include <cxxopts.hpp>
 #include <cmath>
 #include "Constants.hpp"
 #include "ParallelOps.hpp"
@@ -8,6 +7,7 @@
 #include "Kmer.hpp"
 #include "Utils.hpp"
 #include "CombBLAS/CombBLAS.h"
+#include "cxxopts.hpp"
 
 /*! Namespace declarations */
 using namespace combblas;
