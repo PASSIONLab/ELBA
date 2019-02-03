@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-  assert(world_size == 4);
+//  assert(world_size == 4);
 
   /*!
    * For testing let's recreate matrices similar to the one that segfaults
@@ -128,15 +128,20 @@ int main(int argc, char **argv) {
     ++count;
   }
 
+  std::printf("Rank: %d lrow_ids %ld lcol_ids %ld lvals %ld\n",
+              world_rank, lrow_ids.size(), lcol_ids.size(), lvals.size());
+
   std::shared_ptr<CommGrid> grid =
-      std::make_shared<CommGrid>(MPI_COMM_WORLD, 2,2);
+      std::make_shared<CommGrid>(MPI_COMM_WORLD, std::sqrt(world_size),std::sqrt(world_size));
 
   FullyDistVec<int64_t, int64_t> drows(lrow_ids, grid);
   FullyDistVec<int64_t, int64_t> dcols(lcol_ids, grid);
   FullyDistVec<int64_t, int64_t> dvals(lvals, grid);
 
-  int m = world_size, n = static_cast<int>(total_k);
+  int m = 5, n = static_cast<int>(total_k);
   PSpMat<int64_t>::MPI_DCCols A(m, n, drows, dcols, dvals, false);
+
+//  A.PrintInfo();
 
   auto At = A;
   At.Transpose();
@@ -147,7 +152,7 @@ int main(int argc, char **argv) {
       Mult_AnXBn_Synch<KmerIntersectSR_t, CommonKmers, PSpMat<CommonKmers>::DCCols>(
           A, At);
 
-  /* seg faults here */
+  //seg faults here
   C.PrintInfo();
 
 /* Hmm, someone else seems to call MPI_Finalize */

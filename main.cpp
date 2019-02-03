@@ -70,13 +70,13 @@ int main(int argc, char **argv) {
               p_ops->world_proc_rank, lrow_ids.size(), lcol_ids.size(), lvals.size());
 
   /*! Write values to file to see why it segfaults */
-  std::ofstream f;
+/*  std::ofstream f;
   std::string fname = "mat." + std::to_string(p_ops->world_proc_rank) + ".txt";
   f.open(fname);
   for (int i = 0; i < lrow_ids.size(); ++i){
     f << lrow_ids[i] << "," << lcol_ids[i] << "," << lvals[i] << std::endl;
   }
-  f.close();
+  f.close();*/
 
   auto grid_size = static_cast<int>(sqrt(p_ops->world_procs_count));
   std::shared_ptr<CommGrid> grid = std::make_shared<CommGrid>(
