@@ -88,10 +88,6 @@ int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-  // construct objects
-  MPI_Comm world = MPI_COMM_WORLD;
-
-
 
   assert(world_size == 4);
 
@@ -132,20 +128,6 @@ int main(int argc, char **argv) {
     ++count;
   }
 
-
-  /*! Write values to file to see why it segfaults */
-  /*std::ofstream of;
-  std::string fname = "out.mat." + std::to_string(world_rank) + ".txt";
-  of.open(fname);
-  for (int i = 0; i < lrow_ids.size(); ++i){
-    of << lrow_ids[i] << "," << lcol_ids[i] << "," << lvals[i] << std::endl;
-  }
-  of.close();*/
-
-//  std::printf("\nRank: %d lrow_ids %ld lcol_ids %ld lvals %ld\n",
-//              world_rank, lrow_ids.size(), lcol_ids.size(), lvals.size());
-
-
   std::shared_ptr<CommGrid> grid =
       std::make_shared<CommGrid>(MPI_COMM_WORLD, 2,2);
 
@@ -153,10 +135,8 @@ int main(int argc, char **argv) {
   FullyDistVec<int64_t, int64_t> dcols(lcol_ids, grid);
   FullyDistVec<int64_t, int64_t> dvals(lvals, grid);
 
-  int m = world_size, n = total_k;
+  int m = world_size, n = static_cast<int>(total_k);
   PSpMat<int64_t>::MPI_DCCols A(m, n, drows, dcols, dvals, false);
-
-  A.PrintInfo();
 
   auto At = A;
   At.Transpose();
@@ -166,6 +146,8 @@ int main(int argc, char **argv) {
   PSpMat<CommonKmers>::MPI_DCCols C =
       Mult_AnXBn_Synch<KmerIntersectSR_t, CommonKmers, PSpMat<CommonKmers>::DCCols>(
           A, At);
+
+  /* seg faults here */
   C.PrintInfo();
 
 /* Hmm, someone else seems to call MPI_Finalize */

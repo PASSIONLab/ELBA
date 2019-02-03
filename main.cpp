@@ -69,6 +69,14 @@ int main(int argc, char **argv) {
   std::printf("Rank: %d lrow_ids %ld lcol_ids %ld lvals %ld\n",
               p_ops->world_proc_rank, lrow_ids.size(), lcol_ids.size(), lvals.size());
 
+  /*! Write values to file to see why it segfaults */
+  std::ofstream f;
+  std::string fname = "mat." + std::to_string(p_ops->world_proc_rank) + ".txt";
+  f.open(fname);
+  for (int i = 0; i < lrow_ids.size(); ++i){
+    f << lrow_ids[i] << "," << lcol_ids[i] << "," << lvals[i] << std::endl;
+  }
+  f.close();
 
   auto grid_size = static_cast<int>(sqrt(p_ops->world_procs_count));
   std::shared_ptr<CommGrid> grid = std::make_shared<CommGrid>(
@@ -90,11 +98,9 @@ int main(int argc, char **argv) {
   auto At = A;
   At.Transpose();
 
-  /*PSpMat<CommonKmers>::MPI_DCCols C =
+  PSpMat<CommonKmers>::MPI_DCCols C =
       Mult_AnXBn_Synch<KmerIntersectSR_t,
           CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
-*/
-
 
 //  int nnz = C.getnnz();
 //  if (p_ops->world_proc_rank == 0){
