@@ -248,6 +248,9 @@
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Utils.hpp">
 			<Option target="lbl_dal"/>
 		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/cxxopts.hpp">
+			<Option target="lbl_dal"/>
+		</Unit>
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/main.cpp">
 			<Option target="lbl_dal"/>
 		</Unit>
