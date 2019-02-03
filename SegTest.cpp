@@ -42,8 +42,6 @@ struct KmerIntersect {
   static OUT add(const OUT &arg1, const OUT &arg2) {
     OUT res;
     res.count = arg1.count + arg2.count;
-    // TODO: perhaps improve this late with something that'll check how far
-    // apart are the kmers.
     res.first.first = arg1.first.first;
     res.first.second = arg1.first.second;
     res.second.first = arg2.first.first;
@@ -116,22 +114,33 @@ int main(int argc, char **argv) {
   std::vector<int64_t> lcol_ids(static_cast<unsigned long>(nnzs[world_rank]));
   std::vector<int64_t> lvals(static_cast<unsigned long>(nnzs[world_rank]));
 
-  std::random_device rd;
-  std::mt19937 rng(rd());
-  std::uniform_int_distribution<int> uni(0, static_cast<int>(total_k));
-
-  int hs[total_k]= {0};
-  int nnz = nnzs[world_rank];
-  for (int i = 0; i < 10; i++){
-    auto rnd_idx = uni(rng);
-    if (hs[rnd_idx] != 0){
-      --i;
-      continue;
-    }
-    lrow_ids[i] = 0; // just have 1 row
-    lcol_ids[i] = rnd_idx;
-    lvals[i] = rnd_idx; // value set as the col idx just to test
+  std::string fnames[4] = {"mat.0.txt", "mat.1.txt", "mat.2.txt", "mat.3.txt"};
+  std::ifstream f(fnames[world_rank]);
+  std::string v;
+  int count = 0;
+  while (f.good()){
+    std::getline(f, v, ',');
+    if (v.empty()) break;
+    int val = std::stoi(v);
+    lrow_ids[count] = val;
+    std::getline(f, v, ',');
+    val = std::stoi(v);
+    lcol_ids[count] = val;
+    std::getline(f, v);
+    val = std::stoi(v);
+    lvals[count] = val;
+    ++count;
   }
+
+
+  /*! Write values to file to see why it segfaults */
+  /*std::ofstream of;
+  std::string fname = "out.mat." + std::to_string(world_rank) + ".txt";
+  of.open(fname);
+  for (int i = 0; i < lrow_ids.size(); ++i){
+    of << lrow_ids[i] << "," << lcol_ids[i] << "," << lvals[i] << std::endl;
+  }
+  of.close();*/
 
 //  std::printf("\nRank: %d lrow_ids %ld lcol_ids %ld lvals %ld\n",
 //              world_rank, lrow_ids.size(), lcol_ids.size(), lvals.size());
