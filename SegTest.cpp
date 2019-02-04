@@ -164,6 +164,9 @@ int main(int argc, char **argv) {
 
     typedef KmerIntersect<int64_t, CommonKmers> KmerIntersectSR_t;
 
+    if (world_rank == 0){
+      std::cout<<"before multiplication";
+    }
     PSpMat<CommonKmers>::MPI_DCCols C =
         Mult_AnXBn_Synch<KmerIntersectSR_t, CommonKmers, PSpMat<CommonKmers>::DCCols>(
             A, At);
