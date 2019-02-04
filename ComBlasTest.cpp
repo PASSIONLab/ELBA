@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
   int m = 10, n = 7;
   PSpMat<int64_t>::MPI_DCCols A(m, n, drows, dcols, dvals, false);
 
-//  A.PrintInfo();
+  A.PrintInfo();
 
   /*std::printf("World rank |%d| \n", world_rank);
   int64_t nnz = A.getnnz();
@@ -282,21 +282,21 @@ int main(int argc, char **argv) {
     std::printf("\nwow nnz %lli\n", nnz);
   }*/
 
-  auto At = A;
-  At.Transpose();
+//  auto At = A;
+//  At.Transpose();
 
 //  PSpMat<int64_t>::MPI_DCCols C =
 //      Mult_AnXBn_Synch<PlusTimesSRing<int64_t, int64_t >, int64_t, PSpMat<int64_t >::DCCols>(A, At);
 
 
-  typedef KmerIntersect<int64_t, CommonKmers> KmerIntersectSR_t;
-
-  PSpMat<CommonKmers>::MPI_DCCols C =
-      Mult_AnXBn_Synch<KmerIntersectSR_t, CommonKmers, PSpMat<CommonKmers>::DCCols>(
-          A, At);
-  C.PrintInfo();
-
-  PSpMat<CommonKmers>::DCCols *arrays = C.seqptr();
+//  typedef KmerIntersect<int64_t, CommonKmers> KmerIntersectSR_t;
+//
+//  PSpMat<CommonKmers>::MPI_DCCols C =
+//      Mult_AnXBn_Synch<KmerIntersectSR_t, CommonKmers, PSpMat<CommonKmers>::DCCols>(
+//          A, At);
+//  C.PrintInfo();
+//
+//  PSpMat<CommonKmers>::DCCols *arrays = C.seqptr();
   /* auto a = arrays->GetArrays();
    auto idx_arrays = a.indarrs;
  //  std::cout<<idx_arrays.size();
@@ -314,7 +314,7 @@ int main(int argc, char **argv) {
   std::cout<<idx_arrays.size();*/
 
   /* rows and cols in the result */
-  int nrows = 10;
+  /*int nrows = 10;
   int ncols = 10;
   int pr = 2;
   int pc = 2;
@@ -345,7 +345,7 @@ int main(int argc, char **argv) {
         std::cout<<"r:"<<li<<" c:"<<lj<<" v:"<<nzit.value()<<std::endl;
       }
     }
-  }
+  }*/
 
 
 
