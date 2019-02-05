@@ -167,11 +167,15 @@ int main(int argc, char **argv) {
     if (world_rank == 0){
       std::cout<<"before multiplication";
     }
-    PSpMat<CommonKmers>::MPI_DCCols C =
+    /*PSpMat<CommonKmers>::MPI_DCCols C =
         Mult_AnXBn_Synch<KmerIntersectSR_t, CommonKmers, PSpMat<CommonKmers>::DCCols>(
-            A, At);
+            A, At);*/
 
-    //seg faults here
+    PSpMat<int64_t>::MPI_DCCols C =
+      Mult_AnXBn_Synch<PlusTimesSRing<int64_t, int64_t >, int64_t, PSpMat<int64_t >::DCCols>(A, At);
+
+
+        //seg faults here
     C.PrintInfo();
   }
 
