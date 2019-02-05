@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     auto num_kmers = add_kmers(seq.get(), len, start_offset,
                                end_offset_inclusive, klength, kstride, alph,
                                lcol_ids, lvals);
-    lrow_ids.insert(lrow_ids.end(), num_kmers, lseq_idx+fd->g);
+    lrow_ids.insert(lrow_ids.end(), num_kmers, lseq_idx);
   }
 
   /*if (p_ops->world_proc_rank == 0) {
