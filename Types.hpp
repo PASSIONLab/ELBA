@@ -9,6 +9,10 @@
 typedef unsigned short ushort;
 typedef unsigned char uchar;
 typedef std::vector<uint64_t> uvec_64;
-typedef std::vector<ushort> uvec_16;
+/*! TODO - apparently there's a bug when setting a different element type,
+ * so let's use uint64_t as element type for now
+ */
+//typedef std::vector<ushort> uvec_16;
+typedef std::vector<uint64_t> uvec_16;
 
 #endif //LBL_DAL_TYPES_HPP
