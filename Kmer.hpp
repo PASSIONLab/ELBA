@@ -111,6 +111,12 @@ ushort add_kmers(const char *seq, ushort len, uint64_t start_offset,
     lvals.push_back(static_cast<ushort &&>(i - start_offset));
   }
 
+  if (count != num_kmers){
+    fprintf(stderr, "count:%d numk: %d len: %d k: %d s: %d soff: %llu eoffinc: %llu\n",
+            count, num_kmers, len, k, s, start_offset, enf_offset_inclusive);
+    fflush(stderr);
+  }
+
   return num_kmers;
 }
 

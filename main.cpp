@@ -160,8 +160,8 @@ int main(int argc, char **argv) {
 
       int64_t li = nzit.rowid();
       int64_t i = li + localRowStart;
-      rf << li << ",";
-      cf << lj << ",";
+      rf << i << ",";
+      cf << j << ",";
       vf << nzit.value().count << ",";
 //      std::cout<<"r:"<<li<<" c:"<<lj<<" v:"<<nzit.value()<<std::endl;
     }
