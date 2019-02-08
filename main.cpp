@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
   std::shared_ptr<char> seq;
   ushort len;
   uint64_t start_offset, end_offset_inclusive;
-  //Note: Saliya - this can be parallelized using OpenMP
+  //TODO: Saliya - this can be parallelized using OpenMP
   uvec_64 lrow_ids, lcol_ids;
   uvec_16 lvals;
   uint64_t offset = fd->offset();
@@ -86,7 +86,10 @@ int main(int argc, char **argv) {
       MPI_COMM_WORLD, grid_size, grid_size);
   FullyDistVec<uint64_t, uint64_t> drows(lrow_ids, grid);
   FullyDistVec<uint64_t, uint64_t> dcols(lcol_ids, grid);
-  FullyDistVec<uint64_t, ushort> dvals(lvals, grid);
+  /*! TODO - apparently there's a bug when setting a different element type,
+   * so let's use uint64_t as element type for now
+   */
+  FullyDistVec<uint64_t, uint64_t> dvals(lvals, grid);
 
   uint64_t n_rows = input_seq_count;
   /*! Columns of the matrix are direct maps to kmers identified
@@ -95,7 +98,6 @@ int main(int argc, char **argv) {
    */
   auto n_cols = static_cast<uint64_t>(pow(alph.size, klength));
   PSpMat<ushort>::MPI_DCCols A(n_rows, n_cols, drows, dcols, dvals, false);
-  std::cout<<"came here";
   A.PrintInfo();
 
   auto At = A;
@@ -115,7 +117,7 @@ int main(int argc, char **argv) {
   /* rows and cols in the result */
 
 
-  /*
+
   int64_t nrows = input_seq_count;
   int64_t ncols = input_seq_count;
   int pr = static_cast<int>(sqrt(p_ops->world_procs_count));
@@ -133,25 +135,47 @@ int main(int argc, char **argv) {
   int64_t localColStart = rowrank * n_perproc; // first col in this process
 
 //  std::cout<<std::endl<<spSeq->begcol().colid()<<" " <<spSeq->endcol().colid()<<std::endl;
-  if (p_ops->world_proc_rank == 0) {
-    for (auto colit = spSeq->begcol();
-         colit != spSeq->endcol(); ++colit) // iterate over columns
-    {
-      std::cout<<"came here";
-      int64_t lj = colit.colid(); // local numbering
-      int64_t j = lj + localColStart;
 
-      for (auto nzit = spSeq->begnz(colit);
-           nzit < spSeq->endnz(colit); ++nzit) {
+  std::ofstream rf, cf, vf;
+  int flag;
+  if (p_ops->world_proc_rank > 0) {
+    MPI_Recv(&flag, 1, MPI_INT, p_ops->world_proc_rank - 1,
+             99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  }
+  rf.open("row_ids.txt", std::ios::app);
+  cf.open("col_ids.txt", std::ios::app);
+  vf.open("values.txt", std::ios::app);
 
-        int64_t li = nzit.rowid();
-        int64_t i = li + localRowStart;
-        std::cout<<"r:"<<li<<" c:"<<lj<<" v:"<<nzit.value()<<std::endl;
-      }
+
+  std::cout<<"\nRank: "<<p_ops->world_proc_rank<<"\n writing data\n";
+
+  for (auto colit = spSeq->begcol();
+       colit != spSeq->endcol(); ++colit) // iterate over columns
+  {
+    int64_t lj = colit.colid(); // local numbering
+    int64_t j = lj + localColStart;
+
+    for (auto nzit = spSeq->begnz(colit);
+         nzit < spSeq->endnz(colit); ++nzit) {
+
+      int64_t li = nzit.rowid();
+      int64_t i = li + localRowStart;
+      rf << li << ",";
+      cf << lj << ",";
+      vf << nzit.value().count << ",";
+//      std::cout<<"r:"<<li<<" c:"<<lj<<" v:"<<nzit.value()<<std::endl;
     }
   }
-   */
 
+  rf.close();
+  cf.close();
+  vf.close();
+
+  if (p_ops->world_proc_rank < p_ops->world_procs_count - 1) {
+    MPI_Send(&flag, 1, MPI_INT, p_ops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
+  }
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
   /* Test get fasta */
   /*int len, start_offset, end_offset_inclusive;
@@ -166,7 +190,7 @@ int main(int argc, char **argv) {
   std::cout<< std::endl << start_offset << " " << end_offset_inclusive<<std::endl;
   if (p_ops->world_proc_rank < p_ops->world_procs_count - 1) {
     MPI_Send(&flag, 1, MPI_INT, p_ops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
-  }*/
+  }
 
 
 
@@ -212,6 +236,7 @@ int parse_args(int argc, char **argv) {
     return -1;
   }
 
+  // TODO - fix option parsing
   if (result.count(CMD_OPTION_INPUT_SEQ_COUNT)){
     input_seq_count = result[CMD_OPTION_INPUT_SEQ_COUNT].as<int>();
   }else {
