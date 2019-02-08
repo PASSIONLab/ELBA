@@ -5,7 +5,8 @@
 
 using namespace combblas;
 
-typedef std::vector<int64_t> vec64_t;
+#define IDXT int64_t
+#define ELET int
 
 /* Copied from MultTest.cpp in CombBLAS */
 // Simple helper class for declarations: Just the numerical type is templated
@@ -14,14 +15,14 @@ typedef std::vector<int64_t> vec64_t;
 template<class NT>
 class PSpMat {
 public:
-  typedef SpDCCols<int64_t, NT> DCCols;
-  typedef SpParMat<int64_t, NT, DCCols> MPI_DCCols;
+  typedef SpDCCols<IDXT, NT> DCCols;
+  typedef SpParMat<IDXT, NT, DCCols> MPI_DCCols;
 };
 
 struct CommonKmers {
   int count = 0;
-  std::pair<int64_t, int64_t> first;
-  std::pair<int64_t, int64_t> second;
+  std::pair<ELET, ELET> first;
+  std::pair<ELET, ELET> second;
 
   friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m) {
     os << "|" << m.count << "(" << m.first.first << "," << m.first.second
@@ -85,10 +86,10 @@ struct KmerIntersect {
 };
 
 int read_matrix(std::string fname, int offset, int row_offset,
-                vec64_t &lrow_ids, vec64_t &lcol_ids, vec64_t &lvals);
+                std::vector<IDXT> &lrow_ids, std::vector<IDXT> &lcol_ids, std::vector<ELET> &lvals);
 
 int main(int argc, char **argv) {
-  std::cout << "hello";
+//  std::cout << "hello";
   int world_size, world_rank;
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -114,9 +115,10 @@ int main(int argc, char **argv) {
     int lrows[4] = {2, 1, 1, 1};
 
     int vec_size = world_size > 1 ? nnzs[world_rank] : (146 + 56 + 100 + 141);
-    std::vector<int64_t> lrow_ids(static_cast<unsigned long>(vec_size));
-    std::vector<int64_t> lcol_ids(static_cast<unsigned long>(vec_size));
-    std::vector<int64_t> lvals(static_cast<unsigned long>(vec_size));
+    std::vector<IDXT> lrow_ids(static_cast<unsigned long>(vec_size));
+    std::vector<IDXT> lcol_ids(static_cast<unsigned long>(vec_size));
+    std::vector<ELET> lvals(static_cast<unsigned long>(vec_size));
+
 
     std::string fnames[4] = {"mat.0.txt", "mat.1.txt", "mat.2.txt", "mat.3.txt"};
     int offset = 0;
@@ -150,33 +152,35 @@ int main(int argc, char **argv) {
         std::make_shared<CommGrid>(MPI_COMM_WORLD, std::sqrt(world_size),
                                    std::sqrt(world_size));
 
-    FullyDistVec<int64_t, int64_t> drows(lrow_ids, grid);
-    FullyDistVec<int64_t, int64_t> dcols(lcol_ids, grid);
-    FullyDistVec<int64_t, int64_t> dvals(lvals, grid);
+//    FullyDistVec<IDXT, IDXT> drows(lrow_ids, grid);
+//    FullyDistVec<IDXT, IDXT> dcols(lcol_ids, grid);
+    FullyDistVec<IDXT, ELET> dvals(lvals, grid);
 
-    int m = 5, n = static_cast<int>(total_k);
-    PSpMat<int64_t>::MPI_DCCols A(m, n, drows, dcols, dvals, false);
+    /*int m = 5, n = static_cast<int>(total_k);
+    PSpMat<ELET>::MPI_DCCols A(m, n, drows, dcols, dvals, false);
 
-    A.PrintInfo();
+    A.PrintInfo();*/
 
-    auto At = A;
-    At.Transpose();
+//    auto At = A;
+//    At.Transpose();
 
-    typedef KmerIntersect<int64_t, CommonKmers> KmerIntersectSR_t;
+//    typedef KmerIntersect<ELET, CommonKmers> KmerIntersectSR_t;
+//
+//    PSpMat<CommonKmers>::MPI_DCCols C =
+//        Mult_AnXBn_Synch<KmerIntersectSR_t, CommonKmers, PSpMat<CommonKmers>::DCCols>(
+//            A, At);
 
-    if (world_rank == 0){
-      std::cout<<"before multiplication";
-    }
-    /*PSpMat<CommonKmers>::MPI_DCCols C =
-        Mult_AnXBn_Synch<KmerIntersectSR_t, CommonKmers, PSpMat<CommonKmers>::DCCols>(
-            A, At);*/
+//    PSpMat<ELET>::MPI_DCCols C =
+//      Mult_AnXBn_Synch<PlusTimesSRing<ELET, ELET >, ELET, PSpMat<ELET>::DCCols>(A, At);
 
-    PSpMat<int64_t>::MPI_DCCols C =
-      Mult_AnXBn_Synch<PlusTimesSRing<int64_t, int64_t >, int64_t, PSpMat<int64_t >::DCCols>(A, At);
+
+
+//    PSpMat<int64_t>::MPI_DCCols C =
+//      Mult_AnXBn_Synch<PlusTimesSRing<int64_t, int64_t >, int64_t, PSpMat<int64_t >::DCCols>(A, At);
 
 
         //seg faults here
-    C.PrintInfo();
+//    C.PrintInfo();
   }
 
 /* Hmm, someone else seems to call MPI_Finalize */
@@ -188,7 +192,7 @@ int main(int argc, char **argv) {
 }
 
 int read_matrix(std::string fname, int offset, int row_offset,
-                 vec64_t &lrow_ids, vec64_t &lcol_ids, vec64_t &lvals) {
+                 std::vector<IDXT> &lrow_ids, std::vector<IDXT> &lcol_ids, std::vector<ELET> &lvals) {
   std::ifstream f(fname);
   std::string v;
   while (f.good()){

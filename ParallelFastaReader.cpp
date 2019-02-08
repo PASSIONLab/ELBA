@@ -5,12 +5,14 @@
 #include <iostream>
 #include <fstream>
 #include <memory>
+#include <cassert>
+#include <limits>
 #include "ParallelFastaReader.hpp"
 #include "FastaData.hpp"
 
-void ParallelFastaReader::readFasta(
-    const char *file, int seq_count, int overlap, int rank, int world_size,
-    std::shared_ptr<FastaData> &fd) {
+void ParallelFastaReader::readFasta(const char *file, ushort overlap,
+                                    int rank, int world_size,
+                                    std::shared_ptr<FastaData> &fd) {
   MPI_File f;
 
   int err = MPI_File_open(MPI_COMM_WORLD, file,
@@ -31,7 +33,7 @@ void ParallelFastaReader::readFasta(
   /* Thanks, Rob Lathem for making my life a bit easy here
    * https://stackoverflow.com/a/12942718 */
   MPI_Offset g_start;
-  int l_chunk_size;
+  int64_t l_chunk_size;
 
   /* read in relevant chunk of file into "chunk",
    * which starts at location in the file g_start
@@ -44,7 +46,7 @@ void ParallelFastaReader::readFasta(
   /* figure out who reads what */
   MPI_File_get_size(f, &file_size);
   file_size--;  /* get rid of text file eof */
-  l_chunk_size = static_cast<int>(file_size / world_size);
+  l_chunk_size = static_cast<int64_t>(file_size / world_size);
   g_start = rank * l_chunk_size;
   g_end = g_start + l_chunk_size - 1;
   if (rank == world_size - 1) g_end = file_size - 1;
@@ -53,7 +55,7 @@ void ParallelFastaReader::readFasta(
   if (rank != world_size - 1)
     g_end += overlap;
 
-  l_chunk_size = static_cast<int>(g_end - g_start + 1);
+  l_chunk_size = static_cast<int64_t>(g_end - g_start + 1);
 
   /* create shared pointer to data */
   std::shared_ptr<char> data(
@@ -61,7 +63,9 @@ void ParallelFastaReader::readFasta(
 
   /* everyone reads in their part */
   char* chunk = data.get();
-  MPI_File_read_at_all(f, g_start, chunk, l_chunk_size,
+  // TODO - Saliya: fix if l_chunk_size > int max. Read multiple times
+  assert(l_chunk_size <= std::numeric_limits<int>::max());
+  MPI_File_read_at_all(f, g_start, chunk, static_cast<int>(l_chunk_size),
                        MPI_CHAR, MPI_STATUS_IGNORE);
   chunk[l_chunk_size] = '\0';
 
@@ -72,7 +76,7 @@ void ParallelFastaReader::readFasta(
    * overlap region starts (eg, after end - overlap + 1)
    */
 
-  int l_start = 0, l_end = l_chunk_size - 1;
+  int64_t l_start = 0, l_end = l_chunk_size - 1;
   if (rank != 0) {
     while (chunk[l_start] != '>') l_start++;
   }

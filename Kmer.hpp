@@ -7,13 +7,23 @@
 #include <vector>
 #include <cmath>
 #include "Alphabet.hpp"
+#include "Types.hpp"
 
-typedef std::vector<int64_t> vec64_t;
 
 struct CommonKmers {
-  int count = 0;
-  std::pair<int64_t, int64_t> first;
-  std::pair<int64_t, int64_t> second;
+  /*! The number of common kmers between two sequences.
+   * The maximum could be floor((l-k)/s)+1, where
+   * l is the sequence length, k is the kmer length, and
+   * s is the stride. Since l is within 2^16-1 (unsigned short max)
+   * we can represent the count as unsigned short as well.
+   */
+  ushort count = 0;
+
+  /*! The position within the sequence, which is
+   * much less than 2^16 - 1 for proteins
+   */
+  std::pair<ushort, ushort> first;
+  std::pair<ushort, ushort> second;
 
   friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m) {
     os << "|" << m.count << "(" << m.first.first << "," << m.first.second
@@ -78,24 +88,27 @@ struct KmerIntersect {
   }
 };
 
-int add_kmers(const char *seq, int len, int start_offset,
-              int enf_offset_inclusive, int k, int s, Alphabet &alp,
-              vec64_t &lcol_ids, vec64_t &lvals){
-  auto num_kmers = static_cast<int>(floor((len - k)*1.0 / s)) + 1;
+ushort add_kmers(const char *seq, ushort len, uint64_t start_offset,
+              uint64_t enf_offset_inclusive, ushort k, ushort s, Alphabet &alp,
+              uvec_64 &lcol_ids, uvec_16 &lvals){
+  auto num_kmers = static_cast<ushort>((floor((len - k)*1.0 / s)) + 1);
   // TODO: Saliya - this can be improved using bit operators
-  int64_t base = alp.size;
-  int64_t kcode = 0;
+  ushort base = alp.size;
+  uint64_t kcode = 0;
   int count = 0;
-  for (int i = start_offset; i <= enf_offset_inclusive; i+=s){
+  for (uint64_t i = start_offset; i <= enf_offset_inclusive; i+=s){
     kcode = 0;
     if (count == num_kmers) break;
-    for (int j = i; j < i+k; ++j){
+    for (uint64_t j = i; j < i+k; ++j){
       /*! Efficient than using pow() */
       kcode = kcode * base + alp.char_to_code[*(seq + j)];
     }
     ++count;
     lcol_ids.push_back(kcode);
-    lvals.push_back(i);
+    /*! Offset is relative to the sequence start, so unsigned short is
+     * good enough.
+     */
+    lvals.push_back(static_cast<ushort &&>(i - start_offset));
   }
 
   return num_kmers;

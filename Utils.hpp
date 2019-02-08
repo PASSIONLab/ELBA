@@ -11,8 +11,8 @@ template <class NT>
 class PSpMat
 {
 public:
-  typedef combblas::SpDCCols < int64_t, NT > DCCols;
-  typedef combblas::SpParMat < int64_t, NT, DCCols > MPI_DCCols;
+  typedef combblas::SpDCCols <uint64_t, NT> DCCols;
+  typedef combblas::SpParMat <uint64_t, NT, DCCols> MPI_DCCols;
 };
 
 #endif //LBL_DAL_SPARSEMAT_HPP

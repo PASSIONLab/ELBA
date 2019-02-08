@@ -8,7 +8,7 @@ find_package(MPI REQUIRED)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
-add_executable(lbl_dal main.cpp Constants.hpp ParallelOps.cpp ParallelOps.hpp Constants.cpp ParallelFastaReader.cpp ParallelFastaReader.hpp FastaData.cpp FastaData.hpp Alphabet.hpp Alphabet.cpp Kmer.hpp Utils.hpp cxxopts.hpp)
+add_executable(lbl_dal main.cpp Constants.hpp ParallelOps.cpp ParallelOps.hpp Constants.cpp ParallelFastaReader.cpp ParallelFastaReader.hpp FastaData.cpp FastaData.hpp Alphabet.hpp Alphabet.cpp Kmer.hpp Utils.hpp cxxopts.hpp Types.hpp)
 
 add_executable(comb_blas ComBlasTest.cpp)
 add_executable(seg_test SegTest.cpp)
