@@ -13,7 +13,7 @@
 using namespace combblas;
 
 /*! Type definitions */
-typedef KmerIntersect<int64_t, CommonKmers> KmerIntersectSR_t;
+typedef KmerIntersect<ushort , CommonKmers> KmerIntersectSR_t;
 
 /*! Function signatures */
 int parse_args(int argc, char **argv);
@@ -21,10 +21,10 @@ int parse_args(int argc, char **argv);
 /*! Global variables */
 std::shared_ptr<ParallelOps> p_ops;
 std::string input_file;
-int input_overlap;
-int input_seq_count;
-int klength;
-int kstride;
+ushort input_overlap;
+uint64_t input_seq_count;
+ushort klength;
+ushort kstride;
 
 
 int main(int argc, char **argv) {
@@ -37,26 +37,29 @@ int main(int argc, char **argv) {
 
   std::shared_ptr<FastaData> fd;
   ParallelFastaReader pfr;
-  pfr.readFasta(input_file.c_str(), input_seq_count, input_overlap,
-                p_ops->world_proc_rank, p_ops->world_procs_count, fd);
+  pfr.readFasta(input_file.c_str(), input_overlap, p_ops->world_proc_rank,
+                p_ops->world_procs_count, fd);
 
   Alphabet alph(Alphabet::PROTEIN);
 
   /* Find k-mers */
   std::shared_ptr<char> seq;
-  int len, start_offset, end_offset_inclusive;
+  ushort len;
+  uint64_t start_offset, end_offset_inclusive;
   //Note: Saliya - this can be parallelized using OpenMP
-  std::vector<int64_t> lrow_ids, lcol_ids, lvals;
-
-  for (int lseq_idx = 0; lseq_idx < fd->count(); ++lseq_idx){
+  uvec_64 lrow_ids, lcol_ids;
+  uvec_16 lvals;
+  uint64_t offset = fd->offset();
+  for (uint64_t lseq_idx = 0; lseq_idx < fd->count(); ++lseq_idx){
     seq = fd->get_sequence(lseq_idx, false, len, start_offset,
         end_offset_inclusive);
 //    std::printf("rank: %d len %d\n", p_ops->world_proc_rank, len);
     auto num_kmers = add_kmers(seq.get(), len, start_offset,
                                end_offset_inclusive, klength, kstride, alph,
                                lcol_ids, lvals);
-    lrow_ids.insert(lrow_ids.end(), num_kmers, lseq_idx);
+    lrow_ids.insert(lrow_ids.end(), num_kmers, lseq_idx + offset);
   }
+
 
   /*if (p_ops->world_proc_rank == 0) {
     for (int64_t &row_id : lrow_ids) {
@@ -81,19 +84,19 @@ int main(int argc, char **argv) {
   auto grid_size = static_cast<int>(sqrt(p_ops->world_procs_count));
   std::shared_ptr<CommGrid> grid = std::make_shared<CommGrid>(
       MPI_COMM_WORLD, grid_size, grid_size);
-  FullyDistVec<int64_t, int64_t> drows(lrow_ids, grid);
-  FullyDistVec<int64_t, int64_t> dcols(lcol_ids, grid);
-  FullyDistVec<int64_t, int64_t> dvals(lvals, grid);
+  FullyDistVec<uint64_t, uint64_t> drows(lrow_ids, grid);
+  FullyDistVec<uint64_t, uint64_t> dcols(lcol_ids, grid);
+  FullyDistVec<uint64_t, ushort> dvals(lvals, grid);
 
-  int64_t n_rows = input_seq_count;
+  uint64_t n_rows = input_seq_count;
   /*! Columns of the matrix are direct maps to kmers identified
    * by their |alphabet| base number. E.g. for proteins this is
    * base 20, so the direct map has to be 20^k in size.
    */
-  auto n_cols = static_cast<int64_t>(pow(alph.size, klength));
-  PSpMat<int64_t >::MPI_DCCols A(n_rows, n_cols, drows, dcols, dvals, false);
-
-//  A.PrintInfo();
+  auto n_cols = static_cast<uint64_t>(pow(alph.size, klength));
+  PSpMat<ushort>::MPI_DCCols A(n_rows, n_cols, drows, dcols, dvals, false);
+  std::cout<<"came here";
+  A.PrintInfo();
 
   auto At = A;
   At.Transpose();
@@ -106,14 +109,15 @@ int main(int argc, char **argv) {
 //  if (p_ops->world_proc_rank == 0){
 //    std::cout<<nnz<<std::endl;
 //  }
-//  C.PrintInfo();
+  C.PrintInfo();
 
   /*! Test multiplication */
   /* rows and cols in the result */
 
+
   /*
-  int nrows = input_seq_count;
-  int ncols = input_seq_count;
+  int64_t nrows = input_seq_count;
+  int64_t ncols = input_seq_count;
   int pr = static_cast<int>(sqrt(p_ops->world_procs_count));
   int pc = pr;
 
@@ -146,8 +150,8 @@ int main(int argc, char **argv) {
       }
     }
   }
-
    */
+
 
   /* Test get fasta */
   /*int len, start_offset, end_offset_inclusive;

@@ -27,11 +27,11 @@ void Alphabet::init(const std::string &alphabet) {
   unsigned no_code = capacity;
   std::fill_n(char_to_code, capacity, no_code);
 
-  unsigned code = 0;
+  uchar code = 0;
   for (const char &c : alphabet){
     if(char_to_code[c] == no_code){
-      char_to_code[c] = static_cast<unsigned char>(code);
-      code_to_char[code] = (unsigned char) c;
+      char_to_code[c] = code;
+      code_to_char[code] = static_cast<uchar>(c);
       ++code;
     }
   }
