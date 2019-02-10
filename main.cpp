@@ -6,6 +6,7 @@
 #include "Alphabet.hpp"
 #include "Kmer.hpp"
 #include "Utils.hpp"
+#include "DebugUtils.hpp"
 #include "CombBLAS/CombBLAS.h"
 #include "cxxopts.hpp"
 
@@ -17,14 +18,19 @@ typedef KmerIntersect<ushort , CommonKmers> KmerIntersectSR_t;
 
 /*! Function signatures */
 int parse_args(int argc, char **argv);
+void pretty_print_config(std::string &append_to);
+std::string get_padding(ushort count, std::string prefix);
 
 /*! Global variables */
 std::shared_ptr<ParallelOps> p_ops;
 std::string input_file;
 ushort input_overlap;
-uint64_t input_seq_count;
+uint64_t seq_count;
 ushort klength;
 ushort kstride;
+
+bool is_print_rank = false;
+std::string print_str;
 
 
 int main(int argc, char **argv) {
@@ -35,21 +41,42 @@ int main(int argc, char **argv) {
     return ret;
   }
 
+  is_print_rank = (p_ops->world_proc_rank == 0);
+
+  ticks_t start_prog = std::chrono::system_clock::now();
+  std::time_t start_prog_time = std::chrono::system_clock::to_time_t(start_prog);
+  print_str = "\nINFO: Program started on ";
+  print_str.append(std::ctime(&start_prog_time));
+  pretty_print_config(print_str);
+  if (is_print_rank){
+    std::cout<<print_str;
+  }
+
   std::shared_ptr<FastaData> fd;
   ParallelFastaReader pfr;
   pfr.readFasta(input_file.c_str(), input_overlap, klength, p_ops->world_proc_rank,
                 p_ops->world_procs_count, fd);
 
-  /* Test print */
-  int flag;
-  if (p_ops->world_proc_rank > 0)
-    MPI_Recv(&flag, 1, MPI_INT, p_ops->world_proc_rank-1, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  std::cout<<"\nRank: "<<p_ops->world_proc_rank<<"\n-------------------------\n";
-  fd->print();
-  if (p_ops->world_proc_rank < p_ops->world_procs_count - 1) {
-    MPI_Send(&flag, 1, MPI_INT, p_ops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
+#ifndef NDEBUG
+  /* Debug print of FastData instance*/
+  _debug_print_fasta_data(fd, p_ops);
+#endif
+
+  if (fd->global_count() != seq_count){
+    uint64_t final_seq_count = fd->global_count();
+    if (is_print_rank){
+      print_str = "\nINFO: Modfied sequence count\n";
+      print_str.append("  Final sequence count: ")
+      .append(std::to_string(final_seq_count))
+      .append(" (").append(std::to_string(((seq_count - final_seq_count)*100/seq_count)))
+      .append("% removed)");
+
+      seq_count = fd->global_count();
+      std::cout<<print_str<<std::endl;
+    }
   }
-  MPI_Barrier(MPI_COMM_WORLD);
+
+
 
   /*
   Alphabet alph(Alphabet::PROTEIN);
@@ -103,7 +130,7 @@ int main(int argc, char **argv) {
    *//*
   FullyDistVec<uint64_t, uint64_t> dvals(lvals, grid);
 
-  uint64_t n_rows = input_seq_count;
+  uint64_t n_rows = seq_count;
   *//*! Columns of the matrix are direct maps to kmers identified
    * by their |alphabet| base number. E.g. for proteins this is
    * base 20, so the direct map has to be 20^k in size.
@@ -130,8 +157,8 @@ int main(int argc, char **argv) {
 
 
 
-  int64_t nrows = input_seq_count;
-  int64_t ncols = input_seq_count;
+  int64_t nrows = seq_count;
+  int64_t ncols = seq_count;
   int pr = static_cast<int>(sqrt(p_ops->world_procs_count));
   int pc = pr;
 
@@ -250,7 +277,7 @@ int parse_args(int argc, char **argv) {
 
   // TODO - fix option parsing
   if (result.count(CMD_OPTION_INPUT_SEQ_COUNT)){
-    input_seq_count = result[CMD_OPTION_INPUT_SEQ_COUNT].as<int>();
+    seq_count = result[CMD_OPTION_INPUT_SEQ_COUNT].as<int>();
   }else {
     if (is_world_rank0) {
       std::cout << "ERROR: Input sequence count not specified" << std::endl;
@@ -282,4 +309,50 @@ int parse_args(int argc, char **argv) {
   }
 
   return 0;
+}
+
+void pretty_print_config(std::string &append_to){
+  std::vector<std::string> params = {
+      "Input file (-i)",
+      "Original sequence count (-c)",
+      "Kmer length (k)",
+      "Kmer stride (s)",
+      "Overlap in bytes (-O)"
+  };
+
+  std::vector<std::string> vals = {
+      input_file, std::to_string(seq_count),
+      std::to_string(klength), std::to_string(kstride),
+      std::to_string(input_overlap)
+  };
+
+  ushort max_length = 0;
+  for (const auto &param : params){
+    if (param.size() > max_length){
+      max_length = static_cast<ushort>(param.size());
+    }
+  }
+
+  std::string prefix = "  ";
+  append_to.append("Parameters...\n");
+  for (ushort i = 0; i < params.size(); ++i){
+    std::string param = params[i];
+    append_to.append(prefix).append(param).append(": ")
+        .append(get_padding(
+            static_cast<ushort>(max_length - param.size()), ""))
+        .append(vals[i]).append("\n");
+
+//    append_to.append(get_padding(
+//        static_cast<ushort>(max_length + 1 - param.size()), prefix))
+//        .append(param).append(": ")
+//        .append(vals[i]).append("\n");
+  }
+}
+
+std::string get_padding(ushort count, std::string prefix){
+  std::string pad = std::move(prefix);
+  for (ushort i = 0; i < count; ++i){
+    pad += " ";
+  }
+  return pad;
 }

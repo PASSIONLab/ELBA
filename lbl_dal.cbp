@@ -26,7 +26,7 @@
 				<Compiler>
 					<Add directory="/usr/local/include"/>
 					<Add directory="/Users/esaliya/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"/>
-					<Add directory="/usr/local/Cellar/openssl/1.0.2p/include"/>
+					<Add directory="/usr/local/Cellar/openssl/1.0.2q/include"/>
 					<Add directory="/usr/local/Cellar/sqlite/3.25.2/include"/>
 					<Add directory="/usr/local/Cellar/libxml2/2.9.7/include"/>
 					<Add directory="/Users/esaliya/sali/software/builds/mpich3/include"/>
@@ -54,7 +54,7 @@
 				<Compiler>
 					<Add directory="/usr/local/include"/>
 					<Add directory="/Users/esaliya/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"/>
-					<Add directory="/usr/local/Cellar/openssl/1.0.2p/include"/>
+					<Add directory="/usr/local/Cellar/openssl/1.0.2q/include"/>
 					<Add directory="/usr/local/Cellar/sqlite/3.25.2/include"/>
 					<Add directory="/usr/local/Cellar/libxml2/2.9.7/include"/>
 					<Add directory="/Users/esaliya/sali/software/builds/mpich3/include"/>
@@ -102,7 +102,7 @@
 				<Compiler>
 					<Add directory="/usr/local/include"/>
 					<Add directory="/Users/esaliya/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"/>
-					<Add directory="/usr/local/Cellar/openssl/1.0.2p/include"/>
+					<Add directory="/usr/local/Cellar/openssl/1.0.2q/include"/>
 					<Add directory="/usr/local/Cellar/sqlite/3.25.2/include"/>
 					<Add directory="/usr/local/Cellar/libxml2/2.9.7/include"/>
 					<Add directory="/Users/esaliya/sali/software/builds/mpich3/include"/>
@@ -130,7 +130,7 @@
 				<Compiler>
 					<Add directory="/usr/local/include"/>
 					<Add directory="/Users/esaliya/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"/>
-					<Add directory="/usr/local/Cellar/openssl/1.0.2p/include"/>
+					<Add directory="/usr/local/Cellar/openssl/1.0.2q/include"/>
 					<Add directory="/usr/local/Cellar/sqlite/3.25.2/include"/>
 					<Add directory="/usr/local/Cellar/libxml2/2.9.7/include"/>
 					<Add directory="/Users/esaliya/sali/software/builds/mpich3/include"/>
@@ -158,7 +158,7 @@
 				<Compiler>
 					<Add directory="/usr/local/include"/>
 					<Add directory="/Users/esaliya/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"/>
-					<Add directory="/usr/local/Cellar/openssl/1.0.2p/include"/>
+					<Add directory="/usr/local/Cellar/openssl/1.0.2q/include"/>
 					<Add directory="/usr/local/Cellar/sqlite/3.25.2/include"/>
 					<Add directory="/usr/local/Cellar/libxml2/2.9.7/include"/>
 					<Add directory="/Users/esaliya/sali/software/builds/mpich3/include"/>
@@ -186,7 +186,7 @@
 				<Compiler>
 					<Add directory="/usr/local/include"/>
 					<Add directory="/Users/esaliya/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"/>
-					<Add directory="/usr/local/Cellar/openssl/1.0.2p/include"/>
+					<Add directory="/usr/local/Cellar/openssl/1.0.2q/include"/>
 					<Add directory="/usr/local/Cellar/sqlite/3.25.2/include"/>
 					<Add directory="/usr/local/Cellar/libxml2/2.9.7/include"/>
 					<Add directory="/Users/esaliya/sali/software/builds/mpich3/include"/>
@@ -214,7 +214,7 @@
 				<Compiler>
 					<Add directory="/usr/local/include"/>
 					<Add directory="/Users/esaliya/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"/>
-					<Add directory="/usr/local/Cellar/openssl/1.0.2p/include"/>
+					<Add directory="/usr/local/Cellar/openssl/1.0.2q/include"/>
 					<Add directory="/usr/local/Cellar/sqlite/3.25.2/include"/>
 					<Add directory="/usr/local/Cellar/libxml2/2.9.7/include"/>
 					<Add directory="/Users/esaliya/sali/software/builds/mpich3/include"/>
@@ -242,7 +242,7 @@
 				<Compiler>
 					<Add directory="/usr/local/include"/>
 					<Add directory="/Users/esaliya/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"/>
-					<Add directory="/usr/local/Cellar/openssl/1.0.2p/include"/>
+					<Add directory="/usr/local/Cellar/openssl/1.0.2q/include"/>
 					<Add directory="/usr/local/Cellar/sqlite/3.25.2/include"/>
 					<Add directory="/usr/local/Cellar/libxml2/2.9.7/include"/>
 					<Add directory="/Users/esaliya/sali/software/builds/mpich3/include"/>
@@ -275,6 +275,9 @@
 			<Option target="lbl_dal"/>
 		</Unit>
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/Constants.hpp">
+			<Option target="lbl_dal"/>
+		</Unit>
+		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/DebugUtils.hpp">
 			<Option target="lbl_dal"/>
 		</Unit>
 		<Unit filename="/Users/esaliya/sali/git/github/esaliya/cpp/lbl_dal/DistTest.cpp">

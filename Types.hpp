@@ -5,6 +5,13 @@
 
 #include <iostream>
 #include <vector>
+#include <ratio>
+#include <chrono>
+
+typedef std::chrono::duration<double, std::milli> ms_t;
+typedef std::chrono::duration<double, std::micro> micros_t;
+typedef std::chrono::time_point<std::chrono::high_resolution_clock> ticks_t;
+typedef std::chrono::high_resolution_clock hrc_t;
 
 typedef unsigned short ushort;
 typedef unsigned char uchar;
