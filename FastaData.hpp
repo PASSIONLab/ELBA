@@ -19,8 +19,10 @@ public:
    * contain more characters than necessary by the owning process.
    * @param l_start Starting offset of the data for this process.
    * @param l_end End offset (inclusive) of the data for this process.
+   * @param k The k-mer size
    */
-  FastaData(std::shared_ptr<char> data, uint64_t l_start, uint64_t l_end);
+  FastaData(std::shared_ptr<char> data, uint64_t l_start, uint64_t l_end,
+            ushort k);
 
   /*!
    * Destructor for FastaData

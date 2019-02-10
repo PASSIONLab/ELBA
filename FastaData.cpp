@@ -6,7 +6,9 @@
 
 FastaData::~FastaData() = default;
 
-FastaData::FastaData(std::shared_ptr<char> data, uint64_t l_start, uint64_t l_end) {
+FastaData::FastaData(std::shared_ptr<char> data, uint64_t l_start,
+                     uint64_t l_end, ushort k) {
+
   this->data = data;
   this->l_start = l_start;
   this->l_end = l_end;
@@ -34,6 +36,50 @@ FastaData::FastaData(std::shared_ptr<char> data, uint64_t l_start, uint64_t l_en
   g_seq_offset = 0;
   /*! Use MPI's exclusive scan collective to compute partial prefix sums */
   MPI_Exscan(&l_seq_count, &g_seq_offset, 1, MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
+
+//  id_starts = new uvec_64();
+//  seq_starts = new uvec_64();
+//
+//  l_seq_count = 0;
+//  char c;
+//  bool in_name = false;
+//  bool in_seq = false;
+//  ushort seq_len = 0;
+//  ushort nl_count = 0;
+//  uint64_t idx;
+//  char *buff = data.get();
+//  /*! Assume the FASTA content is valid */
+//  for (uint64_t i = l_start; i <= l_end; ++i) {
+//    c = buff[i];
+//    idx = i - nl_count;
+//    buff[idx] = c;
+//    if (c == '>') {
+//      id_starts->push_back(idx);
+//      in_name = true;
+//      in_seq = false;
+//      ++l_seq_count;
+//    }
+//    if (c == '\n'){
+//      if (in_name && i + 1 <= l_end){
+//        seq_starts->push_back(idx+1);
+//        in_name = false;
+//        in_seq = true;
+//      } else if (in_seq && i + 1 <= l_end){
+//        if (buff[i+1] != '>'){
+//          ++nl_count;
+//        }
+//      }
+//    }
+//  }
+//
+//  this->data = data;
+//  this->l_start = l_start;
+//  this->l_end = l_end - nl_count;
+//
+//
+//  g_seq_offset = 0;
+//  /*! Use MPI's exclusive scan collective to compute partial prefix sums */
+//  MPI_Exscan(&l_seq_count, &g_seq_offset, 1, MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
 
 }
 
