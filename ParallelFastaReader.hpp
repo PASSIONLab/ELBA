@@ -9,9 +9,8 @@
 
 class ParallelFastaReader {
 public:
-  void readFasta(const char *file, ushort overlap, int rank,
-                   int world_size,
-                   std::shared_ptr<FastaData> &fd);
+  void readFasta(const char *file, ushort overlap, ushort k,
+                 int rank, int world_size, std::shared_ptr<FastaData> &fd);
 };
 
 

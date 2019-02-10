@@ -37,12 +37,24 @@ int main(int argc, char **argv) {
 
   std::shared_ptr<FastaData> fd;
   ParallelFastaReader pfr;
-  pfr.readFasta(input_file.c_str(), input_overlap, p_ops->world_proc_rank,
+  pfr.readFasta(input_file.c_str(), input_overlap, klength, p_ops->world_proc_rank,
                 p_ops->world_procs_count, fd);
 
+  /* Test print */
+  int flag;
+  if (p_ops->world_proc_rank > 0)
+    MPI_Recv(&flag, 1, MPI_INT, p_ops->world_proc_rank-1, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  std::cout<<"\nRank: "<<p_ops->world_proc_rank<<"\n-------------------------\n";
+  fd->print();
+  if (p_ops->world_proc_rank < p_ops->world_procs_count - 1) {
+    MPI_Send(&flag, 1, MPI_INT, p_ops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  /*
   Alphabet alph(Alphabet::PROTEIN);
 
-  /* Find k-mers */
+  *//* Find k-mers *//*
   std::shared_ptr<char> seq;
   ushort len;
   uint64_t start_offset, end_offset_inclusive;
@@ -61,41 +73,41 @@ int main(int argc, char **argv) {
   }
 
 
-  /*if (p_ops->world_proc_rank == 0) {
+  *//*if (p_ops->world_proc_rank == 0) {
     for (int64_t &row_id : lrow_ids) {
       std::cout << row_id << " ";
     }
     std::cout << std::endl;
-  }*/
+  }*//*
 
 //  assert(lrow_ids.size() == lcol_ids.size() == lvals.size());
   std::printf("Rank: %d lrow_ids %ld lcol_ids %ld lvals %ld\n",
               p_ops->world_proc_rank, lrow_ids.size(), lcol_ids.size(), lvals.size());
 
-  /*! Write values to file to see why it segfaults */
-/*  std::ofstream f;
+  *//*! Write values to file to see why it segfaults *//*
+*//*  std::ofstream f;
   std::string fname = "mat." + std::to_string(p_ops->world_proc_rank) + ".txt";
   f.open(fname);
   for (int i = 0; i < lrow_ids.size(); ++i){
     f << lrow_ids[i] << "," << lcol_ids[i] << "," << lvals[i] << std::endl;
   }
-  f.close();*/
+  f.close();*//*
 
   auto grid_size = static_cast<int>(sqrt(p_ops->world_procs_count));
   std::shared_ptr<CommGrid> grid = std::make_shared<CommGrid>(
       MPI_COMM_WORLD, grid_size, grid_size);
   FullyDistVec<uint64_t, uint64_t> drows(lrow_ids, grid);
   FullyDistVec<uint64_t, uint64_t> dcols(lcol_ids, grid);
-  /*! TODO - apparently there's a bug when setting a different element type,
+  *//*! TODO - apparently there's a bug when setting a different element type,
    * so let's use uint64_t as element type for now
-   */
+   *//*
   FullyDistVec<uint64_t, uint64_t> dvals(lvals, grid);
 
   uint64_t n_rows = input_seq_count;
-  /*! Columns of the matrix are direct maps to kmers identified
+  *//*! Columns of the matrix are direct maps to kmers identified
    * by their |alphabet| base number. E.g. for proteins this is
    * base 20, so the direct map has to be 20^k in size.
-   */
+   *//*
   auto n_cols = static_cast<uint64_t>(pow(alph.size, klength));
   PSpMat<ushort>::MPI_DCCols A(n_rows, n_cols, drows, dcols, dvals, false);
   A.PrintInfo();
@@ -113,8 +125,8 @@ int main(int argc, char **argv) {
 //  }
   C.PrintInfo();
 
-  /*! Test multiplication */
-  /* rows and cols in the result */
+  *//*! Test multiplication *//*
+  *//* rows and cols in the result *//*
 
 
 
@@ -175,7 +187,7 @@ int main(int argc, char **argv) {
     MPI_Send(&flag, 1, MPI_INT, p_ops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
   }
 
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);*/
 
   /* Test get fasta */
   /*int len, start_offset, end_offset_inclusive;

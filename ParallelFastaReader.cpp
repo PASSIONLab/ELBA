@@ -10,7 +10,7 @@
 #include "ParallelFastaReader.hpp"
 #include "FastaData.hpp"
 
-void ParallelFastaReader::readFasta(const char *file, ushort overlap,
+void ParallelFastaReader::readFasta(const char *file, ushort overlap, ushort k,
                                     int rank, int world_size,
                                     std::shared_ptr<FastaData> &fd) {
   MPI_File f;
@@ -87,7 +87,7 @@ void ParallelFastaReader::readFasta(const char *file, ushort overlap,
     l_end -= 2;
   }
 
-  fd = std::make_shared<FastaData>(data, l_start, l_end);
+  fd = std::make_shared<FastaData>(data, l_start, l_end, k);
 }
 
 
