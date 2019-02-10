@@ -14,7 +14,20 @@
 class FastaData {
 public:
   /*!
-   * Creates a new FastaData instance.
+   * Creates a new FastaData instance. Note, data could contain more
+   * characters than required for this process. Therefore, l_start
+   * and l_end identify the start and end (inclusive) of the data segment
+   * relevant to this process. Note, l_end is expected to point to the last
+   * character of the last sequence relevant to this process, so it doesn't
+   * include a new line character at the end.
+   *
+   * While creating the FastData instance, any sequence with length less than
+   * the k-mer size (k) is removed. Also, multi-line FASTA content is
+   * modified in-place to be single lined. Moreover, any * characters that
+   * can exist in the middle of a sequence is removed.
+   *
+   * The above removals will modify the l_end pointer as well the total number
+   * of sequences used in the computation.
    * @param data Shared pointer to the raw character stream. Note, this may
    * contain more characters than necessary by the owning process.
    * @param l_start Starting offset of the data for this process.
@@ -60,6 +73,13 @@ public:
   uint64_t offset();
 
   /*!
+   *
+   * @return The global sequence count after removing any that is
+   * less than the k-mer length
+   */
+  uint64_t global_count();
+
+  /*!
    * A helper method to print information of the FastaData instance.
    */
   void print();
@@ -69,6 +89,12 @@ private:
   std::shared_ptr<char> data;
   /*! Number of sequences local to this process available in data stream */
   uint64_t l_seq_count;
+  /*!
+   * Global sequence count, which may be different from the total input sequence
+   * count because some might get removed if their lengths are less than the
+   * k-mer length.
+   */
+  uint64_t g_seq_count;
   /*! The global sequence offset, i.e. the sequence index of the
    * original FASTA file corresponding to the first sequence stored in this
    * instance.
