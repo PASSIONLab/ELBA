@@ -45,36 +45,40 @@ FastaData::FastaData(std::shared_ptr<char> data, uint64_t l_start,
   bool in_name = false;
   bool in_seq = false;
   ushort seq_len = 0;
-  ushort nl_count = 0;
+  /*! No character count. This includes new line and * characters */
+  ushort nc_count = 0;
   uint64_t idx;
   char *buff = data.get();
   /*! Assume the FASTA content is valid */
   for (uint64_t i = l_start; i <= l_end; ++i) {
     c = buff[i];
-    idx = i - nl_count;
+    idx = i - nc_count;
     buff[idx] = c;
     if (c == '>') {
       id_starts->push_back(idx);
       in_name = true;
       in_seq = false;
       ++l_seq_count;
-    }
-    if (c == '\n'){
+    } else if (c == '\n'){
       if (in_name && i + 1 <= l_end){
         seq_starts->push_back(idx+1);
         in_name = false;
         in_seq = true;
       } else if (in_seq && i + 1 <= l_end){
         if (buff[i+1] != '>'){
-          ++nl_count;
+          ++nc_count;
         }
+      }
+    } else if (c == '*'){
+      if (in_seq){
+        ++nc_count;
       }
     }
   }
 
   this->data = data;
   this->l_start = l_start;
-  this->l_end = l_end - nl_count;
+  this->l_end = l_end - nc_count;
 
 
   g_seq_offset = 0;
