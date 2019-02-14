@@ -3,11 +3,15 @@
 #include <iostream>
 #include <mpi.h>
 #include <cassert>
-#include "FastaData.hpp"
+#include "DistributedFastaData.hpp"
 
-FastaData::~FastaData() = default;
+DistributedFastaData::~DistributedFastaData(){
+  delete(buff);
+  delete(id_starts);
+  delete(seq_starts);
+}
 
-FastaData::FastaData(std::shared_ptr<char> data, uint64_t l_start,
+DistributedFastaData::DistributedFastaData(char *buff, uint64_t l_start,
                      uint64_t l_end, ushort k) {
 
   id_starts = new uvec_64();
@@ -22,7 +26,6 @@ FastaData::FastaData(std::shared_ptr<char> data, uint64_t l_start,
    * It also includes entire sequences that are less than k-mer length*/
   ushort nc_count = 0;
   uint64_t idx;
-  char *buff = data.get();
   /*! Assume the FASTA content is valid */
   for (uint64_t i = l_start; i <= l_end; ++i) {
     c = buff[i];
@@ -89,7 +92,7 @@ FastaData::FastaData(std::shared_ptr<char> data, uint64_t l_start,
   MPI_Allreduce(&l_seq_count, &g_seq_count, 1,
                 MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
 
-  this->data = data;
+  this->buff = buff;
   this->l_start = l_start;
   this->l_end = l_end - nc_count;
 
@@ -99,7 +102,7 @@ FastaData::FastaData(std::shared_ptr<char> data, uint64_t l_start,
              MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
 }
 
-void FastaData::print() {
+void DistributedFastaData::print() {
   uint64_t idx;
   bool is_global = false;
   ushort len;
@@ -107,20 +110,20 @@ void FastaData::print() {
   uint64_t end_offset_inclusive;
   std::cout<<"g_seq_offset "<<g_seq_offset<<std::endl;
   for (uint64_t i = 0; i < id_starts->size(); ++i){
-    char *beg = data.get() + (*id_starts)[i];
-    char *end = data.get() + ((*seq_starts)[i] - 1);
+    char *beg = buff + (*id_starts)[i];
+    char *end = buff + ((*seq_starts)[i] - 1);
     std::cout.write(beg, end - beg);
     std::cout<<std::endl;
-    std::shared_ptr<char> data = get_sequence(i, is_global, len, start_offset, end_offset_inclusive);
-    beg = data.get() + start_offset;
-    end = data.get() + end_offset_inclusive;
-    std::cout.write(data.get()+start_offset, (end - beg)+1);
+    char * data = get_sequence(i, is_global, len, start_offset, end_offset_inclusive);
+    beg = data + start_offset;
+    end = data + end_offset_inclusive;
+    std::cout.write(data+start_offset, (end - beg)+1);
     std::cout<<std::endl;
   }
   std::cout<<std::endl;
 }
 
-std::shared_ptr<char> FastaData::get_sequence(
+char* DistributedFastaData::get_sequence(
     uint64_t idx, bool is_global, ushort &len,
     uint64_t &start_offset, uint64_t &end_offset_inclusive) {
   uint64_t l_idx =  is_global ? (idx - g_seq_offset) : idx;
@@ -132,19 +135,33 @@ std::shared_ptr<char> FastaData::get_sequence(
   start_offset = (*seq_starts)[l_idx];
   end_offset_inclusive =
       (l_idx+1 < id_starts->size() ? ((*id_starts)[l_idx+1] - 2) : l_end);
-  return data;
+  return buff;
 }
 
-uint64_t FastaData::global_count() {
+uint64_t DistributedFastaData::global_count() {
   return g_seq_count;
 }
 
-uint64_t FastaData::count() {
+uint64_t DistributedFastaData::local_count() {
   return l_seq_count;
 }
 
-uint64_t FastaData::offset() {
+uint64_t DistributedFastaData::offset() {
   return g_seq_offset;
+}
+
+void DistributedFastaData::buffer_size(uint64_t start_idx,
+                                       uint64_t end_idx_inclusive,
+                                       uint64_t &len,
+                                       uint64_t &start_offset,
+                                       uint64_t &end_offset_inclusive) {
+  start_offset = (*seq_starts)[start_idx];
+  end_offset_inclusive =
+    (end_idx_inclusive+1 < id_starts->size()
+    ? ((*id_starts)[end_idx_inclusive+1] - 2)
+    : l_end);
+  len = (end_offset_inclusive - start_offset) + 1;
+
 }
 
 
