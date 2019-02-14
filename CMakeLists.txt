@@ -10,12 +10,11 @@ set(CMAKE_CXX_STANDARD 14)
 
 add_executable(lbl_dal main.cpp Constants.hpp ParallelOps.cpp ParallelOps.hpp
         Constants.cpp ParallelFastaReader.cpp ParallelFastaReader.hpp
-        FastaData.cpp FastaData.hpp Alphabet.hpp Alphabet.cpp Kmer.hpp
-        Utils.hpp cxxopts.hpp Types.hpp DebugUtils.hpp)
+        DistributedFastaData.cpp DistributedFastaData.hpp Alphabet.hpp Alphabet.cpp Kmer.hpp
+        Utils.hpp cxxopts.hpp Types.hpp DebugUtils.hpp DebugUtils.cpp)
 
 add_executable(comb_blas ComBlasTest.cpp)
 add_executable(seg_test SegTest.cpp)
-add_executable(disttest DistTest.cpp FastaData.hpp FastaData.cpp)
 
 target_link_libraries(lbl_dal CombBLAS GraphGenlib Usortlib)
 target_link_libraries(comb_blas CombBLAS GraphGenlib Usortlib)
@@ -26,7 +25,6 @@ if (MPI_FOUND)
     target_link_libraries(lbl_dal ${MPI_LIBRARIES})
     target_link_libraries(comb_blas ${MPI_LIBRARIES})
     target_link_libraries(seg_test ${MPI_LIBRARIES})
-    target_link_libraries(disttest ${MPI_LIBRARIES})
 endif()
 
 

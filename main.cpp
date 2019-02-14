@@ -6,7 +6,7 @@
 #include "Alphabet.hpp"
 #include "Kmer.hpp"
 #include "Utils.hpp"
-#include "DebugUtils.hpp"
+//#include "DebugUtils.hpp"
 #include "CombBLAS/CombBLAS.h"
 #include "cxxopts.hpp"
 
@@ -22,7 +22,7 @@ void pretty_print_config(std::string &append_to);
 std::string get_padding(ushort count, std::string prefix);
 
 /*! Global variables */
-std::shared_ptr<ParallelOps> p_ops;
+std::shared_ptr<ParallelOps> parops;
 std::string input_file;
 ushort input_overlap;
 uint64_t seq_count;
@@ -34,15 +34,16 @@ std::string print_str;
 
 
 int main(int argc, char **argv) {
-  p_ops = ParallelOps::init(&argc, &argv);
+  parops = ParallelOps::init(&argc, &argv);
   int ret = parse_args(argc, argv);
   if (ret < 0){
-    p_ops->teardown_parallelism();
+    parops->teardown_parallelism();
     return ret;
   }
 
-  is_print_rank = (p_ops->world_proc_rank == 0);
+  is_print_rank = (parops->world_proc_rank == 0);
 
+  /*! Print start time information */
   ticks_t start_prog = std::chrono::system_clock::now();
   std::time_t start_prog_time = std::chrono::system_clock::to_time_t(start_prog);
   print_str = "\nINFO: Program started on ";
@@ -52,14 +53,13 @@ int main(int argc, char **argv) {
     std::cout<<print_str;
   }
 
-  std::shared_ptr<FastaData> fd;
-  ParallelFastaReader pfr;
-  pfr.readFasta(input_file.c_str(), input_overlap, klength, p_ops->world_proc_rank,
-                p_ops->world_procs_count, fd);
+  /*! Read and distribute fasta data */
+  std::unique_ptr<DistributedFastaData> fd = ParallelFastaReader::read_and_distribute_fasta(
+    input_file.c_str(), input_overlap, klength, parops);
 
 #ifndef NDEBUG
   /* Debug print of FastData instance*/
-  _debug_print_fasta_data(fd, p_ops);
+//  _debug_print_fasta_data(fd, parops);
 #endif
 
   if (fd->global_count() != seq_count){
@@ -68,14 +68,14 @@ int main(int argc, char **argv) {
       print_str = "\nINFO: Modfied sequence count\n";
       print_str.append("  Final sequence count: ")
       .append(std::to_string(final_seq_count))
-      .append(" (").append(std::to_string(((seq_count - final_seq_count)*100/seq_count)))
+      .append(" (").append(
+        std::to_string(((seq_count - final_seq_count)*100/seq_count)))
       .append("% removed)");
 
       seq_count = fd->global_count();
       std::cout<<print_str<<std::endl;
     }
   }
-
 
 
   /*
@@ -89,10 +89,10 @@ int main(int argc, char **argv) {
   uvec_64 lrow_ids, lcol_ids;
   uvec_16 lvals;
   uint64_t offset = fd->offset();
-  for (uint64_t lseq_idx = 0; lseq_idx < fd->count(); ++lseq_idx){
+  for (uint64_t lseq_idx = 0; lseq_idx < fd->local_count(); ++lseq_idx){
     seq = fd->get_sequence(lseq_idx, false, len, start_offset,
         end_offset_inclusive);
-//    std::printf("rank: %d len %d\n", p_ops->world_proc_rank, len);
+//    std::printf("rank: %d len %d\n", parops->world_proc_rank, len);
     auto num_kmers = add_kmers(seq.get(), len, start_offset,
                                end_offset_inclusive, klength, kstride, alph,
                                lcol_ids, lvals);
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
   }
 
 
-  *//*if (p_ops->world_proc_rank == 0) {
+  *//*if (parops->world_proc_rank == 0) {
     for (int64_t &row_id : lrow_ids) {
       std::cout << row_id << " ";
     }
@@ -109,20 +109,19 @@ int main(int argc, char **argv) {
 
 //  assert(lrow_ids.size() == lcol_ids.size() == lvals.size());
   std::printf("Rank: %d lrow_ids %ld lcol_ids %ld lvals %ld\n",
-              p_ops->world_proc_rank, lrow_ids.size(), lcol_ids.size(), lvals.size());
+              parops->world_proc_rank, lrow_ids.size(), lcol_ids.size(), lvals.size());
 
   *//*! Write values to file to see why it segfaults *//*
 *//*  std::ofstream f;
-  std::string fname = "mat." + std::to_string(p_ops->world_proc_rank) + ".txt";
+  std::string fname = "mat." + std::to_string(parops->world_proc_rank) + ".txt";
   f.open(fname);
   for (int i = 0; i < lrow_ids.size(); ++i){
     f << lrow_ids[i] << "," << lcol_ids[i] << "," << lvals[i] << std::endl;
   }
   f.close();*//*
 
-  auto grid_size = static_cast<int>(sqrt(p_ops->world_procs_count));
-  std::shared_ptr<CommGrid> grid = std::make_shared<CommGrid>(
-      MPI_COMM_WORLD, grid_size, grid_size);
+
+
   FullyDistVec<uint64_t, uint64_t> drows(lrow_ids, grid);
   FullyDistVec<uint64_t, uint64_t> dcols(lcol_ids, grid);
   *//*! TODO - apparently there's a bug when setting a different element type,
@@ -147,7 +146,7 @@ int main(int argc, char **argv) {
           CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
 
 //  int nnz = C.getnnz();
-//  if (p_ops->world_proc_rank == 0){
+//  if (parops->world_proc_rank == 0){
 //    std::cout<<nnz<<std::endl;
 //  }
   C.PrintInfo();
@@ -159,7 +158,7 @@ int main(int argc, char **argv) {
 
   int64_t nrows = seq_count;
   int64_t ncols = seq_count;
-  int pr = static_cast<int>(sqrt(p_ops->world_procs_count));
+  int pr = static_cast<int>(sqrt(parops->world_procs_count));
   int pc = pr;
 
   //Information about the matrix distribution
@@ -177,8 +176,8 @@ int main(int argc, char **argv) {
 
   std::ofstream rf, cf, vf;
   int flag;
-  if (p_ops->world_proc_rank > 0) {
-    MPI_Recv(&flag, 1, MPI_INT, p_ops->world_proc_rank - 1,
+  if (parops->world_proc_rank > 0) {
+    MPI_Recv(&flag, 1, MPI_INT, parops->world_proc_rank - 1,
              99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
   rf.open("row_ids.txt", std::ios::app);
@@ -186,7 +185,7 @@ int main(int argc, char **argv) {
   vf.open("values.txt", std::ios::app);
 
 
-  std::cout<<"\nRank: "<<p_ops->world_proc_rank<<"\n writing data\n";
+  std::cout<<"\nRank: "<<parops->world_proc_rank<<"\n writing data\n";
 
   for (auto colit = spSeq->begcol();
        colit != spSeq->endcol(); ++colit) // iterate over columns
@@ -210,8 +209,8 @@ int main(int argc, char **argv) {
   cf.close();
   vf.close();
 
-  if (p_ops->world_proc_rank < p_ops->world_procs_count - 1) {
-    MPI_Send(&flag, 1, MPI_INT, p_ops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
+  if (parops->world_proc_rank < parops->world_procs_count - 1) {
+    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
   }
 
   MPI_Barrier(MPI_COMM_WORLD);*/
@@ -222,28 +221,28 @@ int main(int argc, char **argv) {
       1, false, len, start_offset, end_offset_inclusive);
 
   int flag;
-  if (p_ops->world_proc_rank > 0)
-    MPI_Recv(&flag, 1, MPI_INT, p_ops->world_proc_rank-1, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  std::cout<<"\nRank: "<<p_ops->world_proc_rank<<"\n-------------------------\n";
+  if (parops->world_proc_rank > 0)
+    MPI_Recv(&flag, 1, MPI_INT, parops->world_proc_rank-1, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  std::cout<<"\nRank: "<<parops->world_proc_rank<<"\n-------------------------\n";
   std::cout.write(seq.get()+start_offset, (end_offset_inclusive - start_offset)+1);
   std::cout<< std::endl << start_offset << " " << end_offset_inclusive<<std::endl;
-  if (p_ops->world_proc_rank < p_ops->world_procs_count - 1) {
-    MPI_Send(&flag, 1, MPI_INT, p_ops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
+  if (parops->world_proc_rank < parops->world_procs_count - 1) {
+    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
   }
 
 
 
   /* Test print */
   /*flag;
-  if (p_ops->world_proc_rank > 0)
-    MPI_Recv(&flag, 1, MPI_INT, p_ops->world_proc_rank-1, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  std::cout<<"\nRank: "<<p_ops->world_proc_rank<<"\n-------------------------\n";
+  if (parops->world_proc_rank > 0)
+    MPI_Recv(&flag, 1, MPI_INT, parops->world_proc_rank-1, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  std::cout<<"\nRank: "<<parops->world_proc_rank<<"\n-------------------------\n";
   fd->print();
-  if (p_ops->world_proc_rank < p_ops->world_procs_count - 1) {
-    MPI_Send(&flag, 1, MPI_INT, p_ops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
+  if (parops->world_proc_rank < parops->world_procs_count - 1) {
+    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
   }*/
 
-  p_ops->teardown_parallelism();
+  parops->teardown_parallelism();
   return 0;
 }
 
@@ -265,7 +264,7 @@ int parse_args(int argc, char **argv) {
 
   auto result = options.parse(argc, argv);
 
-  bool is_world_rank0 = p_ops->world_proc_rank == 0;
+  bool is_world_rank0 = parops->world_proc_rank == 0;
   if (result.count(CMD_OPTION_INPUT)){
     input_file = result[CMD_OPTION_INPUT].as<std::string>();
   }else {

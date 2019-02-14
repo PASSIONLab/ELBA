@@ -1,13 +1,17 @@
 //
 // Created by Saliya Ekanayake on 12/17/18.
 //
+#ifndef LBL_DAL_PARALLEL_OPS_H
+#define LBL_DAL_PARALLEL_OPS_H
 
 #include <chrono>
 #include <mpi.h>
 #include <memory>
+#include <CombBLAS/CombBLAS.h>
+#include <CombBLAS/CommGrid.h>
 
-#ifndef LBL_DAL_PARALLEL_OPS_H
-#define LBL_DAL_PARALLEL_OPS_H
+/*! Namespace declarations */
+using namespace combblas;
 
 class ParallelOps {
 public:
@@ -18,11 +22,11 @@ public:
 
   int world_proc_rank;
   int world_procs_count;
-
-  MPI_Comm MPI_COMM_INSTANCE;
+  std::shared_ptr<CommGrid> grid;
 
 private:
   static std::shared_ptr<ParallelOps> instance;
+
   ParallelOps(int world_proc_rank, int world_procs_count);
 };
 
