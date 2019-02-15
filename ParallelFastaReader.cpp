@@ -473,22 +473,30 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
 #endif
 
 // TODO - Debug
-  int *debug_recvs = new int[recv_nbrs_count];
+  char *debug_recvs = new char[recv_nbrs_count];
   auto *debug_recv_reqs = new MPI_Request[recv_nbrs_count];
   auto *debug_recv_stats = new MPI_Status[recv_nbrs_count];
   for (int i = 0; i < recv_nbrs_count; ++i){
-    MPI_Irecv(debug_recvs+i, 1, MPI_INT, my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 77, MPI_COMM_WORLD, debug_recv_reqs+i);
+    MPI_Irecv(debug_recvs+i, 1, MPI_CHAR, my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 77, MPI_COMM_WORLD, debug_recv_reqs+i);
   }
 
-  int debug_v = parops->world_proc_rank;
+  char debug_v = static_cast<char>(parops->world_proc_rank + 48);
   auto *debug_send_reqs = new MPI_Request[to_nbrs_count];
   auto *debug_send_stats = new MPI_Status[to_nbrs_count];
   for (int i = 0; i < to_nbrs_count; ++i){
-    MPI_Isend(&debug_v, 1, MPI_INT, all_nbrs[to_nbrs_idxs[i]].owner_rank, 77, MPI_COMM_WORLD, debug_send_reqs+i);
+    MPI_Isend(&debug_v, 1, MPI_CHAR, all_nbrs[to_nbrs_idxs[i]].owner_rank, 77, MPI_COMM_WORLD, debug_send_reqs+i);
   }
 
   MPI_Waitall(recv_nbrs_count, debug_recv_reqs, debug_recv_stats);
   MPI_Waitall(to_nbrs_count, debug_send_reqs, debug_send_stats);
+
+#ifndef NDEBUG
+  {
+    std::string title = "debug";
+    std::string msg(debug_recvs, recv_nbrs_count);
+    DebugUtils::print_msg(title, msg, parops);
+  }
+#endif
 
   delete[](debug_send_stats);
   delete[](debug_send_reqs);
