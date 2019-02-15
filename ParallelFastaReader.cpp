@@ -477,7 +477,7 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
   auto *debug_recv_reqs = new MPI_Request[recv_nbrs_count];
   auto *debug_recv_stats = new MPI_Status[recv_nbrs_count];
   for (int i = 0; i < recv_nbrs_count; ++i){
-    MPI_Irecv(&debug_recvs+i, 1, MPI_INT, my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 77, MPI_COMM_WORLD, debug_recv_reqs+i);
+    MPI_Irecv(debug_recvs+i, 1, MPI_INT, my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 77, MPI_COMM_WORLD, debug_recv_reqs+i);
   }
 
   int debug_v = parops->world_proc_rank;
