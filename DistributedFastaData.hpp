@@ -37,6 +37,11 @@ public:
   DistributedFastaData(char *buff, uint64_t l_start, uint64_t l_end,
                        ushort k);
 
+  DistributedFastaData(
+    char *buff, uint64_t l_seq_count, uint64_t g_seq_count,
+    uint64_t l_start, uint64_t l_end, uint64_t g_seq_offset,
+    uvec_64 *id_starts, uvec_64 *seq_starts);
+
   /*!
    * Destructor for FastaData
    */
@@ -97,6 +102,8 @@ public:
    * less than the k-mer length
    */
   uint64_t global_count();
+
+  const char *buffer();
 
   /*!
    * A helper method to print information of the FastaData instance.

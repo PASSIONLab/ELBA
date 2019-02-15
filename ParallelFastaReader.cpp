@@ -5,6 +5,7 @@
 #include <memory>
 #include <cassert>
 #include <limits>
+#include <unordered_set>
 #include "ParallelFastaReader.hpp"
 
 
@@ -198,15 +199,19 @@ ParallelFastaReader
   uint64_t g_seq_count = g_seq_offsets[parops->world_procs_count - 1] +
                          l_seq_counts[parops->world_procs_count - 1];
 
-  // TODO - Continue from here after finishing find_grid_seqs
-  std::pair<char *, char *> grid_seqs = find_grid_seqs(g_seq_count,
-                                                       g_seq_offsets,
-                                                       l_seq_count,
-                                                       l_seq_counts, parops);
-
-  // TODO - change this constructor to use computed values including nc_count
   std::unique_ptr<DistributedFastaData> dfd =
-    std::make_unique<DistributedFastaData>(buff, l_start, l_end, k);
+    std::make_unique<DistributedFastaData>(
+      buff, l_seq_count, g_seq_count, l_start, (l_end - nc_count),
+      g_seq_offsets[parops->world_proc_rank], id_starts, seq_starts);
+
+  // TODO - Continue from here after finishing find_grid_seqs
+  std::pair<char *, char *> grid_seqs
+    = find_grid_seqs(g_seq_count, g_seq_offsets, l_seq_count, l_seq_counts,
+                     dfd, parops);
+
+  // TODO - DONE (see above) change this constructor to use computed values including nc_count
+//  std::unique_ptr<DistributedFastaData> dfd =
+//    std::make_unique<DistributedFastaData>(buff, l_start, l_end - nc_count, k);
 
   delete[](l_seq_counts);
   delete[](g_seq_offsets);
@@ -218,6 +223,7 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
                                     const uint64_t *g_seq_offsets,
                                     uint64_t l_seq_count,
                                     const uint64_t *l_seq_counts,
+                                    std::unique_ptr<DistributedFastaData> &dfd,
                                     const std::shared_ptr<ParallelOps> &parops) {
   uint64_t avg_l_seq_count = g_seq_count / parops->world_procs_count;
   uint64_t pr, pc;
@@ -235,6 +241,10 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
   uint64_t col_seq_start_idx = avg_grid_seq_count * grid_col_id;
 
   /*! Whose sequences will I need */
+
+  // my_nbrs can include me as well. We'll, of course, not send
+  // messages to self but I need to know what's needed from locally
+  // available squences to satisfy the grid cell I am responsible for.
   std::vector<NbrData> my_nbrs;
   find_nbrs(pr, grid_row_id, g_seq_count, avg_l_seq_count, avg_grid_seq_count,
             row_seq_start_idx, 1, g_seq_offsets, l_seq_counts, parops, my_nbrs);
@@ -249,24 +259,52 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
     std::string title = "My neighbors";
     std::string msg;
     for (auto &nbr : my_nbrs) {
-      msg += + " (rc_flag: " + std::to_string(nbr.rc_flag)
+      msg += +" (rc_flag: " + std::to_string(nbr.rc_flag)
              + ", nbr_rank: " + std::to_string(nbr.nbr_rank)
              + ", nbr_seq_start_idx: " + std::to_string(nbr.nbr_seq_start_idx)
-             + ", nbr_seq_end_idx: " + std::to_string(nbr.nbr_seq_end_idx) + ")\n";
+             + ", nbr_seq_end_idx: " + std::to_string(nbr.nbr_seq_end_idx) +
+             ")\n";
     }
     DebugUtils::print_msg(title, msg, parops);
   }
 #endif
 
-  int block_length[4] = {1, 1, 1, 1};
-  MPI_Aint displacement[4] = {offsetof(NbrData, rc_flag),
+
+  // Receive neighbors are my neighbors excluding me, so receive neighbor
+  // indexes will keep track of the indexes of my neighbors to receive from
+  std::vector<int> recv_nbrs_idxs;
+  int recv_nbrs_count = 0;
+  for (int i = 0; i < my_nbrs.size(); ++i) {
+    if (my_nbrs[i].nbr_rank == parops->world_proc_rank) {
+      // No need to receive from self
+      continue;
+    }
+    recv_nbrs_idxs.push_back(i);
+    ++recv_nbrs_count;
+  }
+
+  /*! Issue receive requests to get the buffer lengths from my neighbors
+  * for the sequences I need from them.
+  */
+  auto *recv_nbrs_buff_lengths_reqs = new MPI_Request[recv_nbrs_count];
+  auto recv_nbrs_buff_lengths = new uint64_t[recv_nbrs_count];
+  for (int i = 0; i < recv_nbrs_count; ++i) {
+    MPI_Irecv(recv_nbrs_buff_lengths + i, 1, MPI_UINT64_T,
+              my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 99,
+              MPI_COMM_WORLD, recv_nbrs_buff_lengths_reqs + i);
+  }
+
+  /*! Who will need my sequences */
+  int block_length[5] = {1, 1, 1, 1, 1};
+  MPI_Aint displacement[5] = {offsetof(NbrData, rc_flag),
+                              offsetof(NbrData, owner_rank),
                               offsetof(NbrData, nbr_rank),
                               offsetof(NbrData, nbr_seq_start_idx),
                               offsetof(NbrData, nbr_seq_end_idx)};
-  MPI_Datatype types[] = {MPI_UNSIGNED_SHORT, MPI_UINT64_T, MPI_UINT64_T,
+  MPI_Datatype types[] = {MPI_UNSIGNED_SHORT, MPI_INT, MPI_INT, MPI_UINT64_T,
                           MPI_UINT64_T};
   MPI_Datatype MPI_NbrData;
-  MPI_Type_create_struct(4, block_length, displacement, types, &MPI_NbrData);
+  MPI_Type_create_struct(5, block_length, displacement, types, &MPI_NbrData);
   MPI_Type_commit(&MPI_NbrData);
 
 
@@ -300,8 +338,8 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
     std::string msg;
     for (int i = 0; i < parops->world_procs_count; ++i) {
       msg += "(rank: " + std::to_string(i)
-        + " count: " + std::to_string(all_nbrs_counts[i])
-        + " displ:" + std::to_string(all_nbrs_displas[i]) + ")\n";
+             + " count: " + std::to_string(all_nbrs_counts[i])
+             + " displ:" + std::to_string(all_nbrs_displas[i]) + ")\n";
     }
     DebugUtils::print_msg_on_rank(title, msg, parops, 0);
   }
@@ -313,12 +351,14 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
     std::string msg;
     int rank = 0;
     for (int i = 0; i < all_nbrs_count; ++i) {
-      NbrData *n = all_nbrs+i;
+      NbrData *n = all_nbrs + i;
       msg += "rank: " + std::to_string(rank)
-        + " (rc_flag: " + std::to_string(n->rc_flag)
-        + ", nbr_rank: " + std::to_string(n->nbr_rank)
-        + ", nbr_seq_start_idx: " + std::to_string(n->nbr_seq_start_idx)
-        + ", nbr_seq_end_idx: " + std::to_string(n->nbr_seq_end_idx) + ")\n";
+             + " (rc_flag: " + std::to_string(n->rc_flag)
+             + ", owner_rank: " + std::to_string(n->owner_rank)
+             + ", nbr_rank: " + std::to_string(n->nbr_rank)
+             + ", nbr_seq_start_idx: " + std::to_string(n->nbr_seq_start_idx)
+             + ", nbr_seq_end_idx: " + std::to_string(n->nbr_seq_end_idx) +
+             ")\n";
       if (i + 1 == all_nbrs_displas[rank + 1]) {
         ++rank;
       }
@@ -327,17 +367,152 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
   }
 #endif
 
+  std::vector<uint64_t> send_lengths;
+  std::vector<uint64_t> send_start_offsets;
+  std::vector<int> to_nbrs_idxs;
+  int to_nbrs_count = 0;
+  std::sort(all_nbrs, all_nbrs + all_nbrs_count,
+            [](const NbrData &a, const NbrData &b) -> bool {
+              return a.nbr_rank < b.nbr_rank;
+            });
+  for (int i = 0; i < all_nbrs_count; ++i) {
+    if (all_nbrs[i].nbr_rank != parops->world_proc_rank) {
+      // Not requesting my sequences, so continue.
+      continue;
+    }
+
+    if (all_nbrs[i].owner_rank == parops->world_proc_rank) {
+      // Available locally (me requesting my sequences), so continue.
+      continue;
+    }
+    NbrData nbr = all_nbrs[i];
+    uint64_t len, start_offset, end_offset;
+    dfd->buffer_size(nbr.nbr_seq_start_idx, nbr.nbr_seq_end_idx,
+                     len, start_offset, end_offset);
+
+    send_lengths.push_back(len);
+    send_start_offsets.push_back(start_offset);
+    to_nbrs_idxs.push_back(i);
+    ++to_nbrs_count;
+  }
+
+  auto *to_nbrs_send_reqs = new MPI_Request[to_nbrs_count];
+  for (int i = 0; i < to_nbrs_count; ++i) {
+    MPI_Isend(&send_lengths[i], 1, MPI_UINT64_T,
+              all_nbrs[to_nbrs_idxs[i]].owner_rank, 99, MPI_COMM_WORLD,
+              to_nbrs_send_reqs + i);
+  }
+
+  /* Wait for length transfers */
+  auto recv_stats = new MPI_Status[recv_nbrs_count];
+  auto send_stats = new MPI_Status[to_nbrs_count];
+  MPI_Waitall(recv_nbrs_count, recv_nbrs_buff_lengths_reqs, recv_stats);
+  MPI_Waitall(to_nbrs_count, to_nbrs_send_reqs, send_stats);
+
+#ifndef NDEBUG
+  {
+    std::string title = "My recv neighbors (excludes me) buff lengths";
+    std::string msg;
+    for (int i = 0; i < recv_nbrs_count; ++i) {
+      NbrData nbr = my_nbrs[recv_nbrs_idxs[i]];
+      msg += +" (rc_flag: " + std::to_string(nbr.rc_flag)
+             + ", nbr_rank: " + std::to_string(nbr.nbr_rank)
+             + ", nbr_seq_start_idx: " + std::to_string(nbr.nbr_seq_start_idx)
+             + ", nbr_seq_end_idx: " + std::to_string(nbr.nbr_seq_end_idx) +
+             +", nbr buff length: " +
+             std::to_string(recv_nbrs_buff_lengths[i]) +
+             ")\n";
+    }
+    DebugUtils::print_msg(title, msg, parops);
+  }
+#endif
+
+  // TODO - do multiple send/recvs if buff length > int max
+
+  /* Now, I know the recv buffer lengths from my recv neighbors, so let's
+   * do the actual exchange */
+//  char **recv_nbrs_data_buffs = new char *[recv_nbrs_count];
+//  for (int i = 0; i < recv_nbrs_count; ++i){
+//    recv_nbrs_data_buffs[i] = new char[static_cast<int>(recv_nbrs_buff_lengths[i])];
+//  }
+//  auto *recv_nbrs_buff_reqs = new MPI_Request[recv_nbrs_count];
+//  auto *recv_nbrs_buff_stats = new MPI_Status[recv_nbrs_count];
+//
+//  for (int i = 0; i < recv_nbrs_count; ++i) {
+////    MPI_Irecv(recv_nbrs_data_buffs[i],
+////              static_cast<int>(recv_nbrs_buff_lengths[i]), MPI_CHAR,
+////              my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 98, MPI_COMM_WORLD,
+////              recv_nbrs_buff_reqs + i);
+//    MPI_Irecv(recv_nbrs_data_buffs[i],
+//              1, MPI_CHAR,
+//              my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 98, MPI_COMM_WORLD,
+//              recv_nbrs_buff_reqs + i);
+//  }
+//
+//  auto *to_nbrs_buff_reqs = new MPI_Request[recv_nbrs_count];
+//  auto *to_nbrs_buff_stats = new MPI_Status[recv_nbrs_count];
+//  for (int i = 0; i < to_nbrs_count; ++i) {
+////    MPI_Isend(dfd->buffer() + send_start_offsets[i],
+////              static_cast<int>(send_lengths[i]), MPI_CHAR,
+////              all_nbrs[to_nbrs_idxs[i]].owner_rank, 98, MPI_COMM_WORLD,
+////              to_nbrs_buff_reqs+i);
+//    char c = static_cast<char>(parops->world_proc_rank + 65);
+//    MPI_Isend(&c,
+//              1, MPI_CHAR,
+//              all_nbrs[to_nbrs_idxs[i]].owner_rank, 98, MPI_COMM_WORLD,
+//              to_nbrs_buff_reqs+i);
+//  }
 
 
+#ifndef NDEBUG
+  {
+    std::string title = "recv_nbrs and to_nbrs count";
+    std::string msg = "(rnc: " + std::to_string(recv_nbrs_count) + " tnc: " + std::to_string(to_nbrs_count) + ")";
+    DebugUtils::print_msg(title, msg, parops);
+  }
+#endif
 
+// TODO - Debug
+  int *debug_recvs = new int[recv_nbrs_count];
+  auto *debug_recv_reqs = new MPI_Request[recv_nbrs_count];
+  auto *debug_recv_stats = new MPI_Status[recv_nbrs_count];
+  for (int i = 0; i < recv_nbrs_count; ++i){
+    MPI_Irecv(&debug_recvs+i, 1, MPI_INT, my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 77, MPI_COMM_WORLD, debug_recv_reqs+i);
+  }
 
-  /*! Who will need my sequences */
+  int debug_v = parops->world_proc_rank;
+  auto *debug_send_reqs = new MPI_Request[to_nbrs_count];
+  auto *debug_send_stats = new MPI_Status[to_nbrs_count];
+  for (int i = 0; i < to_nbrs_count; ++i){
+    MPI_Isend(&debug_v, 1, MPI_INT, all_nbrs[to_nbrs_idxs[i]].owner_rank, 77, MPI_COMM_WORLD, debug_send_reqs+i);
+  }
 
+  MPI_Waitall(recv_nbrs_count, debug_recv_reqs, debug_recv_stats);
+  MPI_Waitall(to_nbrs_count, debug_send_reqs, debug_send_stats);
 
+  delete[](debug_send_stats);
+  delete[](debug_send_reqs);
+  delete[](debug_recv_stats);
+  delete[](debug_recv_reqs);
+  delete[](debug_recvs);
 
+//  MPI_Waitall(to_nbrs_count, to_nbrs_buff_reqs, to_nbrs_buff_stats);
+//  MPI_Waitall(recv_nbrs_count, recv_nbrs_buff_reqs, recv_nbrs_buff_stats);
+//
+//  delete[](to_nbrs_buff_stats);
+//  delete[](to_nbrs_buff_reqs);
+//  delete[](recv_nbrs_buff_stats);
+//  delete[](recv_nbrs_buff_reqs);
+//  for (int i = 0; i < recv_nbrs_count; ++i) {
+//    delete[](recv_nbrs_data_buffs[i]);
+//  }
+//  delete[](recv_nbrs_data_buffs);
+  delete[](to_nbrs_send_reqs);
   delete[](all_nbrs);
   delete[](all_nbrs_displas);
   delete[](all_nbrs_counts);
+  delete[](recv_nbrs_buff_lengths_reqs);
+  delete[](recv_nbrs_buff_lengths);
   MPI_Type_free(&MPI_NbrData);
 
   return std::pair<char *, char *>();
@@ -358,8 +533,8 @@ ParallelFastaReader::find_nbrs(
   std::vector<NbrData> &nbrs
 ) {
   // Note, this rank might not have the sequence, if so we'll search further.
-  uint64_t start_rank
-    = (rc_seq_start_idx + 1) / avg_l_seq_count;
+  int start_rank
+    = static_cast<int>((rc_seq_start_idx + 1) / avg_l_seq_count);
   while (g_seq_offsets[start_rank] > rc_seq_start_idx) {
     /*! This loop is unlikely to happen unless the ranks above the original
      * start rank were heavily pruned during sequence removal step, which
@@ -410,7 +585,8 @@ ParallelFastaReader::find_nbrs(
     rc_seq_count_needed = g_seq_count - (avg_grid_seq_count * grid_rc_id);
   }
 
-  uint64_t nbr_rank, nbr_seq_start_idx, nbr_seq_end_idx;
+  int nbr_rank;
+  uint64_t nbr_seq_start_idx, nbr_seq_end_idx;
   uint64_t count = 0;
   uint64_t seq_start_idx = rc_seq_start_idx;
   while (count < rc_seq_count_needed) {
@@ -432,7 +608,8 @@ ParallelFastaReader::find_nbrs(
       nbr_seq_end_idx =
         (seq_start_idx + remaining_needed - 1) - g_seq_offsets[start_rank];
     }
-    nbrs.emplace_back(rc_flag, nbr_rank, nbr_seq_start_idx, nbr_seq_end_idx);
+    nbrs.emplace_back(rc_flag, parops->world_proc_rank, nbr_rank,
+                      nbr_seq_start_idx, nbr_seq_end_idx);
     ++start_rank;
     seq_start_idx = g_seq_offsets[start_rank];
   }

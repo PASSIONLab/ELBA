@@ -58,8 +58,7 @@ int main(int argc, char **argv) {
     input_file.c_str(), input_overlap, klength, parops);
 
 #ifndef NDEBUG
-  /* Debug print of FastData instance*/
-//  _debug_print_fasta_data(fd, parops);
+//  DebugUtils::print_fasta_data(fd, parops);
 #endif
 
   if (fd->global_count() != seq_count){
