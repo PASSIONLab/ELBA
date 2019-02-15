@@ -10,16 +10,21 @@
 
 struct NbrData {
   ushort rc_flag;
-  uint64_t nbr_rank;
+  int owner_rank;
+  int nbr_rank;
   uint64_t nbr_seq_start_idx;
   uint64_t nbr_seq_end_idx;
 
   NbrData() = default;
 
-  NbrData(ushort rc_flag, uint64_t nbr_rank, uint64_t nbr_seq_start_idx,
-          uint64_t nbr_seq_end_idx) : rc_flag(rc_flag), nbr_rank(nbr_rank),
-                                      nbr_seq_start_idx(nbr_seq_start_idx),
-                                      nbr_seq_end_idx(nbr_seq_end_idx) {
+  NbrData(ushort rc_flag, int owner_rank, int nbr_rank,
+          uint64_t nbr_seq_start_idx,
+          uint64_t nbr_seq_end_idx)
+    : rc_flag(rc_flag),
+      owner_rank(owner_rank),
+      nbr_rank(nbr_rank),
+      nbr_seq_start_idx(nbr_seq_start_idx),
+      nbr_seq_end_idx(nbr_seq_end_idx) {
 
   }
 };
@@ -34,6 +39,7 @@ private:
   static std::pair<char *, char *>
   find_grid_seqs(uint64_t g_seq_count, const uint64_t *g_seq_offsets,
                  uint64_t l_seq_count, const uint64_t *l_seq_counts,
+                 std::unique_ptr<DistributedFastaData> &dfd,
                  const std::shared_ptr<ParallelOps> &parops);
 
   static void find_nbrs(

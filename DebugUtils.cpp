@@ -30,3 +30,21 @@ DebugUtils::print_msg_on_rank(const std::string &title, const std::string &msg,
 
 }
 
+void
+DebugUtils::print_fasta_data(const std::unique_ptr<DistributedFastaData> &dfd,
+                             const std::shared_ptr<ParallelOps> &parops) {
+  int flag;
+  if (parops->world_proc_rank > 0)
+    MPI_Recv(&flag, 1, MPI_INT, parops->world_proc_rank - 1,
+             99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  std::cout << "\nRank: " << parops->world_proc_rank << " - " << "Local FASTA data"
+            << std::endl;
+  dfd->print();
+  if (parops->world_proc_rank < parops->world_procs_count - 1) {
+    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99,
+             MPI_COMM_WORLD);
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
+}
+
+
