@@ -427,42 +427,7 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
   }
 #endif
 
-  // TODO - do multiple send/recvs if buff length > int max
-
-  /* Now, I know the recv buffer lengths from my recv neighbors, so let's
-   * do the actual exchange */
-//  char **recv_nbrs_data_buffs = new char *[recv_nbrs_count];
-//  for (int i = 0; i < recv_nbrs_count; ++i){
-//    recv_nbrs_data_buffs[i] = new char[static_cast<int>(recv_nbrs_buff_lengths[i])];
-//  }
-//  auto *recv_nbrs_buff_reqs = new MPI_Request[recv_nbrs_count];
-//  auto *recv_nbrs_buff_stats = new MPI_Status[recv_nbrs_count];
-//
-//  for (int i = 0; i < recv_nbrs_count; ++i) {
-////    MPI_Irecv(recv_nbrs_data_buffs[i],
-////              static_cast<int>(recv_nbrs_buff_lengths[i]), MPI_CHAR,
-////              my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 98, MPI_COMM_WORLD,
-////              recv_nbrs_buff_reqs + i);
-//    MPI_Irecv(recv_nbrs_data_buffs[i],
-//              1, MPI_CHAR,
-//              my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 98, MPI_COMM_WORLD,
-//              recv_nbrs_buff_reqs + i);
-//  }
-//
-//  auto *to_nbrs_buff_reqs = new MPI_Request[recv_nbrs_count];
-//  auto *to_nbrs_buff_stats = new MPI_Status[recv_nbrs_count];
-//  for (int i = 0; i < to_nbrs_count; ++i) {
-////    MPI_Isend(dfd->buffer() + send_start_offsets[i],
-////              static_cast<int>(send_lengths[i]), MPI_CHAR,
-////              all_nbrs[to_nbrs_idxs[i]].owner_rank, 98, MPI_COMM_WORLD,
-////              to_nbrs_buff_reqs+i);
-//    char c = static_cast<char>(parops->world_proc_rank + 65);
-//    MPI_Isend(&c,
-//              1, MPI_CHAR,
-//              all_nbrs[to_nbrs_idxs[i]].owner_rank, 98, MPI_COMM_WORLD,
-//              to_nbrs_buff_reqs+i);
-//  }
-
+  // TODO - do multiple send/recvs below if buff length > int max
 
 #ifndef NDEBUG
   {
@@ -472,49 +437,48 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
   }
 #endif
 
-// TODO - Debug
-  char *debug_recvs = new char[recv_nbrs_count];
-  auto *debug_recv_reqs = new MPI_Request[recv_nbrs_count];
-  auto *debug_recv_stats = new MPI_Status[recv_nbrs_count];
+  char **recv_nbrs_buffs = new char * [recv_nbrs_count];
   for (int i = 0; i < recv_nbrs_count; ++i){
-    MPI_Irecv(debug_recvs+i, 1, MPI_CHAR, my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 77, MPI_COMM_WORLD, debug_recv_reqs+i);
+    recv_nbrs_buffs[i] = new char[recv_nbrs_buff_lengths[i]];
+  }
+  auto *recv_nbrs_buffs_reqs = new MPI_Request[recv_nbrs_count];
+  auto *recv_nbrs_buffs_stats = new MPI_Status[recv_nbrs_count];
+  for (int i = 0; i < recv_nbrs_count; ++i){
+    MPI_Irecv(recv_nbrs_buffs[i], static_cast<int>(recv_nbrs_buff_lengths[i]),
+      MPI_CHAR, my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 77, MPI_COMM_WORLD, recv_nbrs_buffs_reqs + i);
   }
 
-  char debug_v = static_cast<char>(parops->world_proc_rank + 48);
-  auto *debug_send_reqs = new MPI_Request[to_nbrs_count];
-  auto *debug_send_stats = new MPI_Status[to_nbrs_count];
+  auto *to_nbrs_buffs_reqs = new MPI_Request[to_nbrs_count];
+  auto *to_nbrs_bufss_stat = new MPI_Status[to_nbrs_count];
   for (int i = 0; i < to_nbrs_count; ++i){
-    MPI_Isend(&debug_v, 1, MPI_CHAR, all_nbrs[to_nbrs_idxs[i]].owner_rank, 77, MPI_COMM_WORLD, debug_send_reqs+i);
+    MPI_Isend(dfd->buffer()+send_start_offsets[i],
+      static_cast<int>(send_lengths[i]), MPI_CHAR,
+      all_nbrs[to_nbrs_idxs[i]].owner_rank, 77, MPI_COMM_WORLD, to_nbrs_buffs_reqs + i);
   }
 
-  MPI_Waitall(recv_nbrs_count, debug_recv_reqs, debug_recv_stats);
-  MPI_Waitall(to_nbrs_count, debug_send_reqs, debug_send_stats);
+  MPI_Waitall(recv_nbrs_count, recv_nbrs_buffs_reqs, recv_nbrs_buffs_stats);
+  MPI_Waitall(to_nbrs_count, to_nbrs_buffs_reqs, to_nbrs_bufss_stat);
 
 #ifndef NDEBUG
   {
-    std::string title = "debug";
-    std::string msg(debug_recvs, recv_nbrs_count);
+    std::string title = "First character of received data from each neighbor";
+    std::string msg;
+    for (int i = 0; i < recv_nbrs_count; ++i){
+      msg += std::string(recv_nbrs_buffs[i], 1);
+    }
     DebugUtils::print_msg(title, msg, parops);
   }
 #endif
 
-  delete[](debug_send_stats);
-  delete[](debug_send_reqs);
-  delete[](debug_recv_stats);
-  delete[](debug_recv_reqs);
-  delete[](debug_recvs);
+  delete[](to_nbrs_bufss_stat);
+  delete[](to_nbrs_buffs_reqs);
+  delete[](recv_nbrs_buffs_stats);
+  delete[](recv_nbrs_buffs_reqs);
+  for (int i = 0; i < recv_nbrs_count; ++i){
+    delete[](recv_nbrs_buffs[i]);
+  }
+  delete[](recv_nbrs_buffs);
 
-//  MPI_Waitall(to_nbrs_count, to_nbrs_buff_reqs, to_nbrs_buff_stats);
-//  MPI_Waitall(recv_nbrs_count, recv_nbrs_buff_reqs, recv_nbrs_buff_stats);
-//
-//  delete[](to_nbrs_buff_stats);
-//  delete[](to_nbrs_buff_reqs);
-//  delete[](recv_nbrs_buff_stats);
-//  delete[](recv_nbrs_buff_reqs);
-//  for (int i = 0; i < recv_nbrs_count; ++i) {
-//    delete[](recv_nbrs_data_buffs[i]);
-//  }
-//  delete[](recv_nbrs_data_buffs);
   delete[](to_nbrs_send_reqs);
   delete[](all_nbrs);
   delete[](all_nbrs_displas);
