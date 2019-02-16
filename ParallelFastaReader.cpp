@@ -169,20 +169,10 @@ ParallelFastaReader
   readFasta(file, overlap, k, parops->world_proc_rank,
             parops->world_procs_count, buff, l_start, l_end);
 
-  auto *id_starts = new uvec_64();
-  auto *seq_starts = new uvec_64();
-  auto ret = read_local_sequences(buff, l_start, l_end, k,
-                                  id_starts, seq_starts);
+  std::unique_ptr<DistributedFastaData> dfd =
+    std::make_unique<DistributedFastaData>(buff, l_start, l_end, k);
 
-  uint64_t l_seq_count = ret.first;
-  uint64_t nc_count = ret.second;
-
-  /*! Things can go wrong if you don't end up having at least one sequence,
-   * which is unlikely unless the total number of sequences are close to
-   * the total number of processes.
-   */
-  assert(l_seq_count > 0);
-
+  uint64_t l_seq_count = dfd->local_count();
   auto *l_seq_counts = new uint64_t[parops->world_procs_count];
   MPI_Allgather(&l_seq_count, 1, MPI_UINT64_T, l_seq_counts,
                 1, MPI_UINT64_T, MPI_COMM_WORLD);
@@ -199,10 +189,9 @@ ParallelFastaReader
   uint64_t g_seq_count = g_seq_offsets[parops->world_procs_count - 1] +
                          l_seq_counts[parops->world_procs_count - 1];
 
-  std::unique_ptr<DistributedFastaData> dfd =
-    std::make_unique<DistributedFastaData>(
-      buff, l_seq_count, g_seq_count, l_start, (l_end - nc_count),
-      g_seq_offsets[parops->world_proc_rank], id_starts, seq_starts);
+  /*! Set global sequence count and global sequence start offset in dfd */
+  dfd->global_count(g_seq_count);
+  dfd->offset(g_seq_offsets[parops->world_proc_rank]);
 
   // TODO - Continue from here after finishing find_grid_seqs
   std::pair<char *, char *> grid_seqs
@@ -327,6 +316,7 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
     }
   }
 
+  /*! Collect all the neighbor info of all the processes */
   auto *all_nbrs = new NbrData[all_nbrs_count];
   MPI_Allgatherv(&my_nbrs[0], my_nbrs_count, MPI_NbrData, all_nbrs,
                  all_nbrs_counts, all_nbrs_displas, MPI_NbrData,
@@ -432,28 +422,31 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
 #ifndef NDEBUG
   {
     std::string title = "recv_nbrs and to_nbrs count";
-    std::string msg = "(rnc: " + std::to_string(recv_nbrs_count) + " tnc: " + std::to_string(to_nbrs_count) + ")";
+    std::string msg = "(rnc: " + std::to_string(recv_nbrs_count) + " tnc: " +
+                      std::to_string(to_nbrs_count) + ")";
     DebugUtils::print_msg(title, msg, parops);
   }
 #endif
 
-  char **recv_nbrs_buffs = new char * [recv_nbrs_count];
-  for (int i = 0; i < recv_nbrs_count; ++i){
+  char **recv_nbrs_buffs = new char *[recv_nbrs_count];
+  for (int i = 0; i < recv_nbrs_count; ++i) {
     recv_nbrs_buffs[i] = new char[recv_nbrs_buff_lengths[i]];
   }
   auto *recv_nbrs_buffs_reqs = new MPI_Request[recv_nbrs_count];
   auto *recv_nbrs_buffs_stats = new MPI_Status[recv_nbrs_count];
-  for (int i = 0; i < recv_nbrs_count; ++i){
+  for (int i = 0; i < recv_nbrs_count; ++i) {
     MPI_Irecv(recv_nbrs_buffs[i], static_cast<int>(recv_nbrs_buff_lengths[i]),
-      MPI_CHAR, my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 77, MPI_COMM_WORLD, recv_nbrs_buffs_reqs + i);
+              MPI_CHAR, my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 77, MPI_COMM_WORLD,
+              recv_nbrs_buffs_reqs + i);
   }
 
   auto *to_nbrs_buffs_reqs = new MPI_Request[to_nbrs_count];
   auto *to_nbrs_bufss_stat = new MPI_Status[to_nbrs_count];
-  for (int i = 0; i < to_nbrs_count; ++i){
-    MPI_Isend(dfd->buffer()+send_start_offsets[i],
-      static_cast<int>(send_lengths[i]), MPI_CHAR,
-      all_nbrs[to_nbrs_idxs[i]].owner_rank, 77, MPI_COMM_WORLD, to_nbrs_buffs_reqs + i);
+  for (int i = 0; i < to_nbrs_count; ++i) {
+    MPI_Isend(dfd->buffer() + send_start_offsets[i],
+              static_cast<int>(send_lengths[i]), MPI_CHAR,
+              all_nbrs[to_nbrs_idxs[i]].owner_rank, 77, MPI_COMM_WORLD,
+              to_nbrs_buffs_reqs + i);
   }
 
   MPI_Waitall(recv_nbrs_count, recv_nbrs_buffs_reqs, recv_nbrs_buffs_stats);
@@ -461,9 +454,10 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
 
 #ifndef NDEBUG
   {
+    MPI_Barrier(MPI_COMM_WORLD);
     std::string title = "First character of received data from each neighbor";
     std::string msg;
-    for (int i = 0; i < recv_nbrs_count; ++i){
+    for (int i = 0; i < recv_nbrs_count; ++i) {
       msg += std::string(recv_nbrs_buffs[i], 1);
     }
     DebugUtils::print_msg(title, msg, parops);
@@ -474,7 +468,7 @@ ParallelFastaReader::find_grid_seqs(uint64_t g_seq_count,
   delete[](to_nbrs_buffs_reqs);
   delete[](recv_nbrs_buffs_stats);
   delete[](recv_nbrs_buffs_reqs);
-  for (int i = 0; i < recv_nbrs_count; ++i){
+  for (int i = 0; i < recv_nbrs_count; ++i) {
     delete[](recv_nbrs_buffs[i]);
   }
   delete[](recv_nbrs_buffs);

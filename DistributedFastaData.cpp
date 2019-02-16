@@ -89,17 +89,17 @@ DistributedFastaData::DistributedFastaData(char *buff, uint64_t l_start,
 
   assert(l_seq_count > 0);
 
-  MPI_Allreduce(&l_seq_count, &g_seq_count, 1,
-                MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
+//  MPI_Allreduce(&l_seq_count, &g_seq_count, 1,
+//                MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
 
   this->buff = buff;
   this->l_start = l_start;
   this->l_end = l_end - nc_count;
 
-  g_seq_offset = 0;
+//  g_seq_offset = 0;
   /*! Use MPI's exclusive scan collective to compute partial prefix sums */
-  MPI_Exscan(&l_seq_count, &g_seq_offset, 1,
-             MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
+//  MPI_Exscan(&l_seq_count, &g_seq_offset, 1,
+//             MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
 }
 
 DistributedFastaData::DistributedFastaData(
@@ -153,12 +153,20 @@ uint64_t DistributedFastaData::global_count() {
   return g_seq_count;
 }
 
+void DistributedFastaData::global_count(uint64_t count) {
+  this->g_seq_count = count;
+}
+
 uint64_t DistributedFastaData::local_count() {
   return l_seq_count;
 }
 
 uint64_t DistributedFastaData::offset() {
   return g_seq_offset;
+}
+
+void DistributedFastaData::offset(uint64_t offset) {
+  this->g_seq_offset = offset;
 }
 
 void DistributedFastaData::buffer_size(uint64_t start_idx,
