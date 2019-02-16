@@ -97,12 +97,28 @@ public:
   uint64_t offset();
 
   /*!
+   * Set the global sequence start offset for the local sequences stored in
+   * this instance.
+   * @param offset The global sequence start offset.
+   */
+  void offset(uint64_t offset);
+
+  /*!
    *
    * @return The global sequence count after removing any that is
    * less than the k-mer length
    */
   uint64_t global_count();
 
+  /*!
+   * Set global sequence count.
+   * @param count The global sequence count.
+   */
+  void global_count(uint64_t count);
+
+  /*!
+   * @return Returns a raw pointer to the local character buffer.
+   */
   const char *buffer();
 
   /*!
