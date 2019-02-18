@@ -11,7 +11,7 @@
 /*!
  * Utility to store and retrive the data read from FASTA files.
  */
-class DistributedFastaData {
+class FastaData {
 public:
   /*!
    * Creates a new FastaData instance. Note, data could contain more
@@ -34,34 +34,25 @@ public:
    * @param l_end End offset (inclusive) of the data for this process.
    * @param k The k-mer size
    */
-  DistributedFastaData(char *buff, uint64_t l_start, uint64_t l_end,
-                       ushort k);
-
-  DistributedFastaData(
-    char *buff, uint64_t l_seq_count, uint64_t g_seq_count,
-    uint64_t l_start, uint64_t l_end, uint64_t g_seq_offset,
-    uvec_64 *id_starts, uvec_64 *seq_starts);
+  FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end);
 
   /*!
    * Destructor for FastaData
    */
-  ~DistributedFastaData();
+  ~FastaData();
 
   /*!
    * Returns a pointer to the raw FASTA data stream, and sets the
    * requested sequence's length, starting offset, and end offset (inclusive)
    * in the output parameters.
-   * @param idx Requested sequence index.
-   * @param is_global Boolean flag to indicate if the requested index is global
-   * (the original sequence index in the file) or local (sequences local to
-   * this process only).
+   * @param idx Requested sequence index local to this instance.
    * @param [out] len The length of the sequence.
    * @param [out] start_offset The start offset of the sequence.
    * @param [out] end_offset_inclusive The end offset (inclusive) of
    * the sequence.
    * @return A pointer to the raw character stream of the FASTA content.
    */
-  char *get_sequence(uint64_t idx, bool is_global, ushort &len,
+  char *get_sequence(uint64_t idx, ushort &len,
                      uint64_t &start_offset,
                      uint64_t &end_offset_inclusive);
 
@@ -92,17 +83,24 @@ public:
 
   /*!
    *
-   * @return The global sequence offset
+   * @return The (possibly modified) end offset of the data in the data buffer.
+   * This could be different from the <tt>l_end</tt> parameter passed to the
+   * constructor as some sequences might get pruned due to length being less
+   * than <tt>k</tt>
    */
-  uint64_t offset();
+  uint64_t end_offset();
 
   /*!
    *
-   * @return The global sequence count after removing any that is
-   * less than the k-mer length
+   * @return The start offset of the data in data buffer.
    */
-  uint64_t global_count();
+  uint64_t start_offset();
 
+
+  /*!
+   *
+   * @return a pointer to the data buffer.
+   */
   const char *buffer();
 
   /*!
@@ -123,17 +121,12 @@ private:
   uvec_64 *id_starts = nullptr;
   /*! Offsets in the raw data stream to the sequence (actual bases) starts */
   uvec_64 *seq_starts = nullptr;
-  /*!
-   * Global sequence count, which may be different from the total input sequence
-   * count because some might get removed if their lengths are less than the
-   * k-mer length.
-   */
-  uint64_t g_seq_count;
+
   /*! The global sequence offset, i.e. the sequence index of the
    * original FASTA file corresponding to the first sequence stored in this
    * instance.
    */
-  uint64_t g_seq_offset;
+//  uint64_t g_seq_offset;
 };
 
 

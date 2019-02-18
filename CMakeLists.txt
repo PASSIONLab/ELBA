@@ -10,8 +10,8 @@ set(CMAKE_CXX_STANDARD 14)
 
 add_executable(lbl_dal main.cpp Constants.hpp ParallelOps.cpp ParallelOps.hpp
         Constants.cpp ParallelFastaReader.cpp ParallelFastaReader.hpp
-        DistributedFastaData.cpp DistributedFastaData.hpp Alphabet.hpp Alphabet.cpp Kmer.hpp
-        Utils.hpp cxxopts.hpp Types.hpp DebugUtils.hpp DebugUtils.cpp)
+        FastaData.cpp FastaData.hpp Alphabet.hpp Alphabet.cpp Kmer.hpp
+        Utils.hpp cxxopts.hpp Types.hpp DebugUtils.hpp DebugUtils.cpp DistributedFastaData.cpp DistributedFastaData.h)
 
 add_executable(comb_blas ComBlasTest.cpp)
 add_executable(seg_test SegTest.cpp)

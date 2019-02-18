@@ -4,11 +4,11 @@
 #define LBL_DAL_DEBUGUTILS_HPP
 
 #include "ParallelOps.hpp"
-#include "DistributedFastaData.hpp"
+#include "FastaData.hpp"
 
 class DebugUtils {
 public:
-  static void print_fasta_data(const std::unique_ptr<DistributedFastaData> &dfd,
+  static void print_fasta_data(const std::unique_ptr<FastaData> &dfd,
     const std::shared_ptr<ParallelOps> &parops);
   static void print_msg(const std::string &title, const std::string &msg,
                         const std::shared_ptr<ParallelOps> &parops);
@@ -17,7 +17,7 @@ public:
                                 int rank);
 };
 
-//void _debug_print_fasta_data(const std::unique_ptr<DistributedFastaData> &fd,
+//void _debug_print_fasta_data(const std::unique_ptr<FastaData> &fd,
 //                             const std::shared_ptr<ParallelOps> &p_ops){
 //  /* Debug print of FastData instance*/
 //  int flag;

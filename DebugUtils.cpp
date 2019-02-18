@@ -31,7 +31,7 @@ DebugUtils::print_msg_on_rank(const std::string &title, const std::string &msg,
 }
 
 void
-DebugUtils::print_fasta_data(const std::unique_ptr<DistributedFastaData> &dfd,
+DebugUtils::print_fasta_data(const std::unique_ptr<FastaData> &dfd,
                              const std::shared_ptr<ParallelOps> &parops) {
   int flag;
   if (parops->world_proc_rank > 0)
