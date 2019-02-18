@@ -14,11 +14,13 @@
 using namespace combblas;
 
 /*! Type definitions */
-typedef KmerIntersect<ushort , CommonKmers> KmerIntersectSR_t;
+typedef KmerIntersect<ushort, CommonKmers> KmerIntersectSR_t;
 
 /*! Function signatures */
 int parse_args(int argc, char **argv);
+
 void pretty_print_config(std::string &append_to);
+
 std::string get_padding(ushort count, std::string prefix);
 
 /*! Global variables */
@@ -36,7 +38,7 @@ std::string print_str;
 int main(int argc, char **argv) {
   parops = ParallelOps::init(&argc, &argv);
   int ret = parse_args(argc, argv);
-  if (ret < 0){
+  if (ret < 0) {
     parops->teardown_parallelism();
     return ret;
   }
@@ -45,34 +47,36 @@ int main(int argc, char **argv) {
 
   /*! Print start time information */
   ticks_t start_prog = std::chrono::system_clock::now();
-  std::time_t start_prog_time = std::chrono::system_clock::to_time_t(start_prog);
+  std::time_t start_prog_time = std::chrono::system_clock::to_time_t(
+    start_prog);
   print_str = "\nINFO: Program started on ";
   print_str.append(std::ctime(&start_prog_time));
   pretty_print_config(print_str);
-  if (is_print_rank){
-    std::cout<<print_str;
+  if (is_print_rank) {
+    std::cout << print_str;
   }
 
   /*! Read and distribute fasta data */
-  std::unique_ptr<DistributedFastaData> fd = ParallelFastaReader::read_and_distribute_fasta(
+  std::unique_ptr<DistributedFastaData> dfd
+  = std::make_unique<DistributedFastaData>(
     input_file.c_str(), input_overlap, klength, parops);
 
 #ifndef NDEBUG
 //  DebugUtils::print_fasta_data(fd, parops);
 #endif
 
-  if (fd->global_count() != seq_count){
-    uint64_t final_seq_count = fd->global_count();
-    if (is_print_rank){
+  if (dfd->global_count() != seq_count) {
+    uint64_t final_seq_count = dfd->global_count();
+    if (is_print_rank) {
       print_str = "\nINFO: Modfied sequence count\n";
       print_str.append("  Final sequence count: ")
-      .append(std::to_string(final_seq_count))
-      .append(" (").append(
-        std::to_string(((seq_count - final_seq_count)*100/seq_count)))
-      .append("% removed)");
+        .append(std::to_string(final_seq_count))
+        .append(" (").append(
+          std::to_string(((seq_count - final_seq_count) * 100 / seq_count)))
+        .append("% removed)");
 
-      seq_count = fd->global_count();
-      std::cout<<print_str<<std::endl;
+      seq_count = dfd->global_count();
+      std::cout << print_str << std::endl;
     }
   }
 
@@ -246,27 +250,27 @@ int main(int argc, char **argv) {
 }
 
 int parse_args(int argc, char **argv) {
-  cxxopts::Options options("Distributed Aligner", "A distributed protein aligner");
+  cxxopts::Options options("Distributed Aligner",
+                           "A distributed protein aligner");
 
   options.add_options()
-      (CMD_OPTION_INPUT, CMD_OPTION_DESCRIPTION_INPUT,
-       cxxopts::value<std::string>())
-      (CMD_OPTION_INPUT_SEQ_COUNT, CMD_OPTION_DESCRIPTION_INPUT_SEQ_COUNT,
-       cxxopts::value<int>())
-      (CMD_OPTION_INPUT_OVERLAP, CMD_OPTION_DESCRIPTION_INPUT_OVERLAP,
-       cxxopts::value<int>())
-      (CMD_OPTION_KMER_LENGTH, CMD_OPTION_DESCRIPTION_KMER_LENGTH,
-       cxxopts::value<int>())
-      (CMD_OPTION_KMER_STRIDE, CMD_OPTION_DESCRIPTION_KMER_STRID,
-       cxxopts::value<int>())
-      ;
+    (CMD_OPTION_INPUT, CMD_OPTION_DESCRIPTION_INPUT,
+     cxxopts::value<std::string>())
+    (CMD_OPTION_INPUT_SEQ_COUNT, CMD_OPTION_DESCRIPTION_INPUT_SEQ_COUNT,
+     cxxopts::value<int>())
+    (CMD_OPTION_INPUT_OVERLAP, CMD_OPTION_DESCRIPTION_INPUT_OVERLAP,
+     cxxopts::value<int>())
+    (CMD_OPTION_KMER_LENGTH, CMD_OPTION_DESCRIPTION_KMER_LENGTH,
+     cxxopts::value<int>())
+    (CMD_OPTION_KMER_STRIDE, CMD_OPTION_DESCRIPTION_KMER_STRID,
+     cxxopts::value<int>());
 
   auto result = options.parse(argc, argv);
 
   bool is_world_rank0 = parops->world_proc_rank == 0;
-  if (result.count(CMD_OPTION_INPUT)){
+  if (result.count(CMD_OPTION_INPUT)) {
     input_file = result[CMD_OPTION_INPUT].as<std::string>();
-  }else {
+  } else {
     if (is_world_rank0) {
       std::cout << "ERROR: Input file not specified" << std::endl;
     }
@@ -274,71 +278,71 @@ int parse_args(int argc, char **argv) {
   }
 
   // TODO - fix option parsing
-  if (result.count(CMD_OPTION_INPUT_SEQ_COUNT)){
+  if (result.count(CMD_OPTION_INPUT_SEQ_COUNT)) {
     seq_count = result[CMD_OPTION_INPUT_SEQ_COUNT].as<int>();
-  }else {
+  } else {
     if (is_world_rank0) {
       std::cout << "ERROR: Input sequence count not specified" << std::endl;
     }
     return -1;
   }
 
-  if (result.count(CMD_OPTION_INPUT_OVERLAP)){
+  if (result.count(CMD_OPTION_INPUT_OVERLAP)) {
     input_overlap = result[CMD_OPTION_INPUT_OVERLAP].as<int>();
-  }else {
+  } else {
     input_overlap = 10000;
   }
 
-  if (result.count(CMD_OPTION_KMER_LENGTH)){
+  if (result.count(CMD_OPTION_KMER_LENGTH)) {
     klength = result[CMD_OPTION_KMER_LENGTH].as<int>();
-  }else {
+  } else {
     if (is_world_rank0) {
       std::cout << "ERROR: Kmer length not specified" << std::endl;
     }
     return -1;
   }
 
-  if (result.count(CMD_OPTION_KMER_STRIDE)){
+  if (result.count(CMD_OPTION_KMER_STRIDE)) {
     kstride = result[CMD_OPTION_KMER_STRIDE].as<int>();
-  }else {
-    if (is_world_rank0){
-     kstride = 1;
+  } else {
+    if (is_world_rank0) {
+      kstride = 1;
     }
   }
 
   return 0;
 }
 
-void pretty_print_config(std::string &append_to){
+void pretty_print_config(std::string &append_to) {
   std::vector<std::string> params = {
-      "Input file (-i)",
-      "Original sequence count (-c)",
-      "Kmer length (k)",
-      "Kmer stride (s)",
-      "Overlap in bytes (-O)"
+    "Input file (-i)",
+    "Original sequence count (-c)",
+    "Kmer length (k)",
+    "Kmer stride (s)",
+    "Overlap in bytes (-O)"
   };
 
   std::vector<std::string> vals = {
-      input_file, std::to_string(seq_count),
-      std::to_string(klength), std::to_string(kstride),
-      std::to_string(input_overlap)
+    input_file, std::to_string(seq_count),
+    std::to_string(klength), std::to_string(kstride),
+    std::to_string(input_overlap)
   };
 
   ushort max_length = 0;
-  for (const auto &param : params){
-    if (param.size() > max_length){
+  for (const auto &param : params) {
+    if (param.size() > max_length) {
       max_length = static_cast<ushort>(param.size());
     }
   }
 
   std::string prefix = "  ";
   append_to.append("Parameters...\n");
-  for (ushort i = 0; i < params.size(); ++i){
+  for (ushort i = 0; i < params.size(); ++i) {
     std::string param = params[i];
     append_to.append(prefix).append(param).append(": ")
-        .append(get_padding(
-            static_cast<ushort>(max_length - param.size()), ""))
-        .append(vals[i]).append("\n");
+      .append(get_padding(
+        static_cast<ushort>(max_length - param.size()), ""))
+      .append(vals[i]).append("\n");
 
 //    append_to.append(get_padding(
 //        static_cast<ushort>(max_length + 1 - param.size()), prefix))
@@ -347,9 +351,9 @@ void pretty_print_config(std::string &append_to){
   }
 }
 
-std::string get_padding(ushort count, std::string prefix){
+std::string get_padding(ushort count, std::string prefix) {
   std::string pad = std::move(prefix);
-  for (ushort i = 0; i < count; ++i){
+  for (ushort i = 0; i < count; ++i) {
     pad += " ";
   }
   return pad;
