@@ -287,19 +287,7 @@ void DistributedFastaData::collect_grid_seqs() {
               to_nbrs_buffs_reqs + i);
   }
 
-  MPI_Waitall(recv_nbrs_count, recv_nbrs_buffs_reqs, recv_nbrs_buffs_stats);
-  MPI_Waitall(to_nbrs_count, to_nbrs_buffs_reqs, to_nbrs_bufss_stat);
 
-#ifndef NDEBUG
-  {
-    std::string title = "First character of received data from each neighbor";
-    std::string msg;
-    for (int i = 0; i < recv_nbrs_count; ++i) {
-      msg += std::string(recv_nbrs_buffs[i], 1);
-    }
-    DebugUtils::print_msg(title, msg, parops);
-  }
-#endif
 
   delete[](to_nbrs_send_reqs);
   delete[](all_nbrs);
@@ -386,9 +374,22 @@ uint64_t DistributedFastaData::global_count() {
 }
 
 bool DistributedFastaData::grid_ready() {
-  return false;
+  return ready;
 }
 
 void DistributedFastaData::wait() {
+  MPI_Waitall(recv_nbrs_count, recv_nbrs_buffs_reqs, recv_nbrs_buffs_stats);
+  MPI_Waitall(to_nbrs_count, to_nbrs_buffs_reqs, to_nbrs_bufss_stat);
 
+#ifndef NDEBUG
+  {
+    std::string title = "First character of received data from each neighbor";
+    std::string msg;
+    for (int i = 0; i < recv_nbrs_count; ++i) {
+      msg += std::string(recv_nbrs_buffs[i], 1);
+    }
+    DebugUtils::print_msg(title, msg, parops);
+  }
+#endif
+  ready = true;
 }
