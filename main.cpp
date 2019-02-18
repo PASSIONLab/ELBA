@@ -80,7 +80,10 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (!dfd->grid_ready()){
+  /*! Finding K-mers should go here */
+
+  /*! Wait until data distribution is complete */
+  if (!dfd->is_ready()){
     dfd->wait();
   }
 

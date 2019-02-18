@@ -373,7 +373,7 @@ uint64_t DistributedFastaData::global_count() {
   return g_seq_count;
 }
 
-bool DistributedFastaData::grid_ready() {
+bool DistributedFastaData::is_ready() {
   return ready;
 }
 
