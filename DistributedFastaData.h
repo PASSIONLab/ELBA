@@ -64,9 +64,7 @@ private:
   MPI_Request *to_nbrs_buffs_reqs = nullptr;
   MPI_Status *to_nbrs_bufss_stat = nullptr;
 
-//  int recv_nbrs_count;
-//  std::vector<NbrData> my_nbrs;
-//  std::vector<int> recv_nbrs_idxs;
+  bool ready = false;
 
   std::shared_ptr<ParallelOps> parops;
 

@@ -80,6 +80,10 @@ int main(int argc, char **argv) {
     }
   }
 
+  if (!dfd->grid_ready()){
+    dfd->wait();
+  }
+
 
   /*
   Alphabet alph(Alphabet::PROTEIN);
