@@ -36,7 +36,7 @@ public:
                        const std::shared_ptr<ParallelOps> &parops);
 
   uint64_t global_count();
-  bool grid_ready();
+  bool is_ready();
   void wait();
 
 private:
