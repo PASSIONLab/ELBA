@@ -6,7 +6,6 @@
 #include "FastaData.hpp"
 
 FastaData::~FastaData() {
-  delete (buff);
   delete (id_starts);
   delete (seq_starts);
 }
@@ -156,6 +155,8 @@ uint64_t FastaData::end_offset() {
 uint64_t FastaData::start_offset() {
   return l_start;
 }
+
+
 
 
 
