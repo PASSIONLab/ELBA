@@ -1,12 +1,22 @@
-//
 // Created by Saliya Ekanayake on 2019-02-17.
-//
 
 #include "DistributedFastaData.h"
 #include "ParallelFastaReader.hpp"
 
 
 DistributedFastaData::~DistributedFastaData() {
+  for (auto &row_seq : row_seqs) {
+    delete (row_seq);
+  }
+
+  for (auto &col_seq : col_seqs) {
+    delete (col_seq);
+  }
+
+  for (int i = 0; i < recv_nbrs_count; ++i) {
+    delete (recv_fds[i]);
+  }
+  delete[]recv_fds;
   delete[](to_nbrs_bufss_stat);
   delete[](to_nbrs_buffs_reqs);
   delete[](recv_nbrs_buffs_stats);
@@ -15,6 +25,8 @@ DistributedFastaData::~DistributedFastaData() {
     delete[](recv_nbrs_buffs[i]);
   }
   delete[](recv_nbrs_buffs);
+  delete[](recv_nbrs_buff_lengths);
+  delete (fd->buffer());
   delete (fd);
   delete[](l_seq_counts);
   delete[](g_seq_offsets);
@@ -67,8 +79,17 @@ void DistributedFastaData::collect_grid_seqs() {
   uint64_t avg_l_seq_count = g_seq_count / parops->world_procs_count;
   uint64_t avg_grid_seq_count = g_seq_count / pr;
 
-  uint64_t row_seq_start_idx = avg_grid_seq_count * grid_row_id;
-  uint64_t col_seq_start_idx = avg_grid_seq_count * grid_col_id;
+  row_seq_start_idx = avg_grid_seq_count * grid_row_id;
+  row_seq_end_idx = (grid_row_id == pr - 1)
+                    ? g_seq_count : row_seq_start_idx + avg_grid_seq_count;
+  // Subtract 1 to get the zero based inclusive end index;
+  --row_seq_end_idx;
+
+  col_seq_start_idx = avg_grid_seq_count * grid_col_id;
+  col_seq_end_idx = (grid_col_id == pc - 1)
+                    ? g_seq_count : col_seq_start_idx + avg_grid_seq_count;
+  // Subtract 1 to get the zero based inclusive end index;
+  --col_seq_end_idx;
 
   /*! Whose sequences will I need */
 
@@ -76,7 +97,6 @@ void DistributedFastaData::collect_grid_seqs() {
   // messages to self but I need to know what's needed from locally
   // available squences to satisfy the grid cell I am responsible for.
 
-  std::vector<NbrData> my_nbrs;
   find_nbrs(pr, grid_row_id, avg_l_seq_count, avg_grid_seq_count,
             row_seq_start_idx, 1, my_nbrs);
   if (grid_row_id != grid_col_id) {
@@ -101,7 +121,6 @@ void DistributedFastaData::collect_grid_seqs() {
 
   // Receive neighbors are my neighbors excluding me, so receive neighbor
   // indexes will keep track of the indexes of my neighbors to receive from
-  std::vector<int> recv_nbrs_idxs;
   recv_nbrs_count = 0;
   for (int i = 0; i < my_nbrs.size(); ++i) {
     if (my_nbrs[i].nbr_rank == parops->world_proc_rank) {
@@ -116,7 +135,7 @@ void DistributedFastaData::collect_grid_seqs() {
   * for the sequences I need from them.
   */
   auto *recv_nbrs_buff_lengths_reqs = new MPI_Request[recv_nbrs_count];
-  auto recv_nbrs_buff_lengths = new uint64_t[recv_nbrs_count];
+  recv_nbrs_buff_lengths = new uint64_t[recv_nbrs_count];
   for (int i = 0; i < recv_nbrs_count; ++i) {
     MPI_Irecv(recv_nbrs_buff_lengths + i, 1, MPI_UINT64_T,
               my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 99,
@@ -216,7 +235,7 @@ void DistributedFastaData::collect_grid_seqs() {
     NbrData nbr = all_nbrs[i];
     uint64_t len, start_offset, end_offset;
     fd->buffer_size(nbr.nbr_seq_start_idx, nbr.nbr_seq_end_idx,
-                     len, start_offset, end_offset);
+                    len, start_offset, end_offset);
 
     send_lengths.push_back(len);
     send_start_offsets.push_back(start_offset);
@@ -288,14 +307,12 @@ void DistributedFastaData::collect_grid_seqs() {
   }
 
 
-
   delete[](to_nbrs_send_reqs);
   delete[](all_nbrs);
   delete[](all_nbrs_displas);
   delete[](all_nbrs_counts);
   MPI_Type_free(&MPI_NbrData);
   delete[](recv_nbrs_buff_lengths_reqs);
-  delete[](recv_nbrs_buff_lengths);
 
 }
 
@@ -361,7 +378,7 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
         (seq_start_idx + remaining_needed - 1) - g_seq_offsets[start_rank];
     }
     my_nbrs.emplace_back(rc_flag, parops->world_proc_rank, nbr_rank,
-                      nbr_seq_start_idx, nbr_seq_end_idx);
+                         nbr_seq_start_idx, nbr_seq_end_idx);
     ++start_rank;
     seq_start_idx = g_seq_offsets[start_rank];
   }
@@ -375,6 +392,25 @@ uint64_t DistributedFastaData::global_count() {
 
 bool DistributedFastaData::is_ready() {
   return ready;
+}
+
+void
+DistributedFastaData::push_seqs(int rc_flag, FastaData *fd, uint64_t seqs_count,
+                                uint64_t seq_start_idx) {
+  ushort len;
+  uint64_t start_offset, end_offset_inclusive;
+  for (uint64_t i = 0; i < seqs_count; ++i) {
+    char *buff = fd->get_sequence(seq_start_idx + i, len, start_offset,
+                                  end_offset_inclusive);
+    seqan::Peptide *seq = new seqan::Peptide(buff + start_offset, len);
+    if (rc_flag == 1) {
+      /*! grid row sequence */
+      row_seqs.push_back(seq);
+    } else {
+      /*! grid col sequence */
+      col_seqs.push_back(seq);
+    }
+  }
 }
 
 void DistributedFastaData::wait() {
@@ -391,5 +427,36 @@ void DistributedFastaData::wait() {
     DebugUtils::print_msg(title, msg, parops);
   }
 #endif
+
+  int recv_nbr_idx = 0;
+  for (auto &nbr : my_nbrs) {
+    uint64_t nbr_seqs_count = (nbr.nbr_seq_end_idx - nbr.nbr_seq_start_idx) + 1;
+    if (nbr.nbr_rank == parops->world_proc_rank) {
+      /*! Local data, so create SeqAn sequences from <tt>fd</tt> */
+      push_seqs(nbr.rc_flag, fd, nbr_seqs_count, nbr.nbr_seq_start_idx);
+    } else {
+      /*! Foreign data in a received buffer, so create a FastaData instance
+       * and create SeqAn sequences from it. For foreign data, char buffers
+       * only contain the required sequences, so sequence start index is 0.
+       */
+      uint64_t recv_nbr_l_end = recv_nbrs_buff_lengths[recv_nbr_idx] - 1;
+      FastaData *recv_fd = new FastaData(recv_nbrs_buffs[recv_nbr_idx], k, 0,
+                                         recv_nbr_l_end);
+      push_seqs(nbr.rc_flag, recv_fd, nbr_seqs_count, 0);
+      ++recv_nbr_idx;
+    }
+  }
+
+  if (parops->grid->GetRankInProcRow() == parops->grid->GetRankInProcCol()) {
+    /*! Diagonal cell, so col_seqs should point to the same sequences
+     * as row_seqs. Also, it should not have received any col sequences
+     * at this point */
+    assert(col_seqs.size() == 0);
+    col_seqs.assign(row_seqs.begin(), row_seqs.end());
+  }
+
+  assert(row_seqs.size() == (row_seq_end_idx - row_seq_start_idx) + 1 &&
+         col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
+
   ready = true;
 }
