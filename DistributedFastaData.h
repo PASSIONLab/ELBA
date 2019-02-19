@@ -80,7 +80,7 @@ private:
   /*! send counts and buffers */
   int to_nbrs_count;
   MPI_Request *to_nbrs_buffs_reqs = nullptr;
-  MPI_Status *to_nbrs_bufss_stat = nullptr;
+  MPI_Status *to_nbrs_buffs_stat = nullptr;
 
   bool ready = false;
 

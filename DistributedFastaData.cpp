@@ -13,18 +13,24 @@ DistributedFastaData::~DistributedFastaData() {
     delete (col_seq);
   }
 
-  for (int i = 0; i < recv_nbrs_count; ++i) {
-    delete (recv_fds[i]);
+  if (recv_fds != nullptr) {
+    for (int i = 0; i < recv_nbrs_count; ++i) {
+      delete (recv_fds[i]);
+    }
+    delete[]recv_fds;
   }
-  delete[]recv_fds;
-  delete[](to_nbrs_bufss_stat);
+  delete[](to_nbrs_buffs_stat);
   delete[](to_nbrs_buffs_reqs);
   delete[](recv_nbrs_buffs_stats);
   delete[](recv_nbrs_buffs_reqs);
-  for (int i = 0; i < recv_nbrs_count; ++i) {
-    delete[](recv_nbrs_buffs[i]);
+  if (recv_nbrs_buffs != nullptr) {
+    for (int i = 0; i < recv_nbrs_count; ++i) {
+      if (recv_nbrs_buffs[i] != nullptr) {
+        delete[](recv_nbrs_buffs[i]);
+      }
+    }
+    delete[](recv_nbrs_buffs);
   }
-  delete[](recv_nbrs_buffs);
   delete[](recv_nbrs_buff_lengths);
   delete (fd->buffer());
   delete (fd);
@@ -298,7 +304,7 @@ void DistributedFastaData::collect_grid_seqs() {
   }
 
   to_nbrs_buffs_reqs = new MPI_Request[to_nbrs_count];
-  to_nbrs_bufss_stat = new MPI_Status[to_nbrs_count];
+  to_nbrs_buffs_stat = new MPI_Status[to_nbrs_count];
   for (int i = 0; i < to_nbrs_count; ++i) {
     MPI_Isend(fd->buffer() + send_start_offsets[i],
               static_cast<int>(send_lengths[i]), MPI_CHAR,
@@ -415,7 +421,7 @@ DistributedFastaData::push_seqs(int rc_flag, FastaData *fd, uint64_t seqs_count,
 
 void DistributedFastaData::wait() {
   MPI_Waitall(recv_nbrs_count, recv_nbrs_buffs_reqs, recv_nbrs_buffs_stats);
-  MPI_Waitall(to_nbrs_count, to_nbrs_buffs_reqs, to_nbrs_bufss_stat);
+  MPI_Waitall(to_nbrs_count, to_nbrs_buffs_reqs, to_nbrs_buffs_stat);
 
 #ifndef NDEBUG
   {
@@ -432,31 +438,32 @@ void DistributedFastaData::wait() {
   for (auto &nbr : my_nbrs) {
     uint64_t nbr_seqs_count = (nbr.nbr_seq_end_idx - nbr.nbr_seq_start_idx) + 1;
     if (nbr.nbr_rank == parops->world_proc_rank) {
-      /*! Local data, so create SeqAn sequences from <tt>fd</tt> */
+  /*! Local data, so create SeqAn sequences from <tt>fd</tt> */
       push_seqs(nbr.rc_flag, fd, nbr_seqs_count, nbr.nbr_seq_start_idx);
     } else {
-      /*! Foreign data in a received buffer, so create a FastaData instance
-       * and create SeqAn sequences from it. For foreign data, char buffers
-       * only contain the required sequences, so sequence start index is 0.
-       */
+  /*! Foreign data in a received buffer, so create a FastaData instance
+   * and create SeqAn sequences from it. For foreign data, char buffers
+   * only contain the required sequences, so sequence start index is 0.
+   */
       uint64_t recv_nbr_l_end = recv_nbrs_buff_lengths[recv_nbr_idx] - 1;
       FastaData *recv_fd = new FastaData(recv_nbrs_buffs[recv_nbr_idx], k, 0,
                                          recv_nbr_l_end);
-      push_seqs(nbr.rc_flag, recv_fd, nbr_seqs_count, 0);
+
+//      push_seqs(nbr.rc_flag, recv_fd, nbr_seqs_count, 0);
       ++recv_nbr_idx;
     }
   }
 
-  if (parops->grid->GetRankInProcRow() == parops->grid->GetRankInProcCol()) {
-    /*! Diagonal cell, so col_seqs should point to the same sequences
-     * as row_seqs. Also, it should not have received any col sequences
-     * at this point */
-    assert(col_seqs.size() == 0);
-    col_seqs.assign(row_seqs.begin(), row_seqs.end());
-  }
+//  if (parops->grid->GetRankInProcRow() == parops->grid->GetRankInProcCol()) {
+  /*! Diagonal cell, so col_seqs should point to the same sequences
+   * as row_seqs. Also, it should not have received any col sequences
+   * at this point */
+//    assert(col_seqs.size() == 0);
+//    col_seqs.assign(row_seqs.begin(), row_seqs.end());
+//  }
 
-  assert(row_seqs.size() == (row_seq_end_idx - row_seq_start_idx) + 1 &&
-         col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
+//  assert(row_seqs.size() == (row_seq_end_idx - row_seq_start_idx) + 1 &&
+//         col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
 
   ready = true;
 }
