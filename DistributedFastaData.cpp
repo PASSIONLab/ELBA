@@ -10,7 +10,9 @@ DistributedFastaData::~DistributedFastaData() {
   }
 
   for (auto &col_seq : col_seqs) {
-    delete (col_seq);
+    if (col_seq != nullptr){
+      delete (col_seq);
+    }
   }
 
   if (recv_fds != nullptr) {
@@ -52,6 +54,13 @@ DistributedFastaData::DistributedFastaData(
   fd = new FastaData(buff, k, l_start, l_end);
 
   l_seq_count = fd->local_count();
+  {
+    // TODO - Debug
+    std::string title = "debug l_seq_count";
+    std::string msg = std::to_string(l_seq_count);
+    DebugUtils::print_msg(title, msg, parops);
+  }
+
   l_seq_counts = new uint64_t[parops->world_procs_count];
   MPI_Allgather(&l_seq_count, 1, MPI_UINT64_T, l_seq_counts,
                 1, MPI_UINT64_T, MPI_COMM_WORLD);
@@ -434,6 +443,11 @@ void DistributedFastaData::wait() {
   }
 #endif
 
+#ifndef NDEBUG
+  std::string title = "Received neighbor data";
+  std::string msg;
+#endif
+
   int recv_nbr_idx = 0;
   for (auto &nbr : my_nbrs) {
     uint64_t nbr_seqs_count = (nbr.nbr_seq_end_idx - nbr.nbr_seq_start_idx) + 1;
@@ -446,21 +460,37 @@ void DistributedFastaData::wait() {
    * only contain the required sequences, so sequence start index is 0.
    */
       uint64_t recv_nbr_l_end = recv_nbrs_buff_lengths[recv_nbr_idx] - 1;
+#ifndef NDEBUG
+      {
+        for (int i = 0; i <= recv_nbr_l_end; ++i){
+          msg += recv_nbrs_buffs[recv_nbr_idx][i];
+        }
+        msg += "\n";
+
+      }
+#endif
       FastaData *recv_fd = new FastaData(recv_nbrs_buffs[recv_nbr_idx], k, 0,
                                          recv_nbr_l_end);
 
-//      push_seqs(nbr.rc_flag, recv_fd, nbr_seqs_count, 0);
+      push_seqs(nbr.rc_flag, recv_fd, nbr_seqs_count, 0);
       ++recv_nbr_idx;
     }
   }
 
-//  if (parops->grid->GetRankInProcRow() == parops->grid->GetRankInProcCol()) {
+#ifndef NDEBUG
+  DebugUtils::print_msg(title, msg, parops);
+#endif
+
+  if (parops->grid->GetRankInProcRow() == parops->grid->GetRankInProcCol()) {
   /*! Diagonal cell, so col_seqs should point to the same sequences
    * as row_seqs. Also, it should not have received any col sequences
    * at this point */
-//    assert(col_seqs.size() == 0);
+    assert(col_seqs.empty());
+    for (auto &seq_ptr : row_seqs){
+      col_seqs.push_back(seq_ptr);
+    }
 //    col_seqs.assign(row_seqs.begin(), row_seqs.end());
-//  }
+  }
 
 //  assert(row_seqs.size() == (row_seq_end_idx - row_seq_start_idx) + 1 &&
 //         col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
