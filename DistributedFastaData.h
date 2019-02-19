@@ -49,6 +49,8 @@ private:
   uint64_t l_seq_count;
   uint64_t *l_seq_counts = nullptr;
 
+  bool is_diagonal_cell = false;
+
   /*!
    * Global sequence count, which may be different from the total input sequence
    * count because some might get removed if their lengths are less than the

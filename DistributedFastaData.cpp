@@ -9,8 +9,11 @@ DistributedFastaData::~DistributedFastaData() {
     delete (row_seq);
   }
 
-  for (auto &col_seq : col_seqs) {
-    if (col_seq != nullptr){
+  if (!is_diagonal_cell) {
+    /*! If this was a diagonal cell then both the row_seqs and col_seqs
+     * would point to the same sequences, so deleting row_seqs is enough.
+     */
+    for (auto &col_seq : col_seqs) {
       delete (col_seq);
     }
   }
@@ -44,6 +47,9 @@ DistributedFastaData::DistributedFastaData(
   const char *file, ushort overlap, ushort k,
   const std::shared_ptr<ParallelOps> &parops)
   : overlap(overlap), k(k), parops(parops) {
+
+  is_diagonal_cell =
+    parops->grid->GetRankInProcRow() == parops->grid->GetRankInProcCol();
 
   char *buff;
   uint64_t l_start, l_end;
@@ -452,17 +458,17 @@ void DistributedFastaData::wait() {
   for (auto &nbr : my_nbrs) {
     uint64_t nbr_seqs_count = (nbr.nbr_seq_end_idx - nbr.nbr_seq_start_idx) + 1;
     if (nbr.nbr_rank == parops->world_proc_rank) {
-  /*! Local data, so create SeqAn sequences from <tt>fd</tt> */
+      /*! Local data, so create SeqAn sequences from <tt>fd</tt> */
       push_seqs(nbr.rc_flag, fd, nbr_seqs_count, nbr.nbr_seq_start_idx);
     } else {
-  /*! Foreign data in a received buffer, so create a FastaData instance
-   * and create SeqAn sequences from it. For foreign data, char buffers
-   * only contain the required sequences, so sequence start index is 0.
-   */
+      /*! Foreign data in a received buffer, so create a FastaData instance
+       * and create SeqAn sequences from it. For foreign data, char buffers
+       * only contain the required sequences, so sequence start index is 0.
+       */
       uint64_t recv_nbr_l_end = recv_nbrs_buff_lengths[recv_nbr_idx] - 1;
 #ifndef NDEBUG
       {
-        for (int i = 0; i <= recv_nbr_l_end; ++i){
+        for (int i = 0; i <= recv_nbr_l_end; ++i) {
           msg += recv_nbrs_buffs[recv_nbr_idx][i];
         }
         msg += "\n";
@@ -481,19 +487,16 @@ void DistributedFastaData::wait() {
   DebugUtils::print_msg(title, msg, parops);
 #endif
 
-  if (parops->grid->GetRankInProcRow() == parops->grid->GetRankInProcCol()) {
-  /*! Diagonal cell, so col_seqs should point to the same sequences
-   * as row_seqs. Also, it should not have received any col sequences
-   * at this point */
+  if (is_diagonal_cell) {
+    /*! Diagonal cell, so col_seqs should point to the same sequences
+     * as row_seqs. Also, it should not have received any col sequences
+     * at this point */
     assert(col_seqs.empty());
-    for (auto &seq_ptr : row_seqs){
-      col_seqs.push_back(seq_ptr);
-    }
-//    col_seqs.assign(row_seqs.begin(), row_seqs.end());
+    col_seqs.assign(row_seqs.begin(), row_seqs.end());
   }
 
-//  assert(row_seqs.size() == (row_seq_end_idx - row_seq_start_idx) + 1 &&
-//         col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
+  assert(row_seqs.size() == (row_seq_end_idx - row_seq_start_idx) + 1 &&
+         col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
 
   ready = true;
 }
