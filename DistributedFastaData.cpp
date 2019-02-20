@@ -407,8 +407,16 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
   assert(count == rc_seq_count_needed);
 }
 
+FastaData * DistributedFastaData::lfd() {
+  return fd;
+}
+
 uint64_t DistributedFastaData::global_count() {
   return g_seq_count;
+}
+
+uint64_t DistributedFastaData::global_start_idx(){
+  return g_seq_offsets[parops->world_proc_rank];
 }
 
 bool DistributedFastaData::is_ready() {
