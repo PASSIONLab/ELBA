@@ -36,6 +36,9 @@ public:
                        const std::shared_ptr<ParallelOps> &parops);
 
   uint64_t global_count();
+  uint64_t global_start_idx();
+
+  FastaData * lfd();
 
   bool is_ready();
 

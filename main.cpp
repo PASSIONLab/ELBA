@@ -58,8 +58,8 @@ int main(int argc, char **argv) {
 
   /*! Read and distribute fasta data */
   std::unique_ptr<DistributedFastaData> dfd
-  = std::make_unique<DistributedFastaData>(
-    input_file.c_str(), input_overlap, klength, parops);
+    = std::make_unique<DistributedFastaData>(
+      input_file.c_str(), input_overlap, klength, parops);
 
 #ifndef NDEBUG
 //  DebugUtils::print_fasta_data(fd, parops);
@@ -80,70 +80,51 @@ int main(int argc, char **argv) {
     }
   }
 
-  /*! Finding K-mers should go here */
-
-  /*! Wait until data distribution is complete */
-  if (!dfd->is_ready()){
-    dfd->wait();
-  }
-
-
-  /*
+  /*! Find K-mers */
   Alphabet alph(Alphabet::PROTEIN);
 
-  *//* Find k-mers *//*
-  std::shared_ptr<char> seq;
+  /*! Find k-mers */
+  char *buff;
   ushort len;
   uint64_t start_offset, end_offset_inclusive;
   //TODO: Saliya - this can be parallelized using OpenMP
   uvec_64 lrow_ids, lcol_ids;
   uvec_16 lvals;
-  uint64_t offset = fd->offset();
-  for (uint64_t lseq_idx = 0; lseq_idx < fd->local_count(); ++lseq_idx){
-    seq = fd->get_sequence(lseq_idx, false, len, start_offset,
-        end_offset_inclusive);
-//    std::printf("rank: %d len %d\n", parops->world_proc_rank, len);
-    auto num_kmers = add_kmers(seq.get(), len, start_offset,
-                               end_offset_inclusive, klength, kstride, alph,
-                               lcol_ids, lvals);
+  uint64_t offset = dfd->global_start_idx();
+  FastaData *lfd = dfd->lfd();
+  for (uint64_t lseq_idx = 0; lseq_idx < lfd->local_count(); ++lseq_idx) {
+    buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
+    auto num_kmers = add_kmers(buff, len, start_offset, end_offset_inclusive,
+                               klength, kstride, alph, lcol_ids, lvals);
     lrow_ids.insert(lrow_ids.end(), num_kmers, lseq_idx + offset);
   }
 
 
-  *//*if (parops->world_proc_rank == 0) {
-    for (int64_t &row_id : lrow_ids) {
-      std::cout << row_id << " ";
-    }
-    std::cout << std::endl;
-  }*//*
 
-//  assert(lrow_ids.size() == lcol_ids.size() == lvals.size());
-  std::printf("Rank: %d lrow_ids %ld lcol_ids %ld lvals %ld\n",
-              parops->world_proc_rank, lrow_ids.size(), lcol_ids.size(), lvals.size());
-
-  *//*! Write values to file to see why it segfaults *//*
-*//*  std::ofstream f;
-  std::string fname = "mat." + std::to_string(parops->world_proc_rank) + ".txt";
-  f.open(fname);
-  for (int i = 0; i < lrow_ids.size(); ++i){
-    f << lrow_ids[i] << "," << lcol_ids[i] << "," << lvals[i] << std::endl;
+#ifndef NDEBUG
+  {
+    std::string title = "Local matrix info:";
+    std::string msg = "lrow_ids size: " + std::to_string(lrow_ids.size())
+                      + " lcol_ids size: " + std::to_string(lcol_ids.size())
+                      + " lvals size: " + std::to_string(lvals.size());
+    DebugUtils::print_msg(title, msg, parops);
   }
-  f.close();*//*
+#endif
 
+  assert(lrow_ids.size() == lcol_ids.size() && lcol_ids.size() == lvals.size());
 
-
-  FullyDistVec<uint64_t, uint64_t> drows(lrow_ids, grid);
-  FullyDistVec<uint64_t, uint64_t> dcols(lcol_ids, grid);
-  *//*! TODO - apparently there's a bug when setting a different element type,
-   * so let's use uint64_t as element type for now
-   *//*
-  FullyDistVec<uint64_t, uint64_t> dvals(lvals, grid);
+  /*! Create distributed sparse matrix of sequence x kmers */
+  FullyDistVec<uint64_t, uint64_t> drows(lrow_ids, parops->grid);
+  FullyDistVec<uint64_t, uint64_t> dcols(lcol_ids, parops->grid);
+  /*! TODO - apparently there's a bug when setting a different element type,
+   * so let's use uint64_t as element type for now */
+  FullyDistVec<uint64_t, uint64_t> dvals(lvals, parops->grid);
 
   uint64_t n_rows = seq_count;
-  *//*! Columns of the matrix are direct maps to kmers identified
+  /*! Columns of the matrix are direct maps to kmers identified
    * by their |alphabet| base number. E.g. for proteins this is
-   * base 20, so the direct map has to be 20^k in size.
-   *//*
+   * base 20, so the direct map has to be 20^k in size. */
+
   auto n_cols = static_cast<uint64_t>(pow(alph.size, klength));
   PSpMat<ushort>::MPI_DCCols A(n_rows, n_cols, drows, dcols, dvals, false);
   A.PrintInfo();
@@ -152,35 +133,25 @@ int main(int argc, char **argv) {
   At.Transpose();
 
   PSpMat<CommonKmers>::MPI_DCCols C =
-      Mult_AnXBn_Synch<KmerIntersectSR_t,
-          CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
+    Mult_AnXBn_Synch<KmerIntersectSR_t,
+      CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
 
-//  int nnz = C.getnnz();
-//  if (parops->world_proc_rank == 0){
-//    std::cout<<nnz<<std::endl;
-//  }
   C.PrintInfo();
 
-  *//*! Test multiplication *//*
-  *//* rows and cols in the result *//*
+  /*! Test multiplication */
 
+  // rows and cols in the result
+  n_cols = n_rows = seq_count;
+  int pr = parops->grid->GetGridRows();
+  int pc = parops->grid->GetGridCols();
 
-
-  int64_t nrows = seq_count;
-  int64_t ncols = seq_count;
-  int pr = static_cast<int>(sqrt(parops->world_procs_count));
-  int pc = pr;
-
-  //Information about the matrix distribution
-  //Assume that A is an nrow x ncol matrix
-  //The local submatrix is an lnrow x lncol matrix
-  int rowrank = grid->GetRankInProcRow();
-  int colrank = grid->GetRankInProcCol();
-  int64_t m_perproc = nrows / pr;
-  int64_t n_perproc = ncols / pc;
+  int row_rank = parops->grid->GetRankInProcRow();
+  int col_rank = parops->grid->GetRankInProcCol();
+  uint64_t m_perproc = n_rows / pr;
+  uint64_t n_perproc = n_cols / pc;
   PSpMat<CommonKmers>::DCCols *spSeq = C.seqptr(); // local submatrix
-  int64_t localRowStart = colrank * m_perproc; // first row in this process
-  int64_t localColStart = rowrank * n_perproc; // first col in this process
+  uint64_t l_row_start = col_rank * m_perproc; // first row in this process
+  uint64_t l_col_start = row_rank * n_perproc; // first col in this process
 
 //  std::cout<<std::endl<<spSeq->begcol().colid()<<" " <<spSeq->endcol().colid()<<std::endl;
 
@@ -195,19 +166,19 @@ int main(int argc, char **argv) {
   vf.open("values.txt", std::ios::app);
 
 
-  std::cout<<"\nRank: "<<parops->world_proc_rank<<"\n writing data\n";
+  std::cout << "\nRank: " << parops->world_proc_rank << "\n writing data\n";
 
   for (auto colit = spSeq->begcol();
        colit != spSeq->endcol(); ++colit) // iterate over columns
   {
     int64_t lj = colit.colid(); // local numbering
-    int64_t j = lj + localColStart;
+    int64_t j = lj + l_col_start;
 
     for (auto nzit = spSeq->begnz(colit);
          nzit < spSeq->endnz(colit); ++nzit) {
 
       int64_t li = nzit.rowid();
-      int64_t i = li + localRowStart;
+      int64_t i = li + l_row_start;
       rf << i << ",";
       cf << j << ",";
       vf << nzit.value().count << ",";
@@ -220,37 +191,17 @@ int main(int argc, char **argv) {
   vf.close();
 
   if (parops->world_proc_rank < parops->world_procs_count - 1) {
-    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
+    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99,
+             MPI_COMM_WORLD);
   }
 
-  MPI_Barrier(MPI_COMM_WORLD);*/
+  MPI_Barrier(MPI_COMM_WORLD);
 
-  /* Test get fasta */
-  /*int len, start_offset, end_offset_inclusive;
-  std::shared_ptr<char> seq = fd->get_sequence(
-      1, false, len, start_offset, end_offset_inclusive);
-
-  int flag;
-  if (parops->world_proc_rank > 0)
-    MPI_Recv(&flag, 1, MPI_INT, parops->world_proc_rank-1, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  std::cout<<"\nRank: "<<parops->world_proc_rank<<"\n-------------------------\n";
-  std::cout.write(seq.get()+start_offset, (end_offset_inclusive - start_offset)+1);
-  std::cout<< std::endl << start_offset << " " << end_offset_inclusive<<std::endl;
-  if (parops->world_proc_rank < parops->world_procs_count - 1) {
-    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
+  /*! Wait until data distribution is complete */
+  if (!dfd->is_ready()) {
+    dfd->wait();
   }
 
-
-
-  /* Test print */
-  /*flag;
-  if (parops->world_proc_rank > 0)
-    MPI_Recv(&flag, 1, MPI_INT, parops->world_proc_rank-1, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  std::cout<<"\nRank: "<<parops->world_proc_rank<<"\n-------------------------\n";
-  fd->print();
-  if (parops->world_proc_rank < parops->world_procs_count - 1) {
-    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99, MPI_COMM_WORLD);
-  }*/
 
   parops->teardown_parallelism();
   return 0;
