@@ -13,3 +13,5 @@
 #mpirun -np 4 ./lbl_dal -i /Users/esaliya/sali/data/metaclust_50/metaclust_50_head_10.fasta -c 10 -O 1000 -k 2 -s 1
 #mpirun -np 4 ./lbl_dal -i /Users/esaliya/sali/data/metaclust_50/metaclust_50_head_50.fasta -c 50 -O 1000 -k 2 -s 1
 #mpirun -np 16 ./lbl_dal -i /Users/esaliya/sali/data/metaclust_50/metaclust_50_head_100.fasta -c 100 -O 1000 -k 2 -s 1
+
+mpirun -np 4 ./cmake-build-release/lbl_dal -i /Users/esaliya/sali/data/metaclust_50/metaclust_50_head_4000.fasta -c 4000 -O 1000 -k 6 -s 1

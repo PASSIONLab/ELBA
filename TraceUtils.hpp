@@ -4,17 +4,29 @@
 #define LBL_DAL_DEBUGUTILS_HPP
 
 #include "ParallelOps.hpp"
-#include "FastaData.hpp"
+#include "Types.hpp"
 
-class DebugUtils {
+struct TimePod {
+  std::unordered_map<std::string, ticks_t> times;
+  std::string names [2] = {"ad", "adfad"};
+};
+
+class TraceUtils {
 public:
-  static void print_fasta_data(const std::unique_ptr<FastaData> &dfd,
-    const std::shared_ptr<ParallelOps> &parops);
+//  static void print_fasta_data(const std::unique_ptr<FastaData> &dfd,
+//    const std::shared_ptr<ParallelOps> &parops);
   static void print_msg(const std::string &title, const std::string &msg,
                         const std::shared_ptr<ParallelOps> &parops);
   static void print_msg_on_rank(const std::string &title, const std::string &msg,
                                 const std::shared_ptr<ParallelOps> &parops,
                                 int rank);
+
+  explicit TraceUtils(bool is_print_rank);
+
+  void print_str(std::string str);
+
+private:
+  bool is_print_rank;
 };
 
 //void _debug_print_fasta_data(const std::unique_ptr<FastaData> &fd,

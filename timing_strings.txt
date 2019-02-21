@@ -1,0 +1,12 @@
+"start_main"
+    "start_main:newDFD()"
+        "start_dfd:pfr->read_fasta()"
+        "end_dfd:pfr->read_fasta()"
+
+        "start_dfd:new_FD()"
+        "end_dfd:new_FD()"
+    "end_main:newDFD()"
+
+    "start_main:loop_add_kmers()"
+    "end_main:loop_add_kmers()"
+"end_main"

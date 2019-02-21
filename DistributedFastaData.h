@@ -6,6 +6,7 @@
 #include <seqan/sequence.h>
 #include "FastaData.hpp"
 #include "ParallelOps.hpp"
+#include "TraceUtils.hpp"
 
 struct NbrData {
   ushort rc_flag;
@@ -33,7 +34,8 @@ public:
   ~DistributedFastaData();
 
   DistributedFastaData(const char *file, ushort overlap, ushort k,
-                       const std::shared_ptr<ParallelOps> &parops);
+                       const std::shared_ptr<ParallelOps> &parops,
+                       const std::shared_ptr<TimePod> &tp, TraceUtils tu);
 
   uint64_t global_count();
   uint64_t global_start_idx();
@@ -49,6 +51,8 @@ public:
   void wait();
 
 private:
+  std::shared_ptr<TimePod> tp;
+  TraceUtils tu;
   ushort k;
   ushort overlap;
   FastaData *fd = nullptr;
