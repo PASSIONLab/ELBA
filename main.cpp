@@ -206,6 +206,12 @@ int main(int argc, char **argv) {
   }
 
   DistributedAligner dal(klength, xdrop, gap_open, gap_ext, dfd, C, parops);
+  uint64_t total_alignments = dal.align_seqs();
+
+  if(is_print_rank){
+    std::cout<<" Final alignment count: " << total_alignments<<std::endl;
+  }
+
 
   parops->teardown_parallelism();
   return 0;
