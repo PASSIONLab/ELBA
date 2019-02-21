@@ -6,7 +6,7 @@
 #include "Alphabet.hpp"
 #include "Kmer.hpp"
 #include "Utils.hpp"
-//#include "DebugUtils.hpp"
+#include "DistributedAligner.hpp"
 #include "CombBLAS/CombBLAS.h"
 #include "cxxopts.hpp"
 
@@ -28,6 +28,9 @@ std::shared_ptr<ParallelOps> parops;
 std::string input_file;
 ushort input_overlap;
 uint64_t seq_count;
+int xdrop;
+int gap_open;
+int gap_ext;
 ushort klength;
 ushort kstride;
 
@@ -57,8 +60,8 @@ int main(int argc, char **argv) {
   }
 
   /*! Read and distribute fasta data */
-  std::unique_ptr<DistributedFastaData> dfd
-    = std::make_unique<DistributedFastaData>(
+  std::shared_ptr<DistributedFastaData> dfd
+    = std::make_shared<DistributedFastaData>(
       input_file.c_str(), input_overlap, klength, parops);
 
 #ifndef NDEBUG
@@ -127,7 +130,6 @@ int main(int argc, char **argv) {
 
   auto n_cols = static_cast<uint64_t>(pow(alph.size, klength));
   PSpMat<ushort>::MPI_DCCols A(n_rows, n_cols, drows, dcols, dvals, false);
-  A.PrintInfo();
 
   auto At = A;
   At.Transpose();
@@ -136,8 +138,8 @@ int main(int argc, char **argv) {
     Mult_AnXBn_Synch<KmerIntersectSR_t,
       CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
 
-  C.PrintInfo();
 
+#ifndef NDEBUG
   /*! Test multiplication */
 
   // rows and cols in the result
@@ -196,19 +198,21 @@ int main(int argc, char **argv) {
   }
 
   MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
   /*! Wait until data distribution is complete */
   if (!dfd->is_ready()) {
     dfd->wait();
   }
 
+  DistributedAligner dal(klength, xdrop, gap_open, gap_ext, dfd, C, parops);
 
   parops->teardown_parallelism();
   return 0;
 }
 
 int parse_args(int argc, char **argv) {
-  cxxopts::Options options("Distributed Aligner",
+  cxxopts::Options options("Distributed DistributedAligner",
                            "A distributed protein aligner");
 
   options.add_options()
@@ -217,6 +221,12 @@ int parse_args(int argc, char **argv) {
     (CMD_OPTION_INPUT_SEQ_COUNT, CMD_OPTION_DESCRIPTION_INPUT_SEQ_COUNT,
      cxxopts::value<int>())
     (CMD_OPTION_INPUT_OVERLAP, CMD_OPTION_DESCRIPTION_INPUT_OVERLAP,
+     cxxopts::value<int>())
+    (CMD_OPTION_XDROP, CMD_OPTION_DESCRIPTION_XDROP,
+     cxxopts::value<int>())
+    (CMD_OPTION_GAP_OPEN, CMD_OPTION_DESCRIPTION_GAP_OPEN,
+     cxxopts::value<int>())
+    (CMD_OPTION_GAP_EXT, CMD_OPTION_DESCRIPTION_GAP_EXT,
      cxxopts::value<int>())
     (CMD_OPTION_KMER_LENGTH, CMD_OPTION_DESCRIPTION_KMER_LENGTH,
      cxxopts::value<int>())
@@ -249,6 +259,24 @@ int parse_args(int argc, char **argv) {
     input_overlap = result[CMD_OPTION_INPUT_OVERLAP].as<int>();
   } else {
     input_overlap = 10000;
+  }
+
+  if (result.count(CMD_OPTION_XDROP)) {
+    xdrop = result[CMD_OPTION_XDROP].as<int>();
+  } else {
+    xdrop = 49;
+  }
+
+  if (result.count(CMD_OPTION_GAP_OPEN)) {
+    gap_open = result[CMD_OPTION_GAP_OPEN].as<int>();
+  } else {
+    gap_open = -11;
+  }
+
+  if (result.count(CMD_OPTION_GAP_EXT)) {
+    gap_ext = result[CMD_OPTION_GAP_EXT].as<int>();
+  } else {
+    gap_ext = -2;
   }
 
   if (result.count(CMD_OPTION_KMER_LENGTH)) {

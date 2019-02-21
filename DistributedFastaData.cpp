@@ -423,6 +423,10 @@ bool DistributedFastaData::is_ready() {
   return ready;
 }
 
+bool DistributedFastaData::is_diagonal() {
+  return is_diagonal_cell;
+}
+
 void
 DistributedFastaData::push_seqs(int rc_flag, FastaData *fd, uint64_t seqs_count,
                                 uint64_t seq_start_idx) {
@@ -507,4 +511,12 @@ void DistributedFastaData::wait() {
          col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
 
   ready = true;
+}
+
+seqan::Peptide *DistributedFastaData::row_seq(uint64_t l_row_idx) {
+  return row_seqs[l_row_idx];
+}
+
+seqan::Peptide *DistributedFastaData::col_seq(uint64_t l_col_idx) {
+  return col_seqs[l_col_idx];
 }
