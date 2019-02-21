@@ -20,8 +20,8 @@ add_executable(lbl_dal
         Constants.cpp
         Constants.hpp
         cxxopts.hpp
-        DebugUtils.cpp
-        DebugUtils.hpp
+        TraceUtils.cpp
+        TraceUtils.hpp
         DistributedFastaData.cpp
         DistributedFastaData.h
         FastaData.cpp

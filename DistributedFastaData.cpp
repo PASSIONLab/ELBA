@@ -45,19 +45,24 @@ DistributedFastaData::~DistributedFastaData() {
 
 DistributedFastaData::DistributedFastaData(
   const char *file, ushort overlap, ushort k,
-  const std::shared_ptr<ParallelOps> &parops)
-  : overlap(overlap), k(k), parops(parops) {
+  const std::shared_ptr<ParallelOps> &parops,
+  const std::shared_ptr<TimePod> &tp, TraceUtils tu)
+  : overlap(overlap), k(k), parops(parops), tp(tp), tu(tu) {
 
   is_diagonal_cell =
     parops->grid->GetRankInProcRow() == parops->grid->GetRankInProcCol();
 
+  tp->times["start_dfd:pfr->read_fasta()"] = std::chrono::system_clock::now();
   char *buff;
   uint64_t l_start, l_end;
   ParallelFastaReader::read_fasta(file, overlap, parops->world_proc_rank,
                                   parops->world_procs_count, buff, l_start,
                                   l_end);
+  tp->times["end_dfd:pfr->read_fasta()"] = std::chrono::system_clock::now();
 
-  fd = new FastaData(buff, k, l_start, l_end);
+  tp->times["start_dfd:new_FD()"] = tp->times["end_dfd:pfr->read_fasta()"];
+  fd = new FastaData(buff, k, l_start, l_end, tp, tu);
+  tp->times["start_dfd:new_FD()"] = std::chrono::system_clock::now();
 
   l_seq_count = fd->local_count();
 
@@ -66,7 +71,7 @@ DistributedFastaData::DistributedFastaData(
     // TODO - Debug
     std::string title = "debug l_seq_count";
     std::string msg = std::to_string(l_seq_count);
-    DebugUtils::print_msg(title, msg, parops);
+    TraceUtils::print_msg(title, msg, parops);
   }
 #endif
 
@@ -139,7 +144,7 @@ void DistributedFastaData::collect_grid_seqs() {
              + ", nbr_seq_end_idx: " + std::to_string(nbr.nbr_seq_end_idx) +
              ")\n";
     }
-    DebugUtils::print_msg(title, msg, parops);
+    TraceUtils::print_msg(title, msg, parops);
   }
 #endif
 
@@ -212,7 +217,7 @@ void DistributedFastaData::collect_grid_seqs() {
              + " count: " + std::to_string(all_nbrs_counts[i])
              + " displ:" + std::to_string(all_nbrs_displas[i]) + ")\n";
     }
-    DebugUtils::print_msg_on_rank(title, msg, parops, 0);
+    TraceUtils::print_msg_on_rank(title, msg, parops, 0);
   }
 #endif
 
@@ -234,7 +239,7 @@ void DistributedFastaData::collect_grid_seqs() {
         ++rank;
       }
     }
-    DebugUtils::print_msg_on_rank(title, msg, parops, 0);
+    TraceUtils::print_msg_on_rank(title, msg, parops, 0);
   }
 #endif
 
@@ -294,7 +299,7 @@ void DistributedFastaData::collect_grid_seqs() {
              std::to_string(recv_nbrs_buff_lengths[i]) +
              ")\n";
     }
-    DebugUtils::print_msg(title, msg, parops);
+    TraceUtils::print_msg(title, msg, parops);
   }
 #endif
 
@@ -305,7 +310,7 @@ void DistributedFastaData::collect_grid_seqs() {
     std::string title = "recv_nbrs and to_nbrs count";
     std::string msg = "(rnc: " + std::to_string(recv_nbrs_count) + " tnc: " +
                       std::to_string(to_nbrs_count) + ")";
-    DebugUtils::print_msg(title, msg, parops);
+    TraceUtils::print_msg(title, msg, parops);
   }
 #endif
 
@@ -460,7 +465,7 @@ void DistributedFastaData::wait() {
     for (int i = 0; i < recv_nbrs_count; ++i) {
       msg += std::string(recv_nbrs_buffs[i], 1);
     }
-    DebugUtils::print_msg(title, msg, parops);
+    TraceUtils::print_msg(title, msg, parops);
   }
 #endif
 
@@ -491,7 +496,7 @@ void DistributedFastaData::wait() {
       }
 #endif
       FastaData *recv_fd = new FastaData(recv_nbrs_buffs[recv_nbr_idx], k, 0,
-                                         recv_nbr_l_end);
+                                         recv_nbr_l_end, tp, tu);
 
       push_seqs(nbr.rc_flag, recv_fd, nbr_seqs_count, 0);
       ++recv_nbr_idx;
@@ -499,7 +504,7 @@ void DistributedFastaData::wait() {
   }
 
 #ifndef NDEBUG
-  DebugUtils::print_msg(title, msg, parops);
+  TraceUtils::print_msg(title, msg, parops);
 #endif
 
   if (is_diagonal_cell) {

@@ -38,6 +38,8 @@ bool is_print_rank = false;
 std::string print_str;
 
 
+
+
 int main(int argc, char **argv) {
   parops = ParallelOps::init(&argc, &argv);
   int ret = parse_args(argc, argv);
@@ -47,40 +49,41 @@ int main(int argc, char **argv) {
   }
 
   is_print_rank = (parops->world_proc_rank == 0);
+  std::shared_ptr<TimePod> tp = std::make_shared<TimePod>();
+  TraceUtils tu(is_print_rank);
 
   /*! Print start time information */
-  ticks_t start_prog = std::chrono::system_clock::now();
+  tp->times["start_main"] = std::chrono::system_clock::now();
   std::time_t start_prog_time = std::chrono::system_clock::to_time_t(
-    start_prog);
+    tp->times["start_main"]);
   print_str = "\nINFO: Program started on ";
   print_str.append(std::ctime(&start_prog_time));
   pretty_print_config(print_str);
-  if (is_print_rank) {
-    std::cout << print_str;
-  }
+  tu.print_str(print_str);
 
   /*! Read and distribute fasta data */
+  tp->times["start_main:newDFD()"] = std::chrono::system_clock::now();
   std::shared_ptr<DistributedFastaData> dfd
     = std::make_shared<DistributedFastaData>(
-      input_file.c_str(), input_overlap, klength, parops);
+      input_file.c_str(), input_overlap, klength, parops, tp, tu);
+  tp->times["end_main:newDFD()"] = std::chrono::system_clock::now();
 
 #ifndef NDEBUG
-//  DebugUtils::print_fasta_data(fd, parops);
+  //  TraceUtils::print_fasta_data(fd, parops);
 #endif
 
   if (dfd->global_count() != seq_count) {
     uint64_t final_seq_count = dfd->global_count();
-    if (is_print_rank) {
-      print_str = "\nINFO: Modfied sequence count\n";
-      print_str.append("  Final sequence count: ")
-        .append(std::to_string(final_seq_count))
-        .append(" (").append(
-          std::to_string(((seq_count - final_seq_count) * 100 / seq_count)))
-        .append("% removed)");
+    print_str = "\nINFO: Modfied sequence count\n";
+    print_str.append("  Final sequence count: ")
+      .append(std::to_string(final_seq_count))
+      .append(" (").append(
+        std::to_string(((seq_count - final_seq_count) * 100 / seq_count)))
+      .append("% removed)");
 
-      seq_count = dfd->global_count();
-      std::cout << print_str << std::endl;
-    }
+    seq_count = dfd->global_count();
+    print_str += "\n";
+    tu.print_str(print_str);
   }
 
   /*! Find K-mers */
@@ -95,13 +98,14 @@ int main(int argc, char **argv) {
   uvec_16 lvals;
   uint64_t offset = dfd->global_start_idx();
   FastaData *lfd = dfd->lfd();
+  tp->times["start_main:loop_add_kmers()"] = std::chrono::system_clock::now();
   for (uint64_t lseq_idx = 0; lseq_idx < lfd->local_count(); ++lseq_idx) {
     buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
     auto num_kmers = add_kmers(buff, len, start_offset, end_offset_inclusive,
                                klength, kstride, alph, lcol_ids, lvals);
     lrow_ids.insert(lrow_ids.end(), num_kmers, lseq_idx + offset);
   }
-
+  tp->times["end_main:loop_add_kmers()"] = std::chrono::system_clock::now();
 
 
 #ifndef NDEBUG
@@ -110,7 +114,7 @@ int main(int argc, char **argv) {
     std::string msg = "lrow_ids size: " + std::to_string(lrow_ids.size())
                       + " lcol_ids size: " + std::to_string(lcol_ids.size())
                       + " lvals size: " + std::to_string(lvals.size());
-    DebugUtils::print_msg(title, msg, parops);
+    TraceUtils::print_msg(title, msg, parops);
   }
 #endif
 
@@ -129,14 +133,20 @@ int main(int argc, char **argv) {
    * base 20, so the direct map has to be 20^k in size. */
 
   auto n_cols = static_cast<uint64_t>(pow(alph.size, klength));
+  tp->times["start_main:spMatA()"] = std::chrono::system_clock::now();
   PSpMat<ushort>::MPI_DCCols A(n_rows, n_cols, drows, dcols, dvals, false);
+  tp->times["end_main:spMatA()"] = std::chrono::system_clock::now();
 
   auto At = A;
+  tp->times["start_main:At()"] = tp->times["end_main:spMatA()"];
   At.Transpose();
+  tp->times["end_main:At()"] = std::chrono::system_clock::now();
 
+  tp->times["start_main:AxAt()"] = tp->times["end_main:At()"];
   PSpMat<CommonKmers>::MPI_DCCols C =
     Mult_AnXBn_Synch<KmerIntersectSR_t,
       CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
+  tp->times["end_main:AxAt()"] = std::chrono::system_clock::now();
 
 
 #ifndef NDEBUG
@@ -208,11 +218,12 @@ int main(int argc, char **argv) {
   DistributedAligner dal(klength, xdrop, gap_open, gap_ext, dfd, C, parops);
   uint64_t total_alignments = dal.align_seqs();
 
-  if(is_print_rank){
-    std::cout<<"Final alignment count: " << total_alignments<<std::endl;
+  if (is_print_rank) {
+    std::cout << "Final alignment count: " << total_alignments << std::endl;
   }
 
   MPI_Barrier(MPI_COMM_WORLD);
+  tp->times["end_main"] = std::chrono::system_clock::now();
   parops->teardown_parallelism();
   return 0;
 }

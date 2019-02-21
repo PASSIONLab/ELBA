@@ -10,7 +10,9 @@ FastaData::~FastaData() {
   delete (seq_starts);
 }
 
-FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end) {
+FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
+                     const std::shared_ptr<TimePod> &tp, TraceUtils tu)
+                     : tp(tp), tu(tu) {
 
   id_starts = new uvec_64();
   seq_starts = new uvec_64();

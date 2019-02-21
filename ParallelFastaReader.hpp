@@ -6,7 +6,7 @@
 
 #include "ParallelOps.hpp"
 #include "FastaData.hpp"
-#include "DebugUtils.hpp"
+#include "TraceUtils.hpp"
 #include "DistributedFastaData.h"
 
 

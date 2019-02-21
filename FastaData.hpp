@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 #include "Types.hpp"
+#include "TraceUtils.hpp"
 
 /*!
  * Utility to store and retrive the data read from FASTA files.
@@ -34,7 +35,8 @@ public:
    * @param l_end End offset (inclusive) of the data for this process.
    * @param k The k-mer size
    */
-  FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end);
+  FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
+            const std::shared_ptr<TimePod> &tp, TraceUtils tu);
 
   /*!
    * Destructor for FastaData
@@ -109,6 +111,8 @@ public:
   void print();
 
 private:
+  std::shared_ptr<TimePod> tp = nullptr;
+  TraceUtils tu;
   /*! Pointer to the raw character stream of FASTA content  */
   char *buff;
   /*! Number of sequences local to this process available in data stream */
