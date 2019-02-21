@@ -60,12 +60,15 @@ DistributedFastaData::DistributedFastaData(
   fd = new FastaData(buff, k, l_start, l_end);
 
   l_seq_count = fd->local_count();
+
+#ifndef NDEBUG
   {
     // TODO - Debug
     std::string title = "debug l_seq_count";
     std::string msg = std::to_string(l_seq_count);
     DebugUtils::print_msg(title, msg, parops);
   }
+#endif
 
   l_seq_counts = new uint64_t[parops->world_procs_count];
   MPI_Allgather(&l_seq_count, 1, MPI_UINT64_T, l_seq_counts,
@@ -407,7 +410,7 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
   assert(count == rc_seq_count_needed);
 }
 
-FastaData * DistributedFastaData::lfd() {
+FastaData *DistributedFastaData::lfd() {
   return fd;
 }
 
@@ -415,7 +418,7 @@ uint64_t DistributedFastaData::global_count() {
   return g_seq_count;
 }
 
-uint64_t DistributedFastaData::global_start_idx(){
+uint64_t DistributedFastaData::global_start_idx() {
   return g_seq_offsets[parops->world_proc_rank];
 }
 
