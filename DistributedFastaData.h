@@ -41,6 +41,10 @@ public:
   FastaData * lfd();
 
   bool is_ready();
+  bool is_diagonal();
+
+  seqan::Peptide * row_seq(uint64_t l_row_idx);
+  seqan::Peptide * col_seq(uint64_t l_col_idx);
 
   void wait();
 

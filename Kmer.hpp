@@ -88,7 +88,7 @@ struct KmerIntersect {
   }
 };
 
-ushort add_kmers(const char *seq, ushort len, uint64_t start_offset,
+static ushort add_kmers(const char *seq, ushort len, uint64_t start_offset,
               uint64_t enf_offset_inclusive, ushort k, ushort s, Alphabet &alp,
               uvec_64 &lcol_ids, uvec_16 &lvals){
   auto num_kmers = static_cast<ushort>((floor((len - k)*1.0 / s)) + 1);

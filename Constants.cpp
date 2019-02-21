@@ -10,6 +10,15 @@ const char *CMD_OPTION_DESCRIPTION_INPUT_SEQ_COUNT = "The sequence count in the 
 const char *CMD_OPTION_INPUT_OVERLAP = "O";
 const char *CMD_OPTION_DESCRIPTION_INPUT_OVERLAP = "Number of bytes to overlap when reading the input file in parallel";
 
+const char *CMD_OPTION_XDROP = "x";
+const char *CMD_OPTION_DESCRIPTION_XDROP = "Xdrop";
+
+const char *CMD_OPTION_KMER_GAP_OPEN = "g";
+const char *CMD_OPTION_DESCRIPTION_GAP_OPEN = "Gap open penalty (negative value)";
+
+const char *CMD_OPTION_KMER_GAP_EXT = "e";
+const char *CMD_OPTION_DESCRIPTION_GAP_EXT = "Gap extension penalty (negative value)";
+
 const char *CMD_OPTION_KMER_LENGTH = "k";
 const char *CMD_OPTION_DESCRIPTION_KMER_LENGTH = "Kmer length";
 

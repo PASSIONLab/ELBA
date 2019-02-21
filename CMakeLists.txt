@@ -33,7 +33,7 @@ add_executable(lbl_dal
         ParallelOps.cpp
         ParallelOps.hpp
         Types.hpp
-        Utils.hpp)
+        Utils.hpp DistributedAligner.cpp DistributedAligner.hpp)
 
 target_link_libraries(lbl_dal CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)
