@@ -232,7 +232,7 @@ int main(int argc, char **argv) {
   std::time_t end_prog_time = std::chrono::system_clock::to_time_t(
     tp->times["end_main"]);
   print_str = "INFO: Program ended on ";
-  print_str.append(std::ctime(&start_prog_time));
+  print_str.append(std::ctime(&end_prog_time));
   tu.print_str(print_str);
   tu.print_str(tp->to_string());
 
