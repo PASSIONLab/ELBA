@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.11)
 project(lbl_dal)
+
+
 include_directories(
         "/usr/local/include"
         "~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"
@@ -8,9 +10,15 @@ include_directories(
 )
 
 link_directories("~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/lib")
-find_package(MPI REQUIRED)
+
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
 
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+find_package(MPI REQUIRED)
 
 include_directories(.)
 

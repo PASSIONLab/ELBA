@@ -8,7 +8,31 @@
 
 struct TimePod {
   std::unordered_map<std::string, ticks_t> times;
-  std::string names [2] = {"ad", "adfad"};
+  std::string names[12] = {"main",
+                           "main:newDFD()",
+                           "dfd:pfr->read_fasta()",
+                           "dfd:new_FD()",
+                           "main:loop_add_kmers()",
+                           "main:spMatA()",
+                           "main:At()",
+                           "main:AxAt()",
+                           "main:dfd->wait()",
+                           "dfd:MPI_Waitall(seqs)",
+                           "dfd:extract_recv_seqs",
+                           "main:dal->align()"
+  };
+
+  std::string to_string() {
+    std::string str = "\nINFO: Program timings ...\n";
+    ticks_t ts, te;
+    for (const auto &name : names) {
+      ts = times["start_" + name];
+      te = times["end_" + name];
+      str.append(name).append(":")
+      .append(std::to_string((ms_t(te - ts)).count())).append(" ms\n");
+    }
+    return str;
+  }
 };
 
 class TraceUtils {
@@ -17,9 +41,11 @@ public:
 //    const std::shared_ptr<ParallelOps> &parops);
   static void print_msg(const std::string &title, const std::string &msg,
                         const std::shared_ptr<ParallelOps> &parops);
-  static void print_msg_on_rank(const std::string &title, const std::string &msg,
-                                const std::shared_ptr<ParallelOps> &parops,
-                                int rank);
+
+  static void
+  print_msg_on_rank(const std::string &title, const std::string &msg,
+                    const std::shared_ptr<ParallelOps> &parops,
+                    int rank);
 
   explicit TraceUtils(bool is_print_rank);
 
