@@ -146,14 +146,6 @@ void FastaData::buffer_size(uint64_t start_idx,
      ? ((*id_starts)[end_idx_inclusive + 1] - 2)
      : l_end);
   len = (end_offset_inclusive - start_offset) + 1;
-
-//  start_offset = (*seq_starts)[start_idx];
-//  end_offset_inclusive =
-//    (end_idx_inclusive + 1 < id_starts->size()
-//     ? ((*id_starts)[end_idx_inclusive + 1] - 2)
-//     : l_end);
-//  len = (end_offset_inclusive - start_offset) + 1;
-
 }
 
 const char *FastaData::buffer() {

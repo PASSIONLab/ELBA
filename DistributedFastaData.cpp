@@ -68,8 +68,7 @@ DistributedFastaData::DistributedFastaData(
 
 #ifndef NDEBUG
   {
-    // TODO - Debug
-    std::string title = "debug l_seq_count";
+    std::string title = "l_seq_count";
     std::string msg = std::to_string(l_seq_count);
     TraceUtils::print_msg(title, msg, parops);
   }
@@ -167,7 +166,8 @@ void DistributedFastaData::collect_grid_seqs() {
   recv_nbrs_buff_lengths = new uint64_t[recv_nbrs_count];
   for (int i = 0; i < recv_nbrs_count; ++i) {
     MPI_Irecv(recv_nbrs_buff_lengths + i, 1, MPI_UINT64_T,
-              my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 99,
+              my_nbrs[recv_nbrs_idxs[i]].nbr_rank,
+              99+my_nbrs[recv_nbrs_idxs[i]].rc_flag,
               MPI_COMM_WORLD, recv_nbrs_buff_lengths_reqs + i);
   }
 
@@ -275,7 +275,8 @@ void DistributedFastaData::collect_grid_seqs() {
   auto *to_nbrs_send_reqs = new MPI_Request[to_nbrs_count];
   for (int i = 0; i < to_nbrs_count; ++i) {
     MPI_Isend(&send_lengths[i], 1, MPI_UINT64_T,
-              all_nbrs[to_nbrs_idxs[i]].owner_rank, 99, MPI_COMM_WORLD,
+              all_nbrs[to_nbrs_idxs[i]].owner_rank,
+              99+all_nbrs[to_nbrs_idxs[i]].rc_flag, MPI_COMM_WORLD,
               to_nbrs_send_reqs + i);
   }
 
@@ -322,7 +323,8 @@ void DistributedFastaData::collect_grid_seqs() {
   recv_nbrs_buffs_stats = new MPI_Status[recv_nbrs_count];
   for (int i = 0; i < recv_nbrs_count; ++i) {
     MPI_Irecv(recv_nbrs_buffs[i], static_cast<int>(recv_nbrs_buff_lengths[i]),
-              MPI_CHAR, my_nbrs[recv_nbrs_idxs[i]].nbr_rank, 77, MPI_COMM_WORLD,
+              MPI_CHAR, my_nbrs[recv_nbrs_idxs[i]].nbr_rank,
+              77+my_nbrs[recv_nbrs_idxs[i]].rc_flag, MPI_COMM_WORLD,
               recv_nbrs_buffs_reqs + i);
   }
 
@@ -331,7 +333,8 @@ void DistributedFastaData::collect_grid_seqs() {
   for (int i = 0; i < to_nbrs_count; ++i) {
     MPI_Isend(fd->buffer() + send_start_offsets[i],
               static_cast<int>(send_lengths[i]), MPI_CHAR,
-              all_nbrs[to_nbrs_idxs[i]].owner_rank, 77, MPI_COMM_WORLD,
+              all_nbrs[to_nbrs_idxs[i]].owner_rank,
+              77+all_nbrs[to_nbrs_idxs[i]].rc_flag, MPI_COMM_WORLD,
               to_nbrs_buffs_reqs + i);
   }
 
