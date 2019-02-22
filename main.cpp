@@ -227,7 +227,6 @@ int main(int argc, char **argv) {
     std::cout << "Final alignment count: " << total_alignments << std::endl;
   }
 
-  MPI_Barrier(MPI_COMM_WORLD);
   tp->times["end_main"] = std::chrono::system_clock::now();
 
   std::time_t end_prog_time = std::chrono::system_clock::to_time_t(
@@ -236,6 +235,8 @@ int main(int argc, char **argv) {
   print_str.append(std::ctime(&start_prog_time));
   tu.print_str(print_str);
   tu.print_str(tp->to_string());
+  
+  MPI_Barrier(MPI_COMM_WORLD);
   parops->teardown_parallelism();
   return 0;
 }
