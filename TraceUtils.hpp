@@ -28,7 +28,7 @@ struct TimePod {
     for (const auto &name : names) {
       ts = times["start_" + name];
       te = times["end_" + name];
-      str.append(name).append(":")
+      str.append("  ").append(name).append(":")
       .append(std::to_string((ms_t(te - ts)).count())).append(" ms\n");
     }
     return str;
