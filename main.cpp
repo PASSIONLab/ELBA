@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
     print_str.append("  Final sequence count: ")
       .append(std::to_string(final_seq_count))
       .append(" (").append(
-        std::to_string(((seq_count - final_seq_count) * 100 / seq_count)))
+        std::to_string((((seq_count - final_seq_count) * 100.0) / seq_count)))
       .append("% removed)");
 
     seq_count = dfd->global_count();
