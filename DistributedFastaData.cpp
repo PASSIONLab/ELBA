@@ -62,7 +62,7 @@ DistributedFastaData::DistributedFastaData(
 
   tp->times["start_dfd:new_FD()"] = tp->times["end_dfd:pfr->read_fasta()"];
   fd = new FastaData(buff, k, l_start, l_end, tp, tu);
-  tp->times["start_dfd:new_FD()"] = std::chrono::system_clock::now();
+  tp->times["end_dfd:new_FD()"] = std::chrono::system_clock::now();
 
   l_seq_count = fd->local_count();
 
@@ -458,8 +458,10 @@ DistributedFastaData::push_seqs(int rc_flag, FastaData *fd, uint64_t seqs_count,
 }
 
 void DistributedFastaData::wait() {
+  tp->times["start_dfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
   MPI_Waitall(recv_nbrs_count, recv_nbrs_buffs_reqs, recv_nbrs_buffs_stats);
   MPI_Waitall(to_nbrs_count, to_nbrs_buffs_reqs, to_nbrs_buffs_stat);
+  tp->times["end_dfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
 
 #ifndef NDEBUG
   {
@@ -477,6 +479,7 @@ void DistributedFastaData::wait() {
   std::string msg;
 #endif
 
+  tp->times["start_dfd:extract_recv_seqs"] = std::chrono::system_clock::now();
   int recv_nbr_idx = 0;
   for (auto &nbr : my_nbrs) {
     uint64_t nbr_seqs_count = (nbr.nbr_seq_end_idx - nbr.nbr_seq_start_idx) + 1;
@@ -522,6 +525,7 @@ void DistributedFastaData::wait() {
          col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
 
   ready = true;
+  tp->times["end_dfd:extract_recv_seqs"] = std::chrono::system_clock::now();
 }
 
 seqan::Peptide *DistributedFastaData::row_seq(uint64_t l_row_idx) {

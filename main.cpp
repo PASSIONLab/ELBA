@@ -211,12 +211,17 @@ int main(int argc, char **argv) {
 #endif
 
   /*! Wait until data distribution is complete */
+  tp->times["start_main:dfd->wait()"] = std::chrono::system_clock::now();
   if (!dfd->is_ready()) {
     dfd->wait();
   }
+  tp->times["end_main:dfd->wait()"] = std::chrono::system_clock::now();
 
   DistributedAligner dal(klength, xdrop, gap_open, gap_ext, dfd, C, parops);
+
+  tp->times["start_main:dal->align()"] = std::chrono::system_clock::now();
   uint64_t total_alignments = dal.align_seqs();
+  tp->times["end_main:dal->align()"] = std::chrono::system_clock::now();
 
   if (is_print_rank) {
     std::cout << "Final alignment count: " << total_alignments << std::endl;
@@ -224,6 +229,13 @@ int main(int argc, char **argv) {
 
   MPI_Barrier(MPI_COMM_WORLD);
   tp->times["end_main"] = std::chrono::system_clock::now();
+
+  std::time_t end_prog_time = std::chrono::system_clock::to_time_t(
+    tp->times["end_main"]);
+  print_str = "INFO: Program ended on ";
+  print_str.append(std::ctime(&start_prog_time));
+  tu.print_str(print_str);
+  tu.print_str(tp->to_string());
   parops->teardown_parallelism();
   return 0;
 }
