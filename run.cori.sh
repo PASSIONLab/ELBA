@@ -26,4 +26,8 @@
 
 #PERF RUNS
 #srun -n 16 -c 4 ./lbl_dal -i /global/homes/e/esaliya/sali/data/metaclust_50/metaclust_50_head_25000.fasta -c 25000 -O 1000 -k 6 -s 1 2>&1 | tee m50.25k.k6.s1.1x16x1.c4.txt
-srun -n 16 -c 4 ./lbl_dal -i /global/homes/e/esaliya/sali/data/metaclust_50/metaclust_50_head_100k.fasta -c 100000 -O 1000 -k 6 -s 1 2>&1 | tee m50.100k.k6.s1.1x16x1.c4.txt
+#srun -n 16 -c 4 ./lbl_dal -i /global/homes/e/esaliya/sali/data/metaclust_50/metaclust_50_head_100k.fasta -c 100000 -O 1000 -k 6 -s 1 2>&1 | tee m50.100k.k6.s1.1x16x1.c4.txt
+#srun -n 16 -c 4 ./lbl_dal -i /global/homes/e/esaliya/sali/data/metaclust_50/metaclust_50_head_250k.fasta -c 100000 -O 1000 -k 6 -s 1 2>&1 | tee m50.250k.k6.s1.1x16x1.c4.txt
+#srun -n 16 -c 4 ./lbl_dal -i /global/homes/e/esaliya/sali/data/metaclust_50/metaclust_50_head_500k.fasta -c 100000 -O 1000 -k 6 -s 1 2>&1 | tee m50.500k.k6.s1.1x16x1.c4.txt
+srun -n 16 -c 4 ./lbl_dal -i /global/homes/e/esaliya/sali/data/metaclust_50/metaclust_50_head_1M.fasta -c 1000000 -O 1000 -k 6 -s 1 2>&1 | tee m50.1M.k6.s1.1x16x1.c4.txt
+srun -n 16 -c 4 ./lbl_dal -i /global/homes/e/esaliya/sali/data/metaclust_50/metaclust_50_head_5M.fasta -c 5000000 -O 1000 -k 6 -s 1 2>&1 | tee m50.5M.k6.s1.1x16x1.c4.txt

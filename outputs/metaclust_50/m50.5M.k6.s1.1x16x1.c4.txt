@@ -1,0 +1,6 @@
+MPIIO WARNING: DVS stripe width of 32 was requested but DVS set it to 28
+See MPICH_MPIIO_DVS_MAXNODES in the intro_mpi man page.
+slurmstepd: error: Detected 1 oom-kill event(s) in step 19209672.11 cgroup. Some of your processes may have been killed by the cgroup out-of-memory handler.
+srun: error: nid00057: tasks 0,2,8,10,12: Out Of Memory
+srun: Terminating job step 19209672.11
+slurmstepd: error: *** STEP 19209672.11 ON nid00057 CANCELLED AT 2019-02-22T00:23:50 ***
