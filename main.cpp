@@ -38,8 +38,6 @@ bool is_print_rank = false;
 std::string print_str;
 
 
-
-
 int main(int argc, char **argv) {
   parops = ParallelOps::init(&argc, &argv);
   int ret = parse_args(argc, argv);
@@ -146,6 +144,8 @@ int main(int argc, char **argv) {
   PSpMat<CommonKmers>::MPI_DCCols C =
     Mult_AnXBn_Synch<KmerIntersectSR_t,
       CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
+  tu.print_str(
+    "Overlaps after k-mer finding: " + std::to_string(C.getnnz() - seq_count) + "\n");
   tp->times["end_main:AxAt()"] = std::chrono::system_clock::now();
 
 
@@ -224,7 +224,7 @@ int main(int argc, char **argv) {
   tp->times["end_main:dal->align()"] = std::chrono::system_clock::now();
 
   if (is_print_rank) {
-    std::cout << "Final alignment count: " << total_alignments << std::endl;
+    std::cout << "Final alignment (L+U-D) count: " << 2*total_alignments << std::endl;
   }
 
   tp->times["end_main"] = std::chrono::system_clock::now();
@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
   print_str.append(std::ctime(&start_prog_time));
   tu.print_str(print_str);
   tu.print_str(tp->to_string());
-  
+
   MPI_Barrier(MPI_COMM_WORLD);
   parops->teardown_parallelism();
   return 0;
