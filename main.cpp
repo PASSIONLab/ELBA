@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
   for (uint64_t lseq_idx = 0; lseq_idx < lfd->local_count(); ++lseq_idx) {
     buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
     auto num_kmers = add_kmers(buff, len, start_offset, end_offset_inclusive,
-                               klength, kstride, alph, lcol_ids, lvals);
+                               klength, kstride, alph, lcol_ids, lvals, parops);
     lrow_ids.insert(lrow_ids.end(), num_kmers, lseq_idx + offset);
   }
   tp->times["end_main:loop_add_kmers()"] = std::chrono::system_clock::now();
