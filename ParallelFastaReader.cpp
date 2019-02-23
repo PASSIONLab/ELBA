@@ -58,13 +58,6 @@ void ParallelFastaReader::read_fasta(const char *file, ushort overlap, int rank,
 
   l_chunk_size = static_cast<uint64_t >(g_end - g_start + 1);
 
-  // TODO - Debug =======
-  fprintf(stderr,
-          "DEBUG before reading: rank: %d, g_start:%lld g_end: %lld l_chunk_size: %lld \n",
-          rank, g_start, g_end, l_chunk_size);
-  fflush(stderr);
-  // TODO - End Debug =======
-
   buff = static_cast<char *>(malloc((l_chunk_size + 1) * sizeof(char)));
 
   /* everyone reads in their part */
@@ -91,13 +84,6 @@ void ParallelFastaReader::read_fasta(const char *file, ushort overlap, int rank,
     // minus 2 because we don't need '>' as well as the '\n' before that
     l_end -= 2;
   }
-
-  // TODO - Debug =======
-  fprintf(stderr,
-          "DEBUG after reading: rank: %d, g_start:%lld g_end: %lld l_chunk_size: %lld l_start: %lld l_end: %lld\n",
-          rank, g_start, g_end, l_chunk_size, l_start, l_end);
-  fflush(stderr);
-  // TODO - End Debug =======
 }
 
 
