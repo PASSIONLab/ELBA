@@ -145,7 +145,8 @@ int main(int argc, char **argv) {
     Mult_AnXBn_Synch<KmerIntersectSR_t,
       CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
   tu.print_str(
-    "Overlaps after k-mer finding: " + std::to_string(C.getnnz() - seq_count) + "\n");
+    "Overlaps after k-mer finding: " + std::to_string(C.getnnz() - seq_count) +
+    "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
   tp->times["end_main:AxAt()"] = std::chrono::system_clock::now();
 
 
