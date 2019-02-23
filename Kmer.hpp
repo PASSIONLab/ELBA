@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <vector>
 #include <cmath>
+#include "ParallelOps.hpp"
 #include "Alphabet.hpp"
 #include "Types.hpp"
 
@@ -89,17 +90,19 @@ struct KmerIntersect {
 };
 
 static ushort add_kmers(const char *seq, ushort len, uint64_t start_offset,
-              uint64_t enf_offset_inclusive, ushort k, ushort s, Alphabet &alp,
-              uvec_64 &lcol_ids, uvec_16 &lvals){
-  auto num_kmers = static_cast<ushort>((floor((len - k)*1.0 / s)) + 1);
+                        uint64_t enf_offset_inclusive, ushort k, ushort s,
+                        Alphabet &alp,
+                        uvec_64 &lcol_ids, uvec_16 &lvals,
+                        const std::shared_ptr<ParallelOps> parops) {
+  auto num_kmers = static_cast<ushort>((floor((len - k) * 1.0 / s)) + 1);
   // TODO: Saliya - this can be improved using bit operators
   ushort base = alp.size;
   uint64_t kcode = 0;
   int count = 0;
-  for (uint64_t i = start_offset; i <= enf_offset_inclusive; i+=s){
+  for (uint64_t i = start_offset; i <= enf_offset_inclusive; i += s) {
     kcode = 0;
     if (count == num_kmers) break;
-    for (uint64_t j = i; j < i+k; ++j){
+    for (uint64_t j = i; j < i + k; ++j) {
       /*! Efficient than using pow() */
       kcode = kcode * base + alp.char_to_code[*(seq + j)];
     }
@@ -111,15 +114,16 @@ static ushort add_kmers(const char *seq, ushort len, uint64_t start_offset,
     lvals.push_back(static_cast<ushort &&>(i - start_offset));
   }
 
-  if (count != num_kmers){
-    fprintf(stderr, "count:%d numk: %d len: %d k: %d s: %d soff: %llu eoffinc: %llu\n",
-            count, num_kmers, len, k, s, start_offset, enf_offset_inclusive);
+  if (count != num_kmers) {
+    fprintf(stderr,
+            "ERROR: rank: %d, count:%d numk: %d len: %d k: %d s: %d soff: %llu eoffinc: %llu\n",
+            parops->world_proc_rank, count, num_kmers, len, k, s,
+            start_offset, enf_offset_inclusive);
     fflush(stderr);
   }
 
   return num_kmers;
 }
-
 
 
 #endif //LBL_DAL_KMER_HPP
