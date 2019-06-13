@@ -22,7 +22,7 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
   bool in_name = false;
   bool in_seq = false;
   ushort seq_len = 0;
-  /*! No character count. This includes new line and * characters
+  /*! nc_count means No character count. This includes new line and * characters
    * It also includes entire sequences that are less than k-mer length */
   ushort nc_count = 0;
   uint64_t idx;
