@@ -1,6 +1,6 @@
 // Created by Saliya Ekanayake on 2019-02-13.
 
-#include "TraceUtils.hpp"
+#include "../include/TraceUtils.hpp"
 
 void TraceUtils::print_msg(const std::string &title, const std::string &msg,
                            const std::shared_ptr<ParallelOps> &parops) {

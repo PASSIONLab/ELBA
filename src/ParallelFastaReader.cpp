@@ -6,8 +6,8 @@
 #include <cassert>
 #include <limits>
 #include <unordered_set>
-#include "ParallelFastaReader.hpp"
-#include "DistributedFastaData.h"
+#include "../include/ParallelFastaReader.hpp"
+#include "../include/DistributedFastaData.h"
 
 
 void ParallelFastaReader::read_fasta(const char *file, ushort overlap, int rank,

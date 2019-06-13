@@ -4,7 +4,7 @@
 #include <cctype>
 #include <cassert>
 #include <iostream>
-#include "Alphabet.hpp"
+#include "../include/Alphabet.hpp"
 
 const char* Alphabet::protein = "ACDEFGHIKLMNPQRSTVWY";
 const char* Alphabet::dna = "ACGT";

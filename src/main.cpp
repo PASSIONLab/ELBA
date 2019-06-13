@@ -1,12 +1,12 @@
 #include <iostream>
 #include <cmath>
-#include "Constants.hpp"
-#include "ParallelOps.hpp"
-#include "ParallelFastaReader.hpp"
-#include "Alphabet.hpp"
-#include "Kmer.hpp"
-#include "Utils.hpp"
-#include "DistributedAligner.hpp"
+#include "../include/Constants.hpp"
+#include "../include/ParallelOps.hpp"
+#include "../include/ParallelFastaReader.hpp"
+#include "../include/Alphabet.hpp"
+#include "../include/Kmer.hpp"
+#include "../include/Utils.hpp"
+#include "../include/DistributedAligner.hpp"
 #include "CombBLAS/CombBLAS.h"
 #include "cxxopts.hpp"
 
