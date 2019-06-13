@@ -5,7 +5,7 @@
 #include <fstream>
 #include <chrono>
 #include <cmath>
-#include "ParallelOps.hpp"
+#include "../include/ParallelOps.hpp"
 
 std::shared_ptr<ParallelOps> ParallelOps::instance = nullptr;
 

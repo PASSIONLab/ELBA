@@ -2,7 +2,7 @@
 // Created by Saliya Ekanayake on 2019-02-19.
 //
 
-#include "DistributedAligner.hpp"
+#include "../include/DistributedAligner.hpp"
 
 DistributedAligner::DistributedAligner(ushort seed_length, int xdrop,
                                        int gap_open, int gap_ext,

@@ -3,7 +3,7 @@
 #include <iostream>
 #include <mpi.h>
 #include <cassert>
-#include "FastaData.hpp"
+#include "../include/FastaData.hpp"
 
 FastaData::~FastaData() {
   delete (id_starts);

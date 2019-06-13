@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-02-17.
 
-#include "DistributedFastaData.h"
-#include "ParallelFastaReader.hpp"
+#include "../include/DistributedFastaData.h"
+#include "../include/ParallelFastaReader.hpp"
 
 
 DistributedFastaData::~DistributedFastaData() {
