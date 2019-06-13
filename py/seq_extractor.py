@@ -4,7 +4,7 @@ from Bio import SeqIO
 def main():
     f = '/Users/esaliya/sali/data/scope/astral-scopedom-seqres-gd-all-2.07' \
         '-stable.fa'
-    limit = 1000
+    limit = 100
     of = f'/Users/esaliya/sali/data/scope/{limit}_astral-scopedom-seqres-gd' \
         f'-all-2.07-stable.fa'
 
