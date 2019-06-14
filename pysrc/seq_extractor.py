@@ -2,11 +2,12 @@ from Bio import SeqIO
 
 
 def main():
-    f = '/Users/esaliya/sali/data/scope/astral-scopedom-seqres-gd-all-2.07' \
-        '-stable.fa'
-    limit = 100
-    of = f'/Users/esaliya/sali/data/scope/{limit}_astral-scopedom-seqres-gd' \
-        f'-all-2.07-stable.fa'
+    dir = '/Users/esaliya/sali/data/scope/uniqs'
+    file = '77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa'
+    f = f"{dir}/{file}"
+
+    limit = 1000
+    of = f"{dir}/{limit}_of_{file}"
 
     with open(f, "r") as infh, open(of, 'w') as outfh:
         count = 0
