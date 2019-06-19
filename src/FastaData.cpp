@@ -128,6 +128,18 @@ char *FastaData::get_sequence(uint64_t idx, ushort &len, uint64_t &start_offset,
   return buff;
 }
 
+
+char *FastaData::get_sequence_id(uint64_t idx, ushort &len,
+                                 uint64_t &start_offset,
+                                 uint64_t &end_offset_inclusive) {
+  /*! ((*seq_starts)[idx] - 1) points to the position of the newline
+   * character in the sequence identifier at idx */
+  len = static_cast<ushort>(((*seq_starts)[idx] - 1) - (*id_starts)[idx]);
+  start_offset = (*id_starts)[idx];
+  end_offset_inclusive = (*seq_starts)[idx] - 2;
+  return buff;
+}
+
 uint64_t FastaData::local_count() {
   return l_seq_count;
 }

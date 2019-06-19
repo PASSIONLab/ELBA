@@ -59,6 +59,22 @@ public:
                      uint64_t &end_offset_inclusive);
 
   /*!
+   * Returns a pointer to the sequence identifier in the raw FASTA data stream.
+   * It also, sets the requested sequence identifier's length, starting offset,
+   * end offset (inclusive) in the output parameters.
+   *
+   * @param idx Requested sequence index local to this instance.
+   * @param [out] len The length of the sequence identifier.
+   * @param [out] start_offset The start offset of the sequence identifier.
+   * @param [out] end_offset_inclusive The end offset (inclusive) of the
+   * sequence identifier
+   * @return A pointer to the sequence identifier character stream.
+   */
+  char *get_sequence_id(uint64_t idx, ushort &len,
+                        uint64_t &start_offset,
+                        uint64_t &end_offset_inclusive);
+
+  /*!
    * Sets the sub buffer size for sequences starting at
    * <tt>start_idx</tt> to and including <tt>end_idx_inclusive</tt>
    * in <tt>len</tt>. Also, sets the <tt>start_offset</tt>, and
