@@ -18,9 +18,9 @@ DistributedAligner::DistributedAligner(ushort seed_length, int xdrop,
 uint64_t DistributedAligner::align_seqs() {
   /*! There are two types of rows and columns below.
    * The sequences are arranged as an NxN matrix in
-   * mat (this is not how it's store internally).
-   * This N is distributed over a grid of
-   * sqrt(P) x sqrt (P), where P is the toal number
+   * mat (this is not how it's stored internally).
+   * This NxN is distributed over a grid of
+   * sqrt(P) x sqrt (P), where P is the total number
    * of processes. Anything to do with the grid will
    * be prefixed by gr_*/
 
