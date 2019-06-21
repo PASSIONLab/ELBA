@@ -24,3 +24,9 @@ const char *CMD_OPTION_DESCRIPTION_KMER_LENGTH = "Kmer length";
 
 const char *CMD_OPTION_KMER_STRIDE = "s";
 const char *CMD_OPTION_DESCRIPTION_KMER_STRID = "Kmer stride";
+
+const char *CMD_OPTION_OVERLAP_FILE = "of";
+const char *CMD_OPTION_DESCRIPTION_OVERLAP_FILE = "Overlap file";
+
+const char *CMD_OPTION_NO_ALIGN = "na";
+const char *CMD_OPTION_DESCRIPTION_NO_ALIGN = "Flag to indicate not to performa alignments ";

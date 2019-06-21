@@ -6,7 +6,7 @@ def main():
     file = '77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa'
     f = f"{dir}/{file}"
 
-    limit = 1000
+    limit = 10
     of = f"{dir}/{limit}_of_{file}"
 
     with open(f, "r") as infh, open(of, 'w') as outfh:

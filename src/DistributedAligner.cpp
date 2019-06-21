@@ -53,19 +53,21 @@ uint64_t DistributedAligner::align_seqs() {
     seqan::Peptide *seq_h = dfd->col_seq(l_col_idx);
     for (auto nzit = spSeq->begnz(colit); nzit < spSeq->endnz(colit); ++nzit) {
       auto l_row_idx = nzit.rowid();
-      uint64_t g_row = l_row_idx + row_offset;
+      uint64_t g_row_idx = l_row_idx + row_offset;
 
       seqan::Peptide *seq_v = dfd->row_seq(l_row_idx);
 
-      /*! Align only the top part of this cell. Further, if this is a
-       * diagonal cell then avoid aligning the diagonal pairs
+      /*!
+       * Note. the cells means the process grid cells.
+       * We only want to compute the top triangles of any grid cell.
+       * Further, we want cell diagonals only for cells that are on the
+       * top half of the grid excluding the grid's main diagonal cells
        */
-
-      if (dfd->is_diagonal() && l_col_idx <= l_row_idx) {
+      if (l_col_idx < l_row_idx){
         continue;
       }
 
-      if (l_col_idx < l_row_idx) {
+      if (l_col_idx == l_row_idx && g_col_idx <= g_row_idx){
         continue;
       }
 
@@ -74,15 +76,18 @@ uint64_t DistributedAligner::align_seqs() {
       AlignmentInfo ai[2];
       for (int count = 0; count < 2; ++count) {
         // row sequence is the same thing as vertical sequence
-        ushort l_row_seed_start_offset = (count == 0) ? cks.first.first : cks.second.first;
+        ushort l_row_seed_start_offset = (count == 0) ? cks.first.first
+                                                      : cks.second.first;
         // col sequence is the same thing as horizontal sequence
-        ushort l_col_seed_start_offset = (count == 0) ? cks.first.second : cks.second.second;
+        ushort l_col_seed_start_offset = (count == 0) ? cks.first.second
+                                                      : cks.second.second;
 
         // Seed creation params are:
         // horizontal seed start offset, vertical seed start offset, length
         TSeed seed(l_col_seed_start_offset, l_row_seed_start_offset,
                    seed_length);
-        extendSeed(seed, *seq_h, *seq_v, seqan::EXTEND_BOTH, blosum62_simple, xdrop,
+        extendSeed(seed, *seq_h, *seq_v, seqan::EXTEND_BOTH, blosum62_simple,
+                   xdrop,
                    seqan::GappedXDrop());
 
         seqan::Align<seqan::Peptide> align;
@@ -100,8 +105,10 @@ uint64_t DistributedAligner::align_seqs() {
         computeAlignmentStats(ai[count].stats, align, blosum62);
         ai[count].seq_h_length = length(*seq_h);
         ai[count].seq_v_length = length(*seq_v);
-        ai[count].seq_h_seed_length = static_cast<ushort>(seed._endPositionH - seed._beginPositionH);
-        ai[count].seq_v_seed_length = static_cast<ushort>(seed._endPositionV - seed._beginPositionV);
+        ai[count].seq_h_seed_length = static_cast<ushort>(seed._endPositionH -
+                                                          seed._beginPositionH);
+        ai[count].seq_v_seed_length = static_cast<ushort>(seed._endPositionV -
+                                                          seed._beginPositionV);
         ai[count].seq_h_g_idx = g_col_idx;
         ai[count].seq_v_g_idx = gr_row_idx;
       }
@@ -111,21 +118,134 @@ uint64_t DistributedAligner::align_seqs() {
       // TODO - Saliya
       // For now only keeps the largest alignment > 30% identity.
       // Incorporate length coverage restrictions later.
-      if (ai[0].stats.alignmentIdentity < 30.0 && ai[1].stats.alignmentIdentity < 30.0){
-        continue;
-      }
+      AlignmentInfo max_ai =
+        ai[0].stats.alignmentIdentity > ai[1].stats.alignmentIdentity
+        ? ai[0] : ai[1];
 
-      if (ai[0].stats.alignmentIdentity > ai[1].stats.alignmentIdentity < 30.0){
-        alignments.push_back(ai[0]);
-      } else {
-        alignments.push_back(ai[1]);
-      }
+//      if (max_ai.stats.alignmentIdentity < 30.0){
+//        continue;
+//      }
+      alignments.push_back(max_ai);
     }
   }
 
-
   uint64_t local_alignments = alignments.size();
   uint64_t total_alignments = 0;
-  MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
+             MPI_COMM_WORLD);
   return total_alignments;
+}
+
+void DistributedAligner::write_overlaps(const char *file) {
+  // rows and cols in the result
+  uint64_t n_rows, n_cols;
+  n_rows = n_cols = dfd->global_count();
+  int gr_rows = parops->grid->GetGridRows();
+  int gr_cols = parops->grid->GetGridCols();
+
+  int gr_col_idx = parops->grid->GetRankInProcRow();
+  int gr_row_idx = parops->grid->GetRankInProcCol();
+  uint64_t avg_rows_in_grid = n_rows / gr_rows;
+  uint64_t avg_cols_in_grid = n_cols / gr_cols;
+  // local submatrix
+  PSpMat<CommonKmers>::DCCols *spSeq = mat.seqptr();
+  // first row in this process
+  uint64_t row_offset = gr_row_idx * avg_rows_in_grid;
+  // first col in this process
+  uint64_t col_offset = gr_col_idx * avg_cols_in_grid;
+
+  uint64_t local_nnz_count = 0;
+  uint64_t local_top_triangle_count = 0;
+  std::stringstream ss;
+  for (auto colit = spSeq->begcol(); colit != spSeq->endcol(); ++colit) {
+    // iterate over columns
+    auto l_col_idx = colit.colid(); // local numbering
+    uint64_t g_col_idx = l_col_idx + col_offset;
+
+    for (auto nzit = spSeq->begnz(colit); nzit < spSeq->endnz(colit); ++nzit) {
+      auto l_row_idx = nzit.rowid();
+      uint64_t g_row_idx = l_row_idx + row_offset;
+
+      ++local_nnz_count;
+
+      /*!
+       * Note. the cells means the process grid cells.
+       * We only want to compute the top triangles of any grid cell.
+       * Further, we want cell diagonals only for cells that are on the
+       * top half of the grid excluding the grid's main diagonal cells
+       */
+      if (l_col_idx < l_row_idx){
+        continue;
+      }
+
+      if (l_col_idx == l_row_idx && g_col_idx <= g_row_idx){
+        continue;
+      }
+
+      ++local_top_triangle_count;
+      ss << g_col_idx << "," << g_row_idx << "\n";
+    }
+  }
+
+  /*! The following code is adopted from CombBLAS at
+   * https://people.eecs.berkeley.edu/~aydin/CombBLAS/html/_fully_dist_sp_vec_8cpp_source.html#l01310.
+   */
+
+  std::string overlaps_str = ss.str();
+
+//  std::cout<<"DEBUG: overlaps_str: \n" << overlaps_str;
+
+  int64_t *bytes = new int64_t[parops->world_procs_count];
+  bytes[parops->world_proc_rank] = overlaps_str.size();
+  MPI_Allgather(MPI_IN_PLACE, 1, MPIType<int64_t>(), bytes, 1,
+                MPIType<int64_t>(), MPI_COMM_WORLD);
+  /*! Note. std::accumulate has an open range on the right meaning
+   * that, for example, the 'bytesuntil' is the sum of bytes upto my
+   * rank and not including my bytes.
+   */
+  int64_t bytesuntil = std::accumulate(bytes, bytes + parops->world_proc_rank,
+                                       static_cast<int64_t>(0));
+  int64_t bytestotal = std::accumulate(bytes, bytes + parops->world_procs_count,
+                                       static_cast<int64_t>(0));
+
+  if (parops->world_proc_rank == 0) {
+    // only leader rights the original file with no content
+    std::ofstream ofs(file, std::ios::out);
+#ifndef NDEBUG
+    std::cout << "Creating file with " << bytestotal << " bytes" << std::endl;
+#endif
+    ofs.seekp(bytestotal - 1);
+    // this will likely create a sparse file so the actual disks won't spin yet
+    ofs.write("", 1);
+    ofs.close();
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  struct stat st;     // get file size
+  if (stat(file, &st) == -1) {
+    MPI_Abort(MPI_COMM_WORLD, NOFILE);
+  }
+  if (parops->world_proc_rank ==
+      parops->world_procs_count - 1)  // let some other processor do the testing
+  {
+#ifndef NDEBUG
+    std::cout << "File is actually " << st.st_size
+              << " bytes seen from process " << parops->world_proc_rank
+              << std::endl;
+#endif
+  }
+
+  // Then everyone fills it
+  FILE *ffinal;
+  if ((ffinal = fopen(file, "r+")) == NULL) {
+    printf("ERROR: Vector output file %s failed to open at process %d\n",
+           file, parops->world_proc_rank);
+    MPI_Abort(MPI_COMM_WORLD, NOFILE);
+  }
+
+  fseek(ffinal, bytesuntil, SEEK_SET);
+  fwrite(overlaps_str.c_str(), 1, bytes[parops->world_proc_rank], ffinal);
+  fflush(ffinal);
+  fclose(ffinal);
+  delete[] bytes;
 }

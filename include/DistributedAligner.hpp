@@ -27,6 +27,7 @@ public:
                      const std::shared_ptr<ParallelOps> &parops);
 
   uint64_t align_seqs();
+  void write_overlaps(const char *file);
 
 private:
   ushort seed_length;

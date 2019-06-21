@@ -34,6 +34,13 @@ int gap_ext;
 ushort klength;
 ushort kstride;
 
+/*! Parameters related to outputting k-mer overlaps */
+bool write_overlaps = false;
+std::string overlap_file;
+
+/*! Don't perform alignments if this flag is set */
+bool no_align = false;
+
 bool is_print_rank = false;
 std::string print_str;
 
@@ -220,13 +227,23 @@ int main(int argc, char **argv) {
 
   DistributedAligner dal(klength, xdrop, gap_open, gap_ext, dfd, C, parops);
 
-  tp->times["start_main:dal->align()"] = std::chrono::system_clock::now();
-  uint64_t total_alignments = dal.align_seqs();
-  tp->times["end_main:dal->align()"] = std::chrono::system_clock::now();
+  if (!no_align) {
+    tp->times["start_main:dal->align()"] = std::chrono::system_clock::now();
+    uint64_t total_alignments = dal.align_seqs();
+    tp->times["end_main:dal->align()"] = std::chrono::system_clock::now();
 
-  if (is_print_rank) {
-    std::cout << "Final alignment (L+U-D) count: " << 2*total_alignments << std::endl;
+
+    if (is_print_rank) {
+      std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments
+                << std::endl;
+    }
   }
+
+  tp->times["start_main:dal->write_overlaps()"] = std::chrono::system_clock::now();
+  if (write_overlaps){
+    dal.write_overlaps(overlap_file.c_str());
+  }
+  tp->times["end_main:dal->write_overlaps()"] = std::chrono::system_clock::now();
 
   tp->times["end_main"] = std::chrono::system_clock::now();
 
@@ -262,7 +279,10 @@ int parse_args(int argc, char **argv) {
     (CMD_OPTION_KMER_LENGTH, CMD_OPTION_DESCRIPTION_KMER_LENGTH,
      cxxopts::value<int>())
     (CMD_OPTION_KMER_STRIDE, CMD_OPTION_DESCRIPTION_KMER_STRID,
-     cxxopts::value<int>());
+     cxxopts::value<int>())
+    (CMD_OPTION_OVERLAP_FILE, CMD_OPTION_DESCRIPTION_OVERLAP_FILE,
+     cxxopts::value<std::string>())
+    (CMD_OPTION_NO_ALIGN, CMD_OPTION_DESCRIPTION_NO_ALIGN);
 
   auto result = options.parse(argc, argv);
 
@@ -325,6 +345,15 @@ int parse_args(int argc, char **argv) {
     if (is_world_rank0) {
       kstride = 1;
     }
+  }
+
+  if (result.count(CMD_OPTION_OVERLAP_FILE)) {
+    write_overlaps = true;
+    overlap_file = result[CMD_OPTION_OVERLAP_FILE].as<std::string>();
+  }
+
+  if (result.count(CMD_OPTION_NO_ALIGN)) {
+    no_align = true;
   }
 
   return 0;
