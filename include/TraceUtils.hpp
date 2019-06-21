@@ -8,7 +8,7 @@
 
 struct TimePod {
   std::unordered_map<std::string, ticks_t> times;
-  std::string names[12] = {"main",
+  std::string names[13] = {"main",
                            "main:newDFD()",
                            "dfd:pfr->read_fasta()",
                            "dfd:new_FD()",
@@ -19,17 +19,22 @@ struct TimePod {
                            "main:dfd->wait()",
                            "dfd:MPI_Waitall(seqs)",
                            "dfd:extract_recv_seqs",
-                           "main:dal->align()"
+                           "main:dal->align()",
+                           "main:dal->write_overlaps()"
   };
 
   std::string to_string() {
     std::string str = "\nINFO: Program timings ...\n";
     ticks_t ts, te;
     for (const auto &name : names) {
-      ts = times["start_" + name];
-      te = times["end_" + name];
-      str.append("  ").append(name).append(":")
-      .append(std::to_string((ms_t(te - ts)).count())).append(" ms\n");
+      if (times.find("start_" + name) != times.end()) {
+        ts = times["start_" + name];
+        te = times["end_" + name];
+        str.append("  ").append(name).append(":")
+          .append(std::to_string((ms_t(te - ts)).count())).append(" ms\n");
+      } else {
+        str.append("  ").append(name).append(" not evaluated.\n");
+      }
     }
     return str;
   }

@@ -31,4 +31,11 @@ extern const char *CMD_OPTION_DESCRIPTION_GAP_EXT;
 extern const char *CMD_OPTION_KMER_STRIDE;
 extern const char *CMD_OPTION_DESCRIPTION_KMER_STRID;
 
+extern const char *CMD_OPTION_OVERLAP_FILE;
+extern const char *CMD_OPTION_DESCRIPTION_OVERLAP_FILE;
+
+extern const char *CMD_OPTION_NO_ALIGN;
+extern const char *CMD_OPTION_DESCRIPTION_NO_ALIGN;
+
+
 #endif //LBL_DAL_CONSTANTS_H
