@@ -31,7 +31,11 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
     c = buff[i];
     idx = i - nc_count;
     buff[idx] = c;
-    if (c == '>') {
+    if (c == '>' && !in_name) {
+      /*! Note. the !in_name logic is important as some fasta files
+       * have > character in the middle of the sequence identifier. If we
+       * didn't have this test then we'll consider that as the start of another
+       * sequence. */
       id_starts->push_back(idx);
       seq_len = 0;
       in_name = true;

@@ -10,7 +10,7 @@
 #include "../include/DistributedFastaData.h"
 
 
-void ParallelFastaReader::read_fasta(const char *file, ushort overlap, int rank,
+void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int rank,
                                      int world_size, char *&buff,
                                      uint64_t &l_start, uint64_t &l_end) {
 
