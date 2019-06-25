@@ -33,7 +33,7 @@ class DistributedFastaData {
 public:
   ~DistributedFastaData();
 
-  DistributedFastaData(const char *file, ushort overlap, ushort k,
+  DistributedFastaData(const char *file, uint64_t overlap, ushort k,
                        const std::shared_ptr<ParallelOps> &parops,
                        const std::shared_ptr<TimePod> &tp, TraceUtils tu);
 
@@ -54,7 +54,7 @@ private:
   std::shared_ptr<TimePod> tp;
   TraceUtils tu;
   ushort k;
-  ushort overlap;
+  uint64_t overlap;
   FastaData *fd = nullptr;
 
   uint64_t l_seq_count;

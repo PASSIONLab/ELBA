@@ -26,7 +26,7 @@ std::string get_padding(ushort count, std::string prefix);
 /*! Global variables */
 std::shared_ptr<ParallelOps> parops;
 std::string input_file;
-ushort input_overlap;
+uint64_t input_overlap;
 uint64_t seq_count;
 int xdrop;
 int gap_open;
@@ -269,7 +269,7 @@ int parse_args(int argc, char **argv) {
     (CMD_OPTION_INPUT_SEQ_COUNT, CMD_OPTION_DESCRIPTION_INPUT_SEQ_COUNT,
      cxxopts::value<int>())
     (CMD_OPTION_INPUT_OVERLAP, CMD_OPTION_DESCRIPTION_INPUT_OVERLAP,
-     cxxopts::value<int>())
+     cxxopts::value<uint64_t>())
     (CMD_OPTION_XDROP, CMD_OPTION_DESCRIPTION_XDROP,
      cxxopts::value<int>())
     (CMD_OPTION_GAP_OPEN, CMD_OPTION_DESCRIPTION_GAP_OPEN,
@@ -307,7 +307,7 @@ int parse_args(int argc, char **argv) {
   }
 
   if (result.count(CMD_OPTION_INPUT_OVERLAP)) {
-    input_overlap = result[CMD_OPTION_INPUT_OVERLAP].as<int>();
+    input_overlap = result[CMD_OPTION_INPUT_OVERLAP].as<uint64_t>();
   } else {
     input_overlap = 10000;
   }

@@ -44,7 +44,7 @@ DistributedFastaData::~DistributedFastaData() {
 }
 
 DistributedFastaData::DistributedFastaData(
-  const char *file, ushort overlap, ushort k,
+  const char *file, uint64_t overlap, ushort k,
   const std::shared_ptr<ParallelOps> &parops,
   const std::shared_ptr<TimePod> &tp, TraceUtils tu)
   : overlap(overlap), k(k), parops(parops), tp(tp), tu(tu) {
