@@ -33,7 +33,8 @@ class DistributedFastaData {
 public:
   ~DistributedFastaData();
 
-  DistributedFastaData(const char *file, uint64_t overlap, ushort k,
+  DistributedFastaData(const char *file, const char* idx_map_file,
+                       uint64_t overlap, ushort k,
                        const std::shared_ptr<ParallelOps> &parops,
                        const std::shared_ptr<TimePod> &tp, TraceUtils tu);
 
@@ -62,10 +63,23 @@ private:
 
   bool is_diagonal_cell = false;
 
+  /*! The original global sequence offset of the sequences stored in this
+   * instance. Fo r example, this instance could hold the original sequence
+   * indices [23,36] (total of 14 sequences). This would make the original
+   * global sequence offset to be 23. Their original local indices would
+   * be [0, 13], so adding 23 would give [23, 36].
+   * However, some of them, say original indices 0, 5, 7 and 10 were
+   * deleted because their sequence lengths were < k. Now, the l_seq_count
+   * would be 10 and their local indices would be [0, 9]. To get the original
+   * global indices of the local sequences one would need to use this
+   * orig_g_seq_offset along with the del_idxs in FastaData.
+   */
+  uint64_t orig_g_seq_offset;
+
   /*!
-   * Global sequence count, which may be different from the total input sequence
-   * count because some might get removed if their lengths are less than the
-   * k-mer length.
+   * Global sequence count, which may be different (less than) from the
+   * original total sequence count because some sequences may get removed
+   * if their lengths are less than the k-mer length.
    */
   uint64_t g_seq_count;
   uint64_t *g_seq_offsets = nullptr;
@@ -98,6 +112,8 @@ private:
   bool ready = false;
 
   std::shared_ptr<ParallelOps> parops;
+
+  void write_idx_map(const char* idx_map_file);
 
   void collect_grid_seqs();
 

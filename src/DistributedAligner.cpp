@@ -187,65 +187,6 @@ void DistributedAligner::write_overlaps(const char *file) {
     }
   }
 
-  /*! The following code is adopted from CombBLAS at
-   * https://people.eecs.berkeley.edu/~aydin/CombBLAS/html/_fully_dist_sp_vec_8cpp_source.html#l01310.
-   */
-
   std::string overlaps_str = ss.str();
-
-//  std::cout<<"DEBUG: overlaps_str: \n" << overlaps_str;
-
-  int64_t *bytes = new int64_t[parops->world_procs_count];
-  bytes[parops->world_proc_rank] = overlaps_str.size();
-  MPI_Allgather(MPI_IN_PLACE, 1, MPIType<int64_t>(), bytes, 1,
-                MPIType<int64_t>(), MPI_COMM_WORLD);
-  /*! Note. std::accumulate has an open range on the right meaning
-   * that, for example, the 'bytesuntil' is the sum of bytes upto my
-   * rank and not including my bytes.
-   */
-  int64_t bytesuntil = std::accumulate(bytes, bytes + parops->world_proc_rank,
-                                       static_cast<int64_t>(0));
-  int64_t bytestotal = std::accumulate(bytes, bytes + parops->world_procs_count,
-                                       static_cast<int64_t>(0));
-
-  if (parops->world_proc_rank == 0) {
-    // only leader rights the original file with no content
-    std::ofstream ofs(file, std::ios::out);
-#ifndef NDEBUG
-    std::cout << "Creating file with " << bytestotal << " bytes" << std::endl;
-#endif
-    ofs.seekp(bytestotal - 1);
-    // this will likely create a sparse file so the actual disks won't spin yet
-    ofs.write("", 1);
-    ofs.close();
-  }
-  MPI_Barrier(MPI_COMM_WORLD);
-
-  struct stat st;     // get file size
-  if (stat(file, &st) == -1) {
-    MPI_Abort(MPI_COMM_WORLD, NOFILE);
-  }
-  if (parops->world_proc_rank ==
-      parops->world_procs_count - 1)  // let some other processor do the testing
-  {
-#ifndef NDEBUG
-    std::cout << "File is actually " << st.st_size
-              << " bytes seen from process " << parops->world_proc_rank
-              << std::endl;
-#endif
-  }
-
-  // Then everyone fills it
-  FILE *ffinal;
-  if ((ffinal = fopen(file, "r+")) == NULL) {
-    printf("ERROR: Vector output file %s failed to open at process %d\n",
-           file, parops->world_proc_rank);
-    MPI_Abort(MPI_COMM_WORLD, NOFILE);
-  }
-
-  fseek(ffinal, bytesuntil, SEEK_SET);
-  fwrite(overlaps_str.c_str(), 1, bytes[parops->world_proc_rank], ffinal);
-  fflush(ffinal);
-  fclose(ffinal);
-  delete[] bytes;
+  parops->write_file_in_parallel(file, overlaps_str);
 }

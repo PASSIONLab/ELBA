@@ -37,5 +37,8 @@ extern const char *CMD_OPTION_DESCRIPTION_OVERLAP_FILE;
 extern const char *CMD_OPTION_NO_ALIGN;
 extern const char *CMD_OPTION_DESCRIPTION_NO_ALIGN;
 
+extern const char *CMD_OPTION_IDX_MAP;
+extern const char *CMD_OPTION_DESCRIPTION_IDX_MAP;
+
 
 #endif //LBL_DAL_CONSTANTS_H

@@ -8,7 +8,7 @@
 #include <seqan/align.h>
 #include "Utils.hpp"
 #include "Kmer.hpp"
-#include "DistributedFastaData.h"
+#include "DistributedFastaData.hpp"
 
 struct AlignmentInfo{
   seqan::AlignmentStats stats;

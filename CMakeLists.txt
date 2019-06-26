@@ -27,7 +27,7 @@ add_executable(pisa
         src/DistributedAligner.cpp
         include/DistributedAligner.hpp
         src/DistributedFastaData.cpp
-        include/DistributedFastaData.h
+        include/DistributedFastaData.hpp
         src/FastaData.cpp
         include/FastaData.hpp
         include/Kmer.hpp

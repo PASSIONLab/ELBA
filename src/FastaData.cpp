@@ -8,6 +8,7 @@
 FastaData::~FastaData() {
   delete (id_starts);
   delete (seq_starts);
+  delete (del_idxs);
 }
 
 FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
@@ -16,6 +17,7 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
 
   id_starts = new uvec_64();
   seq_starts = new uvec_64();
+  del_idxs = new uvec_64();
 
   l_seq_count = 0;
   char c;
@@ -59,6 +61,7 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
             nc_count += seq_len + (seq_start - seq_id_start) + 1;
             id_starts->pop_back();
             seq_starts->pop_back();
+            del_idxs->push_back(l_seq_count + del_idxs->size());
             --l_seq_count;
           }
         }
@@ -97,6 +100,7 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
   this->l_start = l_start;
   l_end -= nc_count;
   this->l_end = l_end;
+  orig_l_seq_count = l_seq_count + del_idxs->size();
 }
 
 void FastaData::print() {
@@ -144,8 +148,16 @@ char *FastaData::get_sequence_id(uint64_t idx, ushort &len,
   return buff;
 }
 
+uvec_64 * FastaData::deleted_indices(){
+    return del_idxs;
+}
+
 uint64_t FastaData::local_count() {
   return l_seq_count;
+}
+
+uint64_t FastaData::orig_local_count() {
+    return orig_l_seq_count;
 }
 
 void FastaData::buffer_size(uint64_t start_idx,

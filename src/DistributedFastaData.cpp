@@ -1,6 +1,6 @@
 // Created by Saliya Ekanayake on 2019-02-17.
 
-#include "../include/DistributedFastaData.h"
+#include "../include/DistributedFastaData.hpp"
 #include "../include/ParallelFastaReader.hpp"
 
 
@@ -44,7 +44,8 @@ DistributedFastaData::~DistributedFastaData() {
 }
 
 DistributedFastaData::DistributedFastaData(
-  const char *file, uint64_t overlap, ushort k,
+  const char *file, const char* idx_map_file,
+  uint64_t overlap, ushort k,
   const std::shared_ptr<ParallelOps> &parops,
   const std::shared_ptr<TimePod> &tp, TraceUtils tu)
   : overlap(overlap), k(k), parops(parops), tp(tp), tu(tu) {
@@ -62,9 +63,8 @@ DistributedFastaData::DistributedFastaData(
 
   tp->times["start_dfd:new_FD()"] = tp->times["end_dfd:pfr->read_fasta()"];
   fd = new FastaData(buff, k, l_start, l_end, tp, tu);
-  tp->times["end_dfd:new_FD()"] = std::chrono::system_clock::now();
-
   l_seq_count = fd->local_count();
+  tp->times["end_dfd:new_FD()"] = std::chrono::system_clock::now();
 
 #ifndef NDEBUG
   {
@@ -90,7 +90,38 @@ DistributedFastaData::DistributedFastaData(
   g_seq_count = g_seq_offsets[parops->world_procs_count - 1] +
                 l_seq_counts[parops->world_procs_count - 1];
 
+  uint64_t orig_l_seq_count = fd->orig_local_count();
+  orig_g_seq_offset = 0;
+  MPI_Exscan(&orig_l_seq_count, &orig_g_seq_offset, 1,
+          MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
+
+  write_idx_map(idx_map_file);
+
+#ifndef NDEBUG
+  std::printf("Rank: %d orig_l_seq_count: %lld\n",
+          parops->world_proc_rank, orig_l_seq_count);
+#endif
+
   collect_grid_seqs();
+}
+
+void DistributedFastaData::write_idx_map(const char* idx_map_file){
+    uint64_t g_seq_offset = g_seq_offsets[parops->world_proc_rank];
+    uvec_64 *del_idxs = fd->deleted_indices();
+    uint64_t del_count = del_idxs->size();
+    uint64_t cur_dels = 0;
+    uint64_t orig_idx;
+    std::stringstream ss;
+    for (uint64_t i = 0; i < l_seq_count; ++i){
+        if (cur_dels < del_count && i+cur_dels == (*del_idxs)[cur_dels]){
+            // This index has been deleted originally.
+            ++cur_dels;
+        }
+
+        orig_idx = i + cur_dels + orig_g_seq_offset;
+        ss << (i + g_seq_offset) << "," << orig_idx <<"\n";
+    }
+    parops->write_file_in_parallel(idx_map_file, ss.str());
 }
 
 void DistributedFastaData::collect_grid_seqs() {
@@ -370,7 +401,7 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
 
   while (g_seq_offsets[start_rank] + l_seq_counts[start_rank] <
          rc_seq_start_idx) {
-    /* Another highly unlikely loop. This could happen if the above start_rank
+    /*! Another highly unlikely loop. This could happen if the above start_rank
      * contains much less number of sequences than the avg_l_seq_count due to
      * sequence pruning, which means we have to search in the ranks ahead of it
      * to find the sequence we are interested in. */
