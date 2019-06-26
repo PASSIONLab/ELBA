@@ -7,7 +7,7 @@
 #include "ParallelOps.hpp"
 #include "FastaData.hpp"
 #include "TraceUtils.hpp"
-#include "DistributedFastaData.h"
+#include "DistributedFastaData.hpp"
 
 
 class ParallelFastaReader {

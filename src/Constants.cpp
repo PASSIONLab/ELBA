@@ -30,3 +30,6 @@ const char *CMD_OPTION_DESCRIPTION_OVERLAP_FILE = "Overlap file";
 
 const char *CMD_OPTION_NO_ALIGN = "na";
 const char *CMD_OPTION_DESCRIPTION_NO_ALIGN = "Flag to indicate not to performa alignments ";
+
+const char *CMD_OPTION_IDX_MAP = "idxmap";
+const char *CMD_OPTION_DESCRIPTION_IDX_MAP = "The file path to write the global sequence indices to original global sequence indices mapping. ";

@@ -100,6 +100,20 @@ public:
   uint64_t local_count();
 
   /*!
+   * The original local sequence count including the number of sequences
+   * removed due to length being less than k.
+   * @return The total number of original sequences local to this instance.
+   */
+  uint64_t orig_local_count();
+
+  /*!
+   *
+   * @return A vector containing the original local indices of the deleted
+   * sequences.
+   */
+  uvec_64 *deleted_indices();
+
+  /*!
    *
    * @return The (possibly modified) end offset of the data in the data buffer.
    * This could be different from the <tt>l_end</tt> parameter passed to the
@@ -142,11 +156,25 @@ private:
   /*! Offsets in the raw data stream to the sequence (actual bases) starts */
   uvec_64 *seq_starts = nullptr;
 
-  /*! The global sequence offset, i.e. the sequence index of the
-   * original FASTA file corresponding to the first sequence stored in this
-   * instance.
+  /*! Deleted original local sequence indices.
+   *  For example, if buff contains 10 sequences with original local
+   *  indexes from [0,9] and indices 3, 4, and 7 are deleted then this would
+   *  contain indices 3, 4, and 7. The local sequence indices will be from
+   *  [0,6] and their mapping to original local sequence indices will be as
+   *  (local idx --> original local index)
+   *  0 --> 0, 1 --> 1, 2 --> 2,
+   *  3 --> 5, 4 --> 6,
+   *  5 --> 8, 6 --> 9
+   *  To construct the original global index, one would need to add the original
+   *  global sequence offset.
    */
-//  uint64_t g_seq_offset;
+  uvec_64 *del_idxs = nullptr;
+
+  /*! The original local sequence count stored in this instance's buff.
+   * This value is >= l_seq_count because we may remove sequences that are
+   * less than k in length.
+   */
+  uint64_t orig_l_seq_count;
 };
 
 

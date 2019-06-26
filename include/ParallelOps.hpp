@@ -18,6 +18,7 @@ public:
   static const std::shared_ptr<ParallelOps> init(int *argc, char ***argv);
 
   void teardown_parallelism();
+  void write_file_in_parallel(const char* file, const std::string &local_data);
   ~ParallelOps();
 
   int world_proc_rank;

@@ -41,6 +41,10 @@ std::string overlap_file;
 /*! Don't perform alignments if this flag is set */
 bool no_align = false;
 
+/*! File path to output global sequence index to original global sequence
+ * index mapping */
+std::string idx_map_file;
+
 bool is_print_rank = false;
 std::string print_str;
 
@@ -70,7 +74,8 @@ int main(int argc, char **argv) {
   tp->times["start_main:newDFD()"] = std::chrono::system_clock::now();
   std::shared_ptr<DistributedFastaData> dfd
     = std::make_shared<DistributedFastaData>(
-      input_file.c_str(), input_overlap, klength, parops, tp, tu);
+      input_file.c_str(), idx_map_file.c_str(), input_overlap,
+      klength, parops, tp, tu);
   tp->times["end_main:newDFD()"] = std::chrono::system_clock::now();
 
 #ifndef NDEBUG
@@ -282,7 +287,9 @@ int parse_args(int argc, char **argv) {
      cxxopts::value<int>())
     (CMD_OPTION_OVERLAP_FILE, CMD_OPTION_DESCRIPTION_OVERLAP_FILE,
      cxxopts::value<std::string>())
-    (CMD_OPTION_NO_ALIGN, CMD_OPTION_DESCRIPTION_NO_ALIGN);
+    (CMD_OPTION_NO_ALIGN, CMD_OPTION_DESCRIPTION_NO_ALIGN)
+    (CMD_OPTION_IDX_MAP, CMD_OPTION_DESCRIPTION_IDX_MAP,
+     cxxopts::value<std::string>());
 
   auto result = options.parse(argc, argv);
 
@@ -295,6 +302,15 @@ int parse_args(int argc, char **argv) {
     }
     return -1;
   }
+
+    if (result.count(CMD_OPTION_IDX_MAP)) {
+        idx_map_file = result[CMD_OPTION_IDX_MAP].as<std::string>();
+    } else {
+        if (is_world_rank0) {
+            std::cout << "ERROR: Index map file not specified" << std::endl;
+        }
+        return -1;
+    }
 
   // TODO - fix option parsing
   if (result.count(CMD_OPTION_INPUT_SEQ_COUNT)) {
