@@ -9,37 +9,33 @@
 #include "Utils.hpp"
 #include "Kmer.hpp"
 #include "DistributedFastaData.hpp"
+#include "pw/PairwiseFunction.hpp"
+#include "AlignmentInfo.hpp"
 
-struct AlignmentInfo{
-  seqan::AlignmentStats stats;
-  ushort seq_h_length;
-  ushort seq_v_length;
-  ushort seq_h_seed_length;
-  ushort seq_v_seed_length;
-  uint64_t seq_h_g_idx;
-  uint64_t seq_v_g_idx;
-};
+//struct AlignmentInfo{
+//  seqan::AlignmentStats stats;
+//  ushort seq_h_length;
+//  ushort seq_v_length;
+//  ushort seq_h_seed_length;
+//  ushort seq_v_seed_length;
+//  uint64_t seq_h_g_idx;
+//  uint64_t seq_v_g_idx;
+//};
 
-class DistributedAligner {
+class DistributedPairwiseRunner {
 public:
-  DistributedAligner(ushort seed_length, int xdrop, int gap_open, int gap_ext, const std::shared_ptr<DistributedFastaData> dfd,
+  DistributedPairwiseRunner(std::shared_ptr<DistributedFastaData> dfd,
                      PSpMat<CommonKmers>::MPI_DCCols mat,
                      const std::shared_ptr<ParallelOps> &parops);
 
-  uint64_t align_seqs();
+//  uint64_t align_seqs();
   void write_overlaps(const char *file);
+  void run(PairwiseFunction &pf);
 
 private:
-  ushort seed_length;
-  int xdrop;
-  int gap_open;
-  int gap_ext;
   PSpMat<CommonKmers>::MPI_DCCols mat;
   std::shared_ptr<DistributedFastaData> dfd;
   std::shared_ptr<ParallelOps> parops;
-
-  std::vector<AlignmentInfo> alignments;
-
 };
 
 

@@ -5,8 +5,9 @@ set(CMAKE_CXX_STANDARD 14)
 include_directories(
         "/usr/local/include"
         "~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"
-        "~/sali/software/seqan"
-        "~/sali/software/seqan/seqan")
+#        "~/sali/software/seqan"
+#        "~/sali/software/seqan/seqan"
+        /Users/esaliya/sali/software/seqan-v2.4.0/include/)
 
 link_directories("~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/lib")
 
@@ -24,8 +25,8 @@ add_executable(pisa
         src/Constants.cpp
         include/Constants.hpp
         include/cxxopts.hpp
-        src/DistributedAligner.cpp
-        include/DistributedAligner.hpp
+        src/DistributedPairwiseRunner.cpp
+        include/DistributedPairwiseRunner.hpp
         src/DistributedFastaData.cpp
         include/DistributedFastaData.hpp
         src/FastaData.cpp
@@ -39,7 +40,14 @@ add_executable(pisa
         src/TraceUtils.cpp
         include/TraceUtils.hpp
         include/Types.hpp
-        include/Utils.hpp)
+        include/Utils.hpp
+        include/pw/PairwiseFunction.hpp
+        src/pw/PairwiseFunction.cpp
+        include/pw/SeedExtendXdrop.hpp
+        src/pw/SeedExtendXdrop.cpp
+        include/pw/OverlapFinder.hpp
+        src/pw/OverlapFinder.cpp
+        include/AlignmentInfo.hpp)
 
 target_link_libraries(pisa CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)
