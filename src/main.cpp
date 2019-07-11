@@ -6,9 +6,12 @@
 #include "../include/Alphabet.hpp"
 #include "../include/Kmer.hpp"
 #include "../include/Utils.hpp"
-#include "../include/DistributedAligner.hpp"
+#include "../include/DistributedPairwiseRunner.hpp"
 #include "CombBLAS/CombBLAS.h"
 #include "cxxopts.hpp"
+#include "../include/pw/SeedExtendXdrop.hpp"
+#include "seqan/score/score_matrix_data.h"
+#include "../include/pw/OverlapFinder.hpp"
 
 /*! Namespace declarations */
 using namespace combblas;
@@ -230,13 +233,22 @@ int main(int argc, char **argv) {
   }
   tp->times["end_main:dfd->wait()"] = std::chrono::system_clock::now();
 
-  DistributedAligner dal(klength, xdrop, gap_open, gap_ext, dfd, C, parops);
 
+  DistributedPairwiseRunner dpr(dfd, C, parops);
   if (!no_align) {
-    tp->times["start_main:dal->align()"] = std::chrono::system_clock::now();
-    uint64_t total_alignments = dal.align_seqs();
-    tp->times["end_main:dal->align()"] = std::chrono::system_clock::now();
+    tp->times["start_main:dpr->align()"] = std::chrono::system_clock::now();
+    seqan::Blosum62 blosum62(gap_ext, gap_open);
+    // TODO: SeqAn can't work with affine gaps for seed extension
+    seqan::Blosum62 blosum62_simple(gap_open, gap_open);
 
+    SeedExtendXdrop pf(blosum62, blosum62_simple, klength, xdrop);
+    dpr.run(pf);
+    tp->times["end_main:dpr->align()"] = std::chrono::system_clock::now();
+
+    uint64_t local_alignments = pf.alignments.size();
+    uint64_t total_alignments = 0;
+    MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
+               MPI_COMM_WORLD);
 
     if (is_print_rank) {
       std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments
@@ -244,11 +256,11 @@ int main(int argc, char **argv) {
     }
   }
 
-  tp->times["start_main:dal->write_overlaps()"] = std::chrono::system_clock::now();
+  tp->times["start_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
   if (write_overlaps){
-    dal.write_overlaps(overlap_file.c_str());
+    dpr.write_overlaps(overlap_file.c_str());
   }
-  tp->times["end_main:dal->write_overlaps()"] = std::chrono::system_clock::now();
+  tp->times["end_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
 
   tp->times["end_main"] = std::chrono::system_clock::now();
 
@@ -265,7 +277,7 @@ int main(int argc, char **argv) {
 }
 
 int parse_args(int argc, char **argv) {
-  cxxopts::Options options("Distributed DistributedAligner",
+  cxxopts::Options options("Distributed DistributedPairwiseRunner",
                            "A distributed protein aligner");
 
   options.add_options()
