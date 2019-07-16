@@ -156,6 +156,8 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
   uint64_t local_nnz_count = 0;
   uint64_t local_top_triangle_count = 0;
   std::stringstream ss;
+
+  ushort l_max_common_kmers = 0;
   for (auto colit = spSeq->begcol(); colit != spSeq->endcol(); ++colit) {
     // iterate over columns
     auto l_col_idx = colit.colid(); // local numbering
@@ -182,12 +184,21 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
       }
 
       CommonKmers cks = nzit.value();
+      if (cks.count > l_max_common_kmers){
+        l_max_common_kmers = cks.count;
+      }
 
       ++local_top_triangle_count;
-      ss << g_col_idx << "," << g_row_idx << cks.count << "\n";
+      ss << g_col_idx << "," << g_row_idx << "," << cks.count << "\n";
     }
   }
 
+  ushort g_max_common_kmers = 0;
+  MPI_Reduce(&l_max_common_kmers, &g_max_common_kmers, 1,
+             MPI_UINT16_T, MPI_MAX, 0, MPI_COMM_WORLD);
+  if (parops->world_proc_rank == 0){
+    std::printf("  Max common kmers %d\n", g_max_common_kmers);
+  }
   std::string overlaps_str = ss.str();
   parops->write_file_in_parallel(file, overlaps_str);
 }
