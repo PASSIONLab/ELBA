@@ -18,13 +18,19 @@ struct CommonKmers {
    * s is the stride. Since l is within 2^16-1 (unsigned short max)
    * we can represent the count as unsigned short as well.
    */
-  ushort count = 0;
+  ushort count;
 
   /*! The position within the sequence, which is
    * much less than 2^16 - 1 for proteins
    */
   std::pair<ushort, ushort> first;
   std::pair<ushort, ushort> second;
+
+  CommonKmers() : count(1) {
+  }
+
+  explicit CommonKmers(ushort count) : count(count){
+  }
 
   friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m) {
     os << "|" << m.count << "(" << m.first.first << "," << m.first.second
@@ -45,8 +51,7 @@ struct KmerIntersect {
   static bool returnedSAID() { return false; }
 
   static OUT add(const OUT &arg1, const OUT &arg2) {
-    OUT res;
-    res.count = arg1.count + arg2.count;
+    OUT res(arg1.count + arg2.count);
     // TODO: perhaps improve this late with something that'll check how far
     // apart are the kmers.
     res.first.first = arg1.first.first;
@@ -58,7 +63,6 @@ struct KmerIntersect {
 
   static OUT multiply(const IN &arg1, const IN &arg2) {
     OUT a;
-    a.count++;
     a.first.first = arg1;
     a.first.second = arg2;
     return a;
@@ -99,12 +103,18 @@ static ushort add_kmers(const char *seq, ushort len, uint64_t start_offset,
   ushort base = alp.size;
   uint64_t kcode = 0;
   int count = 0;
+  char cap_c;
   for (uint64_t i = start_offset; i <= enf_offset_inclusive; i += s) {
     kcode = 0;
     if (count == num_kmers) break;
     for (uint64_t j = i; j < i + k; ++j) {
       /*! Efficient than using pow() */
-      kcode = kcode * base + alp.char_to_code[*(seq + j)];
+      cap_c = *(seq + j);
+      if (cap_c > 96 && cap_c < 123){
+        // small case character, so make it uppercase.
+        cap_c = cap_c - 32;
+      }
+      kcode = kcode * base + alp.char_to_code[cap_c];
     }
     ++count;
     lcol_ids.push_back(kcode);

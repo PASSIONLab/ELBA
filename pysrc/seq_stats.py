@@ -5,8 +5,8 @@ from Bio import SeqIO
 
 
 def main():
-    dir = '/Users/esaliya/sali/data/scope/uniqs/1k'
-    file = '1000_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa'
+    dir = '/Users/esaliya/sali/data/scope/uniqs/all'
+    file = '77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa'
 
     f = f"{dir}/{file}"
 

@@ -150,6 +150,10 @@ int main(int argc, char **argv) {
   PSpMat<ushort>::MPI_DCCols A(n_rows, n_cols, drows, dcols, dvals, false);
   tp->times["end_main:spMatA()"] = std::chrono::system_clock::now();
 
+#ifndef NDEBUG
+  A.PrintInfo();
+#endif
+
   auto At = A;
   tp->times["start_main:At()"] = tp->times["end_main:spMatA()"];
   At.Transpose();
@@ -167,6 +171,8 @@ int main(int argc, char **argv) {
 
 #ifndef NDEBUG
   /*! Test multiplication */
+
+  C.PrintInfo();
 
   // rows and cols in the result
   n_cols = n_rows = seq_count;
