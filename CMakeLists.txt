@@ -48,7 +48,9 @@ add_executable(pisa
         src/pw/SeedExtendXdrop.cpp
         include/pw/OverlapFinder.hpp
         src/pw/OverlapFinder.cpp
-        include/AlignmentInfo.hpp)
+        include/AlignmentInfo.hpp
+        include/ScoreMat.hpp
+        src/ScoreMat.cpp)
 
 target_link_libraries(pisa CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)

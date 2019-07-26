@@ -34,7 +34,7 @@ DistributedPairwiseRunner::DistributedPairwiseRunner(const std::shared_ptr<Distr
 //  // local submatrix
 //  PSpMat<CommonKmers>::DCCols *spSeq = mat.seqptr();
 //  // first row in this process
-//  uint64_t row_offset = gr_row_idx * avg_rows_in_grid;
+//  uint64_t row_size = gr_row_idx * avg_rows_in_grid;
 //  // first col in this process
 //  uint64_t col_offset = gr_col_idx * avg_cols_in_grid;
 //
@@ -50,7 +50,7 @@ DistributedPairwiseRunner::DistributedPairwiseRunner(const std::shared_ptr<Distr
 //    seqan::Peptide *seq_h = dfd->col_seq(l_col_idx);
 //    for (auto nzit = spSeq->begnz(colit); nzit < spSeq->endnz(colit); ++nzit) {
 //      auto l_row_idx = nzit.rowid();
-//      uint64_t g_row_idx = l_row_idx + row_offset;
+//      uint64_t g_row_idx = l_row_idx + row_size;
 //
 //      seqan::Peptide *seq_v = dfd->row_seq(l_row_idx);
 //
@@ -128,7 +128,7 @@ DistributedPairwiseRunner::DistributedPairwiseRunner(const std::shared_ptr<Distr
 //    }
 //  }
 //
-//  uint64_t local_alignments = alignments.size();
+//  uint64_t local_alignments = alignments.row_size();
 //  uint64_t total_alignments = 0;
 //  MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
 //             MPI_COMM_WORLD);

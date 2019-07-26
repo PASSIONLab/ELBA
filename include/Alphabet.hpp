@@ -26,4 +26,6 @@ struct Alphabet {
   explicit Alphabet(type t);
 };
 
+
+
 #endif //LBL_DAL_ALPHABET_HPP

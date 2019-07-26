@@ -12,6 +12,8 @@
 #include "../include/pw/SeedExtendXdrop.hpp"
 #include "seqan/score/score_matrix_data.h"
 #include "../include/pw/OverlapFinder.hpp"
+#include "../include/ScoreMat.hpp"
+#include <map>
 
 /*! Namespace declarations */
 using namespace combblas;
@@ -40,6 +42,7 @@ ushort kstride;
 /*! Parameters related to outputting k-mer overlaps */
 bool write_overlaps = false;
 std::string overlap_file;
+bool add_substitue_kmers = false;
 
 /*! Don't perform alignments if this flag is set */
 bool no_align = false;
@@ -47,6 +50,9 @@ bool no_align = false;
 /*! File path to output global sequence index to original global sequence
  * index mapping */
 std::string idx_map_file;
+
+/*! Alphabet to use. */
+Alphabet::type alph_t;
 
 bool is_print_rank = false;
 std::string print_str;
@@ -100,7 +106,7 @@ int main(int argc, char **argv) {
   }
 
   /*! Find K-mers */
-  Alphabet alph(Alphabet::PROTEIN);
+  Alphabet alph(alph_t);
 
   /*! Find k-mers */
   char *buff;
@@ -111,22 +117,31 @@ int main(int argc, char **argv) {
   uvec_16 lvals;
   uint64_t offset = dfd->global_start_idx();
   FastaData *lfd = dfd->lfd();
+  pisa::Blosum62 bsm62;
+  std::map<uint64_t, std::vector<uint64_t>*> kmer_to_subs_kmers;
   tp->times["start_main:loop_add_kmers()"] = std::chrono::system_clock::now();
   for (uint64_t lseq_idx = 0; lseq_idx < lfd->local_count(); ++lseq_idx) {
     buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
     auto num_kmers = add_kmers(buff, len, start_offset, end_offset_inclusive,
-                               klength, kstride, alph, lcol_ids, lvals, parops);
+                               klength, kstride, add_substitue_kmers,
+                               kmer_to_subs_kmers, bsm62,
+                               alph, lcol_ids, lvals, parops);
     lrow_ids.insert(lrow_ids.end(), num_kmers, lseq_idx + offset);
   }
   tp->times["end_main:loop_add_kmers()"] = std::chrono::system_clock::now();
+
+  /*! Free kmer_to_subs_kmers vectors */
+  for (std::pair<uint64_t, std::vector<uint64_t>*> p : kmer_to_subs_kmers){
+    free(p.second);
+  }
 
 
 #ifndef NDEBUG
   {
     std::string title = "Local matrix info:";
-    std::string msg = "lrow_ids size: " + std::to_string(lrow_ids.size())
-                      + " lcol_ids size: " + std::to_string(lcol_ids.size())
-                      + " lvals size: " + std::to_string(lvals.size());
+    std::string msg = "lrow_ids row_size: " + std::to_string(lrow_ids.size())
+                      + " lcol_ids row_size: " + std::to_string(lcol_ids.size())
+                      + " lvals row_size: " + std::to_string(lvals.size());
     TraceUtils::print_msg(title, msg, parops);
   }
 #endif
@@ -164,8 +179,9 @@ int main(int argc, char **argv) {
     Mult_AnXBn_Synch<KmerIntersectSR_t,
       CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
   tu.print_str(
-    "Overlaps after k-mer finding: " + std::to_string(C.getnnz() - seq_count) +
-    "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
+    "Overlaps after k-mer finding (nnz(C) - diagonal): "
+    + std::to_string(C.getnnz() - seq_count)
+    + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
   tp->times["end_main:AxAt()"] = std::chrono::system_clock::now();
 
 
@@ -307,7 +323,10 @@ int parse_args(int argc, char **argv) {
      cxxopts::value<std::string>())
     (CMD_OPTION_NO_ALIGN, CMD_OPTION_DESCRIPTION_NO_ALIGN)
     (CMD_OPTION_IDX_MAP, CMD_OPTION_DESCRIPTION_IDX_MAP,
-     cxxopts::value<std::string>());
+     cxxopts::value<std::string>())
+    (CMD_OPTION_ALPH, CMD_OPTION_DESCRIPTION_ALPH,
+     cxxopts::value<std::string>())
+    (CMD_OPTION_SUBS, CMD_OPTION_DESCRIPTION_SUBS);
 
   auto result = options.parse(argc, argv);
 
@@ -390,6 +409,23 @@ int parse_args(int argc, char **argv) {
     no_align = true;
   }
 
+  if (result.count(CMD_OPTION_ALPH)) {
+    std::string tmp = result[CMD_OPTION_ALPH].as<std::string>();
+    if (tmp == "protein"){
+      alph_t = Alphabet::PROTEIN;
+    } else {
+      if (is_world_rank0) {
+        std::cout << "ERROR: Unsupported alphabet type " << tmp << std::endl;
+      }
+    }
+  } else {
+    alph_t = Alphabet::PROTEIN;
+  }
+
+  if (result.count(CMD_OPTION_SUBS)) {
+    add_substitue_kmers = true;
+  }
+
   return 0;
 }
 
@@ -425,7 +461,7 @@ void pretty_print_config(std::string &append_to) {
       .append(vals[i]).append("\n");
 
 //    append_to.append(get_padding(
-//        static_cast<ushort>(max_length + 1 - param.size()), prefix))
+//        static_cast<ushort>(max_length + 1 - param.row_size()), prefix))
 //        .append(param).append(": ")
 //        .append(vals[i]).append("\n");
   }
