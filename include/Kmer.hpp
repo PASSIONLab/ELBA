@@ -94,7 +94,7 @@ struct KmerIntersect {
   }
 };
 
-static ushort add_kmers(const char *seq, ushort len, uint64_t start_offset,
+static uint64_t add_kmers(const char *seq, ushort len, uint64_t start_offset,
                         uint64_t end_offset_inclusive, ushort k, ushort s,
                         bool add_substitute_kmers,
                         std::map<uint64_t, std::vector<uint64_t>*> &kmer_to_subs_kmers,
@@ -106,7 +106,7 @@ static ushort add_kmers(const char *seq, ushort len, uint64_t start_offset,
   // TODO: Saliya - this can be improved using bit operators
   ushort base = alp.size;
   uint64_t kcode = 0;
-  int count = 0;
+  uint64_t count = 0;
   char cap_c;
   for (uint64_t i = start_offset; i <= ((end_offset_inclusive - k) + 1); i += s) {
     kcode = 0;
