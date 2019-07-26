@@ -26,7 +26,7 @@ void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int ran
 
   /* The idea:
    * if sequence names and contents are roughly equal
-   * then dividing the file size by the number of ranks
+   * then dividing the file row_size by the number of ranks
    * should land close to l_seq_count sequences. We'll fix
    * any mismatch later
    */
@@ -38,7 +38,7 @@ void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int ran
 
   /* read in relevant chunk of file into "chunk",
    * which starts at location in the file g_start
-   * and has size l_chunk_size
+   * and has row_size l_chunk_size
    */
 
   MPI_Offset g_end;

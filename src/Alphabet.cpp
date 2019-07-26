@@ -6,7 +6,15 @@
 #include <iostream>
 #include "../include/Alphabet.hpp"
 
-const char* Alphabet::protein = "ACDEFGHIKLMNPQRSTVWY";
+
+/*!
+ * Sometimes it is not possible two differentiate two closely related amino
+ * acids, therefore we have the special cases:
+ * asparagine/aspartic acid - asx - B
+ * glutamine/glutamic acid - glx - Z
+ * http://www.cryst.bbk.ac.uk/education/AminoAcid/the_twenty.html
+ */
+const char* Alphabet::protein = "ARNDCQEGHILKMFPSTWYVBZX*";
 const char* Alphabet::dna = "ACGT";
 
 
@@ -14,7 +22,7 @@ Alphabet::Alphabet(Alphabet::type t) {
   switch (t){
     case PROTEIN:
       init(protein);
-      size = 20;
+      size = 24;
       break;
     case DNA:
       init(dna);

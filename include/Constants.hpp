@@ -40,5 +40,10 @@ extern const char *CMD_OPTION_DESCRIPTION_NO_ALIGN;
 extern const char *CMD_OPTION_IDX_MAP;
 extern const char *CMD_OPTION_DESCRIPTION_IDX_MAP;
 
+extern const char *CMD_OPTION_ALPH;
+extern const char *CMD_OPTION_DESCRIPTION_ALPH;
+
+extern const char *CMD_OPTION_SUBS;
+extern const char *CMD_OPTION_DESCRIPTION_SUBS;
 
 #endif //LBL_DAL_CONSTANTS_H

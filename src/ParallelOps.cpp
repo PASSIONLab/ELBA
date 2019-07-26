@@ -62,7 +62,7 @@ void ParallelOps::write_file_in_parallel(
     }
     MPI_Barrier(MPI_COMM_WORLD);
 
-    struct stat st;     // get file size
+    struct stat st;     // get file row_size
     if (stat(file, &st) == -1) {
         MPI_Abort(MPI_COMM_WORLD, NOFILE);
     }
