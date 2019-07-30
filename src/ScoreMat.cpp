@@ -6,8 +6,6 @@
 
 pisa::ScoreMatrix::ScoreMatrix(ushort alph_size) :
   alph_size(alph_size) {
-  std::cout<<"Inside base constructor alph_size: " << alph_size<< std::endl;
-
 }
 
 pisa::Blosum62::Blosum62() : ScoreMatrix(24) {
