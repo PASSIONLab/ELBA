@@ -9,7 +9,6 @@ pisa::ScoreMatrix::ScoreMatrix(ushort alph_size) :
 }
 
 pisa::Blosum62::Blosum62() : ScoreMatrix(24) {
-  std::cout<<"alph_size: "<<alph_size<<std::endl;
   const char *alph = Alphabet::protein;
   for (int i = 0; i < alph_size; ++i){
 
