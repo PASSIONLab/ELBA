@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <vector>
 #include <cmath>
+#include <unordered_set>
 #include "ParallelOps.hpp"
 #include "Alphabet.hpp"
 #include "Types.hpp"
@@ -96,7 +97,7 @@ struct KmerIntersect {
 
 static uint64_t add_kmers(const char *seq, ushort len, uint64_t start_offset,
                         uint64_t end_offset_inclusive, ushort k, ushort s,
-                        bool add_substitute_kmers,
+                        bool add_substitute_kmers, float subtitute_kmer_percentage,
                         std::map<uint64_t, std::vector<uint64_t>*> &kmer_to_subs_kmers,
                         pisa::ScoreMatrix &score_mat, Alphabet &alp,
                         uvec_64 &lcol_ids, uvec_16 &lvals,
@@ -108,6 +109,7 @@ static uint64_t add_kmers(const char *seq, ushort len, uint64_t start_offset,
   uint64_t kcode = 0;
   uint64_t count = 0;
   char cap_c;
+  std::unordered_set<uint64_t> kmers_in_sequence;
   for (uint64_t i = start_offset; i <= ((end_offset_inclusive - k) + 1); i += s) {
     kcode = 0;
     if (!add_substitute_kmers && count == num_kmers) break;
@@ -129,8 +131,19 @@ static uint64_t add_kmers(const char *seq, ushort len, uint64_t start_offset,
        */
       lvals.push_back(static_cast<ushort &&>(i - start_offset));
     } else {
+      if (kmers_in_sequence.find(kcode) != kmers_in_sequence.end()){
+        /*! We've already seen this kmer in this sequence, so we'll not
+         * include this. The caveat here is if we want to do seed based
+         * alignment then we are loosing the position of this kmer.
+         */
+        continue;
+      } else {
+        kmers_in_sequence.emplace(kcode);
+      }
+
       if (kmer_to_subs_kmers.find(kcode) == kmer_to_subs_kmers.end()) {
-        /*! Encountering this kmer for the first time, so let's find its
+        /*! Encountering this kmer for the first time, among all
+         * sequences I've (this process) looked so far, so let's find its
          * substitute kmers and add them.
          */
 
@@ -146,16 +159,17 @@ static uint64_t add_kmers(const char *seq, ushort len, uint64_t start_offset,
           }
 
           uint64_t subs_kcodes_size = subs_kcodes->size();
-          for (int m = start_idx; m < subs_kcodes_size; ++m){
+          for (int m = start_idx; m < subs_kcodes_size; ++m) {
             uint64_t subs_kcode = (*subs_kcodes)[m];
-            for (auto const &sub : (*score_mat.base_to_subtitutes[cap_c])){
-              subs_kcodes->push_back(subs_kcode*base+alp.char_to_code[sub]);
+            for (auto const &sub : (*score_mat.base_to_subtitutes[cap_c])) {
+              subs_kcodes->push_back(subs_kcode * base + alp.char_to_code[sub]);
             }
           }
           start_idx = subs_kcodes_size;
         }
 
-        subs_kcodes->erase(subs_kcodes->begin(), subs_kcodes->begin()+start_idx);
+        subs_kcodes->erase(subs_kcodes->begin(),
+                           subs_kcodes->begin() + start_idx);
         kmer_to_subs_kmers[kcode] = subs_kcodes;
       }
 
@@ -164,12 +178,13 @@ static uint64_t add_kmers(const char *seq, ushort len, uint64_t start_offset,
        * are its substitute kmers. Let's add them.
        */
       std::vector<uint64_t> *subs_kmers = kmer_to_subs_kmers[kcode];
-      for (auto const  &subs_kcode : (*subs_kmers)){
+      uint64_t size = subs_kmers->size() * subtitute_kmer_percentage / 100;
+      for (int p = 0; p < size; ++p){
+        uint64_t subs_kcode = (*subs_kmers)[p];
         lcol_ids.push_back(subs_kcode);
         lvals.push_back(static_cast<ushort &&>(i - start_offset));
         ++count;
       }
-
     }
   }
 

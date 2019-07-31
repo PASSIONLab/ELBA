@@ -43,6 +43,7 @@ ushort kstride;
 bool write_overlaps = false;
 std::string overlap_file;
 bool add_substitue_kmers = false;
+float subtitute_kmer_percentage = 100;
 
 /*! Don't perform alignments if this flag is set */
 bool no_align = false;
@@ -124,6 +125,7 @@ int main(int argc, char **argv) {
     buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
     auto num_kmers = add_kmers(buff, len, start_offset, end_offset_inclusive,
                                klength, kstride, add_substitue_kmers,
+                               subtitute_kmer_percentage,
                                kmer_to_subs_kmers, bsm62,
                                alph, lcol_ids, lvals, parops);
     lrow_ids.insert(lrow_ids.end(), num_kmers, lseq_idx + offset);
@@ -165,9 +167,9 @@ int main(int argc, char **argv) {
   PSpMat<ushort>::MPI_DCCols A(n_rows, n_cols, drows, dcols, dvals, false);
   tp->times["end_main:spMatA()"] = std::chrono::system_clock::now();
 
-#ifndef NDEBUG
+//#ifndef NDEBUG
   A.PrintInfo();
-#endif
+//#endif
 
   auto At = A;
   tp->times["start_main:At()"] = tp->times["end_main:spMatA()"];
@@ -326,7 +328,8 @@ int parse_args(int argc, char **argv) {
      cxxopts::value<std::string>())
     (CMD_OPTION_ALPH, CMD_OPTION_DESCRIPTION_ALPH,
      cxxopts::value<std::string>())
-    (CMD_OPTION_SUBS, CMD_OPTION_DESCRIPTION_SUBS);
+    (CMD_OPTION_SUBS, CMD_OPTION_DESCRIPTION_SUBS,
+     cxxopts::value<float>());
 
   auto result = options.parse(argc, argv);
 
@@ -424,6 +427,7 @@ int parse_args(int argc, char **argv) {
 
   if (result.count(CMD_OPTION_SUBS)) {
     add_substitue_kmers = true;
+    subtitute_kmer_percentage = result[CMD_OPTION_SUBS].as<float>();
   }
 
   return 0;
