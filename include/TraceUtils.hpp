@@ -19,8 +19,8 @@ struct TimePod {
                            "main:dfd->wait()",
                            "dfd:MPI_Waitall(seqs)",
                            "dfd:extract_recv_seqs",
-                           "main:dal->align()",
-                           "main:dal->write_overlaps()"
+                           "main:dpr->align()",
+                           "main:dpr->write_overlaps()"
   };
 
   std::string to_string() {
