@@ -14,6 +14,7 @@
 #include "../include/pw/OverlapFinder.hpp"
 #include "../include/ScoreMat.hpp"
 #include "../include/pw/FullAligner.hpp"
+#include "../include/pw/BandedAligner.hpp"
 #include <map>
 
 /*! Namespace declarations */
@@ -57,6 +58,7 @@ bool xdrop_align = false;
 
 /*! Perform banded alignment */
 bool banded_align = false;
+int banded_half_width = 5;
 
 /*! File path to output global sequence index to original global sequence
  * index mapping */
@@ -283,6 +285,9 @@ int main(int argc, char **argv) {
     } else if (full_align) {
       pf = new FullAligner (blosum62, blosum62_simple, klength, xdrop);
       local_alignments = static_cast<FullAligner*>(pf)->alignments.size();
+    } else if(banded_align){
+      pf = new BandedAligner (blosum62, banded_half_width);
+      local_alignments = static_cast<BandedAligner*>(pf)->alignments.size();
     }
     dpr.run(pf);
     delete pf;
@@ -344,7 +349,8 @@ int parse_args(int argc, char **argv) {
     (CMD_OPTION_NO_ALIGN, CMD_OPTION_DESCRIPTION_NO_ALIGN)
     (CMD_OPTION_FULL_ALIGN, CMD_OPTION_DESCRIPTION_FULL_ALIGN)
     (CMD_OPTION_XDROP_ALIGN, CMD_OPTION_DESCRIPTION_XDROP_ALIGN)
-    (CMD_OPTION_BANDED_ALIGN, CMD_OPTION_DESCRIPTION_BANDED_ALIGN)
+    (CMD_OPTION_BANDED_ALIGN, CMD_OPTION_DESCRIPTION_BANDED_ALIGN,
+     cxxopts::value<int>())
     (CMD_OPTION_IDX_MAP, CMD_OPTION_DESCRIPTION_IDX_MAP,
      cxxopts::value<std::string>())
     (CMD_OPTION_ALPH, CMD_OPTION_DESCRIPTION_ALPH,
@@ -439,6 +445,7 @@ int parse_args(int argc, char **argv) {
 
   if (result.count(CMD_OPTION_BANDED_ALIGN)) {
     banded_align = true;
+    banded_half_width = result[CMD_OPTION_BANDED_ALIGN].as<int>();
   }
 
   if (result.count(CMD_OPTION_XDROP_ALIGN)) {
