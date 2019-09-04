@@ -203,7 +203,7 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
   parops->write_file_in_parallel(file, overlaps_str);
 }
 
-void DistributedPairwiseRunner::run(PairwiseFunction &pf) {
+void DistributedPairwiseRunner::run(PairwiseFunction *pf) {
   /*! There are two types of rows and columns below.
    * The sequences are arranged as an NxN matrix in
    * mat (this is not how it's stored internally).
@@ -257,7 +257,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction &pf) {
 
       CommonKmers cks = nzit.value();
 
-      pf.apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks);
+      pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks);
     }
   }
 }

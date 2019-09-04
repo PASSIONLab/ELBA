@@ -5,11 +5,12 @@
 
 #include <seqan/score.h>
 #include "../Kmer.hpp"
+#include "../AlignmentInfo.hpp"
 
 class PairwiseFunction {
 public:
   PairwiseFunction();
-  ~PairwiseFunction();
+  virtual ~PairwiseFunction();
 
   virtual void apply(uint64_t l_col_idx, uint64_t g_col_idx,
       uint64_t l_row_idx, uint64_t g_row_idx,
