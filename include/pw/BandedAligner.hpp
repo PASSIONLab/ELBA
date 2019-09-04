@@ -12,9 +12,7 @@ public:
 //      seqan::Score<int, seqan::ScoreMatrix<TSequenceValue, TSpec>> scoring_scheme_simple,
 //  ushort seed_length, int xdrop);
 
-  BandedAligner(seqan::Blosum62 scoring_scheme,
-  seqan::Blosum62 scoring_scheme_simple,
-      ushort seed_length, int xdrop);
+  BandedAligner(seqan::Blosum62 scoring_scheme, int banded_half_width);
 
 
   void apply(uint64_t l_col_idx, uint64_t g_col_idx,
@@ -28,9 +26,7 @@ private:
 //  seqan::Score<int, seqan::ScoreMatrix<TSequenceValue, TSpec>> scoring_scheme;
 //  seqan::Score<int, seqan::ScoreMatrix<TSequenceValue, TSpec>> scoring_scheme_simple;
   seqan::Blosum62 scoring_scheme;
-  seqan::Blosum62 scoring_scheme_simple;
-  ushort seed_length;
-  int xdrop;
+  int banded_half_width;
 
 };
 
