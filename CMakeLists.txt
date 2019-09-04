@@ -50,7 +50,11 @@ add_executable(pisa
         src/pw/OverlapFinder.cpp
         include/AlignmentInfo.hpp
         include/ScoreMat.hpp
-        src/ScoreMat.cpp)
+        src/ScoreMat.cpp
+        include/pw/BandedAligner.hpp
+        include/pw/FullAligner.hpp
+        src/pw/BandedAligner.cpp
+        src/pw/FullAligner.cpp)
 
 target_link_libraries(pisa CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)

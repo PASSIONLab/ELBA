@@ -13,6 +13,7 @@
 #include "seqan/score/score_matrix_data.h"
 #include "../include/pw/OverlapFinder.hpp"
 #include "../include/ScoreMat.hpp"
+#include "../include/pw/FullAligner.hpp"
 #include <map>
 
 /*! Namespace declarations */
@@ -47,6 +48,15 @@ float subtitute_kmer_percentage = 100;
 
 /*! Don't perform alignments if this flag is set */
 bool no_align = false;
+
+/*! Perform full alignment */
+bool full_align = false;
+
+/*! Perform xdrop alignment */
+bool xdrop_align = false;
+
+/*! Perform banded alignment */
+bool banded_align = false;
 
 /*! File path to output global sequence index to original global sequence
  * index mapping */
@@ -262,14 +272,22 @@ int main(int argc, char **argv) {
   if (!no_align) {
     tp->times["start_main:dpr->align()"] = std::chrono::system_clock::now();
     seqan::Blosum62 blosum62(gap_ext, gap_open);
+
     // TODO: SeqAn can't work with affine gaps for seed extension
     seqan::Blosum62 blosum62_simple(gap_open, gap_open);
-
-    SeedExtendXdrop pf(blosum62, blosum62_simple, klength, xdrop);
+    PairwiseFunction* pf = nullptr;
+    uint64_t local_alignments = 1;
+    if (xdrop_align) {
+      pf = new SeedExtendXdrop (blosum62, blosum62_simple, klength, xdrop);
+      local_alignments = static_cast<SeedExtendXdrop*>(pf)->alignments.size();
+    } else if (full_align) {
+      pf = new FullAligner (blosum62, blosum62_simple, klength, xdrop);
+      local_alignments = static_cast<FullAligner*>(pf)->alignments.size();
+    }
     dpr.run(pf);
+    delete pf;
     tp->times["end_main:dpr->align()"] = std::chrono::system_clock::now();
 
-    uint64_t local_alignments = pf.alignments.size();
     uint64_t total_alignments = 0;
     MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
                MPI_COMM_WORLD);
@@ -324,6 +342,9 @@ int parse_args(int argc, char **argv) {
     (CMD_OPTION_OVERLAP_FILE, CMD_OPTION_DESCRIPTION_OVERLAP_FILE,
      cxxopts::value<std::string>())
     (CMD_OPTION_NO_ALIGN, CMD_OPTION_DESCRIPTION_NO_ALIGN)
+    (CMD_OPTION_FULL_ALIGN, CMD_OPTION_DESCRIPTION_FULL_ALIGN)
+    (CMD_OPTION_XDROP_ALIGN, CMD_OPTION_DESCRIPTION_XDROP_ALIGN)
+    (CMD_OPTION_BANDED_ALIGN, CMD_OPTION_DESCRIPTION_BANDED_ALIGN)
     (CMD_OPTION_IDX_MAP, CMD_OPTION_DESCRIPTION_IDX_MAP,
      cxxopts::value<std::string>())
     (CMD_OPTION_ALPH, CMD_OPTION_DESCRIPTION_ALPH,
@@ -410,6 +431,18 @@ int parse_args(int argc, char **argv) {
 
   if (result.count(CMD_OPTION_NO_ALIGN)) {
     no_align = true;
+  }
+
+  if (result.count(CMD_OPTION_FULL_ALIGN)) {
+    full_align = true;
+  }
+
+  if (result.count(CMD_OPTION_BANDED_ALIGN)) {
+    banded_align = true;
+  }
+
+  if (result.count(CMD_OPTION_XDROP_ALIGN)) {
+    xdrop_align = true;
   }
 
   if (result.count(CMD_OPTION_ALPH)) {
