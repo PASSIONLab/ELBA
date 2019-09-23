@@ -56,6 +56,11 @@ add_executable(pisa
         src/pw/BandedAligner.cpp
         src/pw/FullAligner.cpp)
 
+add_executable(nkmers
+        src/NearestKmers.cpp
+        src/Alphabet.cpp include/Alphabet.hpp
+        src/ScoreMat.cpp include/ScoreMat.hpp)
+
 target_link_libraries(pisa CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})

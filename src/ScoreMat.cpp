@@ -26,7 +26,7 @@ pisa::Blosum62::Blosum62() : ScoreMatrix(24) {
       char cj = alph[j];
       char s = data[data_offset + j];
 
-      score[score_offset + cj] = s;
+      _score[score_offset + cj] = s;
 
       if (ci != cj){
         if (s > max_score){
@@ -65,7 +65,7 @@ pisa::Blosum62::Blosum62() : ScoreMatrix(24) {
     ushort offset = ci * row_size;
     for (int j = 0; j < alph_size; ++j){
       char cj = alph[j];
-      char s = score[offset + cj];
+      char s = _score[offset + cj];
       assert(s == data[i * alph_size + j]);
       std::cout << (short)s << " ";
     }

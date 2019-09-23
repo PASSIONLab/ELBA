@@ -31,7 +31,8 @@ Alphabet::Alphabet(Alphabet::type t) {
   }
 }
 
-void Alphabet::init(const std::string &alphabet) {
+void Alphabet::init(const std::string& alphabet) {
+  letters = alphabet;
   unsigned no_code = capacity;
   std::fill_n(char_to_code, capacity, no_code);
 

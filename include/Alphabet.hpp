@@ -13,17 +13,16 @@
 struct Alphabet {
   static const char* protein;
   static const char* dna;
-
   static const ushort capacity = 128;
 
+  enum type {PROTEIN, DNA};
+  explicit Alphabet(type t);
   void init(const std::string &letters);
 
-  enum type {PROTEIN, DNA};
   uchar char_to_code[capacity];
   uchar code_to_char[capacity];
   ushort size;
-
-  explicit Alphabet(type t);
+  std::string letters;
 };
 
 
