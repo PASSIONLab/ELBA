@@ -10,6 +10,18 @@ namespace pisa{
   public:
     explicit ScoreMatrix(ushort alph_size);
 
+    inline short score(const char& ci, const char& cj){
+      return _score[ci*row_size+cj];
+    }
+
+    short self_score(const std::string& kmer){
+      short sum = 0;
+      for (const char& c : kmer){
+        sum += _score[c*row_size+c];
+      }
+      return sum;
+    }
+
     /*! row_size 91 comes from the fact that protein alphabet has
      * characters including * and A - Z. The total ASCII range of these
      * is 49 (in ASCII 42 is * and 90 is Z, so 49 characters in between).
@@ -17,10 +29,10 @@ namespace pisa{
      * We'll have 91 such rows in the score matrix. The array representation
      * will be 1D, so it'll have a 91 * 91 elements. This is done to make
      * access faster than a 2D lookup.
-     * Note. Some of the positions in these 42 will be empty. */
+     * Note. Some of the positions in these 91*91 array will be empty. */
     ushort const row_size = 91;
     ushort const alph_size;
-    char score[91 * 91]{};
+    char _score[91 * 91]{};
     std::map<char, std::vector<char>*> base_to_subtitutes;
   };
 
