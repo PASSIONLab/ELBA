@@ -27,7 +27,10 @@ void FullAligner::apply(
 
     int score = localAlignment(align, scoring_scheme, seqan::DynamicGaps());
     AlignmentInfo ai;
+    // TODO - timing around here
     computeAlignmentStats(ai.stats, align, scoring_scheme);
+    // TODO - END
+
     ai.seq_h_length = length(*seq_h);
     ai.seq_v_length = length(*seq_v);
     ai.seq_h_seed_length = (clippedEndPosition(row(align, 0)) - 1) - clippedBeginPosition(row(align, 0));
@@ -41,6 +44,7 @@ void FullAligner::apply(
   // For now only keeps the largest alignment > 30% identity.
   // Incorporate length coverage restrictions later.
 
+  // TODO - Keep a counter
 //  if (max_ai.stats.alignmentIdentity >= 30.0){
   alignments.push_back(ai);
 //  }

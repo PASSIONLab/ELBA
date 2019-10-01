@@ -6,6 +6,14 @@
 #include "Types.hpp"
 
 namespace pisa{
+
+  struct Penalty{
+    Penalty(char base_char);
+    char base_char;
+    ushort sub_idx;
+    short penalty;
+  };
+
   struct ScoreMatrix{
   public:
     explicit ScoreMatrix(ushort alph_size);
@@ -34,6 +42,8 @@ namespace pisa{
     ushort const alph_size;
     char _score[91 * 91]{};
     std::map<char, std::vector<char>*> base_to_subtitutes;
+
+    std::vector<Penalty> penalties[91]{};
   };
 
 
