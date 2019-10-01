@@ -6,7 +6,7 @@ include_directories(
         "/usr/local/include"
         "~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"
 #        "~/sali/software/seqan"
-#        "~/sali/software/seqan/seqan"
+#        "~/sali/software/seqan/seqan")
         ~/sali/software/seqan-v2.4.0/include/)
 
 link_directories("~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/lib")
@@ -15,7 +15,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS_RELEASE "-DSEQAN_ENABLE_DEBUG=0")
+set(CMAKE_CXX_FLAGS_RELEASE "-DSEQAN_ENABLE_DEBUG=0 -DSEQAN_SIMD_ENABLED=1 -msse4")
 #set(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG=1")
 
 find_package(MPI REQUIRED)
@@ -60,6 +60,8 @@ add_executable(nkmers
         src/NearestKmers.cpp
         src/Alphabet.cpp include/Alphabet.hpp
         src/ScoreMat.cpp include/ScoreMat.hpp)
+
+add_executable(seqanvecs src/seqantest/seqanvec.cpp)
 
 target_link_libraries(pisa CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)

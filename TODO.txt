@@ -1,0 +1,6 @@
+1. Xdrop, FA, BA with a single alignment to plot recall vs "method", where method
+is Xdrop, FA, and BA
+
+2. 1. with embedded timing
+
+3. Substitution.

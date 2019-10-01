@@ -5,14 +5,12 @@
 
 
 pisa::ScoreMatrix::ScoreMatrix(ushort alph_size) :
-  alph_size(alph_size) {
+  alph_size(alph_size){
 }
 
 pisa::Blosum62::Blosum62() : ScoreMatrix(24) {
   const char *alph = Alphabet::protein;
   for (int i = 0; i < alph_size; ++i){
-
-
 
     char ci = alph[i];
     ushort score_offset = ci * row_size;
