@@ -36,8 +36,18 @@ int main(int argc, char** argv){
   auto ts = std::chrono::system_clock::now();
   seqan::String<int16_t> scores = seqan::globalAlignmentScore(execPolicy, seqs1, seqs2, scoreAffine);
   auto te = std::chrono::system_clock::now();
+  std::cout << "Vec Score: " << scores[0] << "elapsed " << ((ms_t(te - ts)).count()) << "\n";
 
-  std::cout << "Score: " << scores[0] << "elapsed " << ((ms_t(te - ts)).count()) << "\n";
+  seqan::Align<seqan::Dna> align;
+  resize(rows(align), 2);
+  assignSource(row(align, 0), seqs1);
+  assignSource(row(align, 1), seqs2);
+  ts = std::chrono::system_clock::now();
+  int score = seqan::globalAlignment(align, scoreAffine);
+  te = std::chrono::system_clock::now();
+  std::cout << "Just Score: " << scores[0] << "elapsed " << ((ms_t(te - ts)).count()) << "\n";
+
+
 
   return 0;
 }
