@@ -3,6 +3,8 @@
 #ifndef LBL_PISA_PAIRWISEFUNCTION_HPP
 #define LBL_PISA_PAIRWISEFUNCTION_HPP
 
+#include <unordered_map>
+#include <string>
 #include <seqan/score.h>
 #include "../Kmer.hpp"
 #include "../AlignmentInfo.hpp"
@@ -15,7 +17,15 @@ public:
   virtual void apply(uint64_t l_col_idx, uint64_t g_col_idx,
       uint64_t l_row_idx, uint64_t g_row_idx,
       seqan::Peptide *seq_h, seqan::Peptide *seq_v,
-      CommonKmers &cks) = 0;
+      CommonKmers &cks, std::stringstream& ss) = 0;
+
+  void add_time(std::string type, double duration);
+  void print_avg_times(std::shared_ptr<ParallelOps> parops);
+
+private:
+  std::unordered_map<std::string, size_t> types;
+  std::vector<uint64_t> counts;
+  std::vector<double> times;
 
 };
 

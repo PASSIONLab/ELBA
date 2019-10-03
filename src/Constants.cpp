@@ -10,8 +10,8 @@ const char *CMD_OPTION_DESCRIPTION_INPUT_SEQ_COUNT = "The sequence count in the 
 const char *CMD_OPTION_INPUT_OVERLAP = "O";
 const char *CMD_OPTION_DESCRIPTION_INPUT_OVERLAP = "Number of bytes to overlap when reading the input file in parallel.";
 
-const char *CMD_OPTION_XDROP = "x";
-const char *CMD_OPTION_DESCRIPTION_XDROP = "Xdrop.";
+const char *CMD_OPTION_SEED_COUNT = "sc";
+const char *CMD_OPTION_DESCRIPTION_SEED_COUNT = "Seed count.";
 
 const char *CMD_OPTION_GAP_OPEN = "g";
 const char *CMD_OPTION_DESCRIPTION_GAP_OPEN = "Gap open penalty (negative value).";
@@ -27,6 +27,9 @@ const char *CMD_OPTION_DESCRIPTION_KMER_STRID = "Kmer stride.";
 
 const char *CMD_OPTION_OVERLAP_FILE = "of";
 const char *CMD_OPTION_DESCRIPTION_OVERLAP_FILE = "Overlap file.";
+
+const char *CMD_OPTION_ALIGN_FILE = "af";
+const char *CMD_OPTION_DESCRIPTION_ALIGN_FILE = "Alignment file.";
 
 const char *CMD_OPTION_NO_ALIGN = "na";
 const char *CMD_OPTION_DESCRIPTION_NO_ALIGN = "Flag to indicate not to performa alignments.";
