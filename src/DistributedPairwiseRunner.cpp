@@ -157,7 +157,9 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
   uint64_t local_top_triangle_count = 0;
   std::stringstream ss;
 
-  ss << "g_col_idx,g_row_idx,common_kmer_count" << std::endl;
+  if (parops->world_proc_rank == 0) {
+    ss << "g_col_idx,g_row_idx,common_kmer_count" << std::endl;
+  }
   ushort l_max_common_kmers = 0;
   for (auto colit = spSeq->begcol(); colit != spSeq->endcol(); ++colit) {
     // iterate over columns
