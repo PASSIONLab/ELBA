@@ -30,7 +30,7 @@ public:
 
 //  uint64_t align_seqs();
   void write_overlaps(const char *file);
-  void run(PairwiseFunction *pf);
+  void run(PairwiseFunction *pf, const char* file);
 
 private:
   PSpMat<CommonKmers>::MPI_DCCols mat;

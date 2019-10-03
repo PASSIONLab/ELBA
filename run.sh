@@ -19,11 +19,19 @@
 
 # Astral (SCOPe) sequences
 #mpirun -np 4 ./cmake-build-release/pisa -i /Users/esaliya/sali/data/scope/uniqs/10/10_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 10 -O 1000 -k 6 -s 1 --of overlaps.txt --idxmap idxmap.txt --subs
-mpirun -np 4 ./cmake-build-release/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 10 -O 1000 -k 6 -s 1 --of overlaps.txt --idxmap idxmap.txt --subs
+#mpirun -np 4 ./cmake-build-release/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 10 -O 1000 -k 6 -s 1 --of overlaps.txt --idxmap idxmap.txt --subs
+#mpirun -np 4 ./cmake-build-release/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 100 -O 1000 -k 6 -s 1 --idxmap idxmap.txt --af align.txt --fa
 #mpirun -np 1 ./cmake-build-release/pisa -i /Users/esaliya/sali/data/scope/uniqs/10/10_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 10 -O 1000 -k 6 -s 1 --of overlaps.txt
 
+
+mpirun -np 4 ./cmake-build-release/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 100 -O 1000 -k 6 -s 1 --idxmap idxmap.txt --sc 1 --na --of overlap.txt 2>&1 | tee na_out.txt
+mpirun -np 4 ./cmake-build-release/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 100 -O 1000 -k 6 -s 1 --idxmap idxmap.txt --sc 1 --af xa_align.txt --xa 49 2>&1 | tee xa_out.txt
+mpirun -np 4 ./cmake-build-release/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 100 -O 1000 -k 6 -s 1 --idxmap idxmap.txt --sc 1 --af ba_align.txt --ba 5 2>&1 | tee ba_out.txt
+mpirun -np 4 ./cmake-build-release/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 100 -O 1000 -k 6 -s 1 --idxmap idxmap.txt --sc 1 --af fa_align.txt --fa 2>&1 | tee fa_out.txt
 
 # DEBUG runs
 #mpirun -np 4 ./cmake-build-debug/pisa -i /Users/esaliya/sali/data/scope/uniqs/10/10_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 10 -O 1000 -k 6 -s 1 --of overlaps.txt --idxmap idxmap.txt
 #fake run
 #mpirun -np 1 ./cmake-build-debug/pisa -i /Users/esaliya/sali/data/scope/uniqs/10/fake_10_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 10 -O 1000 -k 1 -s 1 --of overlaps.txt --idxmap idxmap.txt
+
+

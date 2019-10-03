@@ -157,6 +157,7 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
   uint64_t local_top_triangle_count = 0;
   std::stringstream ss;
 
+  ss << "g_col_idx,g_row_idx,common_kmer_count" << std::endl;
   ushort l_max_common_kmers = 0;
   for (auto colit = spSeq->begcol(); colit != spSeq->endcol(); ++colit) {
     // iterate over columns
@@ -203,7 +204,7 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
   parops->write_file_in_parallel(file, overlaps_str);
 }
 
-void DistributedPairwiseRunner::run(PairwiseFunction *pf) {
+void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file) {
   /*! There are two types of rows and columns below.
    * The sequences are arranged as an NxN matrix in
    * mat (this is not how it's stored internally).
@@ -229,6 +230,10 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf) {
   // first col in this process
   uint64_t col_offset = gr_col_idx * avg_cols_in_grid;
 
+  std::stringstream ss;
+  if(parops->world_proc_rank == 0){
+    ss << "g_col_idx,g_row_idx,pid,col_seq_len,row_seq_len,col_seq_align_len,row_seq_align_len" << std::endl;
+  }
   for (auto colit = spSeq->begcol(); colit != spSeq->endcol(); ++colit) {
     // iterate over columns
     auto l_col_idx = colit.colid(); // local numbering
@@ -257,7 +262,19 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf) {
 
       CommonKmers cks = nzit.value();
 
-      pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks);
+      pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks, ss);
     }
   }
+
+  pf->print_avg_times(parops);
+//  if(parops->world_proc_rank == 0) {
+//  }
+//  ushort g_max_common_kmers = 0;
+//  MPI_Reduce(&l_max_common_kmers, &g_max_common_kmers, 1,
+//             MPI_UINT16_T, MPI_MAX, 0, MPI_COMM_WORLD);
+//  if (parops->world_proc_rank == 0){
+//    std::printf("  Max common kmers %d\n", g_max_common_kmers);
+//  }
+  std::string align_str = ss.str();
+  parops->write_file_in_parallel(file, align_str);
 }

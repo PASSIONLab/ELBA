@@ -5,6 +5,7 @@
 #include <seqan/align.h>
 #include <seqan/align_parallel.h>
 #include <chrono>
+#include <string>
 
 typedef std::chrono::duration<double, std::milli> ms_t;
 
@@ -17,16 +18,12 @@ int main(int argc, char** argv){
   using TExecPolicy = seqan::ExecutionPolicy<TThreadModel, TVectorSpec>;
 
   // dummy sequences
-  std::string str1;
-  std::string str2;
-  str1.append(10000, 'A');
-  str2.append(10000, 'A');
+
+  seqan::Peptide seq1 = std::string(10000, 'A');
+  seqan::Peptide seq2 = std::string(10000, 'A');
 
   seqan::StringSet<TSequence> seqs1;
   seqan::StringSet<TSequence> seqs2;
-
-  appendValue(seqs1, TSequence{str1.c_str()});
-  appendValue(seqs2, TSequence{str2.c_str()});
 
   TExecPolicy execPolicy;
   setNumThreads(execPolicy, 1);
@@ -34,19 +31,24 @@ int main(int argc, char** argv){
   seqan::Score<int16_t, seqan::Simple> scoreAffine(1, -2, -1, -4);
 
   auto ts = std::chrono::system_clock::now();
-  seqan::String<int16_t> scores = seqan::globalAlignmentScore(execPolicy, seqs1, seqs2, scoreAffine);
+  seqan::String<int16_t> scores = seqan::globalAlignmentScore(execPolicy, seq1, seq2, scoreAffine);
   auto te = std::chrono::system_clock::now();
   std::cout << "Vec Score: " << scores[0] << "elapsed " << ((ms_t(te - ts)).count()) << "\n";
 
-  seqan::Align<seqan::Dna> align;
+  auto duration = ms_t(te- ts);
+
+
+  seqan::Align<seqan::Peptide> align;
   resize(rows(align), 2);
-  assignSource(row(align, 0), seqs1);
-  assignSource(row(align, 1), seqs2);
+  assignSource(row(align, 0), seq1);
+  assignSource(row(align, 1), seq2);
   ts = std::chrono::system_clock::now();
   int score = seqan::globalAlignment(align, scoreAffine);
   te = std::chrono::system_clock::now();
   std::cout << "Just Score: " << scores[0] << "elapsed " << ((ms_t(te - ts)).count()) << "\n";
 
+  duration += ms_t(te - ts);
+  std::cout << "duration: " << duration.count() << std::endl;
 
 
   return 0;

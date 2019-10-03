@@ -3,12 +3,10 @@
 #include "../../include/pw/FullAligner.hpp"
 
 FullAligner::FullAligner(seqan::Blosum62 scoring_scheme,
-                         seqan::Blosum62 scoring_scheme_simple,
-                         ushort seed_length, int xdrop) :
+                         seqan::Blosum62 scoring_scheme_simple) :
     PairwiseFunction(),
     scoring_scheme(scoring_scheme),
-    scoring_scheme_simple(scoring_scheme_simple),
-    seed_length(seed_length), xdrop(xdrop){
+    scoring_scheme_simple(scoring_scheme_simple){
 
 }
 
@@ -18,18 +16,23 @@ void FullAligner::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
     seqan::Peptide *seq_h, seqan::Peptide *seq_v,
-    CommonKmers &cks) {
+    CommonKmers &cks, std::stringstream& ss) {
 
     seqan::Align<seqan::Peptide> align;
     resize(rows(align), 2);
     assignSource(row(align, 0), *seq_h);
     assignSource(row(align, 1), *seq_v);
 
+    auto start_time = std::chrono::system_clock::now();
     int score = localAlignment(align, scoring_scheme, seqan::DynamicGaps());
+    auto end_time = std::chrono::system_clock::now();
+    add_time("FA:local_alignment", (ms_t(end_time - start_time)).count());
+
     AlignmentInfo ai;
-    // TODO - timing around here
+    start_time = std::chrono::system_clock::now();
     computeAlignmentStats(ai.stats, align, scoring_scheme);
-    // TODO - END
+    end_time = std::chrono::system_clock::now();
+    add_time("FA:compute_stats", (ms_t(end_time - start_time)).count());
 
     ai.seq_h_length = length(*seq_h);
     ai.seq_v_length = length(*seq_v);
@@ -48,4 +51,8 @@ void FullAligner::apply(
 //  if (max_ai.stats.alignmentIdentity >= 30.0){
   alignments.push_back(ai);
 //  }
+
+  ss << g_col_idx << "," << g_row_idx << "," << ai.stats.alignmentIdentity
+  << "," << ai.seq_h_length << "," << ai.seq_v_length
+  << "," << ai.seq_h_seed_length  << "," << ai.seq_v_seed_length << std::endl;
 }

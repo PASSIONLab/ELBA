@@ -18,7 +18,7 @@ public:
   void apply(uint64_t l_col_idx, uint64_t g_col_idx,
              uint64_t l_row_idx, uint64_t g_row_idx,
              seqan::Peptide *seq_h, seqan::Peptide *seq_v,
-             CommonKmers &cks) override;
+             CommonKmers &cks, std::stringstream& ss) override;
 
   std::vector<AlignmentInfo> alignments;
 

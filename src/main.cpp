@@ -47,6 +47,9 @@ std::string overlap_file;
 bool add_substitue_kmers = false;
 float subtitute_kmer_percentage = 100;
 
+/*! Parameters related to outputting alignment info */
+std::string align_file;
+
 /*! Don't perform alignments if this flag is set */
 bool no_align = false;
 
@@ -70,6 +73,8 @@ Alphabet::type alph_t;
 bool is_print_rank = false;
 std::string print_str;
 
+/*! Maximum number of common k-mers to keep */
+int seed_count = 2;
 
 int main(int argc, char **argv) {
   parops = ParallelOps::init(&argc, &argv);
@@ -280,18 +285,18 @@ int main(int argc, char **argv) {
     PairwiseFunction* pf = nullptr;
     uint64_t local_alignments = 1;
     if (xdrop_align) {
-      pf = new SeedExtendXdrop (blosum62, blosum62_simple, klength, xdrop);
+      pf = new SeedExtendXdrop (blosum62, blosum62_simple, klength, xdrop, seed_count);
       local_alignments = static_cast<SeedExtendXdrop*>(pf)->alignments.size();
     } else if (full_align) {
-      pf = new FullAligner (blosum62, blosum62_simple, klength, xdrop);
+      pf = new FullAligner(blosum62, blosum62_simple);
       local_alignments = static_cast<FullAligner*>(pf)->alignments.size();
     } else if(banded_align){
       pf = new BandedAligner (blosum62, banded_half_width);
       local_alignments = static_cast<BandedAligner*>(pf)->alignments.size();
     }
-    dpr.run(pf);
-    delete pf;
+    dpr.run(pf, align_file.c_str());
     tp->times["end_main:dpr->align()"] = std::chrono::system_clock::now();
+    delete pf;
 
     uint64_t total_alignments = 0;
     MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
@@ -334,7 +339,7 @@ int parse_args(int argc, char **argv) {
      cxxopts::value<int>())
     (CMD_OPTION_INPUT_OVERLAP, CMD_OPTION_DESCRIPTION_INPUT_OVERLAP,
      cxxopts::value<uint64_t>())
-    (CMD_OPTION_XDROP, CMD_OPTION_DESCRIPTION_XDROP,
+    (CMD_OPTION_SEED_COUNT, CMD_OPTION_DESCRIPTION_SEED_COUNT,
      cxxopts::value<int>())
     (CMD_OPTION_GAP_OPEN, CMD_OPTION_DESCRIPTION_GAP_OPEN,
      cxxopts::value<int>())
@@ -346,9 +351,12 @@ int parse_args(int argc, char **argv) {
      cxxopts::value<int>())
     (CMD_OPTION_OVERLAP_FILE, CMD_OPTION_DESCRIPTION_OVERLAP_FILE,
      cxxopts::value<std::string>())
+    (CMD_OPTION_ALIGN_FILE, CMD_OPTION_DESCRIPTION_ALIGN_FILE,
+     cxxopts::value<std::string>())
     (CMD_OPTION_NO_ALIGN, CMD_OPTION_DESCRIPTION_NO_ALIGN)
     (CMD_OPTION_FULL_ALIGN, CMD_OPTION_DESCRIPTION_FULL_ALIGN)
-    (CMD_OPTION_XDROP_ALIGN, CMD_OPTION_DESCRIPTION_XDROP_ALIGN)
+    (CMD_OPTION_XDROP_ALIGN, CMD_OPTION_DESCRIPTION_XDROP_ALIGN,
+     cxxopts::value<int>())
     (CMD_OPTION_BANDED_ALIGN, CMD_OPTION_DESCRIPTION_BANDED_ALIGN,
      cxxopts::value<int>())
     (CMD_OPTION_IDX_MAP, CMD_OPTION_DESCRIPTION_IDX_MAP,
@@ -395,10 +403,10 @@ int parse_args(int argc, char **argv) {
     input_overlap = 10000;
   }
 
-  if (result.count(CMD_OPTION_XDROP)) {
-    xdrop = result[CMD_OPTION_XDROP].as<int>();
+  if (result.count(CMD_OPTION_SEED_COUNT)) {
+    seed_count = result[CMD_OPTION_SEED_COUNT].as<int>();
   } else {
-    xdrop = 49;
+    seed_count = 2;
   }
 
   if (result.count(CMD_OPTION_GAP_OPEN)) {
@@ -435,6 +443,10 @@ int parse_args(int argc, char **argv) {
     overlap_file = result[CMD_OPTION_OVERLAP_FILE].as<std::string>();
   }
 
+  if (result.count(CMD_OPTION_ALIGN_FILE)) {
+    align_file = result[CMD_OPTION_ALIGN_FILE].as<std::string>();
+  }
+
   if (result.count(CMD_OPTION_NO_ALIGN)) {
     no_align = true;
   }
@@ -450,6 +462,7 @@ int parse_args(int argc, char **argv) {
 
   if (result.count(CMD_OPTION_XDROP_ALIGN)) {
     xdrop_align = true;
+    xdrop = result[CMD_OPTION_XDROP_ALIGN].as<int>();
   }
 
   if (result.count(CMD_OPTION_ALPH)) {
@@ -473,19 +486,51 @@ int parse_args(int argc, char **argv) {
   return 0;
 }
 
+auto bool_to_str = [](bool b){
+  return b ? "True" : "False";
+};
+
 void pretty_print_config(std::string &append_to) {
   std::vector<std::string> params = {
     "Input file (-i)",
     "Original sequence count (-c)",
     "Kmer length (k)",
     "Kmer stride (s)",
-    "Overlap in bytes (-O)"
+    "Overlap in bytes (-O)",
+    "Max seed count (--sc)",
+    "Gap open penalty (-g)",
+    "Gap extension penalty (-e)",
+    "Overlap file (--of)",
+    "Alignment file (--af)",
+    "No align (--na)",
+    "Full align (--fa)",
+    "Xdrop align (--xa)",
+    "Banded align (--ba)",
+    "Index map (--idxmap)",
+    "Alphabet (--alph)",
+    "Use substitute kmers (--subs)"
   };
 
+
+
   std::vector<std::string> vals = {
-    input_file, std::to_string(seq_count),
-    std::to_string(klength), std::to_string(kstride),
-    std::to_string(input_overlap)
+    input_file,
+    std::to_string(seq_count),
+    std::to_string(klength),
+    std::to_string(kstride),
+    std::to_string(input_overlap),
+    std::to_string(seed_count),
+    std::to_string(gap_open),
+    std::to_string(gap_ext),
+    !overlap_file.empty() ? overlap_file : "None",
+    !align_file.empty() ? align_file : "None",
+    bool_to_str(no_align),
+    bool_to_str(full_align),
+    bool_to_str(xdrop_align) + (xdrop_align ? "| xdrop: " + std::to_string(xdrop) : ""),
+    bool_to_str(banded_align) + (banded_align ? " | half band: " + std::to_string(banded_half_width) : ""),
+    !idx_map_file.empty() ? idx_map_file : "None",
+    std::to_string(alph_t),
+    bool_to_str(add_substitue_kmers) + (add_substitue_kmers ? " | sub kmers: " + std::to_string(subtitute_kmer_percentage) : ""),
   };
 
   ushort max_length = 0;

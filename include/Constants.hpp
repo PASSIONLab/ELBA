@@ -16,8 +16,8 @@ extern const char *CMD_OPTION_DESCRIPTION_INPUT_SEQ_COUNT;
 extern const char *CMD_OPTION_INPUT_OVERLAP;
 extern const char *CMD_OPTION_DESCRIPTION_INPUT_OVERLAP;
 
-extern const char *CMD_OPTION_XDROP;
-extern const char *CMD_OPTION_DESCRIPTION_XDROP;
+extern const char *CMD_OPTION_SEED_COUNT;
+extern const char *CMD_OPTION_DESCRIPTION_SEED_COUNT;
 
 extern const char *CMD_OPTION_KMER_LENGTH;
 extern const char *CMD_OPTION_DESCRIPTION_KMER_LENGTH;
@@ -33,6 +33,9 @@ extern const char *CMD_OPTION_DESCRIPTION_KMER_STRID;
 
 extern const char *CMD_OPTION_OVERLAP_FILE;
 extern const char *CMD_OPTION_DESCRIPTION_OVERLAP_FILE;
+
+extern const char *CMD_OPTION_ALIGN_FILE;
+extern const char *CMD_OPTION_DESCRIPTION_ALIGN_FILE;
 
 extern const char *CMD_OPTION_NO_ALIGN;
 extern const char *CMD_OPTION_DESCRIPTION_NO_ALIGN;
