@@ -259,6 +259,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
         lfs << "  (" << current_nnz_count << "/" << local_nnz_count << ") -- "
         << std::setprecision(2) << (1.0*current_nnz_count / local_nnz_count)
         << "% done. " << std::ctime(&t);
+        lfs.flush();
       }
 
 
