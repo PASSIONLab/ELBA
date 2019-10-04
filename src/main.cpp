@@ -213,6 +213,7 @@ int main(int argc, char **argv) {
   tp->times["end_main:spMatA()"] = std::chrono::system_clock::now();
 
 //#ifndef NDEBUG
+  tu.print_str("Matrix A: ");
   A.PrintInfo();
 //#endif
 
@@ -226,7 +227,7 @@ int main(int argc, char **argv) {
     Mult_AnXBn_Synch<KmerIntersectSR_t,
       CommonKmers, PSpMat<CommonKmers>::DCCols>(A, At);
   tu.print_str(
-    "Overlaps after k-mer finding (nnz(C) - diagonal): "
+    "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
     + std::to_string(C.getnnz() - seq_count)
     + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
   tp->times["end_main:AxAt()"] = std::chrono::system_clock::now();
