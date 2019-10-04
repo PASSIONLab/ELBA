@@ -55,6 +55,7 @@ TraceUtils::TraceUtils(bool is_print_rank) : is_print_rank(is_print_rank) {
 void TraceUtils::print_str(std::string str) {
   if(is_print_rank){
     std::cout<<str;
+    std::cout.flush();
   }
 }
 
