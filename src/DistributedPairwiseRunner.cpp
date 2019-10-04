@@ -206,7 +206,7 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
   parops->write_file_in_parallel(file, overlaps_str);
 }
 
-void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file) {
+void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std::ofstream& lfs, int log_freq) {
   /*! There are two types of rows and columns below.
    * The sequences are arranged as an NxN matrix in
    * mat (this is not how it's stored internally).
@@ -232,6 +232,11 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file) {
   // first col in this process
   uint64_t col_offset = gr_col_idx * avg_cols_in_grid;
 
+  uint64_t local_nnz_count = mat.getlocalnnz();
+  uint64_t current_nnz_count = 0;
+
+  lfs << "Local nnz count: " << local_nnz_count << std::endl;
+
   std::stringstream ss;
   if(parops->world_proc_rank == 0){
     ss << "g_col_idx,g_row_idx,pid,col_seq_len,row_seq_len,col_seq_align_len,row_seq_align_len" << std::endl;
@@ -247,6 +252,15 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file) {
       uint64_t g_row_idx = l_row_idx + row_offset;
 
       seqan::Peptide *seq_v = dfd->row_seq(l_row_idx);
+
+      ++current_nnz_count;
+      if (current_nnz_count % log_freq == 0){
+        auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        lfs << "  (" << current_nnz_count << "/" << local_nnz_count << ") -- "
+        << std::setprecision(2) << (1.0*current_nnz_count / local_nnz_count)
+        << "% done. " << std::ctime(&t);
+      }
+
 
       /*!
        * Note. the cells means the process grid cells.
@@ -267,6 +281,9 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file) {
       pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks, ss);
     }
   }
+
+  lfs << "  (" << current_nnz_count << "/" << local_nnz_count << ") -- "
+      << "100% done." << std::endl;
 
   pf->print_avg_times(parops);
 //  if(parops->world_proc_rank == 0) {

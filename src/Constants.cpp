@@ -51,3 +51,9 @@ const char *CMD_OPTION_DESCRIPTION_ALPH = "The alphabet to use. Valid choices ar
 
 const char *CMD_OPTION_SUBS = "subs";
 const char *CMD_OPTION_DESCRIPTION_SUBS = "Add substitute kmers.";
+
+const char *CMD_OPTION_JOB_NAME_PREFIX = "jp";
+const char *CMD_OPTION_DESCRIPTION_JOB_NAME_PREFIX = "Job name prefix.";
+
+const char *CMD_OPTION_LOG_FREQ = "lf";
+const char *CMD_OPTION_DESCRIPTION_LOG_FREQ = "Log frequency.";
