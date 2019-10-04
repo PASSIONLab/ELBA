@@ -7,7 +7,8 @@ include_directories(
         "~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"
 #        "~/sali/software/seqan"
 #        "~/sali/software/seqan/seqan")
-        ~/sali/software/seqan-v2.4.0/include/)
+        ~/sali/software/seqan-v2.4.0/include/
+        /usr/local/include/boost/)
 
 link_directories("~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/lib")
 
@@ -58,6 +59,11 @@ add_executable(pisa
 
 add_executable(nkmers
         src/NearestKmers.cpp
+        src/Alphabet.cpp include/Alphabet.hpp
+        src/ScoreMat.cpp include/ScoreMat.hpp)
+
+add_executable(nkmers2
+        src/NearestKmers2.cpp include/NearestKmers2.hpp
         src/Alphabet.cpp include/Alphabet.hpp
         src/ScoreMat.cpp include/ScoreMat.hpp)
 

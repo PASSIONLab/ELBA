@@ -58,4 +58,10 @@ extern const char *CMD_OPTION_DESCRIPTION_ALPH;
 extern const char *CMD_OPTION_SUBS;
 extern const char *CMD_OPTION_DESCRIPTION_SUBS;
 
+extern const char *CMD_OPTION_JOB_NAME_PREFIX;
+extern const char *CMD_OPTION_DESCRIPTION_JOB_NAME_PREFIX;
+
+extern const char *CMD_OPTION_LOG_FREQ;
+extern const char *CMD_OPTION_DESCRIPTION_LOG_FREQ;
+
 #endif //LBL_DAL_CONSTANTS_H

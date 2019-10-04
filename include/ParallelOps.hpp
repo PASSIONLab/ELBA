@@ -19,6 +19,18 @@ public:
 
   void teardown_parallelism();
   void write_file_in_parallel(const char* file, const std::string &local_data);
+  std::string bcast(std::string str){
+    if(world_proc_rank == 0) {
+      MPI_Bcast(&str[0], str.length(), MPI_CHAR, 0, MPI_COMM_WORLD);
+      return str;
+    } else {
+      char* buf = new char[str.length()];
+      MPI_Bcast(buf, str.length(), MPI_CHAR, 0, MPI_COMM_WORLD);
+      std::string s(buf);
+      delete [] buf;
+      return s;
+    }
+  }
   ~ParallelOps();
 
   int world_proc_rank;
