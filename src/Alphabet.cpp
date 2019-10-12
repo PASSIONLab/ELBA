@@ -23,10 +23,12 @@ Alphabet::Alphabet(Alphabet::type t) {
     case PROTEIN:
       init(protein);
       size = 24;
+      max_char = 90;
       break;
     case DNA:
       init(dna);
       size = 4;
+      max_char = 84;
       break;
   }
 }

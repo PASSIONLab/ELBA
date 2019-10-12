@@ -22,6 +22,11 @@ struct Alphabet {
   uchar char_to_code[capacity];
   uchar code_to_char[capacity];
   ushort size;
+  /*! The character with the maximum code.
+   * For example, in the protein alphabet this
+   * would be Z as its character code is 90.
+   */
+  ushort max_char;
   std::string letters;
 };
 
