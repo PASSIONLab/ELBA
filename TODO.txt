@@ -4,3 +4,5 @@ is Xdrop, FA, and BA
 2. 1. with embedded timing
 
 3. Substitution.
+
+4. Remove unnecessary stuff from ScoringMatrix class once the new sub k-mers are implemented.
