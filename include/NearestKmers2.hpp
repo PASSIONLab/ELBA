@@ -21,14 +21,16 @@ namespace pisa {
    * the total substitution cost to root k-mer if this @b MinSub were to perform.
    */
   struct MinSub{
-    char base;
+    ushort free_idx;
+    char base_at_free_idx;
     ushort sub_idx_in_base;
     short dist_to_root;
 
     MinSub(){}
 
-    MinSub(char base, ushort sub_idx_in_base, short dist_to_base)
-    : base(base), sub_idx_in_base(sub_idx_in_base), dist_to_root(dist_to_base){}
+    MinSub(ushort free_idx, char base_at_free_idx, ushort sub_idx_in_base, short dist_to_base)
+    : free_idx(free_idx), base_at_free_idx(base_at_free_idx),
+      sub_idx_in_base(sub_idx_in_base), dist_to_root(dist_to_base){}
 
     /*!
      * A greater than comparator for two @b MinSub instances.
@@ -45,24 +47,15 @@ namespace pisa {
 
 
   struct Kmer {
+  private:
     uint64_t kmer_code;
     std::string kmer_str;
     std::unordered_set<ushort> free_idxs;
-    Kmer *root_kmer = nullptr;
-    ushort distance_to_root = 0;
+    short dist2r = 0;
 
-    Kmer(std::string str, Alphabet &alph, pisa::ScoreMatrix &score_mat,
-         std::unordered_set<ushort> free_idxs) :
-        Kmer(std::move(str),alph, score_mat,std::move(free_idxs), this, 0){}
-
-    Kmer(std::string str, Alphabet &alph, pisa::ScoreMatrix &score_mat,
-         std::unordered_set<ushort> free_idxs, Kmer *root_kmer,
-         ushort distance_to_root)
-        : kmer_str(std::move(str)), free_idxs(std::move(free_idxs)),
-          root_kmer(root_kmer), distance_to_root(distance_to_root) {
-
-      kmer_code = 0;
+    void update_kmer_code(Alphabet& alph){
       ushort base = alph.size;
+      kmer_code = 0;
       for (char cap_c : kmer_str) {
         /*! Efficient than using pow() */
         if (cap_c > 96 && cap_c < 123) {
@@ -71,11 +64,59 @@ namespace pisa {
         }
         kmer_code = kmer_code * base + alph.char_to_code[cap_c];
       }
-
-      bool operator()(Kmer& k1, Kmer& k2) const {
-        return k1.distance_to_root < k2.distance_to_root;
-      }
     }
+
+  public:
+    Kmer(){}
+    Kmer(std::string str, Alphabet &alph)
+        : kmer_str(std::move(str)) {
+
+      ushort free_idx = 0;
+      size_t len = kmer_str.length();
+      for (size_t i = 0; i < len; ++i){
+        free_idxs.insert(free_idx++);
+      }
+      update_kmer_code(alph);
+    }
+
+    short dist_to_root() const {
+      return dist2r;
+    }
+
+    Kmer substitute(ushort free_idx, char substitute_base, short dist_to_root, Alphabet& alph){
+      Kmer subk = *this;
+      subk.kmer_str[free_idx] = substitute_base;
+      subk.update_kmer_code(alph);
+      subk.free_idxs.erase(free_idx);
+      subk.dist2r = dist_to_root;
+      return subk;
+    }
+
+    bool operator()(const Kmer& k1, const Kmer& k2) const {
+      return k1.dist2r < k2.dist2r;
+    }
+
+    friend std::ostream & operator << (std::ostream &out, const Kmer &k)
+    {
+      out << k.kmer_str << " kcode: " << k.kmer_code << " dist: " << k.dist_to_root();
+      out << " free_idxs: { ";
+      for (auto& free_idx : k.free_idxs){
+        out << free_idx << " ";
+      }
+      out << "}";
+      ushort hop = k.kmer_str.length() - k.free_idxs.size();
+      out << " " << hop << "-hop" << std::endl;
+      return out;
+    }
+
+    char& operator[](size_t idx){
+      return kmer_str[idx];
+    }
+
+    const std::unordered_set<ushort>& get_free_idxs(){
+      return free_idxs;
+    }
+
 
     ~Kmer(){}
   };
@@ -84,17 +125,16 @@ namespace pisa {
   public:
     NearestKmers2(Alphabet& alph, pisa::ScoreMatrix& sm);
     void print_sorted_sm();
-
-//    std::vector<Kmer> find_nearest_kmers(Kmer root, ushort m);
-
-    std::vector<pisa::Kmer> find_sub_kmers(Kmer root, ushort m);
+    std::vector<pisa::Kmer> find_sub_kmers(pisa::Kmer& root, ushort m);
 
   private:
     void populate_sorted_sm(Alphabet& alph, ScoreMatrix& sm);
-    void explore(Kmer& p, minmax::MinMaxHeap<Kmer>& mmheap, Kmer& root, ushort m);
-    void create_new_sub_kmer(Kmer& p, std::priority_queue<MinSub>& minheap,
-        minmax::MinMaxHeap<Kmer>& mmheap, bool pop_max,
-        ushort free_idx, ushort sub_idx, Kmer& root);
+    void explore(Kmer& p,
+                 minmax::MinMaxHeap<pisa::Kmer, std::vector<pisa::Kmer>,
+                     pisa::Kmer>& mmheap, Kmer& root, ushort m);
+    void create_new_sub_kmer(Kmer& p, std::priority_queue<pisa::MinSub, std::vector<pisa::MinSub>, pisa::MinSub>& minheap,
+                             minmax::MinMaxHeap<pisa::Kmer, std::vector<pisa::Kmer>, pisa::Kmer>& mmheap, bool pop_max,
+                             MinSub& ms);
     // Note, this includes the diagonal.
     SortedSM_T sorted_sm;
     Alphabet alph;

@@ -22,6 +22,10 @@ namespace pisa{
       return _score[ci*row_size+cj];
     }
 
+    inline short dist(const char& ci, const char& cj){
+      return (short)(score(ci, ci) - score(ci, cj));
+    }
+
     short self_score(const std::string& kmer){
       short sum = 0;
       for (const char& c : kmer){

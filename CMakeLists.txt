@@ -2,14 +2,6 @@ cmake_minimum_required(VERSION 3.11)
 project(lbl_pisa)
 set(CMAKE_CXX_STANDARD 14)
 
-#include_directories(
-#        "/usr/local/include"
-#        "~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"
-##        "~/sali/software/seqan"
-##        "~/sali/software/seqan/seqan")
-#        ~/sali/software/seqan-v2.4.0/include/
-#        /usr/local/include/boost/)
-
 
 
 # Download and unpack googletest at configure time
@@ -51,7 +43,7 @@ include_directories(
 #        "~/sali/software/seqan/seqan")
         ~/sali/software/seqan-v2.4.0/include/
         /usr/local/include/boost/)
-
+#
 link_directories("~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/lib")
 
 if(NOT CMAKE_BUILD_TYPE)
