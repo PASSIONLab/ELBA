@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.11)
 project(lbl_pisa)
 set(CMAKE_CXX_STANDARD 14)
 
-#IF(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "DEBUG")
-#    SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fno-elide-constructors")
-#ENDIF(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+IF(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+    SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fno-elide-constructors")
+ENDIF(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "DEBUG")
 
 # Download and unpack googletest at configure time
 configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
@@ -117,6 +117,7 @@ target_link_libraries(simpletests gtest_main)
 add_executable(mcb MatrixCreationBug.cpp)
 
 target_link_libraries(pisa CombBLAS GraphGenlib Usortlib)
+target_link_libraries(mcb CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
     target_link_libraries(pisa ${MPI_LIBRARIES})
