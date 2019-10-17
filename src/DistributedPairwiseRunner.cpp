@@ -6,7 +6,7 @@
 #include "../include/DistributedPairwiseRunner.hpp"
 
 DistributedPairwiseRunner::DistributedPairwiseRunner(const std::shared_ptr<DistributedFastaData> dfd,
-                                       PSpMat<CommonKmers>::MPI_DCCols mat,
+                                       PSpMat<pisa::CommonKmers>::MPI_DCCols mat,
                                        const std::shared_ptr<ParallelOps> &parops)
   : dfd(dfd), mat(mat), parops(parops) {
 
@@ -147,7 +147,7 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
   uint64_t avg_rows_in_grid = n_rows / gr_rows;
   uint64_t avg_cols_in_grid = n_cols / gr_cols;
   // local submatrix
-  PSpMat<CommonKmers>::DCCols *spSeq = mat.seqptr();
+  PSpMat<pisa::CommonKmers>::DCCols *spSeq = mat.seqptr();
   // first row in this process
   uint64_t row_offset = gr_row_idx * avg_rows_in_grid;
   // first col in this process
@@ -186,7 +186,7 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
         continue;
       }
 
-      CommonKmers cks = nzit.value();
+      pisa::CommonKmers cks = nzit.value();
       if (cks.count > l_max_common_kmers){
         l_max_common_kmers = cks.count;
       }
@@ -226,7 +226,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
   uint64_t avg_rows_in_grid = n_rows / gr_rows;
   uint64_t avg_cols_in_grid = n_cols / gr_cols;
   // local submatrix
-  PSpMat<CommonKmers>::DCCols *spSeq = mat.seqptr();
+  PSpMat<pisa::CommonKmers>::DCCols *spSeq = mat.seqptr();
   // first row in this process
   uint64_t row_offset = gr_row_idx * avg_rows_in_grid;
   // first col in this process
@@ -277,7 +277,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
         continue;
       }
 
-      CommonKmers cks = nzit.value();
+      pisa::CommonKmers cks = nzit.value();
 
       pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks, ss);
     }

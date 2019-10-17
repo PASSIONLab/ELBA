@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.11)
 project(lbl_pisa)
 set(CMAKE_CXX_STANDARD 14)
 
-
+#IF(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+#    SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fno-elide-constructors")
+#ENDIF(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "DEBUG")
 
 # Download and unpack googletest at configure time
 configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
@@ -89,7 +91,13 @@ add_executable(pisa
         include/pw/BandedAligner.hpp
         include/pw/FullAligner.hpp
         src/pw/BandedAligner.cpp
-        src/pw/FullAligner.cpp)
+        src/pw/FullAligner.cpp
+        include/kmer/CommonKmers.hpp
+        include/kmer/KmerIntersectSR.hpp
+        include/kmer/MatrixEntry.hpp
+        include/kmer/KmerOps.hpp
+        src/kmer/KmerOps.cpp
+        )
 
 add_executable(nkmers
         src/NearestKmers.cpp
@@ -106,8 +114,11 @@ add_executable(seqanvecs src/seqantest/seqanvec.cpp)
 add_executable(simpletests SimpleTests.cpp include/MinMaxHeap.hpp)
 target_link_libraries(simpletests gtest_main)
 
+add_executable(mcb MatrixCreationBug.cpp)
+
 target_link_libraries(pisa CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
     target_link_libraries(pisa ${MPI_LIBRARIES})
+    target_link_libraries(mcb ${MPI_LIBRARIES})
 endif()
