@@ -28,6 +28,10 @@ struct Alphabet {
    */
   ushort max_char;
   std::string letters;
+
+  char& operator[](size_t idx){
+    return letters[idx];
+  }
 };
 
 

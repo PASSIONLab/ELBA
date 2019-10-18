@@ -38,5 +38,5 @@
 #fake run
 #mpirun -np 1 ./cmake-build-debug/pisa -i /Users/esaliya/sali/data/scope/uniqs/10/fake_10_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 10 -O 1000 -k 1 -s 1 --of overlaps.txt --idxmap idxmap.txt
 
-mpirun -np 4 ./cmake-build-debug/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/shuffled_100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 100 -O 1000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --af fa_shuffled_align.txt --fa --jp fa_shuffled --lf 10 2>&1 | tee fa_shuffled_out.txt
+mpirun -np 4 ./cmake-build-debug/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/shuffled_100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 100 -O 1000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --af fa_shuffled_align.txt --fa --jp fa_shuffled --lf 10 --subs 5 2>&1 | tee fa_shuffled_out.txt
 

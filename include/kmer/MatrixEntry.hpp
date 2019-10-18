@@ -18,14 +18,13 @@ namespace pisa{
     }
 
     MatrixEntry operator+(const MatrixEntry& me) const{
-      std::cout << "*** PLUS op was called";
-      MatrixEntry me2(cost,offset);
-      return me2;
+//      std::cout << "*** PLUS op was called";
+      return me;
     }
 
     bool operator<(const MatrixEntry& me) const{
-      std::cout << "*** LESS THAN op was called";
-      return true;
+//      std::cout << "*** LESS THAN op was called";
+      return cost < me.cost;
     }
   };
 }
