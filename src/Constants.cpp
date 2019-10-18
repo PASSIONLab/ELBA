@@ -50,7 +50,7 @@ const char *CMD_OPTION_ALPH = "alph";
 const char *CMD_OPTION_DESCRIPTION_ALPH = "The alphabet to use. Valid choices are [protein].";
 
 const char *CMD_OPTION_SUBS = "subs";
-const char *CMD_OPTION_DESCRIPTION_SUBS = "Add substitute kmers.";
+const char *CMD_OPTION_DESCRIPTION_SUBS = "Number of substitute kmers.";
 
 const char *CMD_OPTION_JOB_NAME_PREFIX = "jp";
 const char *CMD_OPTION_DESCRIPTION_JOB_NAME_PREFIX = "Job name prefix.";

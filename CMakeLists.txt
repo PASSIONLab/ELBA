@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.11)
 project(lbl_pisa)
 set(CMAKE_CXX_STANDARD 14)
 
-IF(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "DEBUG")
-    SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fno-elide-constructors")
-ENDIF(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+#IF(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+#    SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fno-elide-constructors")
+#ENDIF(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "DEBUG")
 
 # Download and unpack googletest at configure time
 configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
@@ -97,6 +97,9 @@ add_executable(pisa
         include/kmer/MatrixEntry.hpp
         include/kmer/KmerOps.hpp
         src/kmer/KmerOps.cpp
+        include/kmer/Kmer.hpp
+        include/NearestKmers2.hpp
+        src/NearestKmers2.cpp
         )
 
 add_executable(nkmers
@@ -111,15 +114,27 @@ add_executable(nkmers2
 
 add_executable(seqanvecs src/seqantest/seqanvec.cpp)
 
+add_executable(kunigen
+        TestKmerUniverseGeneration.cpp
+        include/kmer/KmerOps.hpp
+        include/Alphabet.hpp
+        include/ParallelOps.hpp
+        src/ParallelOps.cpp
+        src/Alphabet.cpp)
+
 add_executable(simpletests SimpleTests.cpp include/MinMaxHeap.hpp)
 target_link_libraries(simpletests gtest_main)
 
 add_executable(mcb MatrixCreationBug.cpp)
 
+add_executable(ipack IntPack.cpp)
+
 target_link_libraries(pisa CombBLAS GraphGenlib Usortlib)
 target_link_libraries(mcb CombBLAS GraphGenlib Usortlib)
+target_link_libraries(kunigen CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
     target_link_libraries(pisa ${MPI_LIBRARIES})
     target_link_libraries(mcb ${MPI_LIBRARIES})
+    target_link_libraries(kunigen ${MPI_LIBRARIES})
 endif()

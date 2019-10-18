@@ -33,7 +33,7 @@ void pisa::NearestKmers2::populate_sorted_sm(Alphabet& alph, pisa::ScoreMatrix& 
 }
 
 std::vector<pisa::Kmer>
-    pisa::NearestKmers2::find_sub_kmers(pisa::Kmer& root, ushort m)
+    pisa::NearestKmers2::find_sub_kmers(const pisa::Kmer& root, ushort m)
 {
   std::vector<pisa::Kmer> nbrs;
   minmax::MinMaxHeap<pisa::Kmer, std::vector<pisa::Kmer>, pisa::Kmer> mmheap;
@@ -64,9 +64,9 @@ pisa::NearestKmers2::NearestKmers2(Alphabet& alph, pisa::ScoreMatrix& sm)
 
 void
 pisa::NearestKmers2::explore(
-    pisa::Kmer& p,
+    const pisa::Kmer& p,
     minmax::MinMaxHeap<pisa::Kmer, std::vector<pisa::Kmer>, pisa::Kmer>& mmheap,
-    pisa::Kmer& root, ushort m) {
+    const pisa::Kmer& root, ushort m) {
   std::priority_queue<pisa::MinSub, std::vector<pisa::MinSub>, pisa::MinSub> minheap;
   for (auto& free_idx : p.get_free_idxs()){
     char base_at_free_idx = p[free_idx];
@@ -94,7 +94,7 @@ pisa::NearestKmers2::explore(
 
 void
 pisa::NearestKmers2::create_new_sub_kmer(
-    Kmer& p, std::priority_queue<pisa::MinSub, std::vector<pisa::MinSub>, pisa::MinSub>& minheap,
+    const Kmer& p, std::priority_queue<pisa::MinSub, std::vector<pisa::MinSub>, pisa::MinSub>& minheap,
     minmax::MinMaxHeap<Kmer, std::vector<pisa::Kmer>, pisa::Kmer>& mmheap, bool pop_max, MinSub& ms)
 {
   minheap.pop();
@@ -112,7 +112,7 @@ pisa::NearestKmers2::create_new_sub_kmer(
   }
 }
 
-int main(int argc, char** argv){
+int main2(int argc, char** argv){
 //  boost::uuids::random_generator gen;
 //  boost::uuids::uuid id = gen();
 //
@@ -132,7 +132,7 @@ int main(int argc, char** argv){
   int M = 5; // 5 Nearest k-mers
 
 //  std::string kmer_str{"TACTBZDP"};
-  std::string kmer_str{"TACTRRSA"};
+  std::string kmer_str{"****"};
   // Root k-mer
   pisa::Kmer root(kmer_str, alph);
   pisa::Kmer subk = root.substitute(0, 'T', sm.dist(root[0], 'T'), alph);

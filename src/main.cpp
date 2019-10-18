@@ -52,7 +52,7 @@ ushort kstride;
 bool write_overlaps = false;
 std::string overlap_file;
 bool add_substitue_kmers = false;
-float subtitute_kmer_percentage = 100;
+int subk_count = 0;
 
 /*! Parameters related to outputting alignment info */
 std::string align_file;
@@ -159,10 +159,24 @@ int main(int argc, char **argv) {
   Alphabet alph(alph_t);
 
   /*! Generate sequences by kmers matrix */
+  std::unordered_set<pisa::Kmer, pisa::Kmer> local_kmers;
+
   PSpMat<pisa::MatrixEntry>::MPI_DCCols A =
       pisa::KmerOps::generate_A(
           seq_count,dfd, klength, kstride,
-          alph, parops, tp);
+          alph, parops, tp, local_kmers);
+
+  std::cout << local_kmers.size() << " ";
+
+  PSpMat<pisa::MatrixEntry>::MPI_DCCols S;
+  if (add_substitue_kmers) {
+   S = pisa::KmerOps::generate_S(klength, subk_count, alph, parops, tp,
+                              local_kmers);
+   S.PrintInfo();
+  }
+
+
+
 
 //  /*! Find k-mers */
 //  char *buff;
@@ -413,7 +427,7 @@ int parse_args(int argc, char **argv) {
     (CMD_OPTION_JOB_NAME_PREFIX, CMD_OPTION_DESCRIPTION_JOB_NAME_PREFIX,
      cxxopts::value<std::string>())
     (CMD_OPTION_SUBS, CMD_OPTION_DESCRIPTION_SUBS,
-     cxxopts::value<float>())
+     cxxopts::value<int>())
     (CMD_OPTION_LOG_FREQ, CMD_OPTION_DESCRIPTION_LOG_FREQ,
      cxxopts::value<int>());
 
@@ -531,7 +545,7 @@ int parse_args(int argc, char **argv) {
 
   if (result.count(CMD_OPTION_SUBS)) {
     add_substitue_kmers = true;
-    subtitute_kmer_percentage = result[CMD_OPTION_SUBS].as<float>();
+    subk_count = result[CMD_OPTION_SUBS].as<int>();
   }
 
   boost::uuids::random_generator gen;
@@ -594,7 +608,7 @@ void pretty_print_config(std::string &append_to) {
     bool_to_str(banded_align) + (banded_align ? " | half band: " + std::to_string(banded_half_width) : ""),
     !idx_map_file.empty() ? idx_map_file : "None",
     std::to_string(alph_t),
-    bool_to_str(add_substitue_kmers) + (add_substitue_kmers ? " | sub kmers: " + std::to_string(subtitute_kmer_percentage) : ""),
+    bool_to_str(add_substitue_kmers) + (add_substitue_kmers ? " | sub kmers: " + std::to_string(subk_count) : ""),
   };
 
   ushort max_length = 0;
