@@ -100,6 +100,7 @@ add_executable(pisa
         include/kmer/Kmer.hpp
         include/NearestKmers2.hpp
         src/NearestKmers2.cpp
+        include/kmer/SubKmerIntersectSR.hpp
         )
 
 add_executable(nkmers

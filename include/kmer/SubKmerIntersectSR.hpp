@@ -1,12 +1,15 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef LBL_PISA_KMERINTERSECTSR_HPP
-#define LBL_PISA_KMERINTERSECTSR_HPP
+#ifndef LBL_PISA_SUBKMERINTERSECTSR_HPP
+#define LBL_PISA_SUBKMERINTERSECTSR_HPP
+
+#include "../ParallelOps.hpp"
+#include "MatrixEntry.hpp"
 
 #include "../ParallelOps.hpp"
 namespace pisa {
   template<typename IN, typename OUT>
-  struct KmerIntersect {
+  struct SubKmerIntersect {
     static OUT id() {
       OUT a;
       return a;
@@ -15,26 +18,17 @@ namespace pisa {
     static bool returnedSAID() { return false; }
 
     static OUT add(const OUT &arg1, const OUT &arg2) {
-      OUT res(arg1.count + arg2.count);
-      // TODO: perhaps improve this late with something that'll check how far
-      // apart are the kmers.
-      res.first.first = arg1.first.first;
-      res.first.second = arg1.first.second;
-      res.second.first = arg2.first.first;
-      res.second.second = arg2.first.second;
-      return res;
-    }
-
-    /* This doesn't make sense */
-    static IN add(const OUT &arg1, const IN &arg2) {
-      IN res(arg2.cost, arg2.offset);
-      return res;
+      if (arg1.cost < arg2.cost) {
+        OUT ret(arg1.cost, arg1.offset);
+        return ret;
+      } else {
+        OUT ret(arg2.cost, arg2.offset);
+        return ret;
+      }
     }
 
     static OUT multiply(const IN &arg1, const IN &arg2) {
-      OUT a;
-      a.first.first = arg1.offset;
-      a.first.second = arg2.offset;
+      OUT a(arg2.cost, arg1.offset);
       return a;
     }
 
@@ -63,4 +57,4 @@ namespace pisa {
     }
   };
 }
-#endif //LBL_PISA_KMERINTERSECTSR_HPP
+#endif //LBL_PISA_SUBKMERINTERSECTSR_HPP
