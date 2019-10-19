@@ -21,6 +21,7 @@
 #include "../include/kmer/KmerOps.hpp"
 #include "../include/kmer/CommonKmers.hpp"
 #include "../include/kmer/KmerIntersectSR.hpp"
+#include "../include/kmer/SubKmerIntersectSR.hpp"
 #include <map>
 
 /*! Namespace declarations */
@@ -29,6 +30,7 @@ using namespace combblas;
 /*! Type definitions */
 //typedef KmerIntersect<ushort, CommonKmers> KmerIntersectSR_t;
 typedef pisa::KmerIntersect<pisa::MatrixEntry, pisa::CommonKmers> KmerIntersectSR_t;
+typedef pisa::SubKmerIntersect<pisa::MatrixEntry, pisa::MatrixEntry> SubKmerIntersectSR_t;
 
 /*! Function signatures */
 int parse_args(int argc, char **argv);
@@ -166,89 +168,42 @@ int main(int argc, char **argv) {
           seq_count,dfd, klength, kstride,
           alph, parops, tp, local_kmers);
 
-  std::cout << local_kmers.size() << " ";
-
-  PSpMat<pisa::MatrixEntry>::MPI_DCCols S;
-  if (add_substitue_kmers) {
-   S = pisa::KmerOps::generate_S(klength, subk_count, alph, parops, tp,
-                              local_kmers);
-   S.PrintInfo();
-  }
-
-
-
-
-//  /*! Find k-mers */
-//  char *buff;
-//  ushort len;
-//  uint64_t start_offset, end_offset_inclusive;
-//  //TODO: Saliya - this can be parallelized using OpenMP
-//  uvec_64 lrow_ids, lcol_ids;
-//  uvec_16 lvals;
-//  uint64_t offset = dfd->global_start_idx();
-//  FastaData *lfd = dfd->lfd();
-//  pisa::Blosum62 bsm62;
-//  std::map<uint64_t, std::vector<uint64_t>*> kmer_to_subs_kmers;
-//  tp->times["start_main:loop_add_kmers()"] = std::chrono::system_clock::now();
-//  for (uint64_t lseq_idx = 0; lseq_idx < lfd->local_count(); ++lseq_idx) {
-//    buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
-//    auto num_kmers = add_kmers(buff, len, start_offset, end_offset_inclusive,
-//                               klength, kstride, add_substitue_kmers,
-//                               subtitute_kmer_percentage,
-//                               kmer_to_subs_kmers, bsm62,
-//                               alph, lcol_ids, lvals, parops);
-//    lrow_ids.insert(lrow_ids.end(), num_kmers, lseq_idx + offset);
-//  }
-//  tp->times["end_main:loop_add_kmers()"] = std::chrono::system_clock::now();
-//
-//  /*! Free kmer_to_subs_kmers vectors */
-//  for (std::pair<uint64_t, std::vector<uint64_t>*> p : kmer_to_subs_kmers){
-//    free(p.second);
-//  }
-//
-//
-//#ifndef NDEBUG
-//  {
-//    std::string title = "Local matrix info:";
-//    std::string msg = "lrow_ids row_size: " + std::to_string(lrow_ids.size())
-//                      + " lcol_ids row_size: " + std::to_string(lcol_ids.size())
-//                      + " lvals row_size: " + std::to_string(lvals.size());
-//    TraceUtils::print_msg(title, msg, parops);
-//  }
-//#endif
-//
-//  assert(lrow_ids.size() == lcol_ids.size() && lcol_ids.size() == lvals.size());
-//
-//  /*! Create distributed sparse matrix of sequence x kmers */
-//  FullyDistVec<uint64_t, uint64_t> drows(lrow_ids, parops->grid);
-//  FullyDistVec<uint64_t, uint64_t> dcols(lcol_ids, parops->grid);
-//  /*! TODO - apparently there's a bug when setting a different element type,
-//   * so let's use uint64_t as element type for now */
-//  FullyDistVec<uint64_t, uint64_t> dvals(lvals, parops->grid);
-//
-//  uint64_t n_rows = seq_count;
-//  /*! Columns of the matrix are direct maps to kmers identified
-//   * by their |alphabet| base number. E.g. for proteins this is
-//   * base 20, so the direct map has to be 20^k in size. */
-//
-//  auto n_cols = static_cast<uint64_t>(pow(alph.size, klength));
-//  tp->times["start_main:spMatA()"] = std::chrono::system_clock::now();
-//  PSpMat<ushort>::MPI_DCCols A(n_rows, n_cols, drows, dcols, dvals, false);
-//  tp->times["end_main:spMatA()"] = std::chrono::system_clock::now();
-
-//#ifndef NDEBUG
   tu.print_str("Matrix A: ");
-//  std::cout<< A.getnnz();
   A.PrintInfo();
-//#endif
 
-//  auto At = A;
-//  tp->times["start_main:At()"] = tp->times["end_main:spMatA()"];
-//  At.Transpose();
-//  At.PrintInfo();
-//  tp->times["end_main:At()"] = std::chrono::system_clock::now();
+  auto At = A;
+  tp->times["start_main:At()"] = tp->times["end_main:spMatA()"];
+  At.Transpose();
+  At.PrintInfo();
+  tp->times["end_main:At()"] = std::chrono::system_clock::now();
+
+//  PSpMat<pisa::MatrixEntry>::MPI_DCCols S;
+//  if (add_substitue_kmers) {
+//    tp->times["start_main:genS()"] = std::chrono::system_clock::now();;
+//    S = pisa::KmerOps::generate_S(klength, subk_count, alph, parops, tp,
+//                                  local_kmers);
+//    tp->times["end_main:genS()"] = std::chrono::system_clock::now();;
+//    S.PrintInfo();
 //
-//  tp->times["start_main:AxAt()"] = tp->times["end_main:At()"];
+//    tp->times["start_main:AxS()"] = tp->times["end_main:genS()"];
+//    A = Mult_AnXBn_Synch<SubKmerIntersectSR_t,
+//        pisa::MatrixEntry, PSpMat<pisa::MatrixEntry>::DCCols>(A, S);
+//    tp->times["end_main:AxS()"] = std::chrono::system_clock::now();;
+//  }
+
+
+  tp->times["start_main:AxAt()"] = std::chrono::system_clock::now();
+  PSpMat<pisa::CommonKmers>::MPI_DCCols C =
+      Mult_AnXBn_Synch<KmerIntersectSR_t,
+          pisa::CommonKmers, PSpMat<pisa::CommonKmers>::DCCols, uint64_t, pisa::MatrixEntry, pisa::MatrixEntry, PSpMat<pisa::MatrixEntry>::DCCols, PSpMat<pisa::MatrixEntry>::DCCols>(A, At);
+  tu.print_str(
+      "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
+      + std::to_string(C.getnnz() - seq_count)
+      + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
+  tp->times["end_main:AxAt()"] = std::chrono::system_clock::now();
+
+
+//  tp->times["start_main:AxAt()"] = std::chrono::system_clock::now();
 //  PSpMat<pisa::CommonKmers>::MPI_DCCols C =
 //    Mult_AnXBn_Synch<KmerIntersectSR_t,
 //      pisa::CommonKmers, PSpMat<pisa::CommonKmers>::DCCols>(A, At);
