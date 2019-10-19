@@ -163,10 +163,12 @@ int main(int argc, char **argv) {
   /*! Generate sequences by kmers matrix */
   std::unordered_set<pisa::Kmer, pisa::Kmer> local_kmers;
 
+  tp->times["start_main:genA()"] = std::chrono::system_clock::now();
   PSpMat<pisa::MatrixEntry>::MPI_DCCols A =
       pisa::KmerOps::generate_A(
           seq_count,dfd, klength, kstride,
           alph, parops, tp, local_kmers);
+  tp->times["end_main:genA()"] = std::chrono::system_clock::now();
 
   tu.print_str("Matrix A: ");
   A.PrintInfo();
@@ -174,52 +176,49 @@ int main(int argc, char **argv) {
   auto At = A;
   tp->times["start_main:At()"] = tp->times["end_main:spMatA()"];
   At.Transpose();
+  tu.print_str("Matrix At: ");
   At.PrintInfo();
   tp->times["end_main:At()"] = std::chrono::system_clock::now();
 
-//  PSpMat<pisa::MatrixEntry>::MPI_DCCols S;
-//  if (add_substitue_kmers) {
-//    tp->times["start_main:genS()"] = std::chrono::system_clock::now();;
-//    S = pisa::KmerOps::generate_S(klength, subk_count, alph, parops, tp,
-//                                  local_kmers);
-//    tp->times["end_main:genS()"] = std::chrono::system_clock::now();;
-//    S.PrintInfo();
-//
-//    tp->times["start_main:AxS()"] = tp->times["end_main:genS()"];
-//    A = Mult_AnXBn_Synch<SubKmerIntersectSR_t,
-//        pisa::MatrixEntry, PSpMat<pisa::MatrixEntry>::DCCols>(A, S);
-//    tp->times["end_main:AxS()"] = std::chrono::system_clock::now();;
-//  }
+  PSpMat<pisa::MatrixEntry>::MPI_DCCols* S = nullptr;
+  if (add_substitue_kmers) {
+    tp->times["start_main:genS()"] = std::chrono::system_clock::now();;
+    S = new PSpMat<pisa::MatrixEntry>::MPI_DCCols(pisa::KmerOps::generate_S(klength, subk_count, alph, parops, tp,
+                                  local_kmers));
+    tp->times["end_main:genS()"] = std::chrono::system_clock::now();;
+    tu.print_str("Matrix S: ");
+    S->PrintInfo();
+
+    tp->times["start_main:AxS()"] = tp->times["end_main:genS()"];
+    A = Mult_AnXBn_Synch<SubKmerIntersectSR_t,
+        pisa::MatrixEntry, PSpMat<pisa::MatrixEntry>::DCCols>(A, *S);
+    // Note, AS is now A.
+    tu.print_str("Matrix AS: ");
+    A.PrintInfo();
+    tp->times["end_main:AxS()"] = std::chrono::system_clock::now();;
+  }
 
 
-  tp->times["start_main:AxAt()"] = std::chrono::system_clock::now();
+  tp->times["start_main:A(S)xAt()"] = std::chrono::system_clock::now();
   PSpMat<pisa::CommonKmers>::MPI_DCCols C =
       Mult_AnXBn_Synch<KmerIntersectSR_t,
-          pisa::CommonKmers, PSpMat<pisa::CommonKmers>::DCCols, uint64_t, pisa::MatrixEntry, pisa::MatrixEntry, PSpMat<pisa::MatrixEntry>::DCCols, PSpMat<pisa::MatrixEntry>::DCCols>(A, At);
+          pisa::CommonKmers, PSpMat<pisa::CommonKmers>::DCCols>(A, At);
   tu.print_str(
       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
       + std::to_string(C.getnnz() - seq_count)
       + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
-  tp->times["end_main:AxAt()"] = std::chrono::system_clock::now();
+  tp->times["end_main:Ax(S)At()"] = std::chrono::system_clock::now();
 
+  if (S){
+    free (S);
+  }
 
-//  tp->times["start_main:AxAt()"] = std::chrono::system_clock::now();
-//  PSpMat<pisa::CommonKmers>::MPI_DCCols C =
-//    Mult_AnXBn_Synch<KmerIntersectSR_t,
-//      pisa::CommonKmers, PSpMat<pisa::CommonKmers>::DCCols>(A, At);
-//  tu.print_str(
-//    "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
-//    + std::to_string(C.getnnz() - seq_count)
-//    + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
-//  tp->times["end_main:AxAt()"] = std::chrono::system_clock::now();
-//
-//
-//#ifndef NDEBUG
-//  /*! Test multiplication */
-//
-//  C.PrintInfo();
-//
-//  // rows and cols in the result
+#ifndef NDEBUG
+  /*! Test multiplication */
+  tu.print_str("Matrix B, i.e AAt or ASAt: ");
+  C.PrintInfo();
+
+  // rows and cols in the result
 //  uint64_t n_cols = seq_count;
 //  uint64_t n_rows = n_cols;
 //  int pr = parops->grid->GetGridRows();
@@ -229,12 +228,12 @@ int main(int argc, char **argv) {
 //  int col_rank = parops->grid->GetRankInProcCol();
 //  uint64_t m_perproc = n_rows / pr;
 //  uint64_t n_perproc = n_cols / pc;
-//  PSpMat<CommonKmers>::DCCols *spSeq = C.seqptr(); // local submatrix
+//  PSpMat<pisa::CommonKmers>::DCCols *spSeq = C.seqptr(); // local submatrix
 //  uint64_t l_row_start = col_rank * m_perproc; // first row in this process
 //  uint64_t l_col_start = row_rank * n_perproc; // first col in this process
 //
-////  std::cout<<std::endl<<spSeq->begcol().colid()<<" " <<spSeq->endcol().colid()<<std::endl;
-//
+//  std::cout<<std::endl<<spSeq->begcol().colid()<<" " <<spSeq->endcol().colid()<<std::endl;
+
 //  std::ofstream rf, cf, vf;
 //  int flag;
 //  if (parops->world_proc_rank > 0) {
@@ -244,7 +243,7 @@ int main(int argc, char **argv) {
 //  rf.open("row_ids.txt", std::ios::app);
 //  cf.open("col_ids.txt", std::ios::app);
 //  vf.open("values.txt", std::ios::app);
-//
+
 //
 //  std::cout << "\nRank: " << parops->world_proc_rank << "\n writing data\n";
 //
@@ -276,68 +275,68 @@ int main(int argc, char **argv) {
 //  }
 //
 //  MPI_Barrier(MPI_COMM_WORLD);
-//#endif
+#endif
 //
-//  /*! Wait until data distribution is complete */
-//  tp->times["start_main:dfd->wait()"] = std::chrono::system_clock::now();
-//  if (!dfd->is_ready()) {
-//    dfd->wait();
-//  }
-//  tp->times["end_main:dfd->wait()"] = std::chrono::system_clock::now();
-//
-//
-//  DistributedPairwiseRunner dpr(dfd, C, parops);
-//  if (!no_align) {
-//    tp->times["start_main:dpr->align()"] = std::chrono::system_clock::now();
-//    seqan::Blosum62 blosum62(gap_ext, gap_open);
-//
-//    // TODO: SeqAn can't work with affine gaps for seed extension
-//    seqan::Blosum62 blosum62_simple(gap_open, gap_open);
-//    PairwiseFunction* pf = nullptr;
-//    uint64_t local_alignments = 1;
-//    if (xdrop_align) {
-//      pf = new SeedExtendXdrop (blosum62, blosum62_simple, klength, xdrop, seed_count);
-//      dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
-//      local_alignments = static_cast<SeedExtendXdrop*>(pf)->alignments.size();
-//    } else if (full_align) {
-//      pf = new FullAligner(blosum62, blosum62_simple);
-//      dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
-//      local_alignments = static_cast<FullAligner*>(pf)->alignments.size();
-//    } else if(banded_align){
-//      pf = new BandedAligner (blosum62, banded_half_width);
-//      dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
-//      local_alignments = static_cast<BandedAligner*>(pf)->alignments.size();
-//    }
-//
-//    tp->times["end_main:dpr->align()"] = std::chrono::system_clock::now();
-//    delete pf;
-//
-//    uint64_t total_alignments = 0;
-//    MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
-//               MPI_COMM_WORLD);
-//
-//    if (is_print_rank) {
-//      std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments
-//                << std::endl;
-//    }
-//  }
-//
-//  tp->times["start_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
-//  if (write_overlaps){
-//    dpr.write_overlaps(overlap_file.c_str());
-//  }
-//  tp->times["end_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
-//
-//  tp->times["end_main"] = std::chrono::system_clock::now();
-//
-//  std::time_t end_prog_time = std::chrono::system_clock::to_time_t(
-//    tp->times["end_main"]);
-//  print_str = "INFO: Program ended on ";
-//  print_str.append(std::ctime(&end_prog_time));
-//  tu.print_str(print_str);
-//  tu.print_str(tp->to_string());
-//
-//  proc_log_stream.close();
+  /*! Wait until data distribution is complete */
+  tp->times["start_main:dfd->wait()"] = std::chrono::system_clock::now();
+  if (!dfd->is_ready()) {
+    dfd->wait();
+  }
+  tp->times["end_main:dfd->wait()"] = std::chrono::system_clock::now();
+
+
+  DistributedPairwiseRunner dpr(dfd, C, parops);
+  if (!no_align) {
+    tp->times["start_main:dpr->align()"] = std::chrono::system_clock::now();
+    seqan::Blosum62 blosum62(gap_ext, gap_open);
+
+    // TODO: SeqAn can't work with affine gaps for seed extension
+    seqan::Blosum62 blosum62_simple(gap_open, gap_open);
+    PairwiseFunction* pf = nullptr;
+    uint64_t local_alignments = 1;
+    if (xdrop_align) {
+      pf = new SeedExtendXdrop (blosum62, blosum62_simple, klength, xdrop, seed_count);
+      dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
+      local_alignments = static_cast<SeedExtendXdrop*>(pf)->alignments.size();
+    } else if (full_align) {
+      pf = new FullAligner(blosum62, blosum62_simple);
+      dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
+      local_alignments = static_cast<FullAligner*>(pf)->alignments.size();
+    } else if(banded_align){
+      pf = new BandedAligner (blosum62, banded_half_width);
+      dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
+      local_alignments = static_cast<BandedAligner*>(pf)->alignments.size();
+    }
+
+    tp->times["end_main:dpr->align()"] = std::chrono::system_clock::now();
+    delete pf;
+
+    uint64_t total_alignments = 0;
+    MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
+               MPI_COMM_WORLD);
+
+    if (is_print_rank) {
+      std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments
+                << std::endl;
+    }
+  }
+
+  tp->times["start_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
+  if (write_overlaps){
+    dpr.write_overlaps(overlap_file.c_str());
+  }
+  tp->times["end_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
+
+  tp->times["end_main"] = std::chrono::system_clock::now();
+
+  std::time_t end_prog_time = std::chrono::system_clock::to_time_t(
+    tp->times["end_main"]);
+  print_str = "INFO: Program ended on ";
+  print_str.append(std::ctime(&end_prog_time));
+  tu.print_str(print_str);
+  tu.print_str(tp->to_string());
+
+  proc_log_stream.close();
 
   MPI_Barrier(MPI_COMM_WORLD);
   parops->teardown_parallelism();

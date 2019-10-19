@@ -25,11 +25,11 @@ namespace pisa {
       return res;
     }
 
-    /* This doesn't make sense */
-    static IN add(const OUT &arg1, const IN &arg2) {
-      IN res(arg2.cost, arg2.offset);
-      return res;
-    }
+//    /* This doesn't make sense */
+//    static IN add(const OUT &arg1, const IN &arg2) {
+//      IN res(arg2.cost, arg2.offset);
+//      return res;
+//    }
 
     static OUT multiply(const IN &arg1, const IN &arg2) {
       OUT a;

@@ -72,6 +72,7 @@ namespace pisa {
     uvec_64 lrow_ids, lcol_ids;
     std::vector<MatrixEntry> lvals;
 
+    tp->times["start_kmerop:gen_S:find_sub_kmers()"] = std::chrono::system_clock::now();
     for (const auto& kmer : local_kmers){
       // subk+count + 1 because we want the digonal too.
       for (size_t i = 0; i < subk_count+1; ++i){
@@ -88,6 +89,7 @@ namespace pisa {
         lvals.emplace_back(nbr.dist_to_root(), 0);
       }
     }
+    tp->times["end_kmerop:gen_S:find_sub_kmers()"] = std::chrono::system_clock::now();
     assert(lrow_ids.size() == lcol_ids.size()
            && lcol_ids.size() == lvals.size());
 
