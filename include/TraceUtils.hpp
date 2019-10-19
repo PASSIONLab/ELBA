@@ -8,14 +8,19 @@
 
 struct TimePod {
   std::unordered_map<std::string, ticks_t> times;
-  std::string names[13] = {"main",
+  std::string names[18] = {"main",
                            "main:newDFD()",
                            "dfd:pfr->read_fasta()",
                            "dfd:new_FD()",
-                           "main:loop_add_kmers()",
-                           "main:spMatA()",
+                           "kmerop:gen_A:loop_add_kmers()",
+                           "kmerop:gen_A:spMatA()",
+                           "main:genA()",
                            "main:At()",
-                           "main:AxAt()",
+                           "kmerop:gen_S:find_sub_kmers()",
+                           "kmerop:gen_S:spMatS()",
+                           "main:genS()",
+                           "main:AxS()",
+                           "main:A(S)xAt()",
                            "main:dfd->wait()",
                            "dfd:MPI_Waitall(seqs)",
                            "dfd:extract_recv_seqs",
