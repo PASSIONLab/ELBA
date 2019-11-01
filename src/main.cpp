@@ -344,8 +344,8 @@ int main(int argc, char **argv) {
 }
 
 int parse_args(int argc, char **argv) {
-  cxxopts::Options options("Distributed DistributedPairwiseRunner",
-                           "A distributed protein aligner");
+  cxxopts::Options options("PISA",
+                           "A fast, distributed protein aligner");
 
   options.add_options()
     (CMD_OPTION_INPUT, CMD_OPTION_DESCRIPTION_INPUT,
