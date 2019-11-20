@@ -7,13 +7,14 @@ import time
 
 
 def main():
-    overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.pisa/pysrc/data/cori/scope/with_sub/k6/subs100/ba2_shuff/ba_shuffled_subs100_align.txt'
+    overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.pisa/pysrc/data/cori/scope/pisa/no_sub/k6/na_shuff/na_shuff_k6.overlap.txt'
     seqs_fname = '/Users/esaliya/sali/data/scope/uniqs' \
                  '/all/77040_unique_of_243813_astral-scopedom-seqres' \
                  '-gd-all-2.07-stable.fa'
     pid_cut = 30
     log_freq = 100000
-    align = True
+    align = False
+    is_LAST = False
 
     # All super-families dictionary. Each super family entry will have list,
     # where the first element is the number of families in it and the second
@@ -53,7 +54,7 @@ def main():
 
     num_A, num_B, num_C = read_csv_file(fam_names, log_freq, overlaps_fname,
                                         pid_cut, sf_names,
-                                        upper_half_pairs_ex_diag, align)
+                                        upper_half_pairs_ex_diag, align, is_LAST)
     print()
     print("Output sets ...")
     print("  Set A: ", num_A)
@@ -101,7 +102,7 @@ def main():
 
 
 def read_csv_file(fam_names, log_freq, overlaps_fname, pid_cut, sf_names,
-                  upper_half_pairs_ex_diag, align):
+                  upper_half_pairs_ex_diag, align, is_LAST):
     print()
     print("Reading CSV ...")
     t = time.process_time()
@@ -115,10 +116,15 @@ def read_csv_file(fam_names, log_freq, overlaps_fname, pid_cut, sf_names,
             if align:
                 g_col, g_row, pid, col_seq_len, row_seq_len, \
                     col_seq_align_len, row_seq_align_len = tup
+            elif is_LAST:
+                g_col, g_row, pid = tup
             else:
                 g_col, g_row, common_kmer_count = tup
 
-            if align and float(pid) < pid_cut:
+            if(is_LAST):
+                pid = float(pid) * 100
+
+            if (align or is_LAST) and float(pid) < pid_cut:
                 continue
 
             g_col = int(g_col)
