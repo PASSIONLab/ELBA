@@ -7,13 +7,13 @@ import time
 
 
 def main():
-    overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.pisa/pysrc/data/cori/scope/pisa/no_sub/k6/na_shuff/na_shuff_k6.overlap.txt'
+    overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.pisa/pysrc/data/cori/scope/pisa/no_sub/k6/fa_shuff/fa_shuff_k6.align.txt'
     seqs_fname = '/Users/esaliya/sali/data/scope/uniqs' \
                  '/all/77040_unique_of_243813_astral-scopedom-seqres' \
                  '-gd-all-2.07-stable.fa'
     pid_cut = 30
     log_freq = 100000
-    align = False
+    align = True
     is_LAST = False
 
     # All super-families dictionary. Each super family entry will have list,
@@ -52,14 +52,17 @@ def main():
 
     upper_half_pairs_ex_diag = count * (count - 1) / 2
 
-    num_A, num_B, num_C = read_csv_file(fam_names, log_freq, overlaps_fname,
-                                        pid_cut, sf_names,
-                                        upper_half_pairs_ex_diag, align, is_LAST)
+    num_A, num_B, num_C, cut_A, cut_B, cut_C = \
+        read_csv_file(fam_names,
+                      log_freq,
+                      overlaps_fname,
+                      pid_cut, sf_names,
+                      upper_half_pairs_ex_diag, align, is_LAST)
     print()
     print("Output sets ...")
-    print("  Set A: ", num_A)
-    print("  Set B: ", num_B)
-    print("  Set C: ", num_C)
+    print("  Set A: ", num_A, " CutA: ", cut_A, " (", (cut_A/num_A), ")")
+    print("  Set B: ", num_B, " CutB: ", cut_B, " (", (cut_B/num_C), ")")
+    print("  Set C: ", num_C, " CutC: ", cut_C, " (", (cut_C/num_C), ")")
 
     print()
     print("Upper (U) half ex diag ...")
@@ -101,12 +104,17 @@ def main():
           round(100.0 * sf_precision, 2), "%")
 
 
+def cut_pair(align, is_LAST, pid, pid_cut):
+    return float(pid) < pid_cut if (align or is_LAST) else False
+
+
 def read_csv_file(fam_names, log_freq, overlaps_fname, pid_cut, sf_names,
                   upper_half_pairs_ex_diag, align, is_LAST):
     print()
     print("Reading CSV ...")
     t = time.process_time()
     num_A, num_B, num_C = 0, 0, 0
+    cut_A, cut_B, cut_C = 0, 0, 0
     with open(overlaps_fname, 'rt') as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         print("  CSV Header\n    ", next(csv_reader))  # ignore header
@@ -124,18 +132,29 @@ def read_csv_file(fam_names, log_freq, overlaps_fname, pid_cut, sf_names,
             if(is_LAST):
                 pid = float(pid) * 100
 
-            if (align or is_LAST) and float(pid) < pid_cut:
-                continue
+            # if (align or is_LAST) and float(pid) < pid_cut:
+            #     continue
+
+            is_cut = cut_pair(align, is_LAST, pid, pid_cut)
 
             g_col = int(g_col)
             g_row = int(g_row)
             if sf_names[g_col] == sf_names[g_row]:
                 if fam_names[g_col] == fam_names[g_row]:
-                    num_A += 1
+                    if is_cut:
+                        cut_A += 1
+                    else:
+                        num_A += 1
                 else:
-                    num_B += 1
+                    if is_cut:
+                        cut_B += 1
+                    else:
+                        num_B += 1
             else:
-                num_C += 1
+                if is_cut:
+                    cut_C += 1
+                else:
+                    num_C += 1
             line_count += 1
             if line_count % log_freq == 0:
                 elapsed = time.process_time() - t
@@ -146,7 +165,7 @@ def read_csv_file(fam_names, log_freq, overlaps_fname, pid_cut, sf_names,
                       "%) took ", round(elapsed, 4), "s")
     print("  Total line count:    ", line_count)
     print("  Total CSV read time: ", round((time.process_time() - t), 2), "s")
-    return num_A, num_B, num_C
+    return num_A, num_B, num_C, cut_A, cut_B, cut_C
 
 
 def read_seqs(all_sfs, fam_names, limit, seqs_fname, sf_names):
