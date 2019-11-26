@@ -114,6 +114,7 @@ add_executable(nkmers2
         src/ScoreMat.cpp include/ScoreMat.hpp)
 
 add_executable(seqanvecs src/seqantest/seqanvec.cpp)
+add_executable(seqanalign src/seqantest/alignertest.cpp)
 
 add_executable(kunigen
         TestKmerUniverseGeneration.cpp

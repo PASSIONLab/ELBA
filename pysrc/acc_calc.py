@@ -4,17 +4,52 @@ import numpy as np
 import functools
 import operator
 import time
+from pathlib import Path
+import matplotlib.pyplot as plt
+
+
+def gen_hist(pids, file, title, id):
+    plt.figure(id)
+    n, bins, patches = plt.hist(x=pids, bins=[0,10,20,30,40,50,60,70,80,90,
+                                              100], color='#0504aa',
+                                alpha=0.7, rwidth=0.85)
+
+    plt.grid(axis='y', alpha=0.75)
+    plt.xlabel('PID Range')
+    plt.ylabel('Frequency')
+    plt.title(title)
+    # plt.text(23, 45, r'$\mu=15, b=3$')
+    # maxfreq = n.max()
+    # Set a clean upper y-axis limit.
+    # plt.ylim(ymax=np.ceil(maxfreq / 10) * 10 if maxfreq % 10 else maxfreq + 10)
+    plt.savefig(file)
+
+
+def gen_hists(pids_A, pids_B, pids_C, pids_A_hist, pids_B_hist, pids_C_hist,
+              prefix):
+    gen_hist(pids_A, pids_A_hist, prefix + " Output Family Only PID "
+                                          "Histogram", 1)
+    gen_hist(pids_B, pids_B_hist, prefix + " Output Super Family Only PID "
+                                  "Histogram", 2)
+    gen_hist(pids_C, pids_C_hist, prefix + " Output Different Super Family PID "
+                                  "Histogram", 3)
 
 
 def main():
-    overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.pisa/pysrc/data/cori/scope/pisa/no_sub/k6/fa_shuff/fa_shuff_k6.align.txt'
+    overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.pisa/pysrc/data/cori/scope/last.shuff/fixed_filtered.gt30pid.scope.77k.shuff.lastal.out.txt'
     seqs_fname = '/Users/esaliya/sali/data/scope/uniqs' \
                  '/all/77040_unique_of_243813_astral-scopedom-seqres' \
                  '-gd-all-2.07-stable.fa'
+    
+    p = Path(overlaps_fname);
+    pids_A_hist = str(p.parent / Path("pids_A_hist.jpg"))
+    pids_B_hist = str(p.parent / Path("pids_B_hist.jpg"))
+    pids_C_hist = str(p.parent / Path("pids_C_hist.jpg"))
+    
     pid_cut = 30
     log_freq = 100000
-    align = True
-    is_LAST = False
+    align = False
+    is_LAST = True
 
     # All super-families dictionary. Each super family entry will have list,
     # where the first element is the number of families in it and the second
@@ -52,12 +87,17 @@ def main():
 
     upper_half_pairs_ex_diag = count * (count - 1) / 2
 
-    num_A, num_B, num_C, cut_A, cut_B, cut_C = \
+    num_A, num_B, num_C, cut_A, cut_B, cut_C, pids_A, pids_B, pids_C = \
         read_csv_file(fam_names,
                       log_freq,
                       overlaps_fname,
                       pid_cut, sf_names,
                       upper_half_pairs_ex_diag, align, is_LAST)
+    
+    if align or is_LAST:
+        gen_hists(pids_A, pids_B, pids_C, pids_A_hist, pids_B_hist,
+                  pids_C_hist, "PISA" if align else "LAST")
+        
     print()
     print("Output sets ...")
     print("  Set A: ", num_A, " CutA: ", cut_A, " (", (cut_A/num_A), ")")
@@ -105,7 +145,7 @@ def main():
 
 
 def cut_pair(align, is_LAST, pid, pid_cut):
-    return float(pid) < pid_cut if (align or is_LAST) else False
+    return pid < pid_cut if (align or is_LAST) else False
 
 
 def read_csv_file(fam_names, log_freq, overlaps_fname, pid_cut, sf_names,
@@ -115,6 +155,10 @@ def read_csv_file(fam_names, log_freq, overlaps_fname, pid_cut, sf_names,
     t = time.process_time()
     num_A, num_B, num_C = 0, 0, 0
     cut_A, cut_B, cut_C = 0, 0, 0
+    pids_A = list()
+    pids_B = list()
+    pids_C = list()
+
     with open(overlaps_fname, 'rt') as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         print("  CSV Header\n    ", next(csv_reader))  # ignore header
@@ -129,8 +173,10 @@ def read_csv_file(fam_names, log_freq, overlaps_fname, pid_cut, sf_names,
             else:
                 g_col, g_row, common_kmer_count = tup
 
-            if(is_LAST):
+            if is_LAST:
                 pid = float(pid) * 100
+            if align:
+                pid = float(pid)
 
             # if (align or is_LAST) and float(pid) < pid_cut:
             #     continue
@@ -141,16 +187,19 @@ def read_csv_file(fam_names, log_freq, overlaps_fname, pid_cut, sf_names,
             g_row = int(g_row)
             if sf_names[g_col] == sf_names[g_row]:
                 if fam_names[g_col] == fam_names[g_row]:
+                    pids_A.append(pid)
                     if is_cut:
                         cut_A += 1
                     else:
                         num_A += 1
                 else:
+                    pids_B.append(pid)
                     if is_cut:
                         cut_B += 1
                     else:
                         num_B += 1
             else:
+                pids_C.append(pid)
                 if is_cut:
                     cut_C += 1
                 else:
@@ -165,7 +214,7 @@ def read_csv_file(fam_names, log_freq, overlaps_fname, pid_cut, sf_names,
                       "%) took ", round(elapsed, 4), "s")
     print("  Total line count:    ", line_count)
     print("  Total CSV read time: ", round((time.process_time() - t), 2), "s")
-    return num_A, num_B, num_C, cut_A, cut_B, cut_C
+    return num_A, num_B, num_C, cut_A, cut_B, cut_C, pids_A, pids_B, pids_C
 
 
 def read_seqs(all_sfs, fam_names, limit, seqs_fname, sf_names):
