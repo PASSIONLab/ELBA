@@ -6,11 +6,13 @@
 typedef std::chrono::duration<double, std::milli> ms_t;
 
 int main(int argc, char** argv){
-  std::string str_255("ssqlipnispdsftvaastgmlsgkshemlydaetgrkisqldwkiknvailkgdiswdpysfltlnargwtslasgsgnmddyawmnenqsewtdhsshpatnvnhaneydlnvkgwllqdenykagitagyqetrfswtatggsysynngaytgnfpkgvrvigynqrfsmpyiglagqyrindfelnalfkfsdwvrahdndehymrdltfrektsgsryygtvinagyyvtpnakvfaeftyskydegkggtqtidknsgdsvsiggdaagisnknytvtaglqyrf");
-  std::string str_288("pyieifeqprqrgmrfrykcegrsagsipgehstdnnktfpsiqilnyfgkvkirttlvtknepykphphdlvgkdcrdgyyeaefgperrvlsfqnlgiqcvkkkdlkesislriskkinpfnvpeeqlhnideydlnvvrlcfqaflpdehgnytlalpplisnpiydnrapn");
+  std::string str1("mvlsegewqlvlhvwakveadvaghgqdilirlfkshpetlekfdrvkhlkteaemkasedlkkhgvtvltalgailkkkghheaelkplaqshatkhkipikylefiseaiihvlhsrhpgnfgadaqgamnkalelfrkdiaakykelgyqg");
+  std::string str2("mvlsegewqlvlhvwakveadvaghgqdilirlfkshpetlekfdrfkhlkteaemkasedlkkagvtvltalgailkkkghheaelkplaqshatkhkipikylefiseaiihvlhsrhpgnfgadaqgamnkalelfrkdiaakykelgyqg");
 
-  seqan::Peptide seq_255(str_255);
-  seqan::Peptide seq_288(str_288);
+  seqan::Peptide seq1(str1);
+  seqan::Peptide seq2(str2);
+
+  std::cout << seq1 << std::endl;
 
   int gap_ext = -2;
   int gap_open = -11;
@@ -18,8 +20,8 @@ int main(int argc, char** argv){
 
   seqan::Align<seqan::Peptide> align;
   resize(rows(align), 2);
-  assignSource(row(align, 0), seq_255);
-  assignSource(row(align, 1), seq_255);
+  assignSource(row(align, 0), seq1);
+  assignSource(row(align, 1), seq1);
 
   auto start_time = std::chrono::system_clock::now();
   int score = localAlignment(align, blosum62, seqan::DynamicGaps());
@@ -31,8 +33,20 @@ int main(int argc, char** argv){
   computeAlignmentStats(stats, align, blosum62);
   end_time = std::chrono::system_clock::now();
   std::cout << "FA:compute_stats" <<  (ms_t(end_time - start_time)).count() << "ms" << std::endl;
-  
+
   std::cout << "ANI: " << stats.alignmentIdentity << std::endl;
-  
+
+  int seq_h_length = length(seq1);
+  int seq_v_length = length(seq2);
+  int seq_h_seed_length = (clippedEndPosition(row(align, 0)) - 1) -
+                         clippedBeginPosition(row(align, 0));
+  int seq_v_seed_length = (clippedEndPosition(row(align, 1)) - 1) -
+                         clippedBeginPosition(row(align, 1));
+  int seq_h_g_idx = 32816;
+  int seq_v_g_idx = 50391;
+  std::cout << stats.alignmentIdentity
+               << "," << seq_h_length << "," << seq_v_length
+               << "," << seq_h_seed_length << "," << seq_v_seed_length << std::endl;
+
   return 0;
 }
