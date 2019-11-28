@@ -17,8 +17,7 @@ def main():
     fixed_overlaps_fname = str(p.parent / Path("fixed_" + p.name))
 
     seqs_fname = '/Users/esaliya/sali/data/scope/uniqs' \
-                 '/all/77040_unique_of_243813_astral-scopedom-seqres' \
-                 '-gd-all-2.07-stable.fa'
+                 '/all/shuffled_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa'
 
     seq_id_2_idx = {}
 

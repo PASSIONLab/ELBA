@@ -6,8 +6,8 @@ def main():
     file = 'shuffled_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa'
     f = f"{dir}/{file}"
 
-    id1 = 288
-    id2 = 255
+    id1 = 32816
+    id2 = 50391
 
     with open(f, "r") as infh:
         count = 0

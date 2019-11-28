@@ -36,10 +36,9 @@ def gen_hists(pids_A, pids_B, pids_C, pids_A_hist, pids_B_hist, pids_C_hist,
 
 
 def main():
-    overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.pisa/pysrc/data/cori/scope/last.shuff/fixed_filtered.gt30pid.scope.77k.shuff.lastal.out.txt'
+    overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.pisa/pysrc/data/cori/scope/pisa/with_sub/k6/subs100/ba5_shuff/ba5_shuff_subs100_align.txt'
     seqs_fname = '/Users/esaliya/sali/data/scope/uniqs' \
-                 '/all/77040_unique_of_243813_astral-scopedom-seqres' \
-                 '-gd-all-2.07-stable.fa'
+                 '/all/shuffled_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa'
     
     p = Path(overlaps_fname);
     pids_A_hist = str(p.parent / Path("pids_A_hist.jpg"))
@@ -48,8 +47,8 @@ def main():
     
     pid_cut = 30
     log_freq = 100000
-    align = False
-    is_LAST = True
+    align = True
+    is_LAST = False
 
     # All super-families dictionary. Each super family entry will have list,
     # where the first element is the number of families in it and the second
@@ -177,6 +176,8 @@ def read_csv_file(fam_names, log_freq, overlaps_fname, pid_cut, sf_names,
                 pid = float(pid) * 100
             if align:
                 pid = float(pid)
+            else:
+                pid = 0.0
 
             # if (align or is_LAST) and float(pid) < pid_cut:
             #     continue
