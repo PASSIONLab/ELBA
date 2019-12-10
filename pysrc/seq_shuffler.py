@@ -1,10 +1,14 @@
 from Bio import SeqIO
 import random
-
+from pathlib import Path
 
 def main():
-    f = '/Users/esaliya/sali/data/scope/uniqs/all' \
-        '/77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa'
+    f = '/Users/esaliya/sali/data/cog/uniqs' \
+        '/1769181_unique_of_1785722_prot2003-2014.fa'
+
+    fpath = Path(f)
+    name = fpath.name
+    dir = fpath.parent
 
     limit = 'inf'
     seqs = list()
@@ -16,9 +20,7 @@ def main():
             seqs.append(record)
             seq_count += 1
 
-    of = f = '/Users/esaliya/sali/data/scope/uniqs/all/' \
-        'shuffled_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07' \
-             '-stable.fa'
+    of = f'{dir}/shuffled_{name}'
 
     random.shuffle(seqs)
     with open(of, "w") as ofh:
