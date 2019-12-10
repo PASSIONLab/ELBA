@@ -1,11 +1,14 @@
 from collections import defaultdict
-
+from pathlib import Path
 from Bio import SeqIO
 
 
 def main():
-    f = '/Users/esaliya/sali/data/scope/astral-scopedom-seqres-gd-all-2.07' \
-        '-stable.fa'
+    f = '/Users/esaliya/sali/data/cog/prot2003-2014.fa'
+    fpath = Path(f)
+    dir = fpath.parent
+    name_only = fpath.stem
+    name = fpath.name
 
     limit = 'inf'
     seqs = defaultdict(list)
@@ -15,7 +18,7 @@ def main():
         for record in SeqIO.parse(infh, "fasta"):
             if limit != 'inf' and seq_count == limit:
                 break
-            seq_upper = record.seq.upper()
+            seq_upper = str(record.seq.upper())
             seqs[seq_upper].append(record.id)
             if len(seqs[seq_upper]) == 2:
                 # Mark the seqs as a duplicate the moment you find
@@ -41,10 +44,8 @@ def main():
     santized_seq_count = (seq_count - count) + dup_count
     dup_count = count - dup_count  # You can keep one copy of each duplicate
 
-    of = f'/Users/esaliya/sali/data/scope/{santized_seq_count}_unique_of_{seq_count}_astral-scopedom-seqres-gd' \
-        f'-all-2.07-stable.fa'
-    dup_of = f'/Users/esaliya/sali/data/scope/{dup_count}_duplicates_of_{seq_count}_astral-scopedom-seqres-gd' \
-        f'-all-2.07-stable.txt'
+    of = f'{dir}/{santized_seq_count}_unique_of_{seq_count}_{name}'
+    dup_of = f'{dir}/{dup_count}_duplicates_of_{seq_count}_{name_only}.txt'
 
     with open(f, "r") as infh, open(of, "w") as ofh, open(dup_of,
                                                           "w") as dup_ofh:
@@ -52,7 +53,7 @@ def main():
         for record in SeqIO.parse(infh, "fasta"):
             if limit != 'inf' and seq_count == limit:
                 break
-            seq_upper = record.seq.upper()
+            seq_upper = str(record.seq.upper())
             if seq_upper not in dups:
                 SeqIO.write(record, ofh, "fasta")
             else:

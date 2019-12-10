@@ -43,7 +43,8 @@ include_directories(
         "~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"
 #        "~/sali/software/seqan"
 #        "~/sali/software/seqan/seqan")
-        ~/sali/software/seqan-v2.4.0/include/
+#        ~/sali/software/seqan-v2.4.0/include/
+        ~/sali/git/github/seqan/include/
         /usr/local/include/boost/)
 #
 link_directories("~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/lib")

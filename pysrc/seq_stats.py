@@ -5,8 +5,8 @@ from Bio import SeqIO
 
 
 def main():
-    dir = '/Users/esaliya/sali/data/scope/uniqs/all'
-    file = '77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa'
+    dir = '/Users/esaliya/sali/data/cog/uniqs/shuffled'
+    file = 'shuffled_1769181_unique_of_1785722_prot2003-2014.fa'
 
     f = f"{dir}/{file}"
 
@@ -25,7 +25,7 @@ def main():
     of = f'{dir}/hist_of_{tag}_{Path(file).stem}.jpg'
 
     lengths = np.array(lengths)
-    plot_sequence_lengths_histogram(lengths, 10, of)
+    plot_sequence_lengths_histogram(lengths, 'auto', of)
 
 
 def plot_sequence_lengths_histogram(lengths, nbins, fname):
@@ -38,13 +38,13 @@ def plot_sequence_lengths_histogram(lengths, nbins, fname):
     # plt.minorticks_on()
     plt.xlabel("Sequence Length")
     plt.ylabel("# Sequences")
-    ax = plt.gca()
-    ax.yaxis.grid(which='both')
-    ax.set_xticks(np.arange(bins[0]+(patch_width/2), bins[-1]+0.5, patch_width*1))
-    ax.set_xticklabels(np.stack((np.around(bins[0:len(bins) - 1], 2),
-                                 np.around(bins[0:len(bins) - 1] + patch_width, 2)), 0).T)
-    for i in range(len(n)):
-        plt.text(bins[i] + 0.2, n[i] + np.log(2), str(int(n[i])))
+    # ax = plt.gca()
+    # ax.yaxis.grid(which='both')
+    # ax.set_xticks(np.arange(bins[0]+(patch_width/2), bins[-1]+0.5, patch_width*1))
+    # ax.set_xticklabels(np.stack((np.around(bins[0:len(bins) - 1], 2),
+    #                              np.around(bins[0:len(bins) - 1] + patch_width, 2)), 0).T)
+    # for i in range(len(n)):
+    #     plt.text(bins[i] + 0.2, n[i] + np.log(2), str(int(n[i])))
 
     plt.savefig(fname)
 
