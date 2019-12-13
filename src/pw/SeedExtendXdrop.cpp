@@ -98,7 +98,12 @@ void SeedExtendXdrop::apply(
     alignments.push_back(max_ai);
 //  }
 
+
+  double alen_minus_gapopens = (max_ai.stats.alignmentLength - max_ai.stats.numGapOpens) * 1.0;
   ss << g_col_idx << "," << g_row_idx << "," << max_ai.stats.alignmentIdentity
      << "," << max_ai.seq_h_length << "," << max_ai.seq_v_length
-     << "," << max_ai.seq_h_seed_length  << "," << max_ai.seq_v_seed_length << std::endl;
+     << "," << max_ai.seq_h_seed_length  << "," << max_ai.seq_v_seed_length
+     << "," << max_ai.stats.numGapOpens
+     << "," << alen_minus_gapopens / max_ai.seq_h_length
+     << "," << alen_minus_gapopens / max_ai.seq_v_length << std::endl;
 }
