@@ -43,8 +43,8 @@ include_directories(
         "~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"
 #        "~/sali/software/seqan"
 #        "~/sali/software/seqan/seqan")
-#        ~/sali/software/seqan-v2.4.0/include/
-        ~/sali/git/github/seqan/include/
+        ~/sali/software/seqan-v2.4.0/include/
+#        ~/sali/git/github/seqan/include/
         /usr/local/include/boost/)
 #
 link_directories("~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/lib")
@@ -54,7 +54,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(CMAKE_CXX_FLAGS_RELEASE "-DSEQAN_ENABLE_DEBUG=0")
-#set(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG=1")
+#set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address")
 
 find_package(MPI REQUIRED)
 
