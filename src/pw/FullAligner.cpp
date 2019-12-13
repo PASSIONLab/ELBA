@@ -55,9 +55,13 @@ void FullAligner::apply(
 //  }
 
   start_time = std::chrono::system_clock::now();
+  double alen_minus_gapopens = (ai.stats.alignmentLength - ai.stats.numGapOpens) * 1.0;
   ss << g_col_idx << "," << g_row_idx << "," << ai.stats.alignmentIdentity
      << "," << ai.seq_h_length << "," << ai.seq_v_length
-     << "," << ai.seq_h_seed_length << "," << ai.seq_v_seed_length << std::endl;
+     << "," << ai.seq_h_seed_length << "," << ai.seq_v_seed_length
+     << "," << ai.stats.numGapOpens
+     << "," << alen_minus_gapopens / ai.seq_h_length
+     << "," << alen_minus_gapopens / ai.seq_v_length << std::endl;
   end_time = std::chrono::system_clock::now();
   add_time("FA:string_op", (ms_t(end_time - start_time)).count());
 }

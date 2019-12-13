@@ -239,7 +239,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 
   std::stringstream ss;
   if(parops->world_proc_rank == 0){
-    ss << "g_col_idx,g_row_idx,pid,col_seq_len,row_seq_len,col_seq_align_len,row_seq_align_len" << std::endl;
+    ss << "g_col_idx,g_row_idx,pid,col_seq_len,row_seq_len,col_seq_align_len,row_seq_align_len, num_gap_opens, col_seq_len_coverage, row_seq_len_coverage" << std::endl;
   }
   for (auto colit = spSeq->begcol(); colit != spSeq->endcol(); ++colit) {
     // iterate over columns
