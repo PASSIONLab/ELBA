@@ -33,14 +33,18 @@ def extract_by_length(dir, fname, cut):
 
 
 def main():
-    dir = '/Users/esaliya/sali/data/cog/uniqs/shuffled'
-    file = 'shuffled_1769181_unique_of_1785722_prot2003-2014.fa'
+    # dir = '/Users/esaliya/sali/data/cog/uniqs/shuffled'
+    # file = 'shuffled_1769181_unique_of_1785722_prot2003-2014.fa'
 
-    limit = 10
+    dir = '/Users/esaliya/sali/data/scope/uniqs/all'
+    file = 'shuffled_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2' \
+           '.07-stable.fa'
+
+    limit = 10000
     cut = 1000
 
-    # extract_by_count(dir, file, limit)
-    extract_by_length(dir, file, cut)
+    extract_by_count(dir, file, limit)
+    # extract_by_length(dir, file, cut)
 
 
 if __name__ == '__main__':

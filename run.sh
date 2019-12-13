@@ -40,5 +40,14 @@
 
 #mpirun -np 4 ./cmake-build-debug/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/shuffled_100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 100 -O 1000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --af fa_shuffled_align.txt --fa --jp fa_shuffled --lf 10 --subs 5 2>&1 | tee fa_shuffled_out.txt
 #mpirun -np 4 ./cmake-build-release/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/shuffled_100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 100 -O 1000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --af fa_shuffled_align.txt --fa --jp fa_shuffled --lf 10 --subs 5 2>&1 | tee fa_shuffled_out.txt
-mpirun -np 4 ./cmake-build-release/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/shuffled_100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 100 -O 1000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --af fa_shuffled_align.txt --fa --jp fa_shuffled --lf 10 2>&1 | tee fa_shuffled_out.txt
+#mpirun -np 4 ./cmake-build-release/pisa -i /Users/esaliya/sali/data/scope/uniqs/100/shuffled_100_of_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa -c 100 -O 1000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --af fa_shuffled_align.txt --fa --jp fa_shuffled --lf 10 2>&1 | tee fa_shuffled_out.txt
 
+#cog runs
+#in_dir=/Users/esaliya/sali/data/cog/uniqs/shuffled
+#in_file=74470_len_lte_100_in_shuffled_1769181_unique_of_1785722_prot2003-2014.fa
+#mpirun -np 4 ./cmake-build-asan/pisa -i $in_dir/$in_file -c 74470 -O 10000 -k 6 -s 1 --idxmap cog_shuffled_idxmap.txt --sc 1  --subs 6 --af cog_fa_shuffled_align.txt --fa --jp cog_fa_shuffled --lf 10 2>&1 | tee cog_fa_shuffled_out.txt
+
+#SEGFAULT when subk is increased to over 100 with SCOPe data
+in_dir=/Users/esaliya/sali/data/scope/uniqs/all
+in_file=10000_of_shuffled_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa
+mpirun -np 4 ./cmake-build-debug/pisa -i $in_dir/$in_file -c 10000 -O 10000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --na --of na_overlap.txt --jp na_shuffled --subs 500 --lf 10000 2>&1 | tee na_shuffled_out.txt
