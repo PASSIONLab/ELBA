@@ -41,7 +41,12 @@ std::vector<pisa::Kmer>
   while(nbrs.size() < m){
     pisa::Kmer min_kmer = mmheap.findMin();
     nbrs.push_back(min_kmer);
-    explore(min_kmer, mmheap, root, m);
+    if (min_kmer.get_free_idxs().size() > 0) {
+      // Explore further only if this min_kmer has 
+      // free_idxs left to modify. Else, just continue
+      // picking the next min_kmer from the mmheap.
+      explore(min_kmer, mmheap, root, m);
+    }
     mmheap.popMin();
   }
   return nbrs;
