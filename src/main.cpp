@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
   A.PrintInfo();
 
   auto At = A;
-  tp->times["start_main:At()"] = tp->times["end_main:spMatA()"];
+  tp->times["start_main:At()"] = tp->times["end_main:genA()"];
   At.Transpose();
   tu.print_str("Matrix At: ");
   At.PrintInfo();
@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
   }
 
 
-  tp->times["start_main:A(S)xAt()"] = std::chrono::system_clock::now();
+  tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
   PSpMat<pisa::CommonKmers>::MPI_DCCols C =
       Mult_AnXBn_Synch<KmerIntersectSR_t,
           pisa::CommonKmers, PSpMat<pisa::CommonKmers>::DCCols>(A, At);
@@ -207,7 +207,7 @@ int main(int argc, char **argv) {
       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
       + std::to_string(C.getnnz() - seq_count)
       + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
-  tp->times["end_main:Ax(S)At()"] = std::chrono::system_clock::now();
+  tp->times["end_main:(AS)At()"] = std::chrono::system_clock::now();
 
   if (S){
     free (S);

@@ -57,6 +57,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-DSEQAN_ENABLE_DEBUG=0")
 #set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address")
 
 find_package(MPI REQUIRED)
+find_package(OpenMP REQUIRED)
 
 add_executable(pisa
         src/Alphabet.cpp
@@ -132,12 +133,23 @@ add_executable(mcb MatrixCreationBug.cpp)
 
 add_executable(ipack IntPack.cpp)
 
-target_link_libraries(pisa CombBLAS GraphGenlib Usortlib)
-target_link_libraries(mcb CombBLAS GraphGenlib Usortlib)
-target_link_libraries(kunigen CombBLAS GraphGenlib Usortlib)
+target_link_libraries(pisa PUBLIC CombBLAS GraphGenlib Usortlib)
+target_link_libraries(mcb PUBLIC CombBLAS GraphGenlib Usortlib)
+target_link_libraries(kunigen PUBLIC CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
-    target_link_libraries(pisa ${MPI_LIBRARIES})
-    target_link_libraries(mcb ${MPI_LIBRARIES})
-    target_link_libraries(kunigen ${MPI_LIBRARIES})
+    target_link_libraries(pisa PUBLIC ${MPI_LIBRARIES})
+    target_link_libraries(mcb PUBLIC ${MPI_LIBRARIES})
+    target_link_libraries(kunigen PUBLIC ${MPI_LIBRARIES})
+endif()
+
+if(OPENMP_FOUND OR OpenMP_CXX_FOUND)
+    # Set THREADED if OpenMP is found
+    target_compile_definitions(pisa PUBLIC THREADED)
+    if(TARGET OpenMP::OpenMP_CXX)
+        target_link_libraries(pisa PUBLIC OpenMP::OpenMP_CXX)
+    else()
+        target_compile_options(pisa PUBLIC "${OpenMP_CXX_FLAGS}")
+        target_link_libraries(pisa PUBLIC "${OpenMP_CXX_FLAGS}")
+    endif()
 endif()
