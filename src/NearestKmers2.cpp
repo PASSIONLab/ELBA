@@ -53,7 +53,7 @@ std::vector<pisa::Kmer>
 }
 
 void pisa::NearestKmers2::print_sorted_sm() {
-  for (int i = 0; i < 24; ++i){
+  for (int i = 0; i < 25; ++i){
     char row_c = alph.letters[i];
     for (auto p : sorted_sm[row_c]){
       std::cout << "(" << p.first << "," << p.second << ") ";
