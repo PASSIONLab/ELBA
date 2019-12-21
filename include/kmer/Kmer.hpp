@@ -55,6 +55,10 @@ namespace pisa{
       return kmer_code;
     }
 
+    inline std::string str() const{
+      return kmer_str;
+    }
+
     inline short dist_to_root() const {
       return dist2r;
     }
