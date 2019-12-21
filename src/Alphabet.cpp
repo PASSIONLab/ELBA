@@ -8,13 +8,14 @@
 
 
 /*!
+ * NOTE: We have added the base 'J' as well.
  * Sometimes it is not possible two differentiate two closely related amino
  * acids, therefore we have the special cases:
  * asparagine/aspartic acid - asx - B
  * glutamine/glutamic acid - glx - Z
  * http://www.cryst.bbk.ac.uk/education/AminoAcid/the_twenty.html
  */
-const char* Alphabet::protein = "ARNDCQEGHILKMFPSTWYVBZX*";
+const char* Alphabet::protein = "ARNDCQEGHILKMFPSTWYVBZX*J";
 const char* Alphabet::dna = "ACGT";
 
 
@@ -22,7 +23,7 @@ Alphabet::Alphabet(Alphabet::type t) {
   switch (t){
     case PROTEIN:
       init(protein);
-      size = 24;
+      size = 25;
       max_char = 90;
       break;
     case DNA:
