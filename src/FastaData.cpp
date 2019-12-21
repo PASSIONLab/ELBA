@@ -33,6 +33,12 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
     c = buff[i];
     idx = i - nc_count;
     buff[idx] = c;
+
+    // Modify 'u' or 'U' in sequences to 'T'.
+    // This is according to http://meme-suite.org/doc/alphabets.html
+    if ((c == 'U' || c == 'u') && in_seq){
+      buff[idx] = 'T';
+    }
     if (c == '>' && !in_name) {
       /*! Note. the !in_name logic is important as some fasta files
        * have > character in the middle of the sequence identifier. If we

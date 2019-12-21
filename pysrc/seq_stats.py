@@ -5,8 +5,11 @@ from Bio import SeqIO
 
 
 def main():
-    dir = '/Users/esaliya/sali/data/cog/uniqs/shuffled'
-    file = 'shuffled_1769181_unique_of_1785722_prot2003-2014.fa'
+    # dir = '/Users/esaliya/sali/data/cog/uniqs/shuffled'
+    # file = 'shuffled_1769181_unique_of_1785722_prot2003-2014.fa'
+
+    dir = '/Users/esaliya/sali/data/isolates'
+    file = 'isolates_proteins_archaea.fasta'
 
     f = f"{dir}/{file}"
 
@@ -20,6 +23,8 @@ def main():
                 break
             lengths.append(len(record))
             count += 1
+
+    print("INFO: Sequence count: ", count)
 
     tag = str(count)+"_of_" if limit != 'inf' else "all"
     of = f'{dir}/hist_of_{tag}_{Path(file).stem}.jpg'
