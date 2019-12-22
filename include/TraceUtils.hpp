@@ -20,7 +20,7 @@ struct TimePod {
                            "kmerop:gen_S:spMatS()",
                            "main:genS()",
                            "main:AxS()",
-                           "main:A(S)xAt()",
+                           "main:(AS)At()",
                            "main:dfd->wait()",
                            "dfd:MPI_Waitall(seqs)",
                            "dfd:extract_recv_seqs",

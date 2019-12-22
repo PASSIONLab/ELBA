@@ -8,8 +8,8 @@ def main():
     # dir = '/Users/esaliya/sali/data/cog/uniqs/shuffled'
     # file = 'shuffled_1769181_unique_of_1785722_prot2003-2014.fa'
 
-    dir = '/Users/esaliya/sali/data/isolates'
-    file = 'isolates_proteins_archaea.fasta'
+    dir = '/Users/esaliya/sali/data/isolates/eukarya'
+    file = 'isolates_proteins_eukarya.fasta'
 
     f = f"{dir}/{file}"
 
