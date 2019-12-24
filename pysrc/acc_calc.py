@@ -38,7 +38,7 @@ def gen_hists(pids_A, pids_B, pids_C, pids_A_hist, pids_B_hist, pids_C_hist,
 def main():
     overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.pisa/pysrc/data/cori/scope/pisa/with_sub/k6/subs100/ba5_shuff/ba5_shuff_subs100_align.txt'
     seqs_fname = '/Users/esaliya/sali/data/scope/uniqs' \
-                 '/all/shuffled_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa'
+                 '/all/shuffled_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa_sub100'
     
     p = Path(overlaps_fname);
     pids_A_hist = str(p.parent / Path("pids_A_hist.jpg"))

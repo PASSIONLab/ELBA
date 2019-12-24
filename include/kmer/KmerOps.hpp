@@ -52,7 +52,7 @@ namespace pisa {
 
         ++count;
         lcol_ids.push_back(kcode);
-        local_kmers.emplace(kmer_str, kcode, alp);
+        local_kmers.emplace(kmer_str, kcode, alp, false);
 
         /*! Offset is relative to the sequence start, so unsigned short is
          * good enough. */

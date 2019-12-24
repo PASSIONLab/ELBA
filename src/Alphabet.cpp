@@ -18,7 +18,6 @@
 const char* Alphabet::protein = "ARNDCQEGHILKMFPSTWYVBZX*J";
 const char* Alphabet::dna = "ACGT";
 
-
 Alphabet::Alphabet(Alphabet::type t) {
   switch (t){
     case PROTEIN:

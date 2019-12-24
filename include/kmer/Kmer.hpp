@@ -34,20 +34,35 @@ namespace pisa{
 
   public:
     Kmer(){}
-    Kmer(std::string str, uint64_t kmer_code, Alphabet& alph)
+    Kmer(uint64_t kmer_code, ushort k, Alphabet& alph)
+    : kmer_code(kmer_code) {
+      uint64_t q, r;
+      ushort free_idx = 0;
+      for (ushort i = 0; i < k-1; ++i) {
+        q = kmer_code / alph.size;
+        r = kmer_code - (q*alph.size);
+        kmer_str.insert(kmer_str.begin(), alph.code_to_char[r]);
+        free_idxs.insert(free_idx++);
+        kmer_code = q;
+      }
+      kmer_str.insert(kmer_str.begin(), alph.code_to_char[kmer_code]);
+      free_idxs.insert(free_idx);
+    }
+
+    Kmer(std::string str, uint64_t kmer_code, Alphabet& alph, bool fix_kcode)
     : kmer_str(std::move(str)), kmer_code(kmer_code){
       ushort free_idx = 0;
       size_t len = kmer_str.length();
       for (size_t i = 0; i < len; ++i){
         free_idxs.insert(free_idx++);
       }
-      if (kmer_code < 0) {
+      if (fix_kcode) {
         update_kmer_code(alph);
       }
     }
 
     Kmer(std::string str, Alphabet &alph)
-        : Kmer(str, -1, alph) {
+        : Kmer(str, 0, alph, true) {
 
     }
 

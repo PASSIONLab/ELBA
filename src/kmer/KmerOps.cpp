@@ -1,5 +1,6 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
+#include <numeric>
 #include "../../include/kmer/KmerOps.hpp"
 #include "../../include/NearestKmers2.hpp"
 
@@ -27,6 +28,43 @@ namespace pisa {
     }
     tp->times["end_kmerop:gen_A:loop_add_kmers()"] = std::chrono::system_clock::now();
 
+    /*! Remove duplicate kmers and redistribute load */
+    int kmer_universe_size = pow(alph.size, k);
+    std::shared_ptr<bool[]> kmer_universe(new bool[kmer_universe_size]);
+    for (const auto& kmr : local_kmers){
+      kmer_universe[kmr.code()] = true;
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, kmer_universe.get(), kmer_universe_size, MPI_CXX_BOOL, MPI_LOR, MPI_COMM_WORLD);
+    int unique_kmer_count = 0;
+    unique_kmer_count = std::accumulate(kmer_universe.get(), kmer_universe.get()+kmer_universe_size, 0);
+
+    int q = unique_kmer_count / parops->world_procs_count;
+    int r = unique_kmer_count - (q*parops->world_procs_count);
+    int skip_count = parops->world_proc_rank < r
+        ? (q+1)*parops->world_proc_rank
+        : q*parops->world_proc_rank+r;
+    int my_count = parops->world_proc_rank < r ? q+1 : q;
+    int my_end = my_count + skip_count;
+
+    local_kmers.clear();
+    int count = 0;
+    for (size_t i = 0; i < kmer_universe_size; ++i){
+      if (kmer_universe[i]) {
+        ++count;
+      } else {
+        continue;
+      }
+      if (count <= skip_count){
+        continue;
+      }
+
+      if (count <= my_end){
+        local_kmers.emplace(i, k,alph);
+      } else {
+        break;
+      }
+    }
 
 #ifndef NDEBUG
     {
