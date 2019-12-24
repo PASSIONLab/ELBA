@@ -60,4 +60,11 @@ in_file="[92400,92499]_of_2729008_len_lte_2000_in_shuffled_isolates_proteins_arc
 #in_file="[94000,94999]_of_2729008_len_lte_2000_in_shuffled_isolates_proteins_archaea.fasta"
 num_seqs=100
 subs=100
+#mpirun -np 4 ../cmake-build-release/pisa -i $in_dir/$in_file -c $num_seqs -O 10000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --na --of na_overlap.txt --jp na_shuffled --subs $subs --lf 10000 2>&1 | tee na_shuffled_out.txt
+
+
+in_dir=/Users/esaliya/sali/data/isolates
+in_file=test.fa
+num_seqs=5
+subs=10000
 mpirun -np 4 ../cmake-build-release/pisa -i $in_dir/$in_file -c $num_seqs -O 10000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --na --of na_overlap.txt --jp na_shuffled --subs $subs --lf 10000 2>&1 | tee na_shuffled_out.txt
