@@ -20,6 +20,15 @@ void PairwiseFunction::add_time(std::string type, double duration) {
 }
 
 void PairwiseFunction::print_avg_times(std::shared_ptr<ParallelOps> parops) {
+  // counts and times can be empty if there were non non-zeros in that
+  // process grid cell. Therefore, we need to fix the collective call as follows.
+  int counts_size = counts.size();
+  MPI_Allreduce(MPI_IN_PLACE, &counts_size, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+  if (counts.size() == 0){
+    counts.resize(counts_size);
+    times.resize(counts_size);
+  }
+
   MPI_Allreduce(MPI_IN_PLACE, &(counts[0]), counts.size(),
       MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(times[0]), times.size(),
