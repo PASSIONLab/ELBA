@@ -190,8 +190,10 @@ int main(int argc, char **argv) {
     S->PrintInfo();
 
     tp->times["start_main:AxS()"] = tp->times["end_main:genS()"];
+    proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AS" << std::endl;
     A = Mult_AnXBn_Synch<SubKmerIntersectSR_t,
         pisa::MatrixEntry, PSpMat<pisa::MatrixEntry>::DCCols>(A, *S);
+    proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AS" << std::endl;
     // Note, AS is now A.
     tu.print_str("Matrix AS: ");
     A.PrintInfo();
@@ -200,18 +202,19 @@ int main(int argc, char **argv) {
 
 
   tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
+  proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
   PSpMat<pisa::CommonKmers>::MPI_DCCols C =
       Mult_AnXBn_Synch<KmerIntersectSR_t,
           pisa::CommonKmers, PSpMat<pisa::CommonKmers>::DCCols>(A, At);
+  proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
   tu.print_str(
       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
       + std::to_string(C.getnnz() - seq_count)
       + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
   tp->times["end_main:(AS)At()"] = std::chrono::system_clock::now();
 
-  if (S){
-    free (S);
-  }
+  delete S;
+
 
 #ifndef NDEBUG
   /*! Test multiplication */

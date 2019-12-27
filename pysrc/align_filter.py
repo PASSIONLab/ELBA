@@ -36,9 +36,11 @@ def main():
     len_coverage_cut = 0.7
 
     dir = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.pisa/pysrc/data' \
-          '/cori/scope/pisa/no_sub'
-    sub_dir = 'xa_exact'
-    file = 'xa_shuff_exact_align.txt'
+          '/cori/scope/pisa/w_sub/duprem'
+    subs=1600
+    alignm='xa'
+    sub_dir = f'{alignm}_subs{subs}'
+    file = f'{alignm}_shuff_subs{subs}_align.txt'
 
     filter_alignments(dir, sub_dir, file, "scope", pid_cut,
                       len_coverage_cut)
