@@ -58,6 +58,7 @@ int subk_count = 0;
 
 /*! Parameters related to outputting alignment info */
 std::string align_file;
+int afreq;
 
 /*! Don't perform alignments if this flag is set */
 bool no_align = false;
@@ -288,11 +289,12 @@ int main(int argc, char **argv) {
   tp->times["end_main:dfd->wait()"] = std::chrono::system_clock::now();
 
 
-  DistributedPairwiseRunner dpr(dfd, C, parops);
+  DistributedPairwiseRunner dpr(dfd, C, afreq, parops);
   if (!no_align) {
     tp->times["start_main:dpr->align()"] = std::chrono::system_clock::now();
     seqan::Blosum62 blosum62(gap_ext, gap_open);
 
+    align_file = "Rank_" + std::to_string(parops->world_proc_rank) + "_" + align_file;
     // TODO: SeqAn can't work with affine gaps for seed extension
     seqan::Blosum62 blosum62_simple(gap_open, gap_open);
     PairwiseFunction* pf = nullptr;
@@ -386,6 +388,8 @@ int parse_args(int argc, char **argv) {
     (CMD_OPTION_SUBS, CMD_OPTION_DESCRIPTION_SUBS,
      cxxopts::value<int>())
     (CMD_OPTION_LOG_FREQ, CMD_OPTION_DESCRIPTION_LOG_FREQ,
+     cxxopts::value<int>())
+    (CMD_OPTION_AF_FREQ, CMD_OPTION_DESCRIPTION_AF_FREQ,
      cxxopts::value<int>());
 
   auto result = options.parse(argc, argv);
@@ -518,6 +522,10 @@ int parse_args(int argc, char **argv) {
     log_freq = result[CMD_OPTION_LOG_FREQ].as<int>();
   }
 
+  if (result.count(CMD_OPTION_AF_FREQ)) {
+    afreq = result[CMD_OPTION_AF_FREQ].as<int>();
+  }
+
   return 0;
 }
 
@@ -537,6 +545,7 @@ void pretty_print_config(std::string &append_to) {
     "Gap extension penalty (-e)",
     "Overlap file (--of)",
     "Alignment file (--af)",
+    "Alignment write frequency (--afreq)",
     "No align (--na)",
     "Full align (--fa)",
     "Xdrop align (--xa)",
@@ -559,6 +568,7 @@ void pretty_print_config(std::string &append_to) {
     std::to_string(gap_ext),
     !overlap_file.empty() ? overlap_file : "None",
     !align_file.empty() ? align_file : "None",
+    !align_file.empty() ? std::to_string(afreq) : "None",
     bool_to_str(no_align),
     bool_to_str(full_align),
     bool_to_str(xdrop_align) + (xdrop_align ? "| xdrop: " + std::to_string(xdrop) : ""),

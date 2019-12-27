@@ -5,10 +5,12 @@
 
 #include "../include/DistributedPairwiseRunner.hpp"
 
-DistributedPairwiseRunner::DistributedPairwiseRunner(const std::shared_ptr<DistributedFastaData> dfd,
-                                       PSpMat<pisa::CommonKmers>::MPI_DCCols mat,
-                                       const std::shared_ptr<ParallelOps> &parops)
-  : dfd(dfd), mat(mat), parops(parops) {
+DistributedPairwiseRunner::DistributedPairwiseRunner(
+    const std::shared_ptr<DistributedFastaData> dfd,
+    PSpMat<pisa::CommonKmers>::MPI_DCCols mat,
+    int afreq,
+    const std::shared_ptr<ParallelOps> &parops)
+    : dfd(dfd), mat(mat), afreq(afreq), parops(parops) {
 
 }
 
@@ -215,6 +217,9 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
    * of processes. Anything to do with the grid will
    * be prefixed by gr_*/
 
+
+  std::ofstream af_stream;
+  af_stream.open(file);
   // rows and cols in the result
   uint64_t n_rows, n_cols;
   n_rows = n_cols = dfd->global_count();
@@ -241,6 +246,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
   if(parops->world_proc_rank == 0){
     ss << "g_col_idx,g_row_idx,pid,col_seq_len,row_seq_len,col_seq_align_len,row_seq_align_len, num_gap_opens, col_seq_len_coverage, row_seq_len_coverage" << std::endl;
   }
+  uint64_t line_count = 0;
   for (auto colit = spSeq->begcol(); colit != spSeq->endcol(); ++colit) {
     // iterate over columns
     auto l_col_idx = colit.colid(); // local numbering
@@ -280,6 +286,13 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
       pisa::CommonKmers cks = nzit.value();
 
       pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks, ss);
+      ++line_count;
+
+      if (line_count%afreq == 0){
+        af_stream << ss.str();
+        af_stream.flush();
+        ss.str(std::string());
+      }
     }
   }
 
@@ -295,6 +308,10 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 //  if (parops->world_proc_rank == 0){
 //    std::printf("  Max common kmers %d\n", g_max_common_kmers);
 //  }
-  std::string align_str = ss.str();
-  parops->write_file_in_parallel(file, align_str);
+//  std::string align_str = ss.str();
+//  parops->write_file_in_parallel(file, align_str);
+
+  af_stream << ss.str();
+  af_stream.flush();
+  af_stream.close();
 }

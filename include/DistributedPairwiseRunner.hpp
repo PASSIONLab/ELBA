@@ -26,7 +26,7 @@
 class DistributedPairwiseRunner {
 public:
   DistributedPairwiseRunner(std::shared_ptr<DistributedFastaData> dfd,
-                     PSpMat<pisa::CommonKmers>::MPI_DCCols mat,
+                     PSpMat<pisa::CommonKmers>::MPI_DCCols mat, int afreq,
                      const std::shared_ptr<ParallelOps> &parops);
 
 //  uint64_t align_seqs();
@@ -36,6 +36,7 @@ public:
 private:
   PSpMat<pisa::CommonKmers>::MPI_DCCols mat;
   std::shared_ptr<DistributedFastaData> dfd;
+  int afreq;
   std::shared_ptr<ParallelOps> parops;
 };
 
