@@ -52,19 +52,19 @@ export OMP_NUM_THREADS=1
 #in_dir=/Users/esaliya/sali/data/scope/uniqs/all
 #in_file=10000_of_shuffled_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa
 
-in_dir=/Users/esaliya/sali/data/isolates/archaea
+in_dir=/Users/esaliya/sali/data/isolates/archaea/subsets/
 #in_file="[90000,90999]_of_2729008_len_lte_2000_in_shuffled_isolates_proteins_archaea.fasta"
 #in_file="[91000,91999]_of_2729008_len_lte_2000_in_shuffled_isolates_proteins_archaea.fasta"
-in_file="[92400,92499]_of_2729008_len_lte_2000_in_shuffled_isolates_proteins_archaea.fasta"
+in_file=100_of_sanitized_2728834_impure_2729008_len_lte_2000_in_shuffled_isolates_proteins_archaea.fasta
 #in_file="[93000,93999]_of_2729008_len_lte_2000_in_shuffled_isolates_proteins_archaea.fasta"
 #in_file="[94000,94999]_of_2729008_len_lte_2000_in_shuffled_isolates_proteins_archaea.fasta"
 num_seqs=100
 subs=100
-#mpirun -np 4 ../cmake-build-release/pisa -i $in_dir/$in_file -c $num_seqs -O 10000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --na --of na_overlap.txt --jp na_shuffled --subs $subs --lf 10000 2>&1 | tee na_shuffled_out.txt
+mpirun -np 4 ../cmake-build-release/pisa -i $in_dir/$in_file -c $num_seqs -O 10000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --fa --af fa_align.txt --jp aa_shuffled --subs $subs --lf 10000 --afreq 5 2>&1 | tee fa_shuffled_out.txt
 
 
 in_dir=/Users/esaliya/sali/data/isolates
 in_file=test.fa
 num_seqs=5
 subs=10000
-mpirun -np 4 ../cmake-build-release/pisa -i $in_dir/$in_file -c $num_seqs -O 10000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --na --of na_overlap.txt --jp na_shuffled --subs $subs --lf 10000 2>&1 | tee na_shuffled_out.txt
+#mpirun -np 4 ../cmake-build-release/pisa -i $in_dir/$in_file -c $num_seqs -O 10000 -k 6 -s 1 --idxmap shuffled_idxmap.txt --sc 1 --na --of na_overlap.txt --jp na_shuffled --subs $subs --lf 10000 2>&1 | tee na_shuffled_out.txt
