@@ -294,7 +294,7 @@ int main(int argc, char **argv) {
     tp->times["start_main:dpr->align()"] = std::chrono::system_clock::now();
     seqan::Blosum62 blosum62(gap_ext, gap_open);
 
-    align_file = "Rank_" + std::to_string(parops->world_proc_rank) + "_" + align_file;
+    align_file += "_Rank_" + std::to_string(parops->world_proc_rank) + ".txt";
     // TODO: SeqAn can't work with affine gaps for seed extension
     seqan::Blosum62 blosum62_simple(gap_open, gap_open);
     PairwiseFunction* pf = nullptr;
