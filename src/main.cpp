@@ -11,7 +11,7 @@
 #include "../include/Utils.hpp"
 #include "../include/DistributedPairwiseRunner.hpp"
 #include "CombBLAS/CombBLAS.h"
-#include "cxxopts.hpp"
+#include "../include/cxxopts.hpp"
 #include "../include/pw/SeedExtendXdrop.hpp"
 #include "seqan/score/score_matrix_data.h"
 #include "../include/pw/OverlapFinder.hpp"
