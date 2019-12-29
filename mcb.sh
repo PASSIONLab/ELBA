@@ -1,1 +1,0 @@
-/Users/esaliya/sali/git/github/esaliya/cpp/lbl.pisa/cmake-build-debug/mcb 2>&1 | tee mcb.$PMI_RANK.out.txt
