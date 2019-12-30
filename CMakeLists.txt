@@ -3,18 +3,17 @@ project(lbl_pisa)
 set(CMAKE_CXX_STANDARD 14)
 
 include_directories(
-        "/usr/local/include"
-        "~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/include"
-        ~/sali/software/seqan-v2.4.0/include/
+        /global/cscratch1/sd/esaliya/pisa_aydin/combinatorial-blas-2.0/CombBLAS/install/include
+        /global/cscratch1/sd/esaliya/pisa_aydin/seqan-v2.4.0/include
         /usr/local/include/boost/)
-
-link_directories("~/sali/git/bitbucket/combinatorial-blas-2.0/CombBLAS/_install/lib")
+#
+link_directories("/global/cscratch1/sd/esaliya/pisa_aydin/combinatorial-blas-2.0/CombBLAS/install/lib")
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS_RELEASE "-DSEQAN_ENABLE_DEBUG=0")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DSEQAN_ENABLE_DEBUG=0")
 #set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address")
 
 find_package(MPI REQUIRED)
@@ -65,6 +64,7 @@ add_executable(pisa
         src/NearestKmers2.cpp
         include/kmer/SubKmerIntersectSR.hpp
         )
+
 
 target_link_libraries(pisa PUBLIC CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)
