@@ -97,10 +97,9 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
   uint64_t line_count = 0;
 
   PSpMat<pisa::CommonKmers>::Tuples mattuples(*spSeq);
-
-
+ 
 #pragma omp parallel for
-  for(int64_t i=0; i< mattuples.nnz; i++)
+  for(uint64_t i=0; i< local_nnz_count; i++)
   {
 	  auto l_row_idx = mattuples.rowindex(i);
 	  auto l_col_idx = mattuples.colindex(i);
@@ -108,6 +107,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 	  uint64_t g_row_idx = l_row_idx + row_offset;		  
 
 	  seqan::Peptide *seq_h = dfd->col_seq(l_col_idx);  
+	  seqan::Peptide *seq_v = dfd->row_seq(l_row_idx);
 
 	  ++current_nnz_count;
 	  if (current_nnz_count % log_freq == 0){
