@@ -39,10 +39,10 @@ def main():
     # file = 'shuffled_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2' \
     #        '.07-stable.fa'
 
-    dir = '/Users/esaliya/sali/data/isolates/archaea'
-    file = '2729008_len_lte_2000_in_shuffled_isolates_proteins_archaea.fasta'
+    dir = '/Users/esaliya/Downloads'
+    file = 'arch_100k.fa'
     start = 0
-    count = 2729008
+    count = 100000
     print_bases(dir, file, start, count)
 
     # alph = {'A','R','N','D','C','Q','E','G','H','I','L','K','M',
