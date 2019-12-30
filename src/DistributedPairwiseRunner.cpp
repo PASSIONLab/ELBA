@@ -5,6 +5,8 @@
 
 
 #include "../include/DistributedPairwiseRunner.hpp"
+#include <atomic>         // std::atomic, std::atomic_flag, ATOMIC_FLAG_INIT
+
 
 DistributedPairwiseRunner::DistributedPairwiseRunner(
     const std::shared_ptr<DistributedFastaData> dfd,
@@ -86,15 +88,23 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
   af_stream.open(file);
 
   uint64_t local_nnz_count = spSeq->getnnz();
-  uint64_t current_nnz_count = 0;
+  std::atomic<uint64_t> current_nnz_count(0);
 
   lfs << "Local nnz count: " << local_nnz_count << std::endl;
 
-  std::stringstream ss;
+  int numThreads = 1;	// default case
+#ifdef THREADED
+#pragma omp parallel
+    {
+        numThreads = omp_get_num_threads();
+    }
+#endif
+
+  std::vector<std::stringstream> ss(numThreads);
   if(parops->world_proc_rank == 0){
-    ss << "g_col_idx,g_row_idx,pid,col_seq_len,row_seq_len,col_seq_align_len,row_seq_align_len, num_gap_opens, col_seq_len_coverage, row_seq_len_coverage" << std::endl;
+    af_stream << "g_col_idx,g_row_idx,pid,col_seq_len,row_seq_len,col_seq_align_len,row_seq_align_len, num_gap_opens, col_seq_len_coverage, row_seq_len_coverage" << std::endl;
   }
-  uint64_t line_count = 0;
+  std::atomic<uint64_t> line_count(0);
 
   PSpMat<pisa::CommonKmers>::Tuples mattuples(*spSeq);
  
@@ -109,13 +119,16 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 	  seqan::Peptide *seq_h = dfd->col_seq(l_col_idx);  
 	  seqan::Peptide *seq_v = dfd->row_seq(l_row_idx);
 
-	  ++current_nnz_count;
+	  current_nnz_count++;
 	  if (current_nnz_count % log_freq == 0){
-        	auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        	lfs << "  (" << current_nnz_count << "/" << local_nnz_count << ") -- "
-        	<< std::setprecision(2) << (1.0*current_nnz_count / local_nnz_count)
-        	<< "% done. " << std::ctime(&t);
-        	lfs.flush();
+		  #pragma omp critical
+		  {
+        		auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        		lfs << "  (" << current_nnz_count << "/" << local_nnz_count << ") -- "
+        		<< std::setprecision(2) << (1.0*current_nnz_count / local_nnz_count)
+        		<< "% done. " << std::ctime(&t);
+        		lfs.flush();
+		  }
 	  }	
 
 	  /*!
@@ -133,13 +146,22 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 
 	  pisa::CommonKmers cks = mattuples.numvalue(i);
 
-	  pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks, ss);
-	  ++line_count;
+
+	  int myThread = 0;
+#ifdef THREADED
+	  myThread = omp_get_thread_num();
+#endif
+
+	  pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks, ss[myThread]);
+	  line_count++;
 
 	  if (line_count%afreq == 0){
-		  af_stream << ss.str();
-		  af_stream.flush();
-		  ss.str(std::string());
+		  #pragma omp critical
+		  {
+		  	af_stream << ss[myThread].str();
+		  	af_stream.flush();
+		  	ss[myThread].str(std::string());
+		  }
 	  }
   }
 
@@ -158,7 +180,10 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 //  std::string align_str = ss.str();
 //  parops->write_file_in_parallel(file, align_str);
 
-  af_stream << ss.str();
+  for(int i=0; i< numThreads; ++i)
+  {
+  	af_stream << ss[i].str();
+  }
   af_stream.flush();
   af_stream.close();
 }
