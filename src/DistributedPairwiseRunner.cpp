@@ -8,7 +8,7 @@
 
 DistributedPairwiseRunner::DistributedPairwiseRunner(
     const std::shared_ptr<DistributedFastaData> dfd,
-    SpMat<uint64_t, pisa::CommonKmers> * localmat,
+    PSpMat<pisa::CommonKmers>::DCCols * localmat,
     int afreq,
     uint64_t rowoffset, uint64_t coloffset,
     const std::shared_ptr<ParallelOps> &parops)
