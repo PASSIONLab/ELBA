@@ -27,7 +27,7 @@
 class DistributedPairwiseRunner {
 public:
   DistributedPairwiseRunner(std::shared_ptr<DistributedFastaData> dfd,
-                     SpMat<pisa::CommonKmers> * localmat, int afreq,
+                     SpMat<uint64_t, pisa::CommonKmers> * localmat, int afreq,
 		     uint64_t rowoffset, uint64_t coloffset,
                      const std::shared_ptr<ParallelOps> &parops);
 
@@ -36,7 +36,7 @@ public:
   void run(PairwiseFunction *pf, const char* file, std::ofstream& lfs, int log_freq);
 
 private:
-  SpMat<pisa::CommonKmers> * spSeq;
+  SpMat<uint64_t, pisa::CommonKmers> * spSeq;
   uint64_t row_offset;  // local to global row id offset  
   uint64_t col_offset;	// ditto
   std::shared_ptr<DistributedFastaData> dfd;
