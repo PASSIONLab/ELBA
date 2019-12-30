@@ -306,8 +306,20 @@ int main(int argc, char **argv) {
   }
   tp->times["end_main:dfd->wait()"] = std::chrono::system_clock::now();
 
+  uint64_t n_rows, n_cols;
+  n_rows = n_cols = dfd->global_count();
+  int gr_rows = parops->grid->GetGridRows();
+  int gr_cols = parops->grid->GetGridCols();
+  int gr_col_idx = parops->grid->GetRankInProcRow();
+  int gr_row_idx = parops->grid->GetRankInProcCol();
+  uint64_t avg_rows_in_grid = n_rows / gr_rows;
+  uint64_t avg_cols_in_grid = n_cols / gr_cols;
+  PSpMat<pisa::CommonKmers>::DCCols *spSeq = mat.seqptr();  // local submatrix
+  uint64_t row_offset = gr_row_idx * avg_rows_in_grid;  // first row in this process
+  uint64_t col_offset = gr_col_idx * avg_cols_in_grid;	// first col in this process
 
-  DistributedPairwiseRunner dpr(dfd, C, afreq, parops);
+
+  DistributedPairwiseRunner dpr(dfd, C.seqptr(), afreq, row_offset, col_offset, parops);
   if (!no_align) {
     tp->times["start_main:dpr->align()"] = std::chrono::system_clock::now();
     seqan::Blosum62 blosum62(gap_ext, gap_open);
