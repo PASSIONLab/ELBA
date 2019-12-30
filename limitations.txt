@@ -1,2 +1,5 @@
 1. FASTA file is assumed to be correct.
-2. Sequences are assumed not to spill over multiple lines
+2. FIXED - Sequences are assumed not to spill over multiple lines
+3. Kmer universe size is assumed to be representable by int, i.e. <= 2,147,483,647
+   This comes from the fact that MPI communications use int as size. To fix this we have
+   to introduce chunking to comm calls.

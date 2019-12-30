@@ -1,0 +1,35 @@
+In file included from /Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/sequence.h:105,
+                 from /Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/modifier.h:47,
+                 from /Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/align.h:57,
+                 from seqanvec.cpp:5:
+/Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/sequence/string_base.h: In instantiation of 'static void seqan::AppendValueToString_<TExpand>::appendValue_(T&, TValue&&) [with T = seqan::String<seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::Dna_>, seqan::Alloc<> > >, seqan::Alloc<> >; TValue = const seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::AminoAcid_>, seqan::Alloc<> > >&; TExpand = seqan::Tag<seqan::TagGenerous_>]':
+/Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/sequence/string_base.h:1366:54:   required from 'void seqan::appendValue(seqan::String<TValue, TSpec>&, TValue&&, seqan::Tag<TUsage>) [with TTargetValue = seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::Dna_>, seqan::Alloc<> > >; TTargetSpec = seqan::Alloc<>; TValue = const seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::AminoAcid_>, seqan::Alloc<> > >&; TExpand = seqan::TagGenerous_]'
+/Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/sequence/string_set_owner.h:174:16:   required from 'void seqan::appendValue(seqan::StringSet<TString, seqan::Owner<> >&, const TString2&, seqan::Tag<TExpand>) [with TString = seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::Dna_>, seqan::Alloc<> > >; TString2 = seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::AminoAcid_>, seqan::Alloc<> > >; TExpand = seqan::TagGenerous_]'
+/Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/sequence/sequence_interface.h:937:16:   required from 'void seqan::appendValue(TContainer&&, TSource&&) [with TContainer = seqan::StringSet<seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::Dna_>, seqan::Alloc<> > > >&; TSource = seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::AminoAcid_>, seqan::Alloc<> > >&]'
+seqanvec.cpp:102:26:   required from here
+/Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/sequence/string_base.h:1342:26: error: no matching function for call to 'seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::Dna_>, seqan::Alloc<> > >::Align(const seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::AminoAcid_>, seqan::Alloc<> > >&)'
+ 1342 |             TTargetValue temp_copy(std::forward<TValue>(_value)); //temp copy because resize could invalidate _value
+      |                          ^~~~~~~~~
+In file included from /Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/align.h:97,
+                 from seqanvec.cpp:5:
+/Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/align/align_base.h:99:5: note: candidate: 'template<class TString, class TStringsetSpec> seqan::Align<TSource, TSpec>::Align(seqan::StringSet<TOtherString, TOtherSpec>&)'
+   99 |     Align(StringSet<TString, TStringsetSpec> & stringset)
+      |     ^~~~~
+/Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/align/align_base.h:99:5: note:   template argument deduction/substitution failed:
+In file included from /Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/sequence.h:105,
+                 from /Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/modifier.h:47,
+                 from /Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/align.h:57,
+                 from seqanvec.cpp:5:
+/Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/sequence/string_base.h:1342:26: note:   types 'seqan::StringSet<TString, TSpec>' and 'const seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::AminoAcid_>, seqan::Alloc<> > >' have incompatible cv-qualifiers
+ 1342 |             TTargetValue temp_copy(std::forward<TValue>(_value)); //temp copy because resize could invalidate _value
+      |                          ^~~~~~~~~
+In file included from /Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/align.h:97,
+                 from seqanvec.cpp:5:
+/Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/align/align_base.h:96:5: note: candidate: 'seqan::Align<TSource, TSpec>::Align() [with TSource = seqan::String<seqan::SimpleType<unsigned char, seqan::Dna_>, seqan::Alloc<> >; TSpec = seqan::Tag<seqan::ArrayGaps_>]'
+   96 |     Align() {}
+      |     ^~~~~
+/Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/align/align_base.h:96:5: note:   candidate expects 0 arguments, 1 provided
+/Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/align/align_base.h:87:7: note: candidate: 'seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::Dna_>, seqan::Alloc<> > >::Align(const seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::Dna_>, seqan::Alloc<> > >&)'
+   87 | class Align
+      |       ^~~~~
+/Users/esaliya/sali/software/seqan-v2.4.0/include/seqan/align/align_base.h:87:7: note:   no known conversion for argument 1 from 'const seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::AminoAcid_>, seqan::Alloc<> > >' to 'const seqan::Align<seqan::String<seqan::SimpleType<unsigned char, seqan::Dna_>, seqan::Alloc<> > >&'

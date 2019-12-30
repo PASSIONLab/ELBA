@@ -1,2 +1,2 @@
-# Distributed Sequence Aligner
+# Distributed Sequence DistributedAligner
 
