@@ -314,7 +314,6 @@ int main(int argc, char **argv) {
   int gr_row_idx = parops->grid->GetRankInProcCol();
   uint64_t avg_rows_in_grid = n_rows / gr_rows;
   uint64_t avg_cols_in_grid = n_cols / gr_cols;
-  PSpMat<pisa::CommonKmers>::DCCols *spSeq = mat.seqptr();  // local submatrix
   uint64_t row_offset = gr_row_idx * avg_rows_in_grid;  // first row in this process
   uint64_t col_offset = gr_col_idx * avg_cols_in_grid;	// first col in this process
 
