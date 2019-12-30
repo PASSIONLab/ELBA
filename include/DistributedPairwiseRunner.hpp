@@ -1,5 +1,6 @@
 //
 // Created by Saliya Ekanayake on 2019-02-19.
+// Modified by Aydin Buluc on 2019-12-29
 //
 
 #ifndef LBL_DAL_ALIGNER_H
@@ -26,7 +27,8 @@
 class DistributedPairwiseRunner {
 public:
   DistributedPairwiseRunner(std::shared_ptr<DistributedFastaData> dfd,
-                     PSpMat<pisa::CommonKmers>::MPI_DCCols mat, int afreq,
+                     PSpMat<pisa::CommonKmers>::DCCols * localmat, int afreq,
+		     uint64_t rowoffset, uint64_t coloffset,
                      const std::shared_ptr<ParallelOps> &parops);
 
 //  uint64_t align_seqs();
@@ -34,7 +36,9 @@ public:
   void run(PairwiseFunction *pf, const char* file, std::ofstream& lfs, int log_freq);
 
 private:
-  PSpMat<pisa::CommonKmers>::MPI_DCCols mat;
+  PSpMat<pisa::CommonKmers>::DCCols * spSeq;
+  uint64_t row_offset;  // local to global row id offset  
+  uint64_t col_offset;	// ditto
   std::shared_ptr<DistributedFastaData> dfd;
   int afreq;
   std::shared_ptr<ParallelOps> parops;
