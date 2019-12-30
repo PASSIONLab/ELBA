@@ -114,6 +114,21 @@ int main(int argc, char **argv) {
     delete [] buf;
   }
 
+    int nthreads = 1;
+#ifdef THREADED
+#pragma omp parallel
+    {
+        nthreads = omp_get_num_threads();
+    }
+#endif
+    
+    int nprocs, myrank;
+    MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD,&myrank);
+    if(myrank == 0)
+    {
+        std::cout << "Process Grid (p x p x t): " << sqrt(nprocs) << " x " << sqrt(nprocs) << " x " << nthreads << std::endl;
+    }
 
   proc_log_file = job_name + "_rank_" + std::to_string(parops->world_proc_rank) + "_log.txt";
   proc_log_stream.open(proc_log_file);
@@ -169,9 +184,12 @@ int main(int argc, char **argv) {
       pisa::KmerOps::generate_A(
           seq_count,dfd, klength, kstride,
           alph, parops, tp, local_kmers);
-  tp->times["end_main:genA()"] = std::chrono::system_clock::now();
 
   tu.print_str("Matrix A: ");
+  tu.print_str("\nLoad imbalance: " + std::to_string(A.LoadImbalance()) + "\n");
+
+  tp->times["end_main:genA()"] = std::chrono::system_clock::now();
+
   A.PrintInfo();
 
   auto At = A;
@@ -188,33 +206,33 @@ int main(int argc, char **argv) {
                                   local_kmers));
     tp->times["end_main:genS()"] = std::chrono::system_clock::now();;
     tu.print_str("Matrix S: ");
+    tu.print_str("\nLoad imbalance: " + std::to_string(S->LoadImbalance()) + "\n");
     S->PrintInfo();
 
     tp->times["start_main:AxS()"] = tp->times["end_main:genS()"];
     proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AS" << std::endl;
-    A = Mult_AnXBn_Synch<SubKmerIntersectSR_t,
-        pisa::MatrixEntry, PSpMat<pisa::MatrixEntry>::DCCols>(A, *S);
+    //A = Mult_AnXBn_Synch<SubKmerIntersectSR_t, pisa::MatrixEntry, PSpMat<pisa::MatrixEntry>::DCCols>(A, *S);
+    A = Mult_AnXBn_DoubleBuff<SubKmerIntersectSR_t, pisa::MatrixEntry, PSpMat<pisa::MatrixEntry>::DCCols>(A, *S);
     proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AS" << std::endl;
     // Note, AS is now A.
     tu.print_str("Matrix AS: ");
+    tu.print_str("\nLoad imbalance: " + std::to_string(A.LoadImbalance()) + "\n");
     A.PrintInfo();
-    tp->times["end_main:AxS()"] = std::chrono::system_clock::now();;
+    tp->times["end_main:AxS()"] = std::chrono::system_clock::now();
+    delete S;
   }
 
 
   tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
-  PSpMat<pisa::CommonKmers>::MPI_DCCols C =
-      Mult_AnXBn_Synch<KmerIntersectSR_t,
-          pisa::CommonKmers, PSpMat<pisa::CommonKmers>::DCCols>(A, At);
+  //PSpMat<pisa::CommonKmers>::MPI_DCCols C = Mult_AnXBn_Synch<KmerIntersectSR_t,pisa::CommonKmers, PSpMat<pisa::CommonKmers>::DCCols>(A, At);
+  PSpMat<pisa::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t,pisa::CommonKmers, PSpMat<pisa::CommonKmers>::DCCols>(A, At);
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
   tu.print_str(
       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
       + std::to_string(C.getnnz() - seq_count)
       + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
   tp->times["end_main:(AS)At()"] = std::chrono::system_clock::now();
-
-  delete S;
 
 
 #ifndef NDEBUG
