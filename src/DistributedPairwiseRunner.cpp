@@ -85,7 +85,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
   std::ofstream af_stream;
   af_stream.open(file);
 
-  uint64_t local_nnz_count = spSeq.getnnz();
+  uint64_t local_nnz_count = spSeq->getnnz();
   uint64_t current_nnz_count = 0;
 
   lfs << "Local nnz count: " << local_nnz_count << std::endl;
