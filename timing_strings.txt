@@ -1,0 +1,32 @@
+"start_main"
+    "start_main:newDFD()"
+        "start_dfd:pfr->read_fasta()"
+        "end_dfd:pfr->read_fasta()"
+
+        "start_dfd:new_FD()"
+        "end_dfd:new_FD()"
+    "end_main:newDFD()"
+
+    "start_main:loop_add_kmers()"
+    "end_main:loop_add_kmers()"
+
+    "start_main:spMatA()"
+    "end_main:spMatA()"
+
+    "start_main:At()"
+    "end_main:At()"
+
+    "start_main:AxAt()"
+    "end_main:AxAt()"
+
+    "start_main:dfd->wait()"
+        "start_dfd:MPI_Waitall(seqs)"
+        "end_dfd:MPI_Waitall(seqs)"
+
+        "start_dfd:extract_recv_seqs"
+        "end_dfd:extract_recv_seqs"
+    "end_main:dfd->wait()"
+
+    "start_main:dal->align()"
+    "end_main:dal->align()"
+"end_main"
