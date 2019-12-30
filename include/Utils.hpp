@@ -11,6 +11,7 @@ template <class NT>
 class PSpMat
 {
 public:
+  typedef combblas::SpTuples <uint64_t, NT> Tuples;	
   typedef combblas::SpDCCols <uint64_t, NT> DCCols;
   typedef combblas::SpParMat <uint64_t, NT, DCCols> MPI_DCCols;
 };
