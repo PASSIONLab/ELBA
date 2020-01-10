@@ -16,7 +16,7 @@ void FullAligner::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
     seqan::Peptide *seq_h, seqan::Peptide *seq_v,
-    pisa::CommonKmers &cks, std::stringstream &ss) {
+    distal::CommonKmers &cks, std::stringstream &ss) {
 
   seqan::Align<seqan::Peptide> align;
   resize(rows(align), 2);

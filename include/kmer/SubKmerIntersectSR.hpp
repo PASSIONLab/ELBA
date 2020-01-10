@@ -1,13 +1,13 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef LBL_PISA_SUBKMERINTERSECTSR_HPP
-#define LBL_PISA_SUBKMERINTERSECTSR_HPP
+#ifndef DISTAL_SUBKMERINTERSECTSR_HPP
+#define DISTAL_SUBKMERINTERSECTSR_HPP
 
 #include "../ParallelOps.hpp"
 #include "MatrixEntry.hpp"
 
 #include "../ParallelOps.hpp"
-namespace pisa {
+namespace distal {
   template<typename IN, typename OUT>
   struct SubKmerIntersect {
     static OUT id() {
@@ -57,4 +57,4 @@ namespace pisa {
     }
   };
 }
-#endif //LBL_PISA_SUBKMERINTERSECTSR_HPP
+#endif //DISTAL_SUBKMERINTERSECTSR_HPP

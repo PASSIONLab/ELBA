@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef LBL_PISA_KMEROPS_HPP
-#define LBL_PISA_KMEROPS_HPP
+#ifndef DISTAL_KMEROPS_HPP
+#define DISTAL_KMEROPS_HPP
 
 #include <unordered_set>
 #include "MatrixEntry.hpp"
@@ -13,7 +13,7 @@
 #include "../DistributedFastaData.hpp"
 #include "Kmer.hpp"
 
-namespace pisa {
+namespace distal {
   class KmerOps {
   public:
     static PSpMat<MatrixEntry>::MPI_DCCols generate_A(uint64_t seq_count,
@@ -146,4 +146,4 @@ namespace pisa {
 }
 
 
-#endif //LBL_PISA_KMEROPS_HPP
+#endif //DISTAL_KMEROPS_HPP

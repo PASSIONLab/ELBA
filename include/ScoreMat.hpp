@@ -1,11 +1,11 @@
 // Created by Saliya Ekanayake on 2019-07-23.
 
-#ifndef LBL_PISA_SCOREMAT_HPP
-#define LBL_PISA_SCOREMAT_HPP
+#ifndef DISTAL_SCOREMAT_HPP
+#define DISTAL_SCOREMAT_HPP
 
 #include "Types.hpp"
 
-namespace pisa{
+namespace distal{
 
   struct Penalty{
     Penalty(char base_char);
@@ -133,4 +133,4 @@ namespace pisa{
     };
   };
 }
-#endif //LBL_PISA_SCOREMAT_HPP
+#endif //DISTAL_SCOREMAT_HPP

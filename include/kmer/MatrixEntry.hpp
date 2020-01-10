@@ -1,10 +1,10 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef LBL_PISA_MATRIXENTRY_HPP
-#define LBL_PISA_MATRIXENTRY_HPP
+#ifndef DISTAL_MATRIXENTRY_HPP
+#define DISTAL_MATRIXENTRY_HPP
 
 #include "../Types.hpp"
-namespace pisa{
+namespace distal{
   struct MatrixEntry{
     short cost;
     ushort offset;
@@ -28,4 +28,4 @@ namespace pisa{
     }
   };
 }
-#endif //LBL_PISA_MATRIXENTRY_HPP
+#endif //DISTAL_MATRIXENTRY_HPP

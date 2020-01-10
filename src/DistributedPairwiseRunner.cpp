@@ -8,7 +8,7 @@
 
 DistributedPairwiseRunner::DistributedPairwiseRunner(
     const std::shared_ptr<DistributedFastaData> dfd,
-    PSpMat<pisa::CommonKmers>::DCCols * localmat,
+    PSpMat<distal::CommonKmers>::DCCols * localmat,
     int afreq,
     uint64_t rowoffset, uint64_t coloffset,
     const std::shared_ptr<ParallelOps> &parops)
@@ -52,7 +52,7 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
         continue;
       }
 
-      pisa::CommonKmers cks = nzit.value();
+      distal::CommonKmers cks = nzit.value();
       if (cks.count > l_max_common_kmers){
         l_max_common_kmers = cks.count;
       }
@@ -131,7 +131,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
         continue;
       }
 
-      pisa::CommonKmers cks = nzit.value();
+      distal::CommonKmers cks = nzit.value();
 
       pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks, ss);
       ++line_count;

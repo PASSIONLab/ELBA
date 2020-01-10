@@ -16,7 +16,7 @@
  * @param alph
  * @param sm
  */
-void pisa::NearestKmers2::populate_sorted_sm(Alphabet& alph, pisa::ScoreMatrix& sm) {
+void distal::NearestKmers2::populate_sorted_sm(Alphabet& alph, distal::ScoreMatrix& sm) {
   for (size_t i = 0; i < alph.size; ++i){
     char row_c = alph.letters[i];
     short self_score = sm.score(row_c, row_c);
@@ -32,14 +32,14 @@ void pisa::NearestKmers2::populate_sorted_sm(Alphabet& alph, pisa::ScoreMatrix& 
   }
 }
 
-std::vector<pisa::Kmer>
-    pisa::NearestKmers2::find_sub_kmers(const pisa::Kmer& root, ushort m)
+std::vector<distal::Kmer>
+    distal::NearestKmers2::find_sub_kmers(const distal::Kmer& root, ushort m)
 {
-  std::vector<pisa::Kmer> nbrs;
-  minmax::MinMaxHeap<pisa::Kmer, std::vector<pisa::Kmer>, pisa::Kmer> mmheap;
+  std::vector<distal::Kmer> nbrs;
+  minmax::MinMaxHeap<distal::Kmer, std::vector<distal::Kmer>, distal::Kmer> mmheap;
   explore(root, mmheap, root, m);
   while(nbrs.size() < m){
-    pisa::Kmer min_kmer = mmheap.findMin();
+    distal::Kmer min_kmer = mmheap.findMin();
     nbrs.push_back(min_kmer);
     if (min_kmer.get_free_idxs().size() > 0) {
       // Explore further only if this min_kmer has 
@@ -52,7 +52,7 @@ std::vector<pisa::Kmer>
   return nbrs;
 }
 
-void pisa::NearestKmers2::print_sorted_sm() {
+void distal::NearestKmers2::print_sorted_sm() {
   for (int i = 0; i < 25; ++i){
     char row_c = alph.letters[i];
     for (auto p : sorted_sm[row_c]){
@@ -62,17 +62,17 @@ void pisa::NearestKmers2::print_sorted_sm() {
   }
 }
 
-pisa::NearestKmers2::NearestKmers2(Alphabet& alph, pisa::ScoreMatrix& sm)
+distal::NearestKmers2::NearestKmers2(Alphabet& alph, distal::ScoreMatrix& sm)
 : sorted_sm(alph.max_char+1), sm(sm), alph(alph)  {
   populate_sorted_sm(alph, sm);
 }
 
 void
-pisa::NearestKmers2::explore(
-    const pisa::Kmer& p,
-    minmax::MinMaxHeap<pisa::Kmer, std::vector<pisa::Kmer>, pisa::Kmer>& mmheap,
-    const pisa::Kmer& root, ushort m) {
-  std::priority_queue<pisa::MinSub, std::vector<pisa::MinSub>, pisa::MinSub> minheap;
+distal::NearestKmers2::explore(
+    const distal::Kmer& p,
+    minmax::MinMaxHeap<distal::Kmer, std::vector<distal::Kmer>, distal::Kmer>& mmheap,
+    const distal::Kmer& root, ushort m) {
+  std::priority_queue<distal::MinSub, std::vector<distal::MinSub>, distal::MinSub> minheap;
   for (auto& free_idx : p.get_free_idxs()){
     char base_at_free_idx = p[free_idx];
     minheap.emplace(free_idx, base_at_free_idx, 1,
@@ -98,9 +98,9 @@ pisa::NearestKmers2::explore(
 }
 
 void
-pisa::NearestKmers2::create_new_sub_kmer(
-    const Kmer& p, std::priority_queue<pisa::MinSub, std::vector<pisa::MinSub>, pisa::MinSub>& minheap,
-    minmax::MinMaxHeap<Kmer, std::vector<pisa::Kmer>, pisa::Kmer>& mmheap, bool pop_max, MinSub& ms)
+distal::NearestKmers2::create_new_sub_kmer(
+    const Kmer& p, std::priority_queue<distal::MinSub, std::vector<distal::MinSub>, distal::MinSub>& minheap,
+    minmax::MinMaxHeap<Kmer, std::vector<distal::Kmer>, distal::Kmer>& mmheap, bool pop_max, MinSub& ms)
 {
   minheap.pop();
   std::pair<short, char> cost_and_subc = sorted_sm[ms.base_at_free_idx][ms.sub_idx_in_base];
@@ -129,9 +129,9 @@ int main2(int argc, char** argv){
   std::cout << test[5].size() << std::endl;*/
 
   Alphabet alph(Alphabet::PROTEIN);
-  pisa::Blosum62 sm;
+  distal::Blosum62 sm;
 
-  pisa::NearestKmers2 nk2(alph, sm);
+  distal::NearestKmers2 nk2(alph, sm);
   nk2.print_sorted_sm();
 
   int M = 5; // 5 Nearest k-mers
@@ -139,19 +139,19 @@ int main2(int argc, char** argv){
 //  std::string kmer_str{"TACTBZDP"};
   std::string kmer_str{"****"};
   // Root k-mer
-  pisa::Kmer root(kmer_str, alph);
-  pisa::Kmer subk = root.substitute(0, 'T', sm.dist(root[0], 'T'), alph);
+  distal::Kmer root(kmer_str, alph);
+  distal::Kmer subk = root.substitute(0, 'T', sm.dist(root[0], 'T'), alph);
   std::cout << root << std::endl;
   std::cout << subk << std::endl;
   subk = subk.substitute(2, 'G', sm.dist(subk[2], 'G'), alph);
   std::cout << subk << std::endl;
 
-//  std::vector<pisa::Kmer> nearest_kmers = nk2.find_nearest_kmers(root, M);
+//  std::vector<distal::Kmer> nearest_kmers = nk2.find_nearest_kmers(root, M);
 
 
-  std::priority_queue<pisa::MinSub, std::vector<pisa::MinSub>, pisa::MinSub> pq;
-  pisa::MinSub ms1(0, 'A', 2, 10);
-  pisa::MinSub ms2(1, 'B', 2, 5);
+  std::priority_queue<distal::MinSub, std::vector<distal::MinSub>, distal::MinSub> pq;
+  distal::MinSub ms1(0, 'A', 2, 10);
+  distal::MinSub ms2(1, 'B', 2, 5);
   pq.push(ms1);
   pq.push(ms2);
 
@@ -160,7 +160,7 @@ int main2(int argc, char** argv){
     pq.pop();
   }
 
-  std::vector<pisa::Kmer> nbrs = nk2.find_sub_kmers(root, 50);
+  std::vector<distal::Kmer> nbrs = nk2.find_sub_kmers(root, 50);
   for (auto& kmer : nbrs){
     std::cout << kmer;
   }

@@ -4,7 +4,7 @@
 #include "../../include/kmer/KmerOps.hpp"
 #include "../../include/NearestKmers2.hpp"
 
-namespace pisa {
+namespace distal {
   PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
       std::shared_ptr<DistributedFastaData> &dfd, ushort k, ushort s,
       Alphabet &alph, const std::shared_ptr<ParallelOps> &parops,
@@ -104,8 +104,8 @@ namespace pisa {
       std::shared_ptr<TimePod> &tp,
       std::unordered_set<Kmer, Kmer>& local_kmers){
 
-    pisa::Blosum62 bsm62;
-    pisa::NearestKmers2 nk2(alph, bsm62);
+    distal::Blosum62 bsm62;
+    distal::NearestKmers2 nk2(alph, bsm62);
 
     uvec_64 lrow_ids, lcol_ids;
     std::vector<MatrixEntry> lvals;
