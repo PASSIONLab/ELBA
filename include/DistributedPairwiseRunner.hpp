@@ -8,7 +8,6 @@
 
 #include <seqan/align.h>
 #include "Utils.hpp"
-#include "Kmer.hpp"
 #include "DistributedFastaData.hpp"
 #include "pw/PairwiseFunction.hpp"
 #include "AlignmentInfo.hpp"

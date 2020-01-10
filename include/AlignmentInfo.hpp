@@ -3,6 +3,8 @@
 #ifndef DISTAL_ALIGNMENTINFO_HPP
 #define DISTAL_ALIGNMENTINFO_HPP
 
+#include <seqan/align.h>
+
 struct AlignmentInfo{
   seqan::AlignmentStats stats;
   ushort seq_h_length;
