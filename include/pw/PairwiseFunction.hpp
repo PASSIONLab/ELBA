@@ -6,9 +6,9 @@
 #include <unordered_map>
 #include <string>
 #include <seqan/score.h>
-#include "../Kmer.hpp"
 #include "../AlignmentInfo.hpp"
 #include "../kmer/CommonKmers.hpp"
+#include "../ParallelOps.hpp"
 
 class PairwiseFunction {
 public:
