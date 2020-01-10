@@ -100,7 +100,7 @@
 //                        uint64_t end_offset_inclusive, ushort k, ushort s,
 //                        bool add_substitute_kmers, float subtitute_kmer_percentage,
 //                        std::map<uint64_t, std::vector<uint64_t>*> &kmer_to_subs_kmers,
-//                        pisa::ScoreMatrix &score_mat, Alphabet &alp,
+//                        distal::ScoreMatrix &score_mat, Alphabet &alp,
 //                        uvec_64 &lcol_ids, uvec_16 &lvals,
 //                        const std::shared_ptr<ParallelOps> parops) {
 //

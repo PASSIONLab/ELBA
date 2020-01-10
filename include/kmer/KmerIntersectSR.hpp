@@ -1,10 +1,10 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef LBL_PISA_KMERINTERSECTSR_HPP
-#define LBL_PISA_KMERINTERSECTSR_HPP
+#ifndef DISTAL_KMERINTERSECTSR_HPP
+#define DISTAL_KMERINTERSECTSR_HPP
 
 #include "../ParallelOps.hpp"
-namespace pisa {
+namespace distal {
   template<typename IN, typename OUT>
   struct KmerIntersect {
     static OUT id() {
@@ -63,4 +63,4 @@ namespace pisa {
     }
   };
 }
-#endif //LBL_PISA_KMERINTERSECTSR_HPP
+#endif //DISTAL_KMERINTERSECTSR_HPP

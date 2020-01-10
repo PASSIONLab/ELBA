@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-10-03.
 
-#ifndef LBL_PISA_NEARESTKMERS2_HPP
-#define LBL_PISA_NEARESTKMERS2_HPP
+#ifndef DISTAL_NEARESTKMERS2_HPP
+#define DISTAL_NEARESTKMERS2_HPP
 
 #include <unordered_map>
 #include <unordered_set>
@@ -11,7 +11,7 @@
 #include "MinMaxHeap.hpp"
 #include "kmer/Kmer.hpp"
 
-namespace pisa {
+namespace distal {
   typedef std::vector<std::vector<std::pair<short, char>>> SortedSM_T;
 
   /*!
@@ -50,22 +50,22 @@ namespace pisa {
 
   class NearestKmers2 {
   public:
-    NearestKmers2(Alphabet& alph, pisa::ScoreMatrix& sm);
+    NearestKmers2(Alphabet& alph, distal::ScoreMatrix& sm);
     void print_sorted_sm();
-    std::vector<pisa::Kmer> find_sub_kmers(const pisa::Kmer& root, ushort m);
+    std::vector<distal::Kmer> find_sub_kmers(const distal::Kmer& root, ushort m);
 
   private:
     void populate_sorted_sm(Alphabet& alph, ScoreMatrix& sm);
     void explore(const Kmer& p,
-                 minmax::MinMaxHeap<pisa::Kmer, std::vector<pisa::Kmer>,
-                     pisa::Kmer>& mmheap, const Kmer& root, ushort m);
-    void create_new_sub_kmer(const Kmer& p, std::priority_queue<pisa::MinSub, std::vector<pisa::MinSub>, pisa::MinSub>& minheap,
-                             minmax::MinMaxHeap<pisa::Kmer, std::vector<pisa::Kmer>, pisa::Kmer>& mmheap, bool pop_max,
+                 minmax::MinMaxHeap<distal::Kmer, std::vector<distal::Kmer>,
+                     distal::Kmer>& mmheap, const Kmer& root, ushort m);
+    void create_new_sub_kmer(const Kmer& p, std::priority_queue<distal::MinSub, std::vector<distal::MinSub>, distal::MinSub>& minheap,
+                             minmax::MinMaxHeap<distal::Kmer, std::vector<distal::Kmer>, distal::Kmer>& mmheap, bool pop_max,
                              MinSub& ms);
     // Note, this includes the diagonal.
     SortedSM_T sorted_sm;
     Alphabet alph;
-    pisa::ScoreMatrix sm;
+    distal::ScoreMatrix sm;
   };
 
 
@@ -100,4 +100,4 @@ namespace pisa {
   static const char* BLOSUM62_ALPH = "ARNDCQEGHILKMFPSTWYVBZX*";*/
 }
 
-#endif //LBL_PISA_NEARESTKMERS2_HPP
+#endif //DISTAL_NEARESTKMERS2_HPP
