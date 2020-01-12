@@ -20,6 +20,7 @@
 #include "../include/kmer/KmerIntersectSR.hpp"
 #include "../include/kmer/SubKmerIntersectSR.hpp"
 #include <map>
+#include <fstream>
 
 /*! Namespace declarations */
 using namespace combblas;

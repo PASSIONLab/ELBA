@@ -26,7 +26,6 @@ add_executable(distal
         include/DistributedFastaData.hpp
         src/FastaData.cpp
         include/FastaData.hpp
-        include/Kmer.hpp
         src/main.cpp
         src/ParallelFastaReader.cpp
         include/ParallelFastaReader.hpp
