@@ -39,4 +39,8 @@
 # Build DISTAL
 -----
 
-To build DISTAL, you can clone or download the source from `
+To build DISTAL, you can clone or download the source from here
+  * cd build_release
+  * cmake ..
+  * cd ..
+  * ./build.sh
