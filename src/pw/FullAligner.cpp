@@ -51,7 +51,7 @@ void FullAligner::apply(
 
   // TODO - Keep a counter
 //  if (max_ai.stats.alignmentIdentity >= 30.0){
-  alignments.push_back(ai);
+//  alignments.push_back(ai);
 //  }
 
   start_time = std::chrono::system_clock::now();

@@ -9,6 +9,17 @@ BandedAligner::BandedAligner(seqan::Blosum62 scoring_scheme,
     scoring_scheme(scoring_scheme),
     banded_half_width(banded_half_width){
 
+	// int numThreads = 1;
+	// #ifdef THREADED
+	// #pragma omp parallel
+	// {	
+	// 	numThreads = omp_get_num_threads();
+	// }
+	// std::cout << "#threads " << numThreads << std::endl;
+	// #endif
+
+	// std::cout << "#threads (ctor ba) " << numThreads << std::endl;
+	// tmp = new std::vector<int>[numThreads];
 }
 
 //template<typename TSequenceValue, typename TSpec>
@@ -18,6 +29,8 @@ void BandedAligner::apply(
     uint64_t l_row_idx, uint64_t g_row_idx,
     seqan::Peptide *seq_h, seqan::Peptide *seq_v,
     distal::CommonKmers &cks, std::stringstream& ss) {
+
+  auto start_pf_time = std::chrono::system_clock::now();
 
   seqan::Align<seqan::Peptide> align;
   resize(rows(align), 2);
@@ -42,15 +55,15 @@ void BandedAligner::apply(
   ai.seq_h_g_idx = g_col_idx;
   ai.seq_v_g_idx = g_row_idx;
 
-  /* Hard coding quality constraints for now */
+//   /* Hard coding quality constraints for now */
 
-  // TODO - Saliya
-  // For now only keeps the largest alignment > 30% identity.
-  // Incorporate length coverage restrictions later.
+//   // TODO - Saliya
+//   // For now only keeps the largest alignment > 30% identity.
+//   // Incorporate length coverage restrictions later.
 
-//  if (max_ai.stats.alignmentIdentity >= 30.0){
-  alignments.push_back(ai);
-//  }
+// //  if (max_ai.stats.alignmentIdentity >= 30.0){
+//   // alignments.push_back(ai);
+// //  }
 
   double alen_minus_gapopens = (ai.stats.alignmentLength - ai.stats.numGapOpens) * 1.0;
   ss << g_col_idx << "," << g_row_idx << "," << ai.stats.alignmentIdentity
@@ -59,4 +72,13 @@ void BandedAligner::apply(
      << "," << ai.stats.numGapOpens
      << "," << alen_minus_gapopens / ai.seq_h_length
      << "," << alen_minus_gapopens / ai.seq_v_length << std::endl;
+
+  auto finish_pf_time = std::chrono::system_clock::now();
+  add_time("BA:overall", (ms_t(finish_pf_time - start_pf_time)).count());
+
+  // #ifdef THREADED
+  // int tid = omp_get_thread_num();
+  // // std::cout << "apply id " << tid << std::endl;
+  // tmp[tid].push_back(tid);
+  // #endif
 }
