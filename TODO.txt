@@ -1,8 +1,0 @@
-1. Xdrop, FA, BA with a single alignment to plot recall vs "method", where method
-is Xdrop, FA, and BA
-
-2. 1. with embedded timing
-
-3. Substitution.
-
-4. Remove unnecessary stuff from ScoringMatrix class once the new sub k-mers are implemented.

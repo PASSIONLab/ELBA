@@ -8,7 +8,7 @@ import time
 
 
 def main():
-    overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.pisa/pysrc/data/cori/scope/mmseqs2.shuff/filtered.gt30pid.gt70lencov.scope.77k.shuff.mmseqs2.out.txt'
+    overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.distal/pysrc/data/cori/scope/mmseqs2.shuff/filtered.gt30pid.gt70lencov.scope.77k.shuff.mmseqs2.out.txt'
 
     p = Path(overlaps_fname)
 

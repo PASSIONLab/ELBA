@@ -1,10 +1,10 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef LBL_PISA_COMMONKMERS_HPP
-#define LBL_PISA_COMMONKMERS_HPP
+#ifndef DISTAL_COMMONKMERS_HPP
+#define DISTAL_COMMONKMERS_HPP
 
 #include "../Types.hpp"
-namespace pisa{
+namespace distal{
   struct CommonKmers {
     /*! The number of common kmers between two sequences.
      * The maximum could be floor((l-k)/s)+1, where
@@ -34,4 +34,4 @@ namespace pisa{
     }
   };
 }
-#endif //LBL_PISA_COMMONKMERS_HPP
+#endif //DISTAL_COMMONKMERS_HPP

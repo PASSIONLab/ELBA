@@ -4,11 +4,11 @@
 #include "../include/Alphabet.hpp"
 
 
-pisa::ScoreMatrix::ScoreMatrix(ushort alph_size) :
+distal::ScoreMatrix::ScoreMatrix(ushort alph_size) :
   alph_size(alph_size){
 }
 
-pisa::Blosum62::Blosum62() : ScoreMatrix(25) {
+distal::Blosum62::Blosum62() : ScoreMatrix(25) {
   const char *alph = Alphabet::protein;
   for (int i = 0; i < alph_size; ++i){
 
@@ -75,7 +75,7 @@ pisa::Blosum62::Blosum62() : ScoreMatrix(25) {
 
 }
 
-pisa::Blosum62::~Blosum62(){
+distal::Blosum62::~Blosum62(){
   for (std::pair<char, std::vector<char>*> p : base_to_subtitutes){
     free(p.second);
   }
