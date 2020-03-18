@@ -12,6 +12,9 @@
 
 class PairwiseFunction {
 public:
+
+  static const int MAX_THD = 128;
+	
   PairwiseFunction();
   virtual ~PairwiseFunction();
 
@@ -23,11 +26,12 @@ public:
   void add_time(std::string type, double duration);
   void print_avg_times(std::shared_ptr<ParallelOps> parops);
 
+  uint64_t nalignments;
+  
 private:
-  std::unordered_map<std::string, size_t> types;
-  std::vector<uint64_t> counts;
-  std::vector<double> times;
-
+  std::unordered_map<std::string, size_t>	types[MAX_THD];
+  std::vector<uint64_t>						counts[MAX_THD];
+  std::vector<double>						times[MAX_THD];
 };
 
 #endif //DISTAL_PAIRWISEFUNCTION_HPP

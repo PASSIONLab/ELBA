@@ -329,15 +329,18 @@ int main(int argc, char **argv) {
     if (xdrop_align) {
       pf = new SeedExtendXdrop (blosum62, blosum62_simple, klength, xdrop, seed_count);
       dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
-      local_alignments = static_cast<SeedExtendXdrop*>(pf)->alignments.size();
+      // local_alignments = static_cast<SeedExtendXdrop*>(pf)->alignments.size();
+	  local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
     } else if (full_align) {
       pf = new FullAligner(blosum62, blosum62_simple);
       dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
-      local_alignments = static_cast<FullAligner*>(pf)->alignments.size();
+      // local_alignments = static_cast<FullAligner*>(pf)->alignments.size();
+	  local_alignments = static_cast<FullAligner*>(pf)->nalignments;
     } else if(banded_align){
       pf = new BandedAligner (blosum62, banded_half_width);
       dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
-      local_alignments = static_cast<BandedAligner*>(pf)->alignments.size();
+      // local_alignments = static_cast<BandedAligner*>(pf)->alignments.size();
+	  local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
     }
 
     tp->times["end_main:dpr->align()"] = std::chrono::system_clock::now();

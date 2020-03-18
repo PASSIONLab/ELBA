@@ -96,80 +96,86 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 #ifdef THREADED
 #pragma omp parallel
     {
-        numThreads = omp_get_num_threads();
+      numThreads = omp_get_num_threads();
     }
 #endif
 
   std::vector<std::stringstream> ss(numThreads);
-  if(parops->world_proc_rank == 0){
-    af_stream << "g_col_idx,g_row_idx,pid,col_seq_len,row_seq_len,col_seq_align_len,row_seq_align_len, num_gap_opens, col_seq_len_coverage, row_seq_len_coverage" << std::endl;
-  }
+  if(parops->world_proc_rank == 0)
+    af_stream << "g_col_idx,g_row_idx,pid,col_seq_len,row_seq_len,"
+		"col_seq_align_len,row_seq_align_len, num_gap_opens, "
+		"col_seq_len_coverage, row_seq_len_coverage" << std::endl;
 
   std::atomic<uint64_t> line_count(0);
-
-  PSpMat<pisa::CommonKmers>::Tuples mattuples(*spSeq);
- 
-#pragma omp parallel for
+  uint64_t nalignments = 0;
+  PSpMat<distal::CommonKmers>::Tuples mattuples(*spSeq);
+  
+  #pragma omp parallel for reduction(+:nalignments)
   for(uint64_t i=0; i< local_nnz_count; i++)
   {
-	  auto l_row_idx = mattuples.rowindex(i);
-	  auto l_col_idx = mattuples.colindex(i);
-    	  uint64_t g_col_idx = l_col_idx + col_offset;
-	  uint64_t g_row_idx = l_row_idx + row_offset;		  
+	auto l_row_idx = mattuples.rowindex(i);
+	auto l_col_idx = mattuples.colindex(i);
+	uint64_t g_col_idx = l_col_idx + col_offset;
+	uint64_t g_row_idx = l_row_idx + row_offset;		  
 
-	  seqan::Peptide *seq_h = dfd->col_seq(l_col_idx);  
-	  seqan::Peptide *seq_v = dfd->row_seq(l_row_idx);
+	seqan::Peptide *seq_h = dfd->col_seq(l_col_idx);  
+	seqan::Peptide *seq_v = dfd->row_seq(l_row_idx);
 
-	  current_nnz_count++;
-	  if (current_nnz_count % log_freq == 0){
-		  #pragma omp critical
-		  {
-        		auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        		lfs << "  (" << current_nnz_count << "/" << local_nnz_count << ") -- "
-        		<< std::setprecision(2) << (1.0*current_nnz_count / local_nnz_count)
-        		<< "% done. " << std::ctime(&t);
-        		lfs.flush();
-		  }
-	  }	
+	current_nnz_count++;
+	if (current_nnz_count % log_freq == 0){
+		#pragma omp critical
+		{
+			  auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+			  lfs << "  (" << current_nnz_count << "/" << local_nnz_count << ") -- "
+			  << std::setprecision(2) << (1.0*current_nnz_count / local_nnz_count)
+			  << "% done. " << std::ctime(&t);
+			  lfs.flush();
+		}
+	}	
 
-	  /*!
-	   * Note. the cells means the process grid cells.
-	   * We only want to compute the top triangles of any grid cell.
-	   * Further, we want cell diagonals only for cells that are on the
-	   * top half of the grid excluding the grid's main diagonal cells
-	   * */
-	  if (l_col_idx < l_row_idx){
-		  continue;
-	  }
-	  if (l_col_idx == l_row_idx && g_col_idx <= g_row_idx){
-		  continue;
-	  }
+	/*!
+	 * Note. the cells means the process grid cells.
+	 * We only want to compute the top triangles of any grid cell.
+	 * Further, we want cell diagonals only for cells that are on the
+	 * top half of the grid excluding the grid's main diagonal cells
+	 * */
+	if (l_col_idx < l_row_idx){
+		continue;
+	}
+	if (l_col_idx == l_row_idx && g_col_idx <= g_row_idx){
+		continue;
+	}
 
-	  pisa::CommonKmers cks = mattuples.numvalue(i);
+	distal::CommonKmers cks = mattuples.numvalue(i);
 
 
-	  int myThread = 0;
+	int myThread = 0;
 #ifdef THREADED
-	  myThread = omp_get_thread_num();
+	myThread = omp_get_thread_num();
 #endif
 
-	  pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks, ss[myThread]);
-	  line_count++;
+	++nalignments;
+	pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks, ss[myThread]);
+	line_count++;
 
-	  if (line_count%afreq == 0){
-		  #pragma omp critical
-		  {
-		  	af_stream << ss[myThread].str();
-		  	af_stream.flush();
-		  	ss[myThread].str(std::string());
-		  }
-	  }
+	if (line_count % afreq == 0)
+	{
+		#pragma omp critical
+		{
+		  af_stream << ss[myThread].str();
+		  af_stream.flush();
+		  ss[myThread].str(std::string());
+		}
+	}
   }
+
+  pf->nalignments = nalignments;
 
   lfs << "  (" << current_nnz_count << "/" << local_nnz_count << ") -- "
       << "100% done." << std::endl;
 
   pf->print_avg_times(parops);
+  
 //  if(parops->world_proc_rank == 0) {
 //  }
 //  ushort g_max_common_kmers = 0;

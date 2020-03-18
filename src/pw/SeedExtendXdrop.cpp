@@ -95,7 +95,7 @@ void SeedExtendXdrop::apply(
   }
 
 //  if (max_ai.stats.alignmentIdentity >= 30.0){
-    alignments.push_back(max_ai);
+//    alignments.push_back(max_ai);
 //  }
 
 

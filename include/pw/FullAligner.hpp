@@ -21,7 +21,7 @@ public:
              seqan::Peptide *seq_h, seqan::Peptide *seq_v,
              distal::CommonKmers &cks, std::stringstream& ss) override;
 
-  std::vector<AlignmentInfo> alignments;
+  // std::vector<AlignmentInfo> alignments;
 
 private:
 //  seqan::Score<int, seqan::ScoreMatrix<TSequenceValue, TSpec>> scoring_scheme;
