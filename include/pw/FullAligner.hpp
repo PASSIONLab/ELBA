@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-09-03.
 
-#ifndef LBL_PISA_FULLALIGNER_HPP
-#define LBL_PISA_FULLALIGNER_HPP
+#ifndef DISTAL_FULLALIGNER_HPP
+#define DISTAL_FULLALIGNER_HPP
 
 #include "PairwiseFunction.hpp"
 #include "../AlignmentInfo.hpp"
@@ -19,7 +19,7 @@ public:
   void apply(uint64_t l_col_idx, uint64_t g_col_idx,
              uint64_t l_row_idx, uint64_t g_row_idx,
              seqan::Peptide *seq_h, seqan::Peptide *seq_v,
-             pisa::CommonKmers &cks, std::stringstream& ss) override;
+             distal::CommonKmers &cks, std::stringstream& ss) override;
 
   std::vector<AlignmentInfo> alignments;
 
@@ -33,4 +33,4 @@ private:
 
 };
 
-#endif //LBL_PISA_FULLALIGNER_HPP
+#endif //DISTAL_FULLALIGNER_HPP

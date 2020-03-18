@@ -7,7 +7,6 @@
 #include "../include/ParallelOps.hpp"
 #include "../include/ParallelFastaReader.hpp"
 #include "../include/Alphabet.hpp"
-#include "../include/Kmer.hpp"
 #include "../include/Utils.hpp"
 #include "../include/DistributedPairwiseRunner.hpp"
 #include "CombBLAS/CombBLAS.h"
@@ -15,22 +14,21 @@
 #include "../include/pw/SeedExtendXdrop.hpp"
 #include "seqan/score/score_matrix_data.h"
 #include "../include/pw/OverlapFinder.hpp"
-#include "../include/ScoreMat.hpp"
 #include "../include/pw/FullAligner.hpp"
 #include "../include/pw/BandedAligner.hpp"
 #include "../include/kmer/KmerOps.hpp"
-#include "../include/kmer/CommonKmers.hpp"
 #include "../include/kmer/KmerIntersectSR.hpp"
 #include "../include/kmer/SubKmerIntersectSR.hpp"
 #include <map>
+#include <fstream>
 
 /*! Namespace declarations */
 using namespace combblas;
 
 /*! Type definitions */
 //typedef KmerIntersect<ushort, CommonKmers> KmerIntersectSR_t;
-typedef pisa::KmerIntersect<pisa::MatrixEntry, pisa::CommonKmers> KmerIntersectSR_t;
-typedef pisa::SubKmerIntersect<pisa::MatrixEntry, pisa::MatrixEntry> SubKmerIntersectSR_t;
+typedef distal::KmerIntersect<distal::MatrixEntry, distal::CommonKmers> KmerIntersectSR_t;
+typedef distal::SubKmerIntersect<distal::MatrixEntry, distal::MatrixEntry> SubKmerIntersectSR_t;
 
 /*! Function signatures */
 int parse_args(int argc, char **argv);
@@ -177,11 +175,11 @@ int main(int argc, char **argv) {
   Alphabet alph(alph_t);
 
   /*! Generate sequences by kmers matrix */
-  std::unordered_set<pisa::Kmer, pisa::Kmer> local_kmers;
+  std::unordered_set<distal::Kmer, distal::Kmer> local_kmers;
 
   tp->times["start_main:genA()"] = std::chrono::system_clock::now();
-  PSpMat<pisa::MatrixEntry>::MPI_DCCols A =
-      pisa::KmerOps::generate_A(
+  PSpMat<distal::MatrixEntry>::MPI_DCCols A =
+      distal::KmerOps::generate_A(
           seq_count,dfd, klength, kstride,
           alph, parops, tp, local_kmers);
 
@@ -199,10 +197,10 @@ int main(int argc, char **argv) {
   At.PrintInfo();
   tp->times["end_main:At()"] = std::chrono::system_clock::now();
 
-  PSpMat<pisa::MatrixEntry>::MPI_DCCols* S = nullptr;
+  PSpMat<distal::MatrixEntry>::MPI_DCCols* S = nullptr;
   if (add_substitue_kmers) {
     tp->times["start_main:genS()"] = std::chrono::system_clock::now();;
-    S = new PSpMat<pisa::MatrixEntry>::MPI_DCCols(pisa::KmerOps::generate_S(klength, subk_count, alph, parops, tp,
+    S = new PSpMat<distal::MatrixEntry>::MPI_DCCols(distal::KmerOps::generate_S(klength, subk_count, alph, parops, tp,
                                   local_kmers));
     tp->times["end_main:genS()"] = std::chrono::system_clock::now();;
     tu.print_str("Matrix S: ");
@@ -211,8 +209,8 @@ int main(int argc, char **argv) {
 
     tp->times["start_main:AxS()"] = tp->times["end_main:genS()"];
     proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AS" << std::endl;
-    //A = Mult_AnXBn_Synch<SubKmerIntersectSR_t, pisa::MatrixEntry, PSpMat<pisa::MatrixEntry>::DCCols>(A, *S);
-    A = Mult_AnXBn_DoubleBuff<SubKmerIntersectSR_t, pisa::MatrixEntry, PSpMat<pisa::MatrixEntry>::DCCols>(A, *S);
+    //A = Mult_AnXBn_Synch<SubKmerIntersectSR_t, distal::MatrixEntry, PSpMat<distal::MatrixEntry>::DCCols>(A, *S);
+    A = Mult_AnXBn_DoubleBuff<SubKmerIntersectSR_t, distal::MatrixEntry, PSpMat<distal::MatrixEntry>::DCCols>(A, *S);
     proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AS" << std::endl;
     // Note, AS is now A.
     tu.print_str("Matrix AS: ");
@@ -225,8 +223,8 @@ int main(int argc, char **argv) {
 
   tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
-  //PSpMat<pisa::CommonKmers>::MPI_DCCols C = Mult_AnXBn_Synch<KmerIntersectSR_t,pisa::CommonKmers, PSpMat<pisa::CommonKmers>::DCCols>(A, At);
-  PSpMat<pisa::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t,pisa::CommonKmers, PSpMat<pisa::CommonKmers>::DCCols>(A, At);
+  //PSpMat<distal::CommonKmers>::MPI_DCCols C = Mult_AnXBn_Synch<KmerIntersectSR_t,distal::CommonKmers, PSpMat<distal::CommonKmers>::DCCols>(A, At);
+  PSpMat<distal::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t,distal::CommonKmers, PSpMat<distal::CommonKmers>::DCCols>(A, At);
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
   tu.print_str(
       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
@@ -250,7 +248,7 @@ int main(int argc, char **argv) {
 //  int col_rank = parops->grid->GetRankInProcCol();
 //  uint64_t m_perproc = n_rows / pr;
 //  uint64_t n_perproc = n_cols / pc;
-//  PSpMat<pisa::CommonKmers>::DCCols *spSeq = C.seqptr(); // local submatrix
+//  PSpMat<distal::CommonKmers>::DCCols *spSeq = C.seqptr(); // local submatrix
 //  uint64_t l_row_start = col_rank * m_perproc; // first row in this process
 //  uint64_t l_col_start = row_rank * n_perproc; // first col in this process
 //
@@ -378,7 +376,7 @@ int main(int argc, char **argv) {
 }
 
 int parse_args(int argc, char **argv) {
-  cxxopts::Options options("PISA",
+  cxxopts::Options options("DISTAL",
                            "A fast, distributed protein aligner");
 
   options.add_options()

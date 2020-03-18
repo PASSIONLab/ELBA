@@ -1,14 +1,14 @@
 // Created by Saliya Ekanayake on 10/17/19.
 
-#ifndef LBL_PISA_KMER_HPP
-#define LBL_PISA_KMER_HPP
+#ifndef DISTAL_KMER_HPP
+#define DISTAL_KMER_HPP
 #include <set>
 #include <vector>
 #include "../Alphabet.hpp"
 //#include "ScoreMat.hpp"
 //#include "MinMaxHeap.hpp"
 
-namespace pisa{
+namespace distal{
   struct Kmer {
   private:
     uint64_t kmer_code;
@@ -126,4 +126,4 @@ namespace pisa{
   };
 
 }
-#endif //LBL_PISA_KMER_HPP
+#endif //DISTAL_KMER_HPP

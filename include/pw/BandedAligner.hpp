@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-09-03.
 
-#ifndef LBL_PISA_BANDEDALIGNER_HPP
-#define LBL_PISA_BANDEDALIGNER_HPP
+#ifndef DISTAL_BANDEDALIGNER_HPP
+#define DISTAL_BANDEDALIGNER_HPP
 
 #include "PairwiseFunction.hpp"
 #include "../AlignmentInfo.hpp"
@@ -18,7 +18,7 @@ public:
   void apply(uint64_t l_col_idx, uint64_t g_col_idx,
              uint64_t l_row_idx, uint64_t g_row_idx,
              seqan::Peptide *seq_h, seqan::Peptide *seq_v,
-             pisa::CommonKmers &cks, std::stringstream& ss) override;
+             distal::CommonKmers &cks, std::stringstream& ss) override;
 
   std::vector<AlignmentInfo> alignments;
 
@@ -31,4 +31,4 @@ private:
 };
 
 
-#endif //LBL_PISA_BANDEDALIGNER_HPP
+#endif //DISTAL_BANDEDALIGNER_HPP

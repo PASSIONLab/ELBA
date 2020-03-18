@@ -1,7 +1,9 @@
 // Created by Saliya Ekanayake on 2019-07-10.
 
-#ifndef LBL_PISA_ALIGNMENTINFO_HPP
-#define LBL_PISA_ALIGNMENTINFO_HPP
+#ifndef DISTAL_ALIGNMENTINFO_HPP
+#define DISTAL_ALIGNMENTINFO_HPP
+
+#include <seqan/align.h>
 
 struct AlignmentInfo{
   seqan::AlignmentStats stats;
@@ -13,4 +15,4 @@ struct AlignmentInfo{
   uint64_t seq_v_g_idx;
 };
 
-#endif //LBL_PISA_ALIGNMENTINFO_HPP
+#endif //DISTAL_ALIGNMENTINFO_HPP
