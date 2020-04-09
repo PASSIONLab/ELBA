@@ -23,6 +23,16 @@ public:
              seqan::Peptide *seq_h, seqan::Peptide *seq_v,
              distal::CommonKmers &cks, std::stringstream& ss) override;
 
+  void
+  apply_batch (seqan::StringSet<seqan::Gaps<seqan::Peptide>> &seqsh,
+			   seqan::StringSet<seqan::Gaps<seqan::Peptide>> &seqsv,
+			   uint64_t *lids,
+			   uint64_t col_offset,
+			   uint64_t row_offset,
+			   PSpMat<distal::CommonKmers>::Tuples &mattuples,
+			   std::ofstream &afs,
+			   std::ofstream &lfs) override;
+  
   // std::vector<AlignmentInfo> alignments;
 
 private:

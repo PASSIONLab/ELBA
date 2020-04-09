@@ -32,6 +32,32 @@ namespace distal{
          m.second.first << "," << m.second.second << ")| ";
       return os;
     }
+
+	// used in the symmetricization of the output matrix
+	CommonKmers
+	operator+(const CommonKmers &arg)
+	{
+		CommonKmers tmp(0);
+		if (this->count >= 2)
+		{
+			tmp.count  = this->count + arg.count;
+			tmp.first  = this->first;
+			tmp.second = this->second;
+		}
+		else if (arg.count >= 2)
+		{
+			tmp.count  = this->count + arg.count;
+			tmp.first  = arg.first;
+			tmp.second = arg.second;
+		}
+		else					// both should have count = 1
+		{
+			tmp.count  = 2;
+			tmp.first  = this->first;
+			tmp.second = arg.first;
+		}
+		return tmp;
+	}
   };
 }
 #endif //DISTAL_COMMONKMERS_HPP

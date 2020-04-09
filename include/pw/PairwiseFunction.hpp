@@ -6,9 +6,12 @@
 #include <unordered_map>
 #include <string>
 #include <seqan/score.h>
+#include <seqan/align_parallel.h>
 #include "../AlignmentInfo.hpp"
 #include "../kmer/CommonKmers.hpp"
 #include "../ParallelOps.hpp"
+#include "../DistributedFastaData.hpp"
+#include "../Utils.hpp"
 
 class PairwiseFunction {
 public:
@@ -23,8 +26,20 @@ public:
       seqan::Peptide *seq_h, seqan::Peptide *seq_v,
       distal::CommonKmers &cks, std::stringstream& ss) = 0;
 
+  virtual
+  void
+  apply_batch (seqan::StringSet<seqan::Gaps<seqan::Peptide>> &seqsh,
+			   seqan::StringSet<seqan::Gaps<seqan::Peptide>> &seqsv,
+			   uint64_t *lids,
+			   uint64_t col_offset,
+			   uint64_t row_offset,
+			   PSpMat<distal::CommonKmers>::Tuples &mattuples,
+			   std::ofstream &afs,
+			   std::ofstream &lfs) = 0;
+
+
   void add_time(std::string type, double duration);
-  void print_avg_times(std::shared_ptr<ParallelOps> parops);
+  void print_avg_times(std::shared_ptr<ParallelOps> parops, std::ofstream &lfs);
 
   uint64_t nalignments;
   

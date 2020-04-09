@@ -33,6 +33,7 @@ public:
 //  uint64_t align_seqs();
   void write_overlaps(const char *file);
   void run(PairwiseFunction *pf, const char* file, std::ofstream& lfs, int log_freq);
+  void runv2(PairwiseFunction *pf, const char* file, std::ofstream& lfs, int log_freq);
 
 private:
   PSpMat<distal::CommonKmers>::DCCols * spSeq;

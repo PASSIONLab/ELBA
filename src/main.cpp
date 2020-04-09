@@ -233,10 +233,33 @@ int main(int argc, char **argv) {
   tp->times["end_main:(AS)At()"] = std::chrono::system_clock::now();
 
 
-#ifndef NDEBUG
-  /*! Test multiplication */
   tu.print_str("Matrix B, i.e AAt or ASAt: ");
   C.PrintInfo();
+
+  // the output matrix may be non-symmetric when substitutes are used
+  if (add_substitue_kmers)
+  {
+  	auto CT = C;
+  	CT.Transpose();
+  	CT.Apply([] (distal::CommonKmers &arg)
+  			 {
+  				 std::swap(arg.first.first, arg.first.second);
+  				 std::swap(arg.second.first, arg.second.second);
+  				 return arg;
+  			 });
+  	C += CT;
+  	
+  	tu.print_str("Matrix B, i.e AAt or ASAt: (after sym) ");
+  	C.PrintInfo();
+  }
+  tu.print_str("Matrix C: ");
+  tu.print_str("\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
+  
+
+#ifndef NDEBUG
+  /*! Test multiplication */
+  // tu.print_str("Matrix B, i.e AAt or ASAt: ");
+  // C.PrintInfo();
 
   // rows and cols in the result
 //  uint64_t n_cols = seq_count;
@@ -328,24 +351,27 @@ int main(int argc, char **argv) {
     uint64_t local_alignments = 1;
     if (xdrop_align) {
       pf = new SeedExtendXdrop (blosum62, blosum62_simple, klength, xdrop, seed_count);
-      dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
+      // dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
+	  dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
       // local_alignments = static_cast<SeedExtendXdrop*>(pf)->alignments.size();
 	  local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
     } else if (full_align) {
       pf = new FullAligner(blosum62, blosum62_simple);
-      dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
+      // dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
+	  dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
       // local_alignments = static_cast<FullAligner*>(pf)->alignments.size();
 	  local_alignments = static_cast<FullAligner*>(pf)->nalignments;
     } else if(banded_align){
       pf = new BandedAligner (blosum62, banded_half_width);
-      dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
+      // dpr.run(pf, align_file.c_str(), proc_log_stream, log_freq);
+	  dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
       // local_alignments = static_cast<BandedAligner*>(pf)->alignments.size();
 	  local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
     }
 
     tp->times["end_main:dpr->align()"] = std::chrono::system_clock::now();
     delete pf;
-
+	
     uint64_t total_alignments = 0;
     MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
                MPI_COMM_WORLD);

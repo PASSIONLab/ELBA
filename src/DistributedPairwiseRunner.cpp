@@ -104,7 +104,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
   if(parops->world_proc_rank == 0)
     af_stream << "g_col_idx,g_row_idx,pid,col_seq_len,row_seq_len,"
 		"col_seq_align_len,row_seq_align_len, num_gap_opens, "
-		"col_seq_len_coverage, row_seq_len_coverage" << std::endl;
+		"col_seq_len_coverage, row_seq_len_coverage,common_count" << std::endl;
 
   std::atomic<uint64_t> line_count(0);
   uint64_t nalignments = 0;
@@ -173,8 +173,9 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 
   lfs << "  (" << current_nnz_count << "/" << local_nnz_count << ") -- "
       << "100% done." << std::endl;
+  lfs << "#alignments run " << nalignments << std::endl;
 
-  pf->print_avg_times(parops);
+  pf->print_avg_times(parops, lfs);
   
 //  if(parops->world_proc_rank == 0) {
 //  }
@@ -193,4 +194,160 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
   }
   af_stream.flush();
   af_stream.close();
+}
+
+
+void
+DistributedPairwiseRunner::runv2
+(
+    PairwiseFunction	*pf,
+	const char*			 file,
+	std::ofstream&		 lfs,
+	int					 log_freq
+)
+{
+	std::ofstream af_stream;
+	af_stream.open(file);
+
+	uint64_t	local_nnz_count = spSeq->getnnz();
+	int			batch_size		= 1e7;
+	int			batch_cnt		= (local_nnz_count / batch_size) + 1;
+	int			batch_idx		= 0;
+	uint64_t	nalignments		= 0;
+	PSpMat<distal::CommonKmers>::Tuples mattuples(*spSeq);
+		
+	lfs << "Local nnz count: " << local_nnz_count << std::endl;
+
+	int numThreads = 1;
+	#ifdef THREADED
+	#pragma omp parallel
+    {
+      	numThreads = omp_get_num_threads();
+    }
+	#endif
+
+	std::vector<std::stringstream> ss(numThreads);
+	if(parops->world_proc_rank == 0)
+		af_stream << "g_col_idx,g_row_idx,pid,col_seq_len,row_seq_len,"
+			"col_seq_align_len,row_seq_align_len, num_gap_opens,"
+			"col_seq_len_coverage,row_seq_len_coverage,common_count"
+				  << std::endl;
+
+	uint64_t *algn_cnts = new uint64_t[numThreads + 1];
+	while (batch_idx < batch_cnt)
+	{
+		uint64_t beg = batch_idx * batch_size;
+		uint64_t end = ((batch_idx + 1) * batch_size > local_nnz_count) ?
+			local_nnz_count : ((batch_idx + 1) * batch_size);
+
+		memset(algn_cnts, 0, sizeof(*algn_cnts) * (numThreads + 1));
+
+		// count number of alignments in this batch
+		#pragma omp parallel
+		{
+			int tid = 0;
+			#ifdef THREADED
+			tid = omp_get_thread_num();
+			#endif
+
+			uint64_t algn_cnt = 0;
+
+			#pragma omp for schedule(static, 1000)
+			for (uint64_t i = beg; i < end; ++i)
+			{
+				auto		l_row_idx = mattuples.rowindex(i);
+				auto		l_col_idx = mattuples.colindex(i);
+				uint64_t	g_col_idx = l_col_idx + col_offset;
+				uint64_t	g_row_idx = l_row_idx + row_offset;
+				if ((l_col_idx >= l_row_idx) &&
+					(l_col_idx != l_row_idx || g_col_idx > g_row_idx))
+					++algn_cnt;
+			}
+
+			algn_cnts[tid + 1] = algn_cnt;
+		}
+		
+
+		// for (int i = 1; i < numThreads + 1; ++i)
+		// 	lfs << "thread " << (i - 1) << ": " << algn_cnts[i] << " - ";
+		// lfs << "\n" << "cur tot " << algn_cnts[numThreads] << " cum tot "
+		// 	<< nalignments << std::endl;
+		
+		for (int i = 1; i < numThreads + 1; ++i)
+			algn_cnts[i] += algn_cnts[i - 1];
+		nalignments += algn_cnts[numThreads];
+
+		if (algn_cnts[numThreads] == 0)
+		{
+			++batch_idx;
+			continue;
+		}
+		
+		// allocate StringSet
+		seqan::StringSet<seqan::Gaps<seqan::Peptide>> seqsh;
+		seqan::StringSet<seqan::Gaps<seqan::Peptide>> seqsv;
+		resize(seqsh, algn_cnts[numThreads], seqan::Exact{});
+		resize(seqsv, algn_cnts[numThreads], seqan::Exact{});
+		uint64_t *lids = new uint64_t[algn_cnts[numThreads]];
+
+		
+		// fill StringSet
+		#pragma omp parallel
+		{
+			int tid = 0;
+			#ifdef THREADED
+			tid = omp_get_thread_num();
+			#endif
+
+			uint64_t algn_idx = algn_cnts[tid];
+
+			#pragma omp for schedule(static, 1000)
+			for (uint64_t i = beg; i < end; ++i)
+			{
+				auto		l_row_idx = mattuples.rowindex(i);
+				auto		l_col_idx = mattuples.colindex(i);
+				uint64_t	g_col_idx = l_col_idx + col_offset;
+				uint64_t	g_row_idx = l_row_idx + row_offset;
+				if ((l_col_idx >= l_row_idx) &&
+					(l_col_idx != l_row_idx || g_col_idx > g_row_idx))
+				{
+					seqsh[algn_idx] =
+						seqan::Gaps<seqan::Peptide>(*(dfd->col_seq(l_col_idx)));
+					seqsv[algn_idx] =
+						seqan::Gaps<seqan::Peptide>(*(dfd->row_seq(l_row_idx)));
+					// lcrds[algn_idx].first  = l_col_idx;
+					// lcrds[algn_idx].second = l_row_idx;
+					lids[algn_idx] = i;
+					++algn_idx;
+				}
+			}
+		}
+		
+
+		// call aligner
+		lfs << "calling aligner for batch idx " << batch_idx
+			<< " cur #algnments " << algn_cnts[numThreads]
+			<< " overall " << nalignments
+			<< std::endl;
+		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples,
+						af_stream, lfs);
+		
+		
+		delete [] lids;
+		++batch_idx;
+	}
+
+
+	af_stream.flush();
+  	af_stream.close();
+
+	pf->nalignments = nalignments;
+	pf->print_avg_times(parops, lfs);
+
+	lfs << "#alignments run " << nalignments << std::endl;
+
+	delete [] algn_cnts;
+
+
+	return;
 }
