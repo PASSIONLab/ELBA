@@ -31,7 +31,7 @@ void PairwiseFunction::add_time(std::string type, double duration) {
   }
 }
 
-void PairwiseFunction::print_avg_times(std::shared_ptr<ParallelOps> parops) {
+void PairwiseFunction::print_avg_times(std::shared_ptr<ParallelOps> parops, std::ofstream &lfs) {
   // counts and times can be empty if there were non non-zeros in that
   // process grid cell. Therefore, we need to fix the collective call as follows.
   int counts_size = 0;
@@ -40,17 +40,18 @@ void PairwiseFunction::print_avg_times(std::shared_ptr<ParallelOps> parops) {
 
   MPI_Allreduce(MPI_IN_PLACE, &counts_size, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-  // std::cout << "counts_size after allreduce " << counts_size << std::endl;
+  // lfs << "counts_size after allreduce " << counts_size << std::endl;
   // for (int tid = 0; tid < MAX_THD; ++tid)
   // {
   // 	  if (types[tid].size() != 0)
   // 	  {
-  // 		  std::cout << "tid " << tid << " stats:\n";
+  // 		  lfs << "tid " << tid << " stats:\n";
   // 		  for (auto &type : types[tid])
   // 		  {
-  // 			  std::cout << "  PWF: "  << type.first << " - time: "
-  // 						<< times[tid][type.second] << " - count: "
-  // 						<< counts[tid][type.second] << "\n";
+  // 			  lfs << std::fixed
+  // 				  << "  PWF: "  << type.first << " - time: "
+  // 				  << times[tid][type.second] << " - count: "
+  // 				  << counts[tid][type.second] << "\n";
   // 		  }
   // 	  }
   // }
