@@ -1,4 +1,4 @@
-# DISTAL: A Fast, Distributed Protein Sequence Aligner
+# PASTIS: Distributed Many-to-Many Protein Sequence Alignment Using Sparse Matrices
 =====
 
 # Prerequisites
@@ -36,10 +36,10 @@
   * This is a header only library, so there's no need to build it.
   
   
-# Build DISTAL
+# Build PASTIS
 -----
 
-To build DISTAL, you can clone or download the source from here
+To build PASTIS, you can clone or download the source from here
   * cd build_release
   * cmake ..
   * cd ..
