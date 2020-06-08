@@ -1,10 +1,10 @@
-# PASTIS: Distributed Many-to-Many Protein Sequence Alignment Using Sparse Matrices
+# PASTIS-based diBELLA: Distributed Long Read to Long Read Alignment Using Sparse Matrices
 =====
 
 # Prerequisites
 -----
 1. Operating System.
-  * DISTAL is tested and known to work on the following operating systems.
+  * diBELLA is tested and known to work on the following operating systems.
     *  SUSE Linux Enterprise Server 15.
     *  Ubuntu 14.10.
     *  MacOS.
@@ -36,10 +36,11 @@
   * This is a header only library, so there's no need to build it.
   
   
-# Build PASTIS
+# Build diBELLA
 -----
 
-To build PASTIS, you can clone or download the source from here
+To build diBELLA, you can clone or download the source from here
+  * mkdir build_release
   * cd build_release
   * cmake ..
   * cd ..
