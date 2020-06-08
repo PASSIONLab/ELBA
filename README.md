@@ -46,7 +46,8 @@ To build diBELLA, you can clone or download the source from here
   * cd ..
   * ./build.sh
 
-## Run diBELLA
+# Run diBELLA
+-----
 
 You can run diBELLA in parallel by specifying the number of processes to the mpirun or mpiexec command. The number of processes must be perfect square value.
 
