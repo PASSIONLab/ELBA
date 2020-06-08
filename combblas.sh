@@ -7,4 +7,4 @@ mkdir install
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../install ../
 make -j4
-make install
+make install 
