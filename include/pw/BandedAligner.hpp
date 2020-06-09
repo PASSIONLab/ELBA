@@ -6,14 +6,10 @@
 #include "PairwiseFunction.hpp"
 #include "../AlignmentInfo.hpp"
 
-class BandedAligner  : public PairwiseFunction{
+class BandedAligner : public PairwiseFunction{
 public:
-//  SeedExtendXdrop(seqan::Score<int, seqan::ScoreMatrix<TSequenceValue, TSpec>> scoring_scheme,
-//      seqan::Score<int, seqan::ScoreMatrix<TSequenceValue, TSpec>> scoring_scheme_simple,
-//  ushort seed_length, int xdrop);
 
-  BandedAligner(seqan::Blosum62 scoring_scheme, int banded_half_width);
-
+  BandedAligner(ScoringScheme scoring_scheme, int banded_half_width);
 
   void apply(uint64_t l_col_idx, uint64_t g_col_idx,
              uint64_t l_row_idx, uint64_t g_row_idx,
@@ -21,24 +17,18 @@ public:
              dibella::CommonKmers &cks, std::stringstream& ss) override;
 
   void
-  apply_batch (seqan::StringSet<seqan::Gaps<seqan::Peptide>> &seqsh,
-			   seqan::StringSet<seqan::Gaps<seqan::Peptide>> &seqsv,
-			   uint64_t *lids,
-			   uint64_t col_offset,
-			   uint64_t row_offset,
-			   PSpMat<dibella::CommonKmers>::Tuples &mattuples,
-			   std::ofstream &afs,
-			   std::ofstream &lfs) override;
-
-  // std::vector<AlignmentInfo> alignments;
+  apply_batch(seqan::StringSet<seqan::Gaps<seqan::Peptide>> &seqsh,
+			        seqan::StringSet<seqan::Gaps<seqan::Peptide>> &seqsv,
+			        uint64_t *lids,
+			        uint64_t col_offset,
+			        uint64_t row_offset,
+			        PSpMat<dibella::CommonKmers>::Tuples &mattuples,
+			        std::ofstream &afs,
+			        std::ofstream &lfs) override;
 
 private:
-//  seqan::Score<int, seqan::ScoreMatrix<TSequenceValue, TSpec>> scoring_scheme;
-//  seqan::Score<int, seqan::ScoreMatrix<TSequenceValue, TSpec>> scoring_scheme_simple;
-  seqan::Blosum62 scoring_scheme;
+  ScoringScheme scoring_scheme;
   int banded_half_width;
-
 };
-
 
 #endif //DIBELLA_BANDEDALIGNER_HPP

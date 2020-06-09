@@ -16,6 +16,7 @@ typedef std::chrono::time_point<std::chrono::high_resolution_clock> ticks_t;
 typedef std::chrono::high_resolution_clock hrc_t;
 
 typedef seqan::Seed<seqan::Simple> TSeed;
+typedef seqan::Score<int, seqan::Simple> ScoringScheme;
 
 typedef unsigned short ushort;
 typedef unsigned char uchar;
