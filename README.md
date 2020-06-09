@@ -1,10 +1,10 @@
 # PASTIS-based diBELLA: Distributed Long Read to Long Read Alignment Using Sparse Matrices
 =====
 
-# Prerequisites
------
+## Prerequisites
+
 1. Operating System.
-  * diBELLA is tested and known to work on the following operating systems.
+  * PASTIS is tested and known to work on the following operating systems.
     *  SUSE Linux Enterprise Server 15.
     *  Ubuntu 14.10.
     *  MacOS.
@@ -13,13 +13,17 @@
 
 3. CMake 3.11 or above.
 
-# Dependencies
------
+4. Boost C++ Libraries.
+
+## Dependencies
     
 1. CombBLAS.
-  * Download or clone CombBLAS from `https://bitbucket.org/berkeleylab/combinatorial-blas-2.0`
-  * Export the path to this directory as an environment variable `COMBBLAS_HOME`
-  * The following commands can be used to build and install CombBLAS
+  * Download or clone CombBLAS from `https://bitbucket.org/berkeleylab/combinatorial-blas-2.0`.
+  * Export the path to this directory as an environment variable `COMBBLAS_HOME`.
+   ```
+      export COMBBLAS_HOME=/path/to/combinatorial-blas-2.0
+   ```
+  * The following commands can be used to build and install CombBLAS:
   ```
     cd $COMBBLAS_HOME/CombBLAS
     mkdir build
@@ -30,8 +34,19 @@
     make install         
   ```
 3. SeqAn.
-  * Download SeqAn `2.4.0` from `https://github.com/seqan/seqan/releases/tag/seqan-v2.4.0`
-  * Extract this to a folder and create an environment variable, `SEQAN_HOME`, pointing to it. 
+  * Download SeqAn `2.4.0` from `https://github.com/seqan/seqan/releases/tag/seqan-v2.4.0` or clone the repository using the release tag as follows:
+   ```
+      git clone --branch seqan-v2.4.0 https://github.com/seqan/seqan.git
+   ```
+  * Create an environment variable, `SEQAN_HOME`, pointing to it:
+   ```
+      export SEQAN_HOME=/path/to/seqan
+   ```
+  * Checkout to `develop` branch of SeqAn `2.4.0`:
+   ```
+      cd $SEQAN_HOME
+      git checkout develop
+   ```
   * This is a header only library, so there's no need to build it.
   
 ## Use scripts to install dependencies
