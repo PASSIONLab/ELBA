@@ -20,9 +20,9 @@
 1. CombBLAS.
   * Download or clone CombBLAS from `https://bitbucket.org/berkeleylab/combinatorial-blas-2.0`.
   * Export the path to this directory as an environment variable `COMBBLAS_HOME`.
-   ```
-      export COMBBLAS_HOME=/path/to/combinatorial-blas-2.0
-   ```
+  ```
+    export COMBBLAS_HOME=/path/to/combinatorial-blas-2.0
+  ```
   * The following commands can be used to build and install CombBLAS:
   ```
     cd $COMBBLAS_HOME/CombBLAS
@@ -62,13 +62,13 @@
 # Build diBELLA
 -----
 
-To build diBELLA, you can clone or download the source from here
-  * mkdir build_release
-  * cd build_release
-  * cmake ..
-  * cd ..
-  * ./build.sh
-
+To build diBELLA, you can clone or download the source from here:
+  ```
+    mkdir build_release
+    cd build_release
+    cmake ..
+    make -j4  
+  ```
 # Run diBELLA
 -----
 
