@@ -62,7 +62,7 @@
 # Build diBELLA
 -----
 
-To build diBELLA, you can clone or download the source from here:
+To build diBELLA, you can use the following commands:
   ```
     mkdir build_release
     cd build_release
