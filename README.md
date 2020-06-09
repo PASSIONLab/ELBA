@@ -35,30 +35,30 @@
   ```
 3. SeqAn.
   * Download SeqAn `2.4.0` from `https://github.com/seqan/seqan/releases/tag/seqan-v2.4.0` or clone the repository using the release tag as follows:
-   ```
-      git clone --branch seqan-v2.4.0 https://github.com/seqan/seqan.git
-   ```
+  ```
+    git clone --branch seqan-v2.4.0 https://github.com/seqan/seqan.git
+  ```
   * Create an environment variable, `SEQAN_HOME`, pointing to it:
-   ```
-      export SEQAN_HOME=/path/to/seqan
-   ```
+  ```
+    export SEQAN_HOME=/path/to/seqan
+  ```
   * Checkout to `develop` branch of SeqAn `2.4.0`:
-   ```
-      cd $SEQAN_HOME
-      git checkout develop
-   ```
+  ```
+    cd $SEQAN_HOME
+    git checkout develop
+  ```
   * This is a header only library, so there's no need to build it.
   
 ## Use scripts to install dependencies
 -----
- ```
+  ```
     source modules.sh
     source combblas.sh
     cd ../../../
     source seqan.sh
     source utils.sh
     cd ../        
- ```
+  ```
 # Build diBELLA
 -----
 
@@ -76,18 +76,18 @@ You can run diBELLA in parallel by specifying the number of processes to the mpi
 
 ## Copy input data from m1982 (internal)
 -----
- ```
+  ```
     mkdir inputs
     lfs setstripe -c 72 -S 8M inputs/
     cd inputs/
     cp -r /project/projectdirs/m1982/bella-data/* .      
- ```
+  ```
 ## From FASTQ to FASTA
 -----
- ```
+  ```
     cd ../seqtk
     ./seqtk seq -a <name>.fastq/fq > <name>.fa
- ```
+  ```
 ## Ready to run
 -----
 
