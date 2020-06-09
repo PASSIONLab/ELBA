@@ -13,7 +13,6 @@
 
 3. CMake 3.11 or above.
 
-
 # Dependencies
 -----
     
@@ -35,7 +34,16 @@
   * Extract this to a folder and create an environment variable, `SEQAN_HOME`, pointing to it. 
   * This is a header only library, so there's no need to build it.
   
-  
+## Use scripts to install dependencies
+-----
+ ```
+    source modules.sh
+    source combblas.sh
+    cd ../../../
+    source seqan.sh
+    source utils.sh
+    cd ../        
+ ```
 # Build diBELLA
 -----
 
@@ -50,6 +58,23 @@ To build diBELLA, you can clone or download the source from here
 -----
 
 You can run diBELLA in parallel by specifying the number of processes to the mpirun or mpiexec command. The number of processes must be perfect square value.
+
+## Copy input data from m1982 (internal)
+-----
+ ```
+    mkdir inputs
+    lfs setstripe -c 72 -S 8M inputs/
+    cd inputs/
+    cp -r /project/projectdirs/m1982/bella-data/* .      
+ ```
+## From FASTQ to FASTA
+-----
+ ```
+    cd ../seqtk
+    ./seqtk seq -a <name>.fastq/fq > <name>.fa
+ ```
+## Ready to run
+-----
 
 The parameters and options of PASTIS are as follows:
 - ```-i <string>```: Input FASTA file.
