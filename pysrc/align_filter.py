@@ -35,8 +35,8 @@ def main():
     # the both sequences
     len_coverage_cut = 0.7
 
-    dir = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.distal/pysrc/data' \
-          '/cori/scope/distal/w_sub/duprem'
+    dir = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.dibella/pysrc/data' \
+          '/cori/scope/dibella/w_sub/duprem'
     subs=1600
     alignm='xa'
     sub_dir = f'{alignm}_subs{subs}'

@@ -36,7 +36,7 @@ def gen_hists(pids_A, pids_B, pids_C, pids_A_hist, pids_B_hist, pids_C_hist,
 
 
 def main():
-    overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.distal/pysrc/data/cori/scope/distal/with_sub/k6/subs100/ba5_shuff/ba5_shuff_subs100_align.txt'
+    overlaps_fname = '/Users/esaliya/sali/git/github/esaliya/cpp/lbl.dibella/pysrc/data/cori/scope/dibella/with_sub/k6/subs100/ba5_shuff/ba5_shuff_subs100_align.txt'
     seqs_fname = '/Users/esaliya/sali/data/scope/uniqs' \
                  '/all/shuffled_77040_unique_of_243813_astral-scopedom-seqres-gd-all-2.07-stable.fa_sub100'
     
@@ -95,7 +95,7 @@ def main():
     
     if align or is_LAST:
         gen_hists(pids_A, pids_B, pids_C, pids_A_hist, pids_B_hist,
-                  pids_C_hist, "DISTAL" if align else "LAST")
+                  pids_C_hist, "diBELLA" if align else "LAST")
         
     print()
     print("Output sets ...")

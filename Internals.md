@@ -3,7 +3,7 @@
 
 # The Entry Point `main`
 -----
-The flow of DISTAL is as follows.
+The flow of diBELLA is as follows.
 1. Initialize parallelism.
 2. Parse arguments.
 3. Create a unique job name (needed for logs)

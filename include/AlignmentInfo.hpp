@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-07-10.
 
-#ifndef DISTAL_ALIGNMENTINFO_HPP
-#define DISTAL_ALIGNMENTINFO_HPP
+#ifndef DIBELLA_ALIGNMENTINFO_HPP
+#define DIBELLA_ALIGNMENTINFO_HPP
 
 #include <seqan/align.h>
 
@@ -15,4 +15,4 @@ struct AlignmentInfo{
   uint64_t seq_v_g_idx;
 };
 
-#endif //DISTAL_ALIGNMENTINFO_HPP
+#endif //DIBELLA_ALIGNMENTINFO_HPP

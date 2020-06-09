@@ -1,11 +1,11 @@
 // Created by Saliya Ekanayake on 2019-07-23.
 
-#ifndef DISTAL_SCOREMAT_HPP
-#define DISTAL_SCOREMAT_HPP
+#ifndef DIBELLA_SCOREMAT_HPP
+#define DIBELLA_SCOREMAT_HPP
 
 #include "Types.hpp"
 
-namespace distal{
+namespace dibella{
 
   struct Penalty{
     Penalty(char base_char);
@@ -133,4 +133,4 @@ namespace distal{
     };
   };
 }
-#endif //DISTAL_SCOREMAT_HPP
+#endif //DIBELLA_SCOREMAT_HPP

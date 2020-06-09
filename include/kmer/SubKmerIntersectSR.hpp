@@ -1,13 +1,13 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef DISTAL_SUBKMERINTERSECTSR_HPP
-#define DISTAL_SUBKMERINTERSECTSR_HPP
+#ifndef DIBELLA_SUBKMERINTERSECTSR_HPP
+#define DIBELLA_SUBKMERINTERSECTSR_HPP
 
 #include "../ParallelOps.hpp"
 #include "MatrixEntry.hpp"
 
 #include "../ParallelOps.hpp"
-namespace distal {
+namespace dibella {
   template<typename IN, typename OUT>
   struct SubKmerIntersect {
     static OUT id() {
@@ -57,4 +57,4 @@ namespace distal {
     }
   };
 }
-#endif //DISTAL_SUBKMERINTERSECTSR_HPP
+#endif //DIBELLA_SUBKMERINTERSECTSR_HPP
