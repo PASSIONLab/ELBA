@@ -1,10 +1,10 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef DISTAL_MATRIXENTRY_HPP
-#define DISTAL_MATRIXENTRY_HPP
+#ifndef DIBELLA_MATRIXENTRY_HPP
+#define DIBELLA_MATRIXENTRY_HPP
 
 #include "../Types.hpp"
-namespace distal{
+namespace dibella{
   struct MatrixEntry{
     short cost;
     ushort offset;
@@ -28,4 +28,4 @@ namespace distal{
     }
   };
 }
-#endif //DISTAL_MATRIXENTRY_HPP
+#endif //DIBELLA_MATRIXENTRY_HPP

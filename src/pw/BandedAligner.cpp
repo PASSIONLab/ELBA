@@ -28,7 +28,7 @@ void BandedAligner::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
     seqan::Peptide *seq_h, seqan::Peptide *seq_v,
-    distal::CommonKmers &cks, std::stringstream& ss) {
+    dibella::CommonKmers &cks, std::stringstream& ss) {
 
   auto start_pf_time = std::chrono::system_clock::now();
 
@@ -96,7 +96,7 @@ BandedAligner::apply_batch
 	uint64_t *lids,
 	uint64_t col_offset,
 	uint64_t row_offset,
-	PSpMat<distal::CommonKmers>::Tuples &mattuples,
+	PSpMat<dibella::CommonKmers>::Tuples &mattuples,
 	std::ofstream &afs,
 	std::ofstream &lfs
 )

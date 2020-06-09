@@ -10,7 +10,7 @@
 
 DistributedPairwiseRunner::DistributedPairwiseRunner(
     const std::shared_ptr<DistributedFastaData> dfd,
-    PSpMat<distal::CommonKmers>::DCCols * localmat,
+    PSpMat<dibella::CommonKmers>::DCCols * localmat,
     int afreq,
     uint64_t rowoffset, uint64_t coloffset,
     const std::shared_ptr<ParallelOps> &parops)
@@ -54,7 +54,7 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
         continue;
       }
 
-      distal::CommonKmers cks = nzit.value();
+      dibella::CommonKmers cks = nzit.value();
       if (cks.count > l_max_common_kmers){
         l_max_common_kmers = cks.count;
       }
@@ -108,7 +108,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 
   std::atomic<uint64_t> line_count(0);
   uint64_t nalignments = 0;
-  PSpMat<distal::CommonKmers>::Tuples mattuples(*spSeq);
+  PSpMat<dibella::CommonKmers>::Tuples mattuples(*spSeq);
   
   #pragma omp parallel for reduction(+:nalignments)
   for(uint64_t i=0; i< local_nnz_count; i++)
@@ -146,7 +146,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 		continue;
 	}
 
-	distal::CommonKmers cks = mattuples.numvalue(i);
+	dibella::CommonKmers cks = mattuples.numvalue(i);
 
 
 	int myThread = 0;
@@ -214,7 +214,7 @@ DistributedPairwiseRunner::runv2
 	int			batch_cnt		= (local_nnz_count / batch_size) + 1;
 	int			batch_idx		= 0;
 	uint64_t	nalignments		= 0;
-	PSpMat<distal::CommonKmers>::Tuples mattuples(*spSeq);
+	PSpMat<dibella::CommonKmers>::Tuples mattuples(*spSeq);
 		
 	lfs << "Local nnz count: " << local_nnz_count << std::endl;
 

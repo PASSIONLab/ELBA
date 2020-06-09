@@ -21,7 +21,7 @@ const users = [
 ];
 
 const siteConfig = {
-  title: 'DISTAL', // Title for your website.
+  title: 'diBELLA', // Title for your website.
   tagline: 'A Fast, Distributed Protein Sequence Aligner',
   url: 'https://aydinbuluc.github.io', // Your website URL
   baseUrl: '/lbl.pisa/', // Base URL for your project */

@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-07-05.
 
-#ifndef DISTAL_PAIRWISEFUNCTION_HPP
-#define DISTAL_PAIRWISEFUNCTION_HPP
+#ifndef DIBELLA_PAIRWISEFUNCTION_HPP
+#define DIBELLA_PAIRWISEFUNCTION_HPP
 
 #include <unordered_map>
 #include <string>
@@ -24,7 +24,7 @@ public:
   virtual void apply(uint64_t l_col_idx, uint64_t g_col_idx,
       uint64_t l_row_idx, uint64_t g_row_idx,
       seqan::Peptide *seq_h, seqan::Peptide *seq_v,
-      distal::CommonKmers &cks, std::stringstream& ss) = 0;
+      dibella::CommonKmers &cks, std::stringstream& ss) = 0;
 
   virtual
   void
@@ -33,7 +33,7 @@ public:
 			   uint64_t *lids,
 			   uint64_t col_offset,
 			   uint64_t row_offset,
-			   PSpMat<distal::CommonKmers>::Tuples &mattuples,
+			   PSpMat<dibella::CommonKmers>::Tuples &mattuples,
 			   std::ofstream &afs,
 			   std::ofstream &lfs) = 0;
 
@@ -49,4 +49,4 @@ private:
   std::vector<double>						times[MAX_THD];
 };
 
-#endif //DISTAL_PAIRWISEFUNCTION_HPP
+#endif //DIBELLA_PAIRWISEFUNCTION_HPP

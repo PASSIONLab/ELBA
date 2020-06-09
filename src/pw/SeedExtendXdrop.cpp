@@ -23,7 +23,7 @@ void SeedExtendXdrop::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
     seqan::Peptide *seq_h, seqan::Peptide *seq_v,
-    distal::CommonKmers &cks, std::stringstream& ss) {
+    dibella::CommonKmers &cks, std::stringstream& ss) {
 
   AlignmentInfo ai[2];
   for (int count = 0; count < seed_count; ++count) {
@@ -121,7 +121,7 @@ SeedExtendXdrop::apply_batch
 	uint64_t *lids,
 	uint64_t col_offset,
 	uint64_t row_offset,
-	PSpMat<distal::CommonKmers>::Tuples &mattuples,
+	PSpMat<dibella::CommonKmers>::Tuples &mattuples,
 	std::ofstream &afs,
 	std::ofstream &lfs
 )
@@ -159,7 +159,7 @@ SeedExtendXdrop::apply_batch
 		#pragma omp parallel for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
-			distal::CommonKmers &cks = mattuples.numvalue(lids[i]);
+			dibella::CommonKmers &cks = mattuples.numvalue(lids[i]);
 			ushort l_row_seed_start_offset =
 				(count == 0) ? cks.first.first : cks.second.first;
 			ushort l_col_seed_start_offset =

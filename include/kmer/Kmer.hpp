@@ -1,14 +1,14 @@
 // Created by Saliya Ekanayake on 10/17/19.
 
-#ifndef DISTAL_KMER_HPP
-#define DISTAL_KMER_HPP
+#ifndef DIBELLA_KMER_HPP
+#define DIBELLA_KMER_HPP
 #include <set>
 #include <vector>
 #include "../Alphabet.hpp"
 //#include "ScoreMat.hpp"
 //#include "MinMaxHeap.hpp"
 
-namespace distal{
+namespace dibella{
   struct Kmer {
   private:
     uint64_t kmer_code;
@@ -126,4 +126,4 @@ namespace distal{
   };
 
 }
-#endif //DISTAL_KMER_HPP
+#endif //DIBELLA_KMER_HPP

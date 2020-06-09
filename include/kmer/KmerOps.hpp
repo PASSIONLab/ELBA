@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef DISTAL_KMEROPS_HPP
-#define DISTAL_KMEROPS_HPP
+#ifndef DIBELLA_KMEROPS_HPP
+#define DIBELLA_KMEROPS_HPP
 
 #include <unordered_set>
 #include "MatrixEntry.hpp"
@@ -13,7 +13,7 @@
 #include "../DistributedFastaData.hpp"
 #include "Kmer.hpp"
 
-namespace distal {
+namespace dibella {
   class KmerOps {
   public:
     static PSpMat<MatrixEntry>::MPI_DCCols generate_A(uint64_t seq_count,
@@ -146,4 +146,4 @@ namespace distal {
 }
 
 
-#endif //DISTAL_KMEROPS_HPP
+#endif //DIBELLA_KMEROPS_HPP

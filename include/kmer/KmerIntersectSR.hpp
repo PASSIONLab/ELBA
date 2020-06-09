@@ -1,10 +1,10 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef DISTAL_KMERINTERSECTSR_HPP
-#define DISTAL_KMERINTERSECTSR_HPP
+#ifndef DIBELLA_KMERINTERSECTSR_HPP
+#define DIBELLA_KMERINTERSECTSR_HPP
 
 #include "../ParallelOps.hpp"
-namespace distal {
+namespace dibella {
   template<typename IN, typename OUT>
   struct KmerIntersect {
     static OUT id() {
@@ -63,4 +63,4 @@ namespace distal {
     }
   };
 }
-#endif //DISTAL_KMERINTERSECTSR_HPP
+#endif //DIBELLA_KMERINTERSECTSR_HPP

@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-07-10.
 
-#ifndef DISTAL_OVERLAPFINDER_HPP
-#define DISTAL_OVERLAPFINDER_HPP
+#ifndef DIBELLA_OVERLAPFINDER_HPP
+#define DIBELLA_OVERLAPFINDER_HPP
 
 #include "PairwiseFunction.hpp"
 
@@ -11,7 +11,7 @@ public:
 
   void apply(uint64_t l_col_idx, uint64_t g_col_idx, uint64_t l_row_idx,
              uint64_t g_row_idx, seqan::Peptide *seq_h, seqan::Peptide *seq_v,
-             distal::CommonKmers &cks, std::stringstream& ss) override;
+             dibella::CommonKmers &cks, std::stringstream& ss) override;
 
 private:
   bool perform_alignment;
@@ -21,4 +21,4 @@ private:
   uint64_t local_nnz_count;
 };
 
-#endif //DISTAL_OVERLAPFINDER_HPP
+#endif //DIBELLA_OVERLAPFINDER_HPP
