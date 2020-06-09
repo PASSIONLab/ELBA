@@ -1,6 +1,6 @@
 #!/bin/bash
 git clone https://bitbucket.org/berkeleylab/combinatorial-blas-2.0
-export COMBBLAS_HOME=combinatorial-blas-2.0/
+export COMBBLAS_HOME=$(pwd)/combinatorial-blas-2.0/
 cd $COMBBLAS_HOME/CombBLAS
 mkdir build
 mkdir install
