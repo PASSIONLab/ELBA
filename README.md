@@ -4,7 +4,7 @@
 ## Prerequisites
 
 1. Operating System.
-  * PASTIS is tested and known to work on the following operating systems.
+  * diBELLA is tested and known to work on the following operating systems.
     *  SUSE Linux Enterprise Server 15.
     *  Ubuntu 14.10.
     *  MacOS.
@@ -91,7 +91,7 @@ You can run diBELLA in parallel by specifying the number of processes to the mpi
 ## Ready to run
 -----
 
-The parameters and options of PASTIS are as follows:
+The parameters and options of diBELLA are as follows:
 - ```-i <string>```: Input FASTA file.
 - ```-c <integer>```: Number of sequences in the FASTA file.
 - ```--sc <integer>```: Seed count. ```[default: 2]```
@@ -106,4 +106,4 @@ The parameters and options of PASTIS are as follows:
 - ```--xa <integer>```: X-drop alignment with the indicated drop value.
 - ```--ba <integer>```: Banded alignment with the indicated band size.
 - ```--af <string>```: Output file to write alignment information. 
-- ```--idxmap <string>```: Output file for input sequences to ids used in PASTIS.
+- ```--idxmap <string>```: Output file for input sequences to ids used in diBELLA.
