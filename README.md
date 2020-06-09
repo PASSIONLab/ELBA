@@ -69,6 +69,10 @@ To build diBELLA, you can clone or download the source from here:
     cmake ..
     make -j4  
   ```
+Or type:
+  ```
+    source build.sh 
+  ```
 # Run diBELLA
 -----
 
