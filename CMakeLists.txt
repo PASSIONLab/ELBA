@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(pastis)
+project(dibella)
 set(CMAKE_CXX_STANDARD 14)
 
 include_directories(
@@ -17,7 +17,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
 find_package(MPI REQUIRED)
 find_package(OpenMP REQUIRED)
 
-add_executable(pastis
+add_executable(dibella
         src/Alphabet.cpp
         include/Alphabet.hpp
         src/Constants.cpp
@@ -63,19 +63,19 @@ add_executable(pastis
         )
 
 
-target_link_libraries(pastis PUBLIC CombBLAS GraphGenlib Usortlib)
+target_link_libraries(dibella PUBLIC CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
-    target_link_libraries(pastis PUBLIC ${MPI_LIBRARIES})
+    target_link_libraries(dibella PUBLIC ${MPI_LIBRARIES})
 endif()
 
 if(OPENMP_FOUND OR OpenMP_CXX_FOUND)
     # Set THREADED if OpenMP is found
-    target_compile_definitions(pastis PUBLIC THREADED)
+    target_compile_definitions(dibella PUBLIC THREADED)
     if(TARGET OpenMP::OpenMP_CXX)
-        target_link_libraries(pastis PUBLIC OpenMP::OpenMP_CXX)
+        target_link_libraries(dibella PUBLIC OpenMP::OpenMP_CXX)
     else()
-        target_compile_options(pastis PUBLIC "${OpenMP_CXX_FLAGS}")
-        target_link_libraries(pastis PUBLIC "${OpenMP_CXX_FLAGS}")
+        target_compile_options(dibella PUBLIC "${OpenMP_CXX_FLAGS}")
+        target_link_libraries(dibella PUBLIC "${OpenMP_CXX_FLAGS}")
     endif()
 endif()
