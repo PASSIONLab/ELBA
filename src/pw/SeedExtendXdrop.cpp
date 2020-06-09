@@ -1,24 +1,15 @@
 // Created by Saliya Ekanayake on 2019-07-05.
 
-
 #include "../../include/pw/SeedExtendXdrop.hpp"
 
-
-//template<typename TSequenceValue, typename TSpec>
-//SeedExtendXdrop<TSequenceValue, TSpec>::SeedExtendXdrop(
 SeedExtendXdrop::SeedExtendXdrop(
-    seqan::Blosum62 scoring_scheme,
-    seqan::Blosum62 scoring_scheme_simple,
+    ScoringScheme scoring_scheme,
     ushort seed_length, int xdrop, int seed_count):
     PairwiseFunction(),
     scoring_scheme(scoring_scheme),
-    scoring_scheme_simple(scoring_scheme_simple),
     seed_length(seed_length), xdrop(xdrop), seed_count(seed_count){
-
 }
 
-//template<typename TSequenceValue, typename TSpec>
-//void SeedExtendXdrop<TSequenceValue, TSpec>::apply(
 void SeedExtendXdrop::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
@@ -39,7 +30,7 @@ void SeedExtendXdrop::apply(
     TSeed seed(l_col_seed_start_offset, l_row_seed_start_offset,
                seed_length);
     auto start_time = std::chrono::system_clock::now();
-    extendSeed(seed, *seq_h, *seq_v, seqan::EXTEND_BOTH, scoring_scheme_simple,
+    extendSeed(seed, *seq_h, *seq_v, seqan::EXTEND_BOTH, scoring_scheme,
                xdrop,
                seqan::GappedXDrop());
     auto end_time = std::chrono::system_clock::now();
@@ -94,11 +85,6 @@ void SeedExtendXdrop::apply(
     ? ai[0] : ai[1];
   }
 
-//  if (max_ai.stats.alignmentIdentity >= 30.0){
-//    alignments.push_back(max_ai);
-//  }
-
-
   double alen_minus_gapopens = (max_ai.stats.alignmentLength - max_ai.stats.numGapOpens) * 1.0;
   ss << g_col_idx << "," << g_row_idx << "," << max_ai.stats.alignmentIdentity
      << "," << max_ai.seq_h_length << "," << max_ai.seq_v_length
@@ -109,8 +95,6 @@ void SeedExtendXdrop::apply(
 	 << "," << cks.count
 	 << std::endl;
 }
-
-
 
 // @NOTE This is hard-coded to the number of seeds being <= 2
 void
@@ -168,7 +152,7 @@ SeedExtendXdrop::apply_batch
 			TSeed seed(l_col_seed_start_offset, l_row_seed_start_offset,
 					   seed_length);
 			extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]),
-					   seqan::EXTEND_BOTH, scoring_scheme_simple,
+					   seqan::EXTEND_BOTH, scoring_scheme,
 					   xdrop, seqan::GappedXDrop());
 			assignSource(seqsh_ex[i],
 						 infix(seqan::source(seqsh[i]),

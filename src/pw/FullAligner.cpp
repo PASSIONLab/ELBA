@@ -2,13 +2,10 @@
 
 #include "../../include/pw/FullAligner.hpp"
 
-FullAligner::FullAligner(seqan::Blosum62 scoring_scheme,
-                         seqan::Blosum62 scoring_scheme_simple) :
+FullAligner::FullAligner(ScoringScheme scoring_scheme) :
     PairwiseFunction(),
-    scoring_scheme(scoring_scheme),
-    scoring_scheme_simple(scoring_scheme_simple){
-
-}
+    scoring_scheme(scoring_scheme)
+	{}
 
 //template<typename TSequenceValue, typename TSpec>
 //void SeedExtendXdrop<TSequenceValue, TSpec>::apply(

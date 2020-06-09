@@ -2,7 +2,7 @@
 
 #include "../../include/pw/BandedAligner.hpp"
 
-BandedAligner::BandedAligner(seqan::Blosum62 scoring_scheme,
+BandedAligner::BandedAligner(ScoringScheme scoring_scheme,
     int banded_half_width) :
 
     PairwiseFunction(),
@@ -77,12 +77,6 @@ void BandedAligner::apply(
 
   auto finish_pf_time = std::chrono::system_clock::now();
   add_time("BA:overall", (ms_t(finish_pf_time - start_pf_time)).count());
-
-  // #ifdef THREADED
-  // int tid = omp_get_thread_num();
-  // // std::cout << "apply id " << tid << std::endl;
-  // tmp[tid].push_back(tid);
-  // #endif
 }
 
 
