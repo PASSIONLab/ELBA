@@ -1,9 +1,12 @@
 cmake_minimum_required(VERSION 3.11)
-project(distal)
+project(pastis)
 set(CMAKE_CXX_STANDARD 14)
 
-include_directories(${DISTAL_INCLUDE_DIRS})
-link_directories(${DISTAL_LINK_DIRS})
+include_directories(
+	$ENV{SEQAN_HOME}/include 
+	$ENV{COMBBLAS_HOME}/CombBLAS/install/include)
+	# possibly add path to boost library (not necessary on Cori, just type 'module load boost')
+link_directories($ENV{COMBBLAS_HOME}/CombBLAS/install/lib)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -14,7 +17,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
 find_package(MPI REQUIRED)
 find_package(OpenMP REQUIRED)
 
-add_executable(distal
+add_executable(pastis
         src/Alphabet.cpp
         include/Alphabet.hpp
         src/Constants.cpp
@@ -60,19 +63,19 @@ add_executable(distal
         )
 
 
-target_link_libraries(distal PUBLIC CombBLAS GraphGenlib Usortlib)
+target_link_libraries(pastis PUBLIC CombBLAS GraphGenlib Usortlib)
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
-    target_link_libraries(distal PUBLIC ${MPI_LIBRARIES})
+    target_link_libraries(pastis PUBLIC ${MPI_LIBRARIES})
 endif()
 
 if(OPENMP_FOUND OR OpenMP_CXX_FOUND)
     # Set THREADED if OpenMP is found
-    target_compile_definitions(distal PUBLIC THREADED)
+    target_compile_definitions(pastis PUBLIC THREADED)
     if(TARGET OpenMP::OpenMP_CXX)
-        target_link_libraries(distal PUBLIC OpenMP::OpenMP_CXX)
+        target_link_libraries(pastis PUBLIC OpenMP::OpenMP_CXX)
     else()
-        target_compile_options(distal PUBLIC "${OpenMP_CXX_FLAGS}")
-        target_link_libraries(distal PUBLIC "${OpenMP_CXX_FLAGS}")
+        target_compile_options(pastis PUBLIC "${OpenMP_CXX_FLAGS}")
+        target_link_libraries(pastis PUBLIC "${OpenMP_CXX_FLAGS}")
     endif()
 endif()
