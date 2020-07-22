@@ -96,7 +96,7 @@ namespace dibella {
     LOGF("Reserving %lld entries in VectorMap for cardinality %lld\n", (lld) reserve, (lld) cardinality);
     kmercounts->reserve(reserve);
 #endif
-
+    
     DBG("Reserved kmercounts\n");
 
     /*! GGGG: call di bella k-mer counter here */
