@@ -97,13 +97,8 @@ namespace dibella
   if (reserve >= 4294967291ul) reserve = 4294967290ul; // 
 
   /*! GGGG: define this macros */
-#ifdef KHASH
-  LOGF("Reserving %lld entries in KHASH for cardinality %lld\n", (lld) reserve, (lld) cardinality);
-  kmercounts->reserve(reserve);
-#else
   LOGF("Reserving %lld entries in VectorMap for cardinality %lld\n", (lld) reserve, (lld) cardinality);
   kmercounts->reserve(reserve);
-#endif
   DBG("Reserved kmercounts\n");
 
   /* Initialize readNameMap for storing ReadID -> names/tags of reads */
