@@ -1,10 +1,13 @@
-// Created by Saliya Ekanayake on 10/15/19.
+// Created by Saliya Ekanayake on 10/15/19 and modified by Giulia Guidi on 07/23/20.
 
 #include <numeric>
 #include "../../include/kmer/KmerOps.hpp"
 #include "../../include/NearestKmers2.hpp"
 
-/*! GGGG: define this type somewhere */
+/*! GGGG: define this type somewhere
+ *  local_kmers is not used anymore in dibella */
+/*! GGGG: this contains the read id and pos information in some fency array
+ * Data as I need them might aready be in line 1647 */
 KmerCountsType *kmercounts = NULL;
 
 namespace dibella
@@ -12,11 +15,14 @@ namespace dibella
   PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
       std::shared_ptr<DistributedFastaData> &dfd, ushort k, ushort s,
       Alphabet &alph, const std::shared_ptr<ParallelOps> &parops,
-      const std::shared_ptr<TimePod> &tp, std::unordered_set<Kmer, Kmer>& local_kmers) {
+      const std::shared_ptr<TimePod> &tp) /*, std::unordered_set<Kmer, Kmer>& local_kmers) */
+  {
 
   char *buff;
   ushort len;
   uint64_t start_offset, end_offset_inclusive;
+
+  /* typedef std::vector<uint64_t> uvec_64; */
   uvec_64 lrow_ids, lcol_ids;
   std::vector<MatrixEntry> lvals;
 
@@ -104,8 +110,9 @@ namespace dibella
   /* GGGG: define ReadId type */
   std::unordered_map<ReadId, std::string>* readNameMap = new std::unordered_map<ReadId, std::string>();
 
-  /* First pass */
-  ReadId myReadStartIndex = 0;
+  /*! GGGG: I don't what the original one, I wnt the new one with consecutive entries; also I only need the first one; it's gonna be incremented later in ParseNPack */
+  uint64_t GlobalReadOffset = dfd->g_seq_offsets[parops->world_proc_rank];  
+  ReadId myReadStartIndex = GlobalReadOffset;
 
   /*! GGGG: let's extract the function (I'll separate later once I understood what's going on) */
   /*! GGGG: functions in KmerCounter.cpp */
@@ -194,7 +201,7 @@ namespace dibella
     double imbalance = static_cast<double>(nprocs * maxcount) / static_cast<double>(totcount);  
     
     cout << __FUNCTION__ << ": Load imbalance for final k-mer counts: " << imbalance << endl;
-    cout << __FUNCTION__ << ": CardinalityEstimate " << static_cast<double>(totkmersprocessed) / (MEGA * max((time_cardinality_est),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (time_cardinality_est) << " seconds"<< endl;
+    cout << __FUNCTION__ << ": CardinalityEstimate " << static_cast<double>(totkmersprocessed) / (MEGA * max((time_cardinality_est), 0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (time_cardinality_est) << " seconds"<< endl;
     cout << __FUNCTION__ << ": Bloom filter + hash table (key) initialization " << static_cast<double>(totkmersprocessed) / (MEGA * max((firstpasstime),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (firstpasstime) << " seconds" << endl;
     cout << __FUNCTION__ << ": Hash table (value) initialization  " << static_cast<double>(totkmersprocessed) / (MEGA * max((timesecondpass),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (timesecondpass) << " seconds" << endl;
   }
@@ -209,6 +216,30 @@ namespace dibella
 // GGGG: Build matrix A
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  /*! GGGG: Once k-mers are consolidated in a single global location, 
+   *  the other processors don’t need to know the ids of kmers they sent off to other processors. */
+
+  std::unordered_map<Kmer::MERARR, uint64_t>* kmerIdMap = new std::unordered_map<Kmer, uint64_t>();
+  for(auto itr = kmercounts->begin(); itr != kmercounts->end(); ++itr)
+  {
+
+    /*! GGGG: TODO assing ids to local kmers here, they need to be consecutive on procs */
+    /*! kmer string */
+    Kmer::MERARR key = itr->first;
+
+    /*! GGGG: run tests, read idx should be consistent now */
+    READIDS readids  = get<0>(itr->second);
+    POSITIONS values = get<1>(itr->second);
+
+    uint64_t num = itr->second.size();  
+    for(int j = 0; j < num; j++)
+    {
+      lcol_ids.push_back();
+      lrow_ids.push_back(readids[j]);
+      lvals.push_back(values[j]);
+    }
+  }
+
 #ifndef NDEBUG
   {
     std::string title = "Local matrix info:";
@@ -222,7 +253,6 @@ namespace dibella
   }
 #endif
 
-  /*! GGGG: don't think this is correct for dibella */
   assert(lrow_ids.size() == lcol_ids.size() && lcol_ids.size() == lvals.size());
 
   /*! Create distributed sparse matrix of sequence x kmers */
@@ -239,7 +269,7 @@ namespace dibella
   auto ncols = static_cast<uint64_t>(pow(alph.size, k));
   tp->times["start_kmerop:gen_A:spMatA()"] = std::chrono::system_clock::now();
   PSpMat<MatrixEntry>::MPI_DCCols A(nrows, ncols, drows, dcols, dvals, false);
-  tp->times["end_kmerop:gen_A:spMatA()"] = std::chrono::system_clock::now();
+  tp->times["end_kmerop:gen_A:spMatA()"]   = std::chrono::system_clock::now();
 
   return A;
 }

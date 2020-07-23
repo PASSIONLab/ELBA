@@ -41,27 +41,19 @@ public:
   uint64_t global_count();
   uint64_t global_start_idx();
 
-  FastaData * lfd();
+  FastaData* lfd();
 
   bool is_ready();
   bool is_diagonal();
 
+  /* GGGG: fix this */
   seqan::Peptide * row_seq(uint64_t l_row_idx);
   seqan::Peptide * col_seq(uint64_t l_col_idx);
 
-  void wait();
+  FastaData* fd = nullptr;
 
-private:
-  std::shared_ptr<TimePod> tp;
-  TraceUtils tu;
-  ushort k;
-  uint64_t overlap;
-  FastaData *fd = nullptr;
-
-  uint64_t l_seq_count;
-  uint64_t *l_seq_counts = nullptr;
-
-  bool is_diagonal_cell = false;
+  uint64_t  l_seq_count;
+  uint64_t* l_seq_counts = nullptr;
 
   /*! The original global sequence offset of the sequences stored in this
    * instance. Fo r example, this instance could hold the original sequence
@@ -81,8 +73,18 @@ private:
    * original total sequence count because some sequences may get removed
    * if their lengths are less than the k-mer length.
    */
-  uint64_t g_seq_count;
-  uint64_t *g_seq_offsets = nullptr;
+  uint64_t  g_seq_count;
+  uint64_t* g_seq_offsets = nullptr;
+
+  void wait();
+
+private:
+  std::shared_ptr<TimePod> tp;
+  TraceUtils tu;
+  ushort k;
+  uint64_t overlap;
+
+  bool is_diagonal_cell = false;
 
   std::vector<NbrData> my_nbrs;
 

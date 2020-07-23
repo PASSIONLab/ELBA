@@ -396,6 +396,7 @@ size_t ParseNPack(vector<string>& reads, vector<string>& names, VectorVectorKmer
     int pass, size_t offset)
 {
 
+  /* offset left over from orginal piece of codes */
   size_t nreads = lfd->local_count();
   size_t nskipped   = 0;
   size_t maxsending = 0, kmersthisbatch = 0;
@@ -485,18 +486,23 @@ size_t ParseNPack(vector<string>& reads, vector<string>& names, VectorVectorKmer
 // ProcessFiles                            //
 /////////////////////////////////////////////
 
-size_t ProcessFiles(const vector<filedata> & allfiles, int pass, double& cardinality, bool cacheio,
+size_t ProcessFiles(const vector<filedata>& allfiles, int pass, double& cardinality, bool cacheio,
                         const char* mydir, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap)
 {
     /*! GGGG: include bloom filter source code */
     struct bloom * bm = NULL;
     int exchangeAndCountPass = pass;
 
+    /* communication 
+    MAX_ALLTOALL_MEM communication buffer initial size tuned for dibella 
+    It's tunable if needed */
     Buffer scratch1 = initBuffer(MAX_ALLTOALL_MEM);
     Buffer scratch2 = initBuffer(MAX_ALLTOALL_MEM);
 
     Buffer scratch1 = initBuffer(MAX_ALLTOALL_MEM);
     Buffer scratch2 = initBuffer(MAX_ALLTOALL_MEM);
+
+    // TODO: check if loops need to be reintroduced
     
     /*! Initialize bloom filter */
     if(pass == 1)
@@ -640,6 +646,8 @@ size_t ProcessFiles(const vector<filedata> & allfiles, int pass, double& cardina
     {
         cout << __FUNCTION__ << " pass " << pass << ": Read/distributed/processed reads of " << (files_itr == allfiles.end() ? " ALL files " : files_itr->filename) << " in " << t02 - t01 << " seconds" << endl;
     }
+
+    /*! GGGG: kmercounts filled in DealWithInMemoryData */
 
     LOGF("Finished pass %d, Freeing bloom and other memory. kmercounts: %lld entries\n", pass, (lld) kmercounts->size());
 
