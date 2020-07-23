@@ -8,8 +8,10 @@
 //#include "ScoreMat.hpp"
 //#include "MinMaxHeap.hpp"
 
-namespace dibella{
-  struct Kmer {
+namespace dibella
+{
+  struct Kmer
+  {
   private:
     uint64_t kmer_code;
     std::string kmer_str;
@@ -124,6 +126,18 @@ namespace dibella{
 
     ~Kmer(){}
   };
-
 }
+
+/*! GGGG: MAX_NUM_READS defined in CMakeFiles.txt */
+/*! Currently records 1 position per (k-mer, read) pair */
+typedef std::array<PosInRead, MAX_NUM_READS> POSITIONS;
+typedef std::array<ReadId, MAX_NUM_READS> READIDS;
+
+typedef tuple<READIDS, POSITIONS, int>  KmerCountType;
+typedef pair<Kmer::kmer_str, KmerCountType> KmerValue;
+
+/*! GGGG: might need to modify this */
+/*! GGGG: import vector map */
+typedef VectorMap<Kmer::MERARR, KmerCountType, std::hash<Kmer::MERARR>, std::less<Kmer::MERARR>, std::equal_to<Kmer::MERARR>> KmerCountsType;
+
 #endif //DIBELLA_KMER_HPP
