@@ -1,8 +1,125 @@
 /////////////////////////////////////////////
-// ountTotalKmersAndCleanHash              //
+// countTotalKmersAndCleanHash              //
 ///////////////////////////////////////////// 
 
-/*! GGGG: strat from here */
+void countTotalKmersAndCleanHash()
+{
+    // MPI_Pcontrol(1,"HashClean");
+
+    int64_t hashsize = 0;
+    int64_t maxcount = 0;
+    int64_t globalmaxcount = 0;
+
+    /*! GGGG: where is kmercounts being filled? */
+    for(auto itr = kmercounts->begin(); itr != kmercounts->end(); ++itr)
+    {
+
+#ifdef KHASH
+      /* As not all entries are full in khash */
+      if(!itr.isfilled())
+        continue;   
+
+      int allcount = get<2>(itr.value());
+#else
+      int allcount = get<2>(itr->second);
+#endif
+      if(allcount > maxcount)
+        maxcount = allcount;
+
+      nonerrorkmers += allcount;
+      ++hashsize;
+    }
+
+    LOGF("my hashsize = %lld, nonerrorkmers = %lld, maxcount = %lld\n", (lld) hashsize, (lld) nonerrorkmers, (lld) maxcount);
+
+    int64_t totalnonerror;
+    int64_t distinctnonerror;
+
+    CHECK_MPI(MPI_Reduce(&nonerrorkmers, &totalnonerror, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
+    CHECK_MPI(MPI_Reduce(&hashsize, &distinctnonerror, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
+    CHECK_MPI(MPI_Allreduce(&maxcount, &globalmaxcount, 1, MPI_LONG_LONG, MPI_MAX, MPI_COMM_WORLD));
+
+    if(myrank == 0)
+    {
+        cout << "Counting finished " << endl;
+        cout << __FUNCTION__ << ": Kmerscount hash includes " << distinctnonerror << " distinct elements" << endl;
+        cout << __FUNCTION__ << ": Kmerscount non error kmers count is " << totalnonerror << endl;
+        cout << __FUNCTION__ << ": Global max count is " << globalmaxcount << endl;
+        cout << __FUNCTION__ << ": Large count histogram is of size " << HIGH_NUM_BINS << endl;
+        ADD_DIAG("%lld", "distinct_non_error_kmers", (lld) distinctnonerror);
+        ADD_DIAG("%lld", "total_non_error_kmers", (lld) totalnonerror);
+        ADD_DIAG("%lld", "global_max_count", (lld) globalmaxcount);
+    }
+
+    /*! GGGG: heavy hitters part removed for now */  
+    
+    if (globalmaxcount == 0)
+    {
+        SDIE("There were no kmers found, perhaps your KMER_LENGTH (%d) is longer than your reads?", KMER_LENGTH);
+    }
+
+    /* Reset */
+    nonerrorkmers = 0;
+    distinctnonerror = 0;
+
+    int64_t overonecount = 0;
+
+    auto itr = kmercounts->begin();
+    while(itr != kmercounts->end())
+    {
+#ifdef KHASH
+        if(!itr.isfilled())
+        { 
+          ++itr; 
+          continue; 
+        }
+
+        int allcount = get<2>(itr.value());
+#else
+        int allcount =  get<2>(itr->second);
+#endif
+        if(allcount < ERR_THRESHOLD || (reliable_max > 0 && allcount > reliable_max))
+        {
+            --hashsize;
+#ifdef KHASH
+            auto newitr = itr;
+            ++newitr;
+            kmercounts->erase(itr); // amortized constant 
+            // Iterators, pointers and references referring to elements removed by the function are invalidated.
+            // All other iterators, pointers and references keep their validity.
+#else
+            // C++11 style erase returns next iterator after erased entry
+            itr = kmercounts->erase(itr); // amortized constant 
+#endif
+        }
+        else
+        {
+            nonerrorkmers += allcount;
+            distinctnonerror++;
+            ++itr;
+        }
+
+        if(allcount > 1)
+        {
+            overonecount += allcount;
+        }
+    }
+
+    CHECK_MPI(MPI_Reduce(&nonerrorkmers, &totalnonerror, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD)); 
+    CHECK_MPI(MPI_Reduce(&hashsize, &distinctnonerror, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
+
+    if(myrank == 0)
+    {
+        cout << __FUNCTION__ << ": Erroneous count < " << ERR_THRESHOLD  << " and high frequency > "<< reliable_max <<" cases removed " << endl;
+        cout << __FUNCTION__ << ": Kmerscount hash includes " << distinctnonerror << " distinct elements" << endl;
+        cout << __FUNCTION__ << ": Kmerscount non error kmers count is " << totalnonerror << endl;
+        ADD_DIAG("%lld", "distinct_non_error_kmers", (lld) distinctnonerror);
+        ADD_DIAG("%lld", "total_non_error_kmers", (lld) totalnonerror);
+        ADD_DIAG("%lld", "global_max_count", (lld) globalmaxcount);
+    }
+
+    // MPI_Pcontrol(-1, "HashClean");
+}
 
 /////////////////////////////////////////////
 // ExchangePass                            //
