@@ -1,3 +1,7 @@
+#include <numeric>
+#include "../../include/kmer/KmerOps.hpp"
+#include "../../include/NearestKmers2.hpp"
+
 /////////////////////////////////////////////
 // StoreReadName                           //
 ///////////////////////////////////////////// 
@@ -14,8 +18,6 @@ inline void StoreReadName(const ReadId& readIndex, std::string name, std::unorde
 
 void countTotalKmersAndCleanHash()
 {
-    // MPI_Pcontrol(1,"HashClean");
-
     int64_t hashsize = 0;
     int64_t maxcount = 0;
     int64_t globalmaxcount = 0;
@@ -24,15 +26,7 @@ void countTotalKmersAndCleanHash()
     for(auto itr = kmercounts->begin(); itr != kmercounts->end(); ++itr)
     {
 
-#ifdef KHASH
-      /* As not all entries are full in khash */
-      if(!itr.isfilled())
-        continue;   
-
-      int allcount = get<2>(itr.value());
-#else
       int allcount = get<2>(itr->second);
-#endif
       if(allcount > maxcount)
         maxcount = allcount;
 
@@ -77,30 +71,11 @@ void countTotalKmersAndCleanHash()
     auto itr = kmercounts->begin();
     while(itr != kmercounts->end())
     {
-#ifdef KHASH
-        if(!itr.isfilled())
-        { 
-          ++itr; 
-          continue; 
-        }
-
-        int allcount = get<2>(itr.value());
-#else
         int allcount =  get<2>(itr->second);
-#endif
         if(allcount < ERR_THRESHOLD || (reliable_max > 0 && allcount > reliable_max))
         {
             --hashsize;
-#ifdef KHASH
-            auto newitr = itr;
-            ++newitr;
-            kmercounts->erase(itr); // amortized constant 
-            // Iterators, pointers and references referring to elements removed by the function are invalidated.
-            // All other iterators, pointers and references keep their validity.
-#else
-            // C++11 style erase returns next iterator after erased entry
-            itr = kmercounts->erase(itr); // amortized constant 
-#endif
+            itr = kmercounts->erase(itr);
         }
         else
         {
@@ -127,8 +102,52 @@ void countTotalKmersAndCleanHash()
         ADD_DIAG("%lld", "total_non_error_kmers", (lld) totalnonerror);
         ADD_DIAG("%lld", "global_max_count", (lld) globalmaxcount);
     }
+}
 
-    // MPI_Pcontrol(-1, "HashClean");
+/////////////////////////////////////////////
+// DealWithInMemoryData                    //
+/////////////////////////////////////////////
+
+/*! GGGG: kmercounts (global variable) filled in DealWithInMemoryData */
+/*  At this point, no kmers include anything other than uppercase 'A/C/G/T' */
+void DealWithInMemoryData(VectorKmer& mykmers, int pass, struct bloom* bm, VectorReadId myreadids, VectorPos mypositions)
+{
+	LOGF("Dealing with memory pass %d: mykmers=%lld\n", pass, (lld) mykmers.size());
+
+	if (pass == 2)
+    {
+		ASSERT(myreadids.size() == mykmers.size(), "");
+		ASSERT(mypositions.size() == mykmers.size(), "");
+    }
+    else
+    {
+        ASSERT(pass == 1, "");
+        ASSERT(myreadids.size() == 0, "");
+        ASSERT(mypositions.size() == 0, "");
+    }
+
+    if (pass == 1)
+    {
+        assert(bm);
+        size_t count = mykmers.size();
+        for (size_t i = 0; i < count; ++i)
+        {
+            /* There will be a second pass, just insert into bloom, and map, but do not count */
+            KmerInfo ki(mykmers[i]);
+            ki.checkBloomAndInsert(bm, false);
+        }
+    }
+    else
+    {
+        ASSERT(pass == 2, "");
+        size_t count = mykmers.size();
+        for(size_t i=0; i < count; ++i)
+        {
+            KmerInfo ki(mykmers[i], myreadids[i], mypositions[i]);
+			ASSERT(!bm, "");
+			ki.includeCount(true);
+        }
+    }
 }
 
 /////////////////////////////////////////////
@@ -407,6 +426,7 @@ size_t ParseNPack(vector<string>& reads, vector<string>& names, VectorVectorKmer
   /*! GGGG: where this startReadIndex come from? */
   ReadId readIndex = startReadIndex;
 
+  /*! GGGG: make sure name are consistent with ids */
   for(size_t i = offset; i < nreads; ++i)
   // for (uint64_t lseq_idx = 0; lseq_idx < lfd->local_count(); ++lseq_idx)
   {
@@ -646,8 +666,6 @@ size_t ProcessFiles(const vector<filedata>& allfiles, int pass, double& cardinal
     {
         cout << __FUNCTION__ << " pass " << pass << ": Read/distributed/processed reads of " << (files_itr == allfiles.end() ? " ALL files " : files_itr->filename) << " in " << t02 - t01 << " seconds" << endl;
     }
-
-    /*! GGGG: kmercounts filled in DealWithInMemoryData */
 
     LOGF("Finished pass %d, Freeing bloom and other memory. kmercounts: %lld entries\n", pass, (lld) kmercounts->size());
 
