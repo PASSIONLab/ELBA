@@ -106,27 +106,23 @@ namespace dibella {
     ReadId myReadStartIndex = 0;
 
     /*! GGGG: let's extract the function (I'll separate later once I understood what's going on) */
-    // int nReads = ProcessFiles(allfiles, 1, cardinality, cached_io, base_dir, myReadStartIndex, *readNameMap); // determine final hash-table entries using bloom filter
-    
-    /////////////////////////////////////////////
-    // This is gonna be a stand-alone function //
-    /////////////////////////////////////////////
+    /*! GGGG: functions in KmerCounter.cpp */
+    /*  Determine final hash-table entries using bloom filter */
+    int nreads = ProcessFiles(allfiles, 1, cardinality, cacheio, mydir, myReadStartIndex, *readNameMap);
 
-    /*! GGGG: KmerCounter.cpp */
+    firstpasstime = MPI_Wtime() - tstart;
 
-    /////////////////////////////////////////////
-    // End of function                         //
-    /////////////////////////////////////////////   
-    
+    /*! GGGG: TODO print using PASTIS way */
+    if (myrank == 0)
+    {
+      std::cout << "Reads: " << nreads << std::endl;
+      std::cout << "First input data pass, elapsed time: " << firstpasstime << std::endl;
+    }   
 
-    DBG("my nreads=%lld\n", nReads);
-
-    time_first_data_pass = MPI_Wtime() - time_temp;
-    serial_printf("%s: 1st input data pass, elapsed time: %0.3f s\n", __FUNCTION__, time_first_data_pass);
-    time_temp = MPI_Wtime();
+    tstart = MPI_Wtime();
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-// GGGG: Second pass k-mer counter
+// GGGG: Second pass k-mer counter        
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /*! GGGG: prepare for second pass over the input data, extracting k-mers with read ID's, names, etc. */
@@ -135,7 +131,7 @@ namespace dibella {
 
     for (int i = 0; i < nprocs; i++)
     {
-      sndReadCounts[i] = nReads;
+      sndReadCounts[i] = nreads;
     }
 
     uint64_t recvReadCounts[nprocs];
@@ -170,11 +166,11 @@ namespace dibella {
     DBG("My read range is [%lld - %lld]\n", (myrank==0? 1 : readRanges[myrank-1]+1), readRanges[myrank]);
 
     /* Second pass */
-    ProcessFiles(allfiles, 2, cardinality, cached_io, base_dir, myReadStartIndex, *readNameMap);
+    ProcessFiles(allfiles, 2, cardinality, cacheio, mydir, myReadStartIndex, *readNameMap);
 
-    time_second_data_pass = MPI_Wtime() - time_temp;
+    time_second_data_pass = MPI_Wtime() - tstart;
     serial_printf("%s: 2nd input data pass, elapsed time: %0.3f s\n", __FUNCTION__, time_second_data_pass);
-    time_temp = MPI_Wtime();
+    tstart = MPI_Wtime();
 
     int64_t sendbuf = kmercounts->size(); 
     int64_t recvbuf, totcount, maxcount;
@@ -187,7 +183,7 @@ namespace dibella {
 
     CHECK_MPI(MPI_Reduce(&kmersprocessed, &totkmersprocessed, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
 
-    time_computing_loadimbalance = MPI_Wtime() - time_temp;
+    time_computing_loadimbalance = MPI_Wtime() - tstart;
 
     if(myrank  == 0)
     {
@@ -197,7 +193,7 @@ namespace dibella {
       
       cout << __FUNCTION__ << ": Load imbalance for final k-mer counts: " << imbalance << endl;
       cout << __FUNCTION__ << ": CardinalityEstimate " << static_cast<double>(totkmersprocessed) / (MEGA * max((time_cardinality_est),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (time_cardinality_est) << " seconds"<< endl;
-      cout << __FUNCTION__ << ": Bloom filter + hash table (key) initialization " << static_cast<double>(totkmersprocessed) / (MEGA * max((time_first_data_pass),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (time_first_data_pass) << " seconds" << endl;
+      cout << __FUNCTION__ << ": Bloom filter + hash table (key) initialization " << static_cast<double>(totkmersprocessed) / (MEGA * max((firstpasstime),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (firstpasstime) << " seconds" << endl;
       cout << __FUNCTION__ << ": Hash table (value) initialization  " << static_cast<double>(totkmersprocessed) / (MEGA * max((time_second_data_pass),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (time_second_data_pass) << " seconds" << endl;
     }
 
@@ -205,7 +201,7 @@ namespace dibella {
     
     CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
     
-    time_temp = MPI_Wtime();
+    tstart = MPI_Wtime();
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GGGG: Build matrix A
@@ -232,15 +228,15 @@ namespace dibella {
     FullyDistVec<uint64_t, uint64_t> dcols(lcol_ids, parops->grid);
     FullyDistVec<uint64_t, MatrixEntry> dvals(lvals, parops->grid);
 
-    uint64_t n_rows = seq_count;
+    uint64_t nrows = seq_count;
     /*! Columns of the matrix are direct maps to kmers identified
      * by their |alphabet| base number. E.g. for proteins this is
      * base 20, so the direct map has to be 20^k in size. */
 
     /*! GGGG: this is the reliable k-mer space */
-    auto n_cols = static_cast<uint64_t>(pow(alph.size, k));
+    auto ncols = static_cast<uint64_t>(pow(alph.size, k));
     tp->times["start_kmerop:gen_A:spMatA()"] = std::chrono::system_clock::now();
-    PSpMat<MatrixEntry>::MPI_DCCols A(n_rows, n_cols, drows, dcols, dvals, false);
+    PSpMat<MatrixEntry>::MPI_DCCols A(nrows, ncols, drows, dcols, dvals, false);
     tp->times["end_kmerop:gen_A:spMatA()"] = std::chrono::system_clock::now();
 
     return A;
@@ -284,10 +280,10 @@ namespace dibella {
     FullyDistVec<uint64_t, uint64_t> dcols(lcol_ids, parops->grid);
     FullyDistVec<uint64_t, MatrixEntry> dvals(lvals, parops->grid);
 
-    auto n_cols = static_cast<uint64_t>(pow(alph.size, k));
-    auto n_rows = n_cols;
+    auto ncols = static_cast<uint64_t>(pow(alph.size, k));
+    auto nrows = ncols;
     tp->times["start_kmerop:gen_S:spMatS()"] = std::chrono::system_clock::now();
-    PSpMat<MatrixEntry>::MPI_DCCols S(n_rows, n_cols, drows, dcols, dvals, true);
+    PSpMat<MatrixEntry>::MPI_DCCols S(nrows, ncols, drows, dcols, dvals, true);
     tp->times["end_kmerop:gen_S:spMatS()"] = std::chrono::system_clock::now();
 
     return S;
