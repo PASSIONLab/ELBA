@@ -135,8 +135,8 @@ void countTotalKmersAndCleanHash()
 // ExchangePass                            //
 /////////////////////////////////////////////
 
-double Exchange(vector< vector< Kmer > >& outgoing, vector< vector< ReadId > >& readids, vector< vector< PosInRead > >& positions, vector< vector< array< char, 2 > > >& extreads,
-              vector< Kmer >& mykmers, vector< ReadId >& myreadids, vector< PosInRead >& mypositions, int pass, Buffer scratch1, Buffer scratch2)
+double Exchange(VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorVectorPos& positions, VectorVectorChar& extreads,
+              VectorKmer& mykmers, VectorReadId& myreadids, VectorPos& mypositions, int pass, Buffer scratch1, Buffer scratch2)
 {
     double totexch = MPI_Wtime();
     double perftime = 0.0;
@@ -168,9 +168,9 @@ double Exchange(vector< vector< Kmer > >& outgoing, vector< vector< ReadId > >& 
         }
     }
 
-    int * sdispls = new int[nprocs];
-    int * rdispls = new int[nprocs];
-    int * recvcnt = new int[nprocs];
+    int* sdispls = new int[nprocs];
+    int* rdispls = new int[nprocs];
+    int* recvcnt = new int[nprocs];
 
     /* Share the request counts */
     CHECK_MPI(MPI_Alltoall(sendcnt, 1, MPI_INT, recvcnt, 1, MPI_INT, MPI_COMM_WORLD));  
@@ -310,7 +310,7 @@ double Exchange(vector< vector< Kmer > >& outgoing, vector< vector< ReadId > >& 
 /////////////////////////////////////////////
 
 /* The bloom filter pass; extensions are ignored */
-inline size_t FinishPackPass1(vector< vector<Kmer> > & outgoing, Kmer & kmerreal)
+inline size_t FinishPackPass1(VectorVectorKmer& outgoing, Kmer& kmerreal)
 {
     /* whichever one is the representative */
     uint64_t myhash = kmerreal.hash(); 
@@ -328,8 +328,8 @@ inline size_t FinishPackPass1(vector< vector<Kmer> > & outgoing, Kmer & kmerreal
 /////////////////////////////////////////////
 
 /* The hash table pass; extensions are important */
-inline size_t FinishPackPass2(vector< vector<Kmer> >& outgoing, vector< vector< ReadId > >& readids, vector< vector< PosInRead > >& positions, 
-    vector< vector< array< char, 2 > > >& extreads, Kmer& kmerreal, ReadId readId, PosInRead pos)
+inline size_t FinishPackPass2(VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorVectorPos& positions, 
+    VectorVectorChar& extreads, Kmer& kmerreal, ReadId readId, PosInRead pos)
 {
     assert(kmerreal == kmerreal.rep());
 
@@ -354,8 +354,8 @@ inline size_t FinishPackPass2(vector< vector<Kmer> >& outgoing, vector< vector< 
 // PackEndsKmer function                   //
 /////////////////////////////////////////////
 
-size_t PackEndsKmer(string& seq, int j, Kmer &kmerreal, ReadId readid, PosInRead pos, vector< vector<Kmer> >& outgoing,
-        vector< vector<ReadId> >& readids, vector< vector<PosInRead> >& positions, vector< vector< array< char, 2 > > >& extreads, 
+size_t PackEndsKmer(string& seq, int j, Kmer& kmerreal, ReadId readid, PosInRead pos, VectorVectorKmer& outgoing,
+        VectorVectorReadId& readids, VectorVectorPos& positions, VectorVectorChar& extreads, 
         int pass, int lastCountedBase, int kmer_length)
 {
     bool isCounted = lastCountedBase >= j + kmer_length;
@@ -391,9 +391,9 @@ size_t PackEndsKmer(string& seq, int j, Kmer &kmerreal, ReadId readid, PosInRead
 
 /* Kmer is of length k */
 /* HyperLogLog counting, bloom filtering, and std::maps use Kmer as their key */
-size_t ParseNPack(vector<string>& reads, vector<string>& names, vector< vector<Kmer> >& outgoing, vector< vector<ReadId> >& readids,
-    vector< vector<PosInRead> >& positions, ReadId& startReadIndex, vector< vector< array< char, 2 > > >& extreads,
-    std::unordered_map<ReadId, std::string>& readNameMap, int pass, size_t offset)
+size_t ParseNPack(vector<string>& reads, vector<string>& names, VectorVectorKmer& outgoing, VectorVectorReadId& readids,
+    VectorVectorPos& positions, ReadId& startReadIndex, VectorVectorChar& extreads, std::unordered_map<ReadId, std::string>& readNameMap, 
+    int pass, size_t offset)
 {
 
   size_t nreads = lfd->local_count();
@@ -433,7 +433,7 @@ size_t ParseNPack(vector<string>& reads, vector<string>& names, vector< vector<K
     kmersthisbatch += nkmers;
     
     /* Calculate kmers */
-    vector< Kmer > kmers = Kmer::getKmers(buff.c_str());
+    VectorKmer kmers = Kmer::getKmers(buff.c_str());
     ASSERT(kmers.size() == nkmers, "");
     size_t Nfound = buff.c_str().find('N');
 
@@ -485,8 +485,8 @@ size_t ParseNPack(vector<string>& reads, vector<string>& names, vector< vector<K
 // ProcessFiles                            //
 /////////////////////////////////////////////
 
-size_t ProcessFiles(const vector<filedata> & allfiles, int pass, double& cardinality, bool cached_io,
-                        const char* base_dir, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap)
+size_t ProcessFiles(const vector<filedata> & allfiles, int pass, double& cardinality, bool cacheio,
+                        const char* mydir, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap)
 {
     /*! GGGG: include bloom filter source code */
     struct bloom * bm = NULL;
@@ -517,18 +517,18 @@ size_t ProcessFiles(const vector<filedata> & allfiles, int pass, double& cardina
         LOGF("Initialized bloom filter with %lld bits and %d hash functions\n", (lld) bm->bits, (int) bm->hashes);
     }
 
-    vector< vector< Kmer > >  outgoing(nprocs);
-    vector< vector< ReadId > > readids(nprocs);
-    vector< vector< array< char, 2 > > > extreads(nprocs);
-    vector< vector< PosInRead> > positions(nprocs);
+    VectorVectorKmer  outgoing(nprocs);
+    VectorVectorReadId readids(nprocs);
+    VectorVectorChar  extreads(nprocs);
+    VectorVectorPos  positions(nprocs);
         
-    vector< Kmer > mykmers;
-    vector< ReadId > myreadids;
-    vector< array< char, 2 > > myreads;
-    vector< PosInRead > mypositions;
+    VectorReadId myreadids;
+    VectorKmer mykmers;
+    VectorChar myreads;
+    VectorPos  mypositions;
 
-    vector< string > reads;
-    vector< string > names;
+    vector<string> reads;
+    vector<string> names;
 
     size_t offset = 0;
     
