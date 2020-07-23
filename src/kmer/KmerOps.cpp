@@ -96,61 +96,119 @@ namespace dibella {
     LOGF("Reserving %lld entries in VectorMap for cardinality %lld\n", (lld) reserve, (lld) cardinality);
     kmercounts->reserve(reserve);
 #endif
-    
     DBG("Reserved kmercounts\n");
 
-    /*! GGGG: call di bella k-mer counter here */
-    // count_kmers(buff, len, start_offset, end_offset_inclusive, k, s, alph, lrow_ids, lcol_ids, lvals, parops, local_kmers);
+    /* Initialize readNameMap for storing ReadID -> names/tags of reads */
+    /* GGGG: define ReadId type */
+    std::unordered_map<ReadId, std::string>* readNameMap = new std::unordered_map<ReadId, std::string>();
 
-    /*! GGGG: k-mer counting happens in this function; we just want lrow_ids, lcol_ids, and lvals */
-    // auto num_kmers = add_kmers(buff, len, start_offset, end_offset_inclusive, k, s, alph, lcol_ids, lvals, parops, local_kmers);
-    /*! GGGG: these are read ids and are fine the way they are (just need to double check they are consistent) */
-    // lrow_ids.insert(lrow_ids.end(), num_kmers, lseq_idx + offset);
+    /* First pass */
+    ReadId myReadStartIndex = 0;
 
-    tp->times["end_kmerop:gen_A:loop_add_kmers()"] = std::chrono::system_clock::now();
+    /*! GGGG: let's extract the function (I'll separate later once I understood what's going on) */
+    // int nReads = ProcessFiles(allfiles, 1, cardinality, cached_io, base_dir, myReadStartIndex, *readNameMap); // determine final hash-table entries using bloom filter
+    
+    /////////////////////////////////////////////
+    // This is gonna be a stand-alone function //
+    /////////////////////////////////////////////
 
-    /*! GGGG: don't need this */
+    /*! GGGG: KmerCounter.cpp */
 
-    /*! Remove duplicate kmers and redistribute load */
-    // int kmer_universe_size = pow(alph.size, k);
-    // std::shared_ptr<bool[]> kmer_universe(new bool[kmer_universe_size]);
-    // for (const auto& kmr : local_kmers){
-    //   kmer_universe[kmr.code()] = true;
-    // }
+    /////////////////////////////////////////////
+    // End of function                         //
+    /////////////////////////////////////////////   
+    
 
-    // MPI_Allreduce(MPI_IN_PLACE, kmer_universe.get(), kmer_universe_size, MPI_CXX_BOOL, MPI_LOR, MPI_COMM_WORLD);
-    // int unique_kmer_count = 0;
-    // unique_kmer_count = std::accumulate(kmer_universe.get(), kmer_universe.get()+kmer_universe_size, 0);
+    DBG("my nreads=%lld\n", nReads);
 
-    // int q = unique_kmer_count / parops->world_procs_count;
-    // int r = unique_kmer_count - (q*parops->world_procs_count);
-    // int skip_count = parops->world_proc_rank < r
-    //     ? (q+1)*parops->world_proc_rank
-    //     : q*parops->world_proc_rank+r;
-    // int my_count = parops->world_proc_rank < r ? q+1 : q;
-    // int my_end = my_count + skip_count;
-
-    // local_kmers.clear();
-    // int count = 0;
-    // for (size_t i = 0; i < kmer_universe_size; ++i){
-    //   if (kmer_universe[i]) {
-    //     ++count;
-    //   } else {
-    //     continue;
-    //   }
-    //   if (count <= skip_count){
-    //     continue;
-    //   }
-
-    //   if (count <= my_end){
-    //     local_kmers.emplace(i, k, alph);
-    //   } else {
-    //     break;
-    //   }
-    // }
+    time_first_data_pass = MPI_Wtime() - time_temp;
+    serial_printf("%s: 1st input data pass, elapsed time: %0.3f s\n", __FUNCTION__, time_first_data_pass);
+    time_temp = MPI_Wtime();
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GGGG: Second pass k-mer counter
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /*! GGGG: prepare for second pass over the input data, extracting k-mers with read ID's, names, etc. */
+    /* Exchange number of reads-per-processor to calculate read indices */
+    uint64_t sndReadCounts[nprocs];
+
+    for (int i = 0; i < nprocs; i++)
+    {
+      sndReadCounts[i] = nReads;
+    }
+
+    uint64_t recvReadCounts[nprocs];
+
+    CHECK_MPI(MPI_Alltoall(sndReadCounts, 1, MPI_UINT64_T, recvReadCounts, 1, MPI_UINT64_T, MPI_COMM_WORLD));
+    
+    myReadStartIndex = 1;
+    for (int i = 0; i < myrank; i++)
+    {
+      myReadStartIndex += recvReadCounts[i];
+    }
+
+#ifdef DEBUG
+      if(myrank == nprocs - 1)
+        for (int i = 0; i < nprocs; i++)
+          LOGF("recvReadCounts[%lld] = %lld\n", recvReadCounts[i]);
+#endif
+    DBG("my startReadIndex = %lld\n", myReadStartIndex);
+
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+
+    /* Initialize end read ranges */
+    ReadId readRanges[nprocs];
+    ReadId last = 0;
+
+    for (int i = 0; i < nprocs; i++)
+    {
+      readRanges[i] = last + recvReadCounts[i];
+      last += recvReadCounts[i];
+    }
+
+    DBG("My read range is [%lld - %lld]\n", (myrank==0? 1 : readRanges[myrank-1]+1), readRanges[myrank]);
+
+    /* Second pass */
+    ProcessFiles(allfiles, 2, cardinality, cached_io, base_dir, myReadStartIndex, *readNameMap);
+
+    time_second_data_pass = MPI_Wtime() - time_temp;
+    serial_printf("%s: 2nd input data pass, elapsed time: %0.3f s\n", __FUNCTION__, time_second_data_pass);
+    time_temp = MPI_Wtime();
+
+    int64_t sendbuf = kmercounts->size(); 
+    int64_t recvbuf, totcount, maxcount;
+
+    CHECK_MPI(MPI_Exscan(&sendbuf, &recvbuf, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD));
+    CHECK_MPI(MPI_Allreduce(&sendbuf, &totcount, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD));
+    CHECK_MPI(MPI_Allreduce(&sendbuf, &maxcount, 1, MPI_LONG_LONG, MPI_MAX, MPI_COMM_WORLD));
+
+    int64_t totkmersprocessed;
+
+    CHECK_MPI(MPI_Reduce(&kmersprocessed, &totkmersprocessed, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
+
+    time_computing_loadimbalance = MPI_Wtime() - time_temp;
+
+    if(myrank  == 0)
+    {
+      cout << __FUNCTION__ << ": Total number of stored k-mers: " << totcount << endl;
+
+      double imbalance = static_cast<double>(nprocs * maxcount) / static_cast<double>(totcount);  
+      
+      cout << __FUNCTION__ << ": Load imbalance for final k-mer counts: " << imbalance << endl;
+      cout << __FUNCTION__ << ": CardinalityEstimate " << static_cast<double>(totkmersprocessed) / (MEGA * max((time_cardinality_est),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (time_cardinality_est) << " seconds"<< endl;
+      cout << __FUNCTION__ << ": Bloom filter + hash table (key) initialization " << static_cast<double>(totkmersprocessed) / (MEGA * max((time_first_data_pass),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (time_first_data_pass) << " seconds" << endl;
+      cout << __FUNCTION__ << ": Hash table (value) initialization  " << static_cast<double>(totkmersprocessed) / (MEGA * max((time_second_data_pass),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (time_second_data_pass) << " seconds" << endl;
+    }
+
+    serial_printf("%s: Total time computing load imbalance: %0.3f s\n", __FUNCTION__, time_computing_loadimbalance);
+    
+    CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+    
+    time_temp = MPI_Wtime();
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+// GGGG: Build matrix A
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifndef NDEBUG
