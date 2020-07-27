@@ -408,96 +408,92 @@ size_t PackEndsKmer(string& seq, int j, Kmer& kmerreal, ReadId readid, PosInRead
 // ParseNPack                              //
 /////////////////////////////////////////////
 
+// offset = ParseNPack(lfd, nreads /* reads, */, names, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset);
 /* Kmer is of length k */
 /* HyperLogLog counting, bloom filtering, and std::maps use Kmer as their key */
-size_t ParseNPack(vector<string>& reads, vector<string>& names, VectorVectorKmer& outgoing, VectorVectorReadId& readids,
+size_t ParseNPack(FastaData& lfd, size_t& nreads /*, vector<string>& reads, */, vector<string>& names, VectorVectorKmer& outgoing, VectorVectorReadId& readids,
     VectorVectorPos& positions, ReadId& startReadIndex, VectorVectorChar& extreads, std::unordered_map<ReadId, std::string>& readNameMap, 
     int pass, size_t offset)
 {
 
-  /* offset left over from orginal piece of codes */
-  size_t nreads = lfd->local_count();
-  size_t nskipped   = 0;
-  size_t maxsending = 0, kmersthisbatch = 0;
-  size_t bytesperkmer  = Kmer::numBytes();
-  size_t bytesperentry = bytesperkmer + 4;
-  size_t memthreshold = (MAX_ALLTOALL_MEM/nprocs) * 2;
+    int nprocs, len, start_offset, end_offset_inclusive;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
-  /*! GGGG: where this startReadIndex come from? */
-  ReadId readIndex = startReadIndex;
+    /* offset left over from orginal piece of codes */
+    size_t nskipped = 0;
+    size_t maxsending = 0, kmersthisbatch = 0;
+    size_t bytesperkmer  = Kmer::numBytes();
+    size_t bytesperentry = bytesperkmer + 4;
+    size_t memthreshold  = (MAX_ALLTOALL_MEM/nprocs) * 2;
 
-  /*! GGGG: make sure name are consistent with ids */
-  for(size_t i = offset; i < nreads; ++i)
-  // for (uint64_t lreadidx = 0; lreadidx < lfd->local_count(); ++lreadidx)
-  {
-    /*! GGGG: loading sequence id tag in buff */
-    buff = lfd->get_sequence_id(lreadidx, len, start_offset, end_offset_inclusive);
-    names.push_back(buff.c_str());
+    /*! GGGG: where this startReadIndex come from? */
+    ReadId readIndex = startReadIndex;
 
-    /*! GGGG: loading sequence string in buff */
-    buff = lfd->get_sequence(lreadidx, len, start_offset, end_offset_inclusive);
-    reads.push_back(buff.c_str());
-
-    /*! GGGG: calculate the max read len for each of the input files and write to marker files */)
-    // writeMaxReadLengths(maxReadLengths, allfiles);
-
-    /*! GGGG: extract kmers for this sequence */
-    /* Skip this sequence if the length is too short */
-    if (len <= KMER_LENGTH)
+    /*! GGGG: make sure name are consistent with ids */
+    for (uint64_t lreadidx = offset; lreadidx < nreads; ++lreadidx)
     {
-        nskipped++;
-        continue;
-    }
+        buff = lfd->get_sequence_id(lreadidx, len, start_offset, end_offset_inclusive);
+        names.push_back(buff.c_str());
 
-    int nkmers = (len - KMER_LENGTH + 1);
-    kmersprocessed += nkmers;
-    kmersthisbatch += nkmers;
-    
-    /* Calculate kmers */
-    VectorKmer kmers = Kmer::getKmers(buff.c_str());
-    ASSERT(kmers.size() == nkmers, "");
-    size_t Nfound = buff.c_str().find('N');
+        buff = lfd->get_sequence(lreadidx, len, start_offset, end_offset_inclusive);
+        reads.push_back(buff.c_str());
 
-    size_t j;
-    for(j = 0; j < nkmers; ++j)
-    {
-        while (Nfound != string::npos && Nfound < j) 
-            Nfound = buff.c_str().find('N', Nfound + 1);
-
-        /* If there is an 'N', toss it */
-        if (Nfound != string::npos && Nfound < j + KMER_LENGTH)
-            continue;  
-
-        ASSERT(kmers[j] == Kmer(buff.c_str().c_str() + j), "");
-
-        /*! GGGG: where all these variables come from? */
-        size_t sending = PackEndsKmer(buff.c_str(), j, kmers[j], readIndex, j, outgoing,
-                readids, positions, extreads, pass, len, KMER_LENGTH);
-
-        if (sending > maxsending)
-            maxsending = sending;
-    }
-
-    /*! GGGG: where is read id determined? */
-    if (pass == 2)
-    {   
-        StoreReadName(readIndex, names[i], readNameMap);
-    }
-
-    /* Always start with next read index whether exiting or continuing the loop */
-    readIndex++; 
-    
-    if (maxsending * bytesperentry >= memoryThreshold || (kmersthisbatch + len) * bytesperentry >= MAX_ALLTOALL_MEM)
-    { 
-        /* Start with next read */
-        nreads = i + 1; 
-        if (pass == 2)
-        { 
-            startReadIndex = readIndex;
+        /*! GGGG: extract kmers for this sequence but skip this sequence if the length is too short */
+        if (len <= KMER_LENGTH)
+        {
+            nskipped++;
+            continue;
         }
-        break;
-    }            
-  } /*! GGGG: end of for all the local sequences */
+
+        int nkmers = (len - KMER_LENGTH + 1);
+        kmersprocessed += nkmers;
+        kmersthisbatch += nkmers;
+        
+        /* Calculate kmers */
+        VectorKmer kmers = Kmer::getKmers(buff.c_str());
+        ASSERT(kmers.size() == nkmers, "");
+        size_t Nfound = buff.c_str().find('N');
+
+        size_t j;
+        for(j = 0; j < nkmers; ++j)
+        {
+            while (Nfound != string::npos && Nfound < j) 
+                Nfound = buff.c_str().find('N', Nfound + 1);
+
+            /* If there is an 'N', toss it */
+            if (Nfound != string::npos && Nfound < j + KMER_LENGTH)
+                continue;  
+
+            ASSERT(kmers[j] == Kmer(buff.c_str().c_str() + j), "");
+
+            /*! GGGG: where all these variables come from? */
+            size_t sending = PackEndsKmer(buff.c_str(), j, kmers[j], readIndex, j, outgoing,
+                    readids, positions, extreads, pass, len, KMER_LENGTH);
+
+            if (sending > maxsending)
+                maxsending = sending;
+        }
+
+        /*! GGGG: where is read id determined? */
+        if (pass == 2)
+        {   
+            StoreReadName(readIndex, names[i], readNameMap);
+        }
+
+        /* Always start with next read index whether exiting or continuing the loop */
+        readIndex++; 
+        
+        if (maxsending * bytesperentry >= memoryThreshold || (kmersthisbatch + len) * bytesperentry >= MAX_ALLTOALL_MEM)
+        { 
+            /* Start with next read */
+            nreads = i + 1; 
+            if (pass == 2)
+            { 
+                startReadIndex = readIndex;
+            }
+            break;
+        }            
+    } /*! GGGG: end of for all the local sequences */
 
   return nreads;
 }
@@ -506,7 +502,7 @@ size_t ParseNPack(vector<string>& reads, vector<string>& names, VectorVectorKmer
 // ProcessFiles                            //
 /////////////////////////////////////////////
 
-size_t ProcessFiles(FastaData& ldl, int pass, double& cardinality, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap)
+size_t ProcessFiles(FastaData& lfd, int pass, double& cardinality, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap)
 {
     /*! GGGG: include bloom filter source code */
     struct bloom * bm = NULL;
@@ -557,7 +553,7 @@ size_t ProcessFiles(FastaData& ldl, int pass, double& cardinality, ReadId& readI
     double totproctime = 0, totpack = 0, totexch = 0;
     int moreToExchange = 0;
     size_t offset = 0;
-    size_t nreads = ldl->local_count();
+    size_t nreads = lfd->local_count();
 
     /* Extract kmers and counts from read sequences (seqs) */
     do {
@@ -565,7 +561,7 @@ size_t ProcessFiles(FastaData& ldl, int pass, double& cardinality, ReadId& readI
         double texchstart = MPI_Wtime();
 
         /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
-        offset = ParseNPack(ldl, nreads /* reads, */, names, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset);
+        offset = ParseNPack(lfd, nreads /* reads, */, names, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset);
 
         double tpack = MPI_Wtime() - texchstart;
         totpack += tpack;

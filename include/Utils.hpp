@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 #include "CombBLAS/CombBLAS.h"
+#include "Defines.hpp"
+#include "kmer/Kmer.hpp"
 
 using namespace std;
 
@@ -19,13 +21,13 @@ public:
   typedef combblas::SpParMat <uint64_t, NT, DCCols> MPI_DCCols;
 };
 
-typedef vector<vector<array<char, 2>>> VectorVectorChar;
-typedef vector<vector<Kmer>>   VectorVectorKmer;
+typedef vector<vector<array<char, 2>>>  VectorVectorChar;
+typedef vector<vector<dibella::Kmer>>   VectorVectorKmer;
 typedef vector<vector<ReadId>> VectorVectorReadId;
 typedef vector<vector<PosInRead>> VectorVectorPos;
+typedef vector<dibella::Kmer>  VectorKmer;
+typedef vector<array<char, 2>> VectorChar;
 typedef vector<PosInRead> VectorPos;
 typedef vector<ReadId> VectorReadId;
-typedef vector<Kmer> VectorKmer;
-typedef vector<array<char, 2>> VectorChar;
 
 #endif //LBL_DAL_SPARSEMAT_HPP
