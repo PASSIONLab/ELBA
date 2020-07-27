@@ -10,6 +10,7 @@
 #include "../Alphabet.hpp"
 #include "../ScoreMat.hpp"
 #include "../Utils.hpp"
+#include "../Defines.hpp"
 #include "../DistributedFastaData.hpp"
 #include "Kmer.hpp"
 
