@@ -10,6 +10,11 @@
 #include <iostream>
 #include <string>
 
+#ifndef MAX_ALLTOALL_MEM
+#define MAX_ALLTOALL_MEM (128*1024*1024)  /* 128 MB */
+//#define MAX_ALLTOALL_MEM (12*1024*1024) /*  12 MB */
+#endif
+
 #ifdef DEBUG
 #   define ASSERT(condition, message) \
     do { \

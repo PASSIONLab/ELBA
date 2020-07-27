@@ -59,7 +59,7 @@ void countTotalKmersAndCleanHash()
 
     if (globalmaxcount == 0)
     {
-        SDIE("There were no kmers found, perhaps your KMER_LENGTH (%d) is longer than your reads?", KMER_LENGTH);
+        SDIE("There were no kmers found, perhaps your KLEN (%d) is longer than your reads?", KLEN);
     }
 
     /* Reset */
@@ -331,6 +331,9 @@ double Exchange(VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorV
 /* The bloom filter pass; extensions are ignored */
 inline size_t FinishPackPass1(VectorVectorKmer& outgoing, Kmer& kmerreal)
 {
+    int nprocs;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    
     /* whichever one is the representative */
     uint64_t myhash = kmerreal.hash(); 
 
@@ -351,6 +354,9 @@ inline size_t FinishPackPass2(VectorVectorKmer& outgoing, VectorVectorReadId& re
     VectorVectorChar& extreads, Kmer& kmerreal, ReadId readId, PosInRead pos)
 {
     assert(kmerreal == kmerreal.rep());
+
+    int nprocs;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
     /* whichever one is the representative */
     uint64_t myhash = kmerreal.hash();
@@ -375,13 +381,13 @@ inline size_t FinishPackPass2(VectorVectorKmer& outgoing, VectorVectorReadId& re
 
 size_t PackEndsKmer(string& seq, int j, Kmer& kmerreal, ReadId readid, PosInRead pos, VectorVectorKmer& outgoing,
         VectorVectorReadId& readids, VectorVectorPos& positions, VectorVectorChar& extreads, 
-        int pass, int lastCountedBase, int kmer_length)
+        int pass, int lastCountedBase, int KLEN)
 {
-    bool isCounted = lastCountedBase >= j + kmer_length;
+    bool isCounted = lastCountedBase >= j + KLEN;
     size_t procSendCount;
 
-    assert(seq.size() >= j + kmer_length);
-    assert(seq.substr(j, kmer_length).find('N') == std::string::npos);
+    assert(seq.size() >= j + KLEN);
+    assert(seq.substr(j, KLEN).find('N') == std::string::npos);
     assert(kmerreal == Kmer(seq.c_str() + j));
 
     if (pass == 1)
@@ -408,20 +414,17 @@ size_t PackEndsKmer(string& seq, int j, Kmer& kmerreal, ReadId readid, PosInRead
 // ParseNPack                              //
 /////////////////////////////////////////////
 
-// offset = ParseNPack(lfd, nreads /* reads, */, names, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset);
 /* Kmer is of length k */
 /* HyperLogLog counting, bloom filtering, and std::maps use Kmer as their key */
-size_t ParseNPack(FastaData& lfd, size_t& nreads /*, vector<string>& reads, */, vector<string>& names, VectorVectorKmer& outgoing, VectorVectorReadId& readids,
-    VectorVectorPos& positions, ReadId& startReadIndex, VectorVectorChar& extreads, std::unordered_map<ReadId, std::string>& readNameMap, 
-    int pass, size_t offset)
+size_t ParseNPack(FastaData& lfd, VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorVectorPos& positions, 
+    ReadId& startReadIndex, VectorVectorChar& extreads, std::unordered_map<ReadId, std::string>& readNameMap, int pass, size_t offset)
 {
-
     int nprocs, len, start_offset, end_offset_inclusive;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
     /* offset left over from orginal piece of codes */
-    size_t nskipped = 0;
-    size_t maxsending = 0, kmersthisbatch = 0;
+    size_t nreads = lfd->local_count();
+    size_t maxsending = 0, kmersthisbatch = 0, nskipped = 0;
     size_t bytesperkmer  = Kmer::numBytes();
     size_t bytesperentry = bytesperkmer + 4;
     size_t memthreshold  = (MAX_ALLTOALL_MEM/nprocs) * 2;
@@ -439,13 +442,13 @@ size_t ParseNPack(FastaData& lfd, size_t& nreads /*, vector<string>& reads, */, 
         reads.push_back(buff.c_str());
 
         /*! GGGG: extract kmers for this sequence but skip this sequence if the length is too short */
-        if (len <= KMER_LENGTH)
+        if (len <= KLEN)
         {
             nskipped++;
             continue;
         }
 
-        int nkmers = (len - KMER_LENGTH + 1);
+        int nkmers = (len - KLEN + 1);
         kmersprocessed += nkmers;
         kmersthisbatch += nkmers;
         
@@ -461,14 +464,14 @@ size_t ParseNPack(FastaData& lfd, size_t& nreads /*, vector<string>& reads, */, 
                 Nfound = buff.c_str().find('N', Nfound + 1);
 
             /* If there is an 'N', toss it */
-            if (Nfound != string::npos && Nfound < j + KMER_LENGTH)
+            if (Nfound != string::npos && Nfound < j + KLEN)
                 continue;  
 
             ASSERT(kmers[j] == Kmer(buff.c_str().c_str() + j), "");
 
             /*! GGGG: where all these variables come from? */
             size_t sending = PackEndsKmer(buff.c_str(), j, kmers[j], readIndex, j, outgoing,
-                    readids, positions, extreads, pass, len, KMER_LENGTH);
+                    readids, positions, extreads, pass, len, KLEN);
 
             if (sending > maxsending)
                 maxsending = sending;
@@ -483,7 +486,7 @@ size_t ParseNPack(FastaData& lfd, size_t& nreads /*, vector<string>& reads, */, 
         /* Always start with next read index whether exiting or continuing the loop */
         readIndex++; 
         
-        if (maxsending * bytesperentry >= memoryThreshold || (kmersthisbatch + len) * bytesperentry >= MAX_ALLTOALL_MEM)
+        if (maxsending * bytesperentry >= memthreshold || (kmersthisbatch + len) * bytesperentry >= MAX_ALLTOALL_MEM)
         { 
             /* Start with next read */
             nreads = i + 1; 
@@ -546,9 +549,6 @@ size_t ProcessFiles(FastaData& lfd, int pass, double& cardinality, ReadId& readI
     VectorPos  mypositions;
     VectorReadId myreadids;
 
-    // vector<string> reads;
-    vector<string> names;
-
     double t01 = MPI_Wtime();
     double totproctime = 0, totpack = 0, totexch = 0;
     int moreToExchange = 0;
@@ -557,22 +557,16 @@ size_t ProcessFiles(FastaData& lfd, int pass, double& cardinality, ReadId& readI
 
     /* Extract kmers and counts from read sequences (seqs) */
     do {
-
         double texchstart = MPI_Wtime();
 
         /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
-        offset = ParseNPack(lfd, nreads /* reads, */, names, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset);
+        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset);
 
         double tpack = MPI_Wtime() - texchstart;
         totpack += tpack;
 
         if (offset == nreads)
-        {
-            /* no need to do the swap trick as we will reuse these buffers in the next iteration */
-            /*! GGGG: I might need the swap trick */ 
-            // reads.clear();
             offset = 0;
-        }
 
         /* Outgoing arrays will be all empty, shouldn't crush */
         double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
@@ -708,7 +702,7 @@ MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, uint64_t& found, b
     }
 
     /* Otherwise size_t being unsigned will underflow */
-    if(found >= KMER_LENGTH) 
+    if(found >= KLEN) 
     {
         if (extraTimers) t.parsingTime += getDuration(t);
 
@@ -716,15 +710,15 @@ MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, uint64_t& found, b
         std::vector<Kmer> kmers = Kmer::getKmers(myread); 
         if (extraTimers) t.getKmerTime += getDuration(t);
 
-        ASSERT(kmers.size() >= found-KMER_LENGTH+1, "");
+        ASSERT(kmers.size() >= found-KLEN+1, "");
         size_t Nfound = myread.find('N');
         
-        for(size_t j = 0; j < found-KMER_LENGTH+1; ++j)
+        for(size_t j = 0; j < found-KLEN+1; ++j)
         {
             ASSERT(kmers[j] == Kmer(myread.c_str() + j), "");
             while (Nfound!=std::string::npos && Nfound < j) Nfound = myread.find('N', Nfound+1);
 
-            if (Nfound!=std::string::npos && Nfound < j+KMER_LENGTH)
+            if (Nfound!=std::string::npos && Nfound < j+KLEN)
                 continue;	/* if there is an 'N', toss it */
             Kmer &mykmer = kmers[j];
 
