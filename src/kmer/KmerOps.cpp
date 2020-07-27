@@ -9,6 +9,7 @@
 /*! GGGG: this contains the read id and pos information in some fency array
  * Data as I need them might aready be in line 1647 */
 KmerCountsType *kmercounts = NULL;
+int64_t readsprocessed;
 
 namespace dibella
 {
@@ -30,48 +31,57 @@ namespace dibella
   FastaData *lfd  = dfd->lfd();
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-// GGGG: Cardinality estimation without heavy hitters
+// GGGG: Cardinality estimation
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   tp->times["start_kmerop:gen_A:loop_add_kmers()"] = std::chrono::system_clock::now();
 
   /*! GGGG: cardinality estimate */
+  int nprocs;
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   double tstart = MPI_Wtime(); 
   unsigned int readsxproc = 0;
+  int myrank = parops->world_proc_rank;
 
-  int64_t sums[3] = {0, 0, 0};
-  int64_t &cardinality = sums[0];
-  int64_t &totreads    = sums[1];
-  int64_t &totbases    = sums[2];
+  double cardinality;
 
-  totreads = lfd->local_count();
-  for (uint64_t lseq_idx = 0; lseq_idx < lfd->local_count(); ++lseq_idx)
-  {
-    /*! GGGG: loading sequence string in buff */
-    buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
-    totbases += len;
-  }
+  /* Doesn't update kmersprocessed yet (but updates readsprocessed */
+  ProudlyParallelCardinalityEstimate(lfd, cardinality); 
+	readsxproc = readsprocessed / nprocs;
 
-  if (totreads > 0)
-  {
-    /*! GGGG: double check k == kmer len */
-    int64_t kmersxread = ((totbases + totreads - 1) / totreads) - k + 1;
-    cardinality += kmersxread * totreads;
-  }
+  // int64_t sums[3] = {0, 0, 0};
+  // int64_t &cardinality = sums[0];
+  // int64_t &totreads    = sums[1];
+  // int64_t &totbases    = sums[2];
 
-  MPI_Allreduce(MPI_IN_PLACE, sums, 3, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
+  // totreads = lfd->local_count();
+  // for (uint64_t lseq_idx = 0; lseq_idx < lfd->local_count(); ++lseq_idx)
+  // {
+  //   /*! GGGG: loading sequence string in buff */
+  //   buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
+  //   totbases += len;
+  // }
 
-  if (myrank == 0)
-  {
-    std::cout << "Estimated cardinality: " << cardinality << " totreads: " << totreads << " totbases: " << totbases << std::endl;
-  }
+  // if (totreads > 0)
+  // {
+  //   /*! GGGG: double check k == kmer len */
+  //   int64_t kmersxread = ((totbases + totreads - 1) / totreads) - k + 1;
+  //   cardinality += kmersxread * totreads;
+  // }
 
-  /*! GGGG: from dibella v1 this is baseline for 10M kmers */
-  if (cardinality < 10000000) cardinality = 10000000;
+  // MPI_Allreduce(MPI_IN_PLACE, sums, 3, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
 
-  /*! Assume maximum of 90% of the kmers are unique, because at least some have to repeat */
-  cardinality = 0.9 * cardinality / (double) nprocs;
-  readsxproc = totreads / nprocs;
+  // if (myrank == 0)
+  // {
+  //   std::cout << "Estimated cardinality: " << cardinality << " totreads: " << totreads << " totbases: " << totbases << std::endl;
+  // }
+
+  // /*! GGGG: from dibella v1 this is baseline for 10M kmers */
+  // if (cardinality < 10000000) cardinality = 10000000;
+
+  // /*! Assume maximum of 90% of the kmers are unique, because at least some have to repeat */
+  // cardinality = 0.9 * cardinality / (double) nprocs;
+  // readsxproc = totreads / nprocs;
 
   double tcardinalitye = MPI_Wtime() - tstart;
 

@@ -428,14 +428,14 @@ size_t ParseNPack(vector<string>& reads, vector<string>& names, VectorVectorKmer
 
   /*! GGGG: make sure name are consistent with ids */
   for(size_t i = offset; i < nreads; ++i)
-  // for (uint64_t lseq_idx = 0; lseq_idx < lfd->local_count(); ++lseq_idx)
+  // for (uint64_t lreadidx = 0; lreadidx < lfd->local_count(); ++lreadidx)
   {
     /*! GGGG: loading sequence id tag in buff */
-    buff = lfd->get_sequence_id(lseq_idx, len, start_offset, end_offset_inclusive);
+    buff = lfd->get_sequence_id(lreadidx, len, start_offset, end_offset_inclusive);
     names.push_back(buff.c_str());
 
     /*! GGGG: loading sequence string in buff */
-    buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
+    buff = lfd->get_sequence(lreadidx, len, start_offset, end_offset_inclusive);
     reads.push_back(buff.c_str());
 
     /*! GGGG: calculate the max read len for each of the input files and write to marker files */)
@@ -686,4 +686,128 @@ size_t ProcessFiles(const vector<filedata>& allfiles, int pass, double& cardinal
         countTotalKmersAndCleanHash();
 
     return nreads;
+}
+
+/////////////////////////////////////////////
+// InsertIntoHLL                           //
+/////////////////////////////////////////////
+
+typedef struct
+{
+    double duration, parsingTime, getKmerTime, lexKmerTime, hllTime, hhTime;
+    double last;
+} MoreHLLTimers;
+
+inline double getDuration(MoreHLLTimers &t)
+{
+    double delta = t.last;
+    t.last = MPI_Wtime();
+    return t.last - delta;
+}
+
+MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, bool extraTimers = false)
+{
+    MoreHLLTimers t;
+
+    if (extraTimers)
+    {
+      memset(&t, 0, sizeof(MoreHLLTimers));
+      getDuration(t);
+      t.duration = t.last;
+    }
+
+    size_t found = myread.length();
+
+    /* Otherwise size_t being unsigned will underflow */
+    if(found >= KMER_LENGTH) 
+    {
+        if (extraTimers) t.parsingTime += getDuration(t);
+
+        /* Calculate all the kmers */
+        std::vector<Kmer> kmers = Kmer::getKmers(myread); 
+        if (extraTimers) t.getKmerTime += getDuration(t);
+
+        ASSERT(kmers.size() >= found-KMER_LENGTH+1, "");
+        size_t Nfound = myread.find('N');
+        
+        for(size_t j = 0; j < found-KMER_LENGTH+1; ++j)
+        {
+            ASSERT(kmers[j] == Kmer(myread.c_str() + j), "");
+            while (Nfound!=std::string::npos && Nfound < j) Nfound = myread.find('N', Nfound+1);
+
+            if (Nfound!=std::string::npos && Nfound < j+KMER_LENGTH)
+                continue;	/* if there is an 'N', toss it */
+            Kmer &mykmer = kmers[j];
+
+            if (extraTimers)
+                t.parsingTime += getDuration(t);
+
+            Kmer lexsmall =  mykmer.rep();
+            if (extraTimers)
+                t.lexKmerTime += getDuration(t);
+
+            hll.add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
+            if (extraTimers)
+                t.hllTime += getDuration(t);
+        }
+    }
+
+    if (extraTimers)
+    {
+      t.last = t.duration;
+      t.duration = getDuration(t);
+    }
+
+    return t;
+}
+
+/////////////////////////////////////////////
+// ProudlyParallelCardinalityEstimate      //
+/////////////////////////////////////////////
+
+void ProudlyParallelCardinalityEstimate(FastaData& lfd, double& cardinality)
+{
+	HyperLogLog hll(12);
+
+    int64_t numreads = lfd->local_count();
+    uint64_t start_offset, end_offset_inclusive;
+
+    for (uint64_t lreadidx = 0; lreadidx < numreads; ++lreadidx)
+    {
+        /*! GGGG: loading sequence string in buff */
+        char* myread = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
+
+		/* This clears the vectors */
+		MoreHLLTimers mt = InsertIntoHLL(myread.c_str(), hll, true);
+    }
+	
+    // LOGF("HLL timings: reads %lld, duration %0.4f, parsing %0.4f, getKmer %0.4f, lexKmer %0.4f, thll %0.4f, hhTime %0.4f\n", 
+    // (lld) numreads, mt.duration, mt.parsingTime, mt.getKmerTime, mt.lexKmerTime, mt.thll, mt.hhTime);
+    LOGF("My cardinality before reduction: %f\n", hll.estimate());
+
+	/* Using MPI_UNSIGNED_CHAR because MPI_MAX is not allowed on MPI_BYTE */
+	int count = hll.M.size();
+	CHECK_MPI(MPI_Allreduce(MPI_IN_PLACE, hll.M.data(), count, MPI_UNSIGNED_CHAR, MPI_MAX, MPI_COMM_WORLD));
+	CHECK_MPI(MPI_Allreduce(MPI_IN_PLACE, &numreads, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD));
+
+	cardinality = hll.estimate();
+
+	if(myrank == 0)
+    {
+		cout << __FUNCTION__ << ": Embarrassingly parallel k-mer count estimate is " << cardinality << endl;
+		cout << __FUNCTION__ << ": Total reads processed over all processors is " << readsprocessed << endl;
+        ADD_DIAG("%f", "cardinality", cardinality);
+        ADD_DIAG("%lld", "total_reads", (lld) readsprocessed);
+	}
+    
+    SLOG("%s: total cardinality %f\n", __FUNCTION__, cardinality);
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
+    /* Assume a balanced distribution */
+	cardinality /= static_cast<double>(nprocs);	
+
+    /* 10% benefit of doubt */
+	cardinality *= 1.1;
+    LOGF("Adjusted per-process cardinality: %f\n", cardinality);
 }
