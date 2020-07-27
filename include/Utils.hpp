@@ -5,7 +5,10 @@
 
 #include <cstdint>
 #include <utility>
+#include <vector>
 #include "CombBLAS/CombBLAS.h"
+
+using namespace std;
 
 template <class NT>
 class PSpMat

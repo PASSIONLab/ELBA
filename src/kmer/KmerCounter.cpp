@@ -506,8 +506,7 @@ size_t ParseNPack(vector<string>& reads, vector<string>& names, VectorVectorKmer
 // ProcessFiles                            //
 /////////////////////////////////////////////
 
-size_t ProcessFiles(const vector<filedata>& allfiles, int pass, double& cardinality, bool cacheio,
-                        const char* mydir, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap)
+size_t ProcessFiles(FastaData& ldl, int pass, double& cardinality, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap)
 {
     /*! GGGG: include bloom filter source code */
     struct bloom * bm = NULL;
@@ -521,8 +520,6 @@ size_t ProcessFiles(const vector<filedata>& allfiles, int pass, double& cardinal
 
     Buffer scratch1 = initBuffer(MAX_ALLTOALL_MEM);
     Buffer scratch2 = initBuffer(MAX_ALLTOALL_MEM);
-
-    // TODO: check if loops need to be reintroduced
     
     /*! Initialize bloom filter */
     if(pass == 1)
@@ -548,128 +545,126 @@ size_t ProcessFiles(const vector<filedata>& allfiles, int pass, double& cardinal
     VectorVectorChar  extreads(nprocs);
     VectorVectorPos  positions(nprocs);
         
-    VectorReadId myreadids;
     VectorKmer mykmers;
     VectorChar myreads;
     VectorPos  mypositions;
+    VectorReadId myreadids;
 
-    vector<string> reads;
+    // vector<string> reads;
     vector<string> names;
 
+    double t01 = MPI_Wtime();
+    double totproctime = 0, totpack = 0, totexch = 0;
+    int moreToExchange = 0;
     size_t offset = 0;
-    
-    /*! GGGG: Parse'n'pack, no-op if reads.size() == 0 */
-    offset = ParseNPack(reads, names, quals, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset);
+    size_t nreads = ldl->local_count();
 
-    if (offset == reads.size())
-    {
-        /* no need to do the swap trick as we will reuse these buffers in the next iteration */
-        /*! GGGG: I might need the swap trick */ 
-        reads.clear();
-        offset = 0;
-    }
+    /* Extract kmers and counts from read sequences (seqs) */
+    do {
 
-    /* Outgoing arrays will be all empty, shouldn't crush */
-    double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
+        double texchstart = MPI_Wtime();
 
-#ifdef DEBUG
-    if(myrank == 0) 
-        cout << "Finished Exchange pass " << exchangeAndCountPass << endl;
-#endif
+        /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
+        offset = ParseNPack(ldl, nreads /* reads, */, names, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset);
 
-    totexch += texch;
-    DBG("Exchanged and received %lld %0.3f sec\n", (lld) mykmers.size(), texch);
+        double tpack = MPI_Wtime() - texchstart;
+        totpack += tpack;
 
-    if (exchangeAndCountPass == 2)
-    {
-        ASSERT(mykmers.size() == myreadids.size(), "");
-        ASSERT(mykmers.size() == mypositions.size(), "");
-    }
-    else
-    {
-        ASSERT(myreadids.size() == 0, "");
-        ASSERT(mypositions.size() == 0, "");
-    }
+        if (offset == nreads)
+        {
+            /* no need to do the swap trick as we will reuse these buffers in the next iteration */
+            /*! GGGG: I might need the swap trick */ 
+            // reads.clear();
+            offset = 0;
+        }
 
-    /* we might still receive data even if we didn't send any */
-    DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
+        /* Outgoing arrays will be all empty, shouldn't crush */
+        double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
 
-    /*! GGGG: when this is the case? */
-    moreToExchange = offset < reads.size();
+        totexch += texch;
+        DBG("Exchanged and received %lld %0.3f sec\n", (lld) mykmers.size(), texch);
 
-    mykmers.clear();
-    myreadids.clear();
-    mypositions.clear();
-    myreads.clear();
+        if (exchangeAndCountPass == 2)
+        {
+            ASSERT(mykmers.size() == myreadids.size(), "");
+            ASSERT(mykmers.size() == mypositions.size(), "");
+        }
+        else
+        {
+            ASSERT(myreadids.size() == 0, "");
+            ASSERT(mypositions.size() == 0, "");
+        }
 
-    double proctime = MPI_Wtime() - texchstart - tpack - texch;
-    totproctime += proctime;
+        /* we might still receive data even if we didn't send any */
+        DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
 
-    DBG("Processed (%lld).  remainingToExchange = %lld %0.3f sec\n", (lld) mykmers.size(), (lld) reads.size() - offset, proctime);
-    DBG("Checking global state: morereads = %d moreToExchange = %d moreFiles = %d\n", morereads, moreToExchange, moreFiles);
+        /*! GGGG: when this is the case? */
+        moreToExchange = offset < nreads;
 
-    CHECK_MPI( MPI_Allreduce(moreflags, allmore2go, 3, MPI_INT, MPI_SUM, MPI_COMM_WORLD) );
-    DBG("Got global state: allmorereads = %d allmoreToExchange = %d allmoreFiles = %d\n", allmorereads, allmoreToExchange, allmoreFiles);
+        mykmers.clear();
+        myreads.clear();
+        mypositions.clear();
+        myreadids.clear();
 
-    double now = MPI_Wtime();
+        double proctime = MPI_Wtime() - texchstart - tpack - texch;
+        totproctime += proctime;
 
-    if (myrank == 0 && !(exchanges % 30))
-    {
-        cout << __FUNCTION__ << " pass "     << pass << ": "
-             << " active ranks morereads: "   << allmorereads
-             << " moreToExchange: "          << allmoreToExchange
-             << " moreFiles: "               << allmoreFiles  
-             << ", rank "                    << myrank 
-             << " morereads: "                << morereads 
-             << " moreToExchange: "          << moreToExchange
-             << " moreFiles: "               << moreFiles;
-        cout << " tpackime: "                << std::fixed << std::setprecision( 3 ) << tpack
-             << " exchange_time: "           << std::fixed << std::setprecision( 3 ) << texch
-             << " proctimeime: "             << std::fixed << std::setprecision( 3 ) << proctime
-             << " elapsed: "                 << std::fixed << std::setprecision( 3 ) << now - t01
-             << endl;
-    }
+        DBG("Processed (%lld): remainingToExchange = %lld %0.3f sec\n", (lld) mykmers.size(), (lld) nreads - offset, proctime);
+        DBG("Checking global state: morereads = %d moreToExchange = %d moreFiles = %d\n", /* morereads, */ moreToExchange /*, moreFiles */);
 
-    LOGF("Exchange timings pack: %0.3f exch: %0.3f process: %0.3f elapsed: %0.3f\n", tpack, texch, proctime, now - t01);
+        // CHECK_MPI(MPI_Allreduce(moreflags, allmore2go, 3, MPI_INT, MPI_SUM, MPI_COMM_WORLD));
+        // DBG("Got global state: allmorereads = %d allmoreToExchange = %d allmoreFiles = %d\n", allmorereads, allmoreToExchange, allmoreFiles);
 
-    t02 = MPI_Wtime();
+        double now = MPI_Wtime();
 
-    /*! GGGG: might not need this */
-    traw = traw - pfqTime;
+        if (myrank == 0 && !(exchanges % 30))
+        {
+            cout << __FUNCTION__ << " pass "     << pass << ": "
+                //  << " active ranks morereads: "  << allmorereads
+                //  << " moreToExchange: "          << allmoreToExchange
+                //  << " moreFiles: "               << allmoreFiles  
+                //  << ", rank "                    << myrank 
+                //  << " morereads: "               << morereads 
+                 << " moreToExchange: "          << moreToExchange
+            cout << " tpackime: "                << std::fixed << std::setprecision( 3 ) << tpack
+                 << " exchange_time: "           << std::fixed << std::setprecision( 3 ) << texch
+                 << " proctimeime: "             << std::fixed << std::setprecision( 3 ) << proctime
+                 << " elapsed: "                 << std::fixed << std::setprecision( 3 ) << now - t01
+                 << endl;
+        }
 
-    double tots[6], gtots[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+        LOGF("Exchange timings pack: %0.3f exch: %0.3f process: %0.3f elapsed: %0.3f\n", tpack, texch, proctime, now - t01);
+    } while (moreToExchange);
 
-    tots[0] = pfqTime;
-    tots[1] = tpack;
-    tots[2] = texch;
-    tots[3] = totproctime;
-    tots[4] = traw;
-    tots[5] = t02 - t01;
+    double t02 = MPI_Wtime();
 
-    LOGF("Process Total times: fastq: %0.3f pack: %0.3f exch: %0.3f process: %0.3f elapsed: %0.3f\n", pfqTime, tpack, texch, totproctime, tots[4]);
+    double tots[4], gtots[4] = {0.0, 0.0, 0.0, 0.0};
 
-    CHECK_MPI(MPI_Reduce(&tots, &gtots, 6, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD));
+    tots[0] = totpack;
+    tots[1] = totexch;
+    tots[2] = totproctime;
+    tots[3] = t02 - t01;
+
+    LOGF("Process Total times: pack: %0.3f exch: %0.3f process: %0.3f\n", /* pfqTime, */ totpack, totexch, totproctime);
+
+    CHECK_MPI(MPI_Reduce(&tots, &gtots, 4, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD));
 
     if (myrank == 0)
     {
-        int num_ranks;
-        CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &num_ranks));
-        cout << __FUNCTION__ << " pass " << pass << ": Average time taken for FASTQ reads is " << (gtots[0] / num_ranks)    << ", myelapsed " << tots[0] << endl;
-        cout << __FUNCTION__ << " pass " << pass << ": Average time taken for packing reads is " << (gtots[1] / num_ranks)  << ", myelapsed " << tots[1] << endl;
-        cout << __FUNCTION__ << " pass " << pass << ": Average time taken for exchanging reads is " << (gtots[2] / num_ranks) << ", myelapsed " << tots[2] << endl;
-        cout << __FUNCTION__ << " pass " << pass << ": Average time taken for processing reads is " << (gtots[3] / num_ranks) << ", myelapsed " << tots[3] << endl;
-        cout << __FUNCTION__ << " pass " << pass << ": Average time taken for other FASTQ processing is " << (gtots[4] / num_ranks) << ", myelapsed " << tots[4] << endl;
-        cout << __FUNCTION__ << " pass " << pass << ": Average time taken for elapsed is " << (gtots[5] / num_ranks) << ", myelapsed " << tots[5] << endl;
+        int nranks;
+        CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, &nranks));
+        cout << __FUNCTION__ << " pass " << pass << ": Average time taken for packing reads is "    << (gtots[0] / nranks) << ", myelapsed " << tots[0] << endl;
+        cout << __FUNCTION__ << " pass " << pass << ": Average time taken for exchanging reads is " << (gtots[1] / nranks) << ", myelapsed " << tots[1] << endl;
+        cout << __FUNCTION__ << " pass " << pass << ": Average time taken for processing reads is " << (gtots[2] / nranks) << ", myelapsed " << tots[2] << endl;
+        cout << __FUNCTION__ << " pass " << pass << ": Average time taken for elapsed is "          << (gtots[3] / nranks) << ", myelapsed " << tots[3] << endl;
     }
     
     if(myrank == 0)
     {
-        cout << __FUNCTION__ << " pass " << pass << ": Read/distributed/processed reads of " << (files_itr == allfiles.end() ? " ALL files " : files_itr->filename) << " in " << t02 - t01 << " seconds" << endl;
+        cout << __FUNCTION__ << " pass " << pass << ": Read/distributed/processed reads in " << t02 - t01 << " seconds" << endl;
     }
 
-    LOGF("Finished pass %d, Freeing bloom and other memory. kmercounts: %lld entries\n", pass, (lld) kmercounts->size());
-
-    t02 = MPI_Wtime();
+    LOGF("Finished pass %d, freeing bloom and other memory - kmercounts: %lld entries\n", pass, (lld) kmercounts->size());
 
     if (bm)
     {
@@ -705,7 +700,7 @@ inline double getDuration(MoreHLLTimers &t)
     return t.last - delta;
 }
 
-MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, bool extraTimers = false)
+MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, uint64_t& found, bool extraTimers = false)
 {
     MoreHLLTimers t;
 
@@ -715,8 +710,6 @@ MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, bool extraTimers =
       getDuration(t);
       t.duration = t.last;
     }
-
-    size_t found = myread.length();
 
     /* Otherwise size_t being unsigned will underflow */
     if(found >= KMER_LENGTH) 
@@ -768,17 +761,17 @@ MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, bool extraTimers =
 void ProudlyParallelCardinalityEstimate(FastaData& lfd, double& cardinality)
 {
 	HyperLogLog hll(12);
-
     int64_t numreads = lfd->local_count();
+
+    /*! GGGG: so where do I get these? */
     uint64_t start_offset, end_offset_inclusive;
+    uint64_t len;
 
     for (uint64_t lreadidx = 0; lreadidx < numreads; ++lreadidx)
     {
         /*! GGGG: loading sequence string in buff */
         char* myread = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
-
-		/* This clears the vectors */
-		MoreHLLTimers mt = InsertIntoHLL(myread.c_str(), hll, true);
+		MoreHLLTimers mt = InsertIntoHLL(myread.c_str(), hll, len, true);
     }
 	
     // LOGF("HLL timings: reads %lld, duration %0.4f, parsing %0.4f, getKmer %0.4f, lexKmer %0.4f, thll %0.4f, hhTime %0.4f\n", 
