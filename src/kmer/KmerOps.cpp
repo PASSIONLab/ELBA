@@ -39,15 +39,18 @@ namespace dibella
   /*! GGGG: cardinality estimate */
   int nprocs;
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-  double tstart = MPI_Wtime(); 
+
   unsigned int readsxproc = 0;
   int myrank = parops->world_proc_rank;
 
   double cardinality;
-
+  double tstart = MPI_Wtime(); 
+  
   /* Doesn't update kmersprocessed yet (but updates readsprocessed */
   ProudlyParallelCardinalityEstimate(lfd, cardinality); 
 	readsxproc = readsprocessed / nprocs;
+
+  double tcardinalitye = MPI_Wtime() - tstart;
 
   // int64_t sums[3] = {0, 0, 0};
   // int64_t &cardinality = sums[0];
@@ -82,8 +85,6 @@ namespace dibella
   // /*! Assume maximum of 90% of the kmers are unique, because at least some have to repeat */
   // cardinality = 0.9 * cardinality / (double) nprocs;
   // readsxproc = totreads / nprocs;
-
-  double tcardinalitye = MPI_Wtime() - tstart;
 
   /*! GGGG: print using PASTIS way */
   if (myrank == 0)
