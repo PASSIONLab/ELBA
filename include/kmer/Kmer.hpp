@@ -1,143 +1,172 @@
-// Created by Saliya Ekanayake on 10/17/19.
-
 #ifndef DIBELLA_KMER_HPP
 #define DIBELLA_KMER_HPP
-#include <set>
+
+#include <stdio.h>
+#include <stdint.h>
+#include <cassert>
+#include <cstring>
+#include <string>
+#include <array>
 #include <vector>
-#include "../Alphabet.hpp"
-//#include "ScoreMat.hpp"
-//#include "MinMaxHeap.hpp"
+#include <functional>
+#include <cstdint>
 
-namespace dibella
-{
-  struct Kmer
-  {
-  private:
-    uint64_t kmer_code;
-    std::string kmer_str;
-    // We need to get free_idxs in reverse sorted order during k-mer generation
-    // so can't use an unordered_set here.
-    // Note. the order doesn't matter for the nearest k-mer generation.
-    std::set<ushort, std::greater<ushort>> free_idxs;
-    short dist2r = 0;
+/*! GGGG: add these files from diBELLA */
+#include "../Common.h"
+#include "../HashFuncs.h"
 
-    void update_kmer_code(Alphabet& alph){
-      ushort base = alph.size;
-      kmer_code = 0;
-      for (char cap_c : kmer_str) {
-        /*! Efficient than using pow() */
-        if (cap_c > 96 && cap_c < 123) {
-          // small case character, so make it uppercase.
-          cap_c = cap_c - 32;
-        }
-        kmer_code = kmer_code * base + alph.char_to_code[cap_c];
-      }
-    }
+/*! GGGG: Kmer.cpp/hpp come from diBELLA */
+/* Short description: 
+ *  - Store kmer strings by using 2 bits per base instead of 8 
+ *  - Easily return reverse complements of kmers, e.g. TTGG -> CCAA
+ *  - Easily compare kmers
+ *  - Provide hash of kmers
+ *  - Get last and next kmer, e.g. ACGT -> CGTT or ACGT -> AACGT
+ *  */
+#define N_LONGS (MAX_KMER_SIZE/32)
+#define N_BYTES (MAX_KMER_SIZE/4)
 
+class Kmer {
   public:
-    Kmer(){}
-    Kmer(uint64_t kmer_code, ushort k, Alphabet& alph)
-    : kmer_code(kmer_code) {
-      uint64_t q, r;
-      ushort free_idx = 0;
-      for (ushort i = 0; i < k-1; ++i) {
-        q = kmer_code / alph.size;
-        r = kmer_code - (q*alph.size);
-        kmer_str.insert(kmer_str.begin(), alph.code_to_char[r]);
-        free_idxs.insert(free_idx++);
-        kmer_code = q;
-      }
-      kmer_str.insert(kmer_str.begin(), alph.code_to_char[kmer_code]);
-      free_idxs.insert(free_idx);
-    }
+    typedef std::array<uint64_t, N_LONGS> MERARR;
+    typedef std::array<uint8_t, N_BYTES> BYTEARR;
+    
+    Kmer();
+    Kmer(const Kmer& o);
+    explicit Kmer(const char *s);
 
-    Kmer(std::string str, uint64_t kmer_code, Alphabet& alph, bool fix_kcode)
-    : kmer_str(std::move(str)), kmer_code(kmer_code){
-      ushort free_idx = 0;
-      size_t len = kmer_str.length();
-      for (size_t i = 0; i < len; ++i){
-        free_idxs.insert(free_idx++);
-      }
-      if (fix_kcode) {
-        update_kmer_code(alph);
-      }
-    }
-
-    Kmer(std::string str, Alphabet &alph)
-        : Kmer(str, 0, alph, true) {
-
-    }
-
-    inline uint64_t code() const{
-      return kmer_code;
-    }
-
-    inline std::string str() const{
-      return kmer_str;
-    }
-
-    inline short dist_to_root() const {
-      return dist2r;
-    }
-
-    Kmer substitute(ushort free_idx, char substitute_base, short dist_to_root, Alphabet& alph) const{
-      Kmer subk = *this;
-      subk.kmer_str[free_idx] = substitute_base;
-      subk.update_kmer_code(alph);
-      subk.free_idxs.erase(free_idx);
-      subk.dist2r = dist_to_root;
-      return subk;
-    }
-
-    bool operator()(const Kmer& k1, const Kmer& k2) const {
-      return k1.dist2r < k2.dist2r;
-    }
-
-    friend std::ostream & operator << (std::ostream &out, const Kmer &k)
+    /* This is like a shadow constructor (to avoid accidental signature match with the existing constructor) */
+    void copyDataFrom(uint8_t *  mybytes)	
     {
-      out << k.kmer_str << " kcode: " << k.kmer_code << " dist: " << k.dist_to_root();
-      out << " free_idxs: { ";
-      for (auto& free_idx : k.free_idxs){
-        out << free_idx << " ";
-      }
-      out << "}";
-      ushort hop = k.kmer_str.length() - k.free_idxs.size();
-      out << " " << hop << "-hop" << std::endl;
-      return out;
+      memcpy(longs.data(), mybytes, sizeof(uint64_t) * (N_LONGS));
     }
 
-    char operator[](size_t idx) const {
-      return kmer_str[idx];
-    }
-
-    const std::set<ushort, std::greater<ushort>>& get_free_idxs() const{
-      return free_idxs;
-    }
-
-    bool operator==(const Kmer& t) const
+    explicit Kmer(const MERARR & arr)
     {
-      return (kmer_code == t.kmer_code);
+    	std::memcpy (longs.data(), arr.data(), sizeof(uint64_t) * (N_LONGS));
     }
-
-    size_t operator()(const Kmer& t) const
+    static std::vector<Kmer> getKmers(std::string seq);
+    
+    Kmer& operator=(const Kmer& o);  
+    void set_deleted();
+    bool operator<(const Kmer& o) const;
+    bool operator==(const Kmer& o) const;
+    
+    bool operator!=(const Kmer& o) const
     {
-      return t.kmer_code;
+      return !(*this == o);
     }
+    
+    void set_kmer(const char *s);
+    uint64_t hash() const;
+    
+    Kmer twin() const;
+    /* ABAB: return the smaller of itself (lexicographically) or its reversed-complement (i.e. twin) */
+    Kmer rep() const; 
+    Kmer getLink(const size_t index) const;
+    Kmer forwardBase(const char b) const;
+    Kmer backwardBase(const char b) const;
+    std::string getBinary() const;  
+    void toString(char * s) const;
+    std::string toString() const;
+    
+    void copyDataInto(void * pointer) const
+    {
+    	  memcpy(pointer, longs.data(), sizeof(uint64_t) * (N_LONGS));
+    }
+    
+    /* ABAB: return the raw data packed in an std::array
+     * this preserves the lexicographical order on k-mers
+     * i.e. A.toString() < B.toString <=> A.getArray() < B.getArray()
+     */
+    const MERARR &getArray() const {
+          return longs;
+    }
+    const uint8_t *getBytes() const {
+          return bytes.data();
+    }
+    int getNumBytes() const {
+          return N_BYTES;
+    }
+    
+    /* Returns true for completely identical k-mers as well as k-mers that only differ at the last base */
+    bool equalUpToLastBase(const Kmer & rhs);	
 
-    ~Kmer(){}
+    static void set_k(unsigned int _k);
+    static constexpr size_t numBytes() { 
+    	  return (sizeof(uint64_t) * (N_LONGS));
+    }
+    
+    static const unsigned int MAX_K = MAX_KMER_SIZE;
+    static unsigned int k;
+    
+  private:
+    static unsigned int k_bytes;
+    static unsigned int k_modmask;
+    
+    /* Data fields */
+    union {
+      MERARR  longs;
+      BYTEARR bytes;
+    };
+    
+    // Unions are very useful for low-level programming tasks that involve writing to the same memory area 
+    // but at different portions of the allocated memory space, for instance:
+    //		union item {
+    //			// The item is 16-bits
+    //			short theItem;
+    //			// In little-endian lo accesses the low 8-bits -
+    //			// hi, the upper 8-bits
+    //			struct { char lo; char hi; } portions;
+    //		};
+    //  item tItem;
+    //  tItem.theItem = 0xBEAD;
+    //  tItem.portions.lo = 0xEF; // The item now equals 0xBEEF
+
+};
+
+struct KmerHash {
+  size_t operator()(const Kmer &km) const {
+    return km.hash();
+  }
+};
+
+/* Specialization of std::Hash */
+namespace std
+{
+  template<> struct hash<Kmer>
+  {
+    typedef std::size_t result_type;
+    result_type operator()(Kmer const& km) const
+    {
+      return km.hash();
+    }
+  }
+  
+  template<> struct hash<Kmer::MERARR>
+  {
+    typedef std::size_t result_type;
+    result_type operator()(const Kmer::MERARR & km) const
+    {
+      return MurmurHash3_x64_64((const void*)km.data(),sizeof(Kmer::MERARR));
+    }
   };
-}
+};
+
+inline std::ostream& operator<<(std::ostream& out, const Kmer& k){
+    return out << k.toString();
+};
 
 /*! GGGG: MAX_NUM_READS defined in CMakeFiles.txt */
 /*! Currently records 1 position per (k-mer, read) pair */
 typedef std::array<PosInRead, MAX_NUM_READS> POSITIONS;
-typedef std::array<ReadId, MAX_NUM_READS> READIDS;
+typedef std::array<ReadId,    MAX_NUM_READS> READIDS;
 
-typedef tuple<READIDS, POSITIONS, int>  KmerCountType;
-typedef pair<Kmer::kmer_str, KmerCountType> KmerValue;
+typedef tuple<READIDS, POSITIONS, int> KmerCountType;
+typedef pair<Kmer::MERARR, KmerCountType>  KmerValue;
 
 /*! GGGG: might need to modify this */
 /*! GGGG: import vector map */
 typedef VectorMap<Kmer::MERARR, KmerCountType, std::hash<Kmer::MERARR>, std::less<Kmer::MERARR>, std::equal_to<Kmer::MERARR>> KmerCountsType;
 
-#endif //DIBELLA_KMER_HPP
+#endif // DIBELLA_KMER_HPP
