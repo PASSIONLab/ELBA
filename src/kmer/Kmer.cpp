@@ -1,7 +1,8 @@
-#include "../../include/kmer/Kmer.hpp"
 #include <bitset>
 #include <string>
 #include <iostream>
+
+#include "../../include/kmer/Kmer.hpp"
 
 #ifdef __APPLE__
 #include <machine/endian.h>
