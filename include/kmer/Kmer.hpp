@@ -11,9 +11,9 @@
 #include <functional>
 #include <cstdint>
 
-/*! GGGG: add these files from diBELLA */
-#include "../Common.h"
 #include "../HashFuncs.h"
+#include "../Defines.hpp"
+#include "../VectorMap.hpp"
 
 /*! GGGG: Kmer.cpp/hpp come from diBELLA */
 /* Short description: 
@@ -61,6 +61,7 @@ class Kmer {
     uint64_t hash() const;
     
     Kmer twin() const;
+
     /* ABAB: return the smaller of itself (lexicographically) or its reversed-complement (i.e. twin) */
     Kmer rep() const; 
     Kmer getLink(const size_t index) const;
@@ -136,8 +137,8 @@ namespace std
 {
   template<> struct hash<Kmer>
   {
-    typedef std::size_t result_type;
-    result_type operator()(Kmer const& km) const
+    typedef std::size_t ResultType;
+    ResultType operator()(Kmer const& km) const
     {
       return km.hash();
     }
@@ -145,8 +146,8 @@ namespace std
   
   template<> struct hash<Kmer::MERARR>
   {
-    typedef std::size_t result_type;
-    result_type operator()(const Kmer::MERARR & km) const
+    typedef std::size_t ResultType;
+    ResultType operator()(const Kmer::MERARR& km) const
     {
       return MurmurHash3_x64_64((const void*)km.data(),sizeof(Kmer::MERARR));
     }
@@ -157,7 +158,7 @@ inline std::ostream& operator<<(std::ostream& out, const Kmer& k){
     return out << k.toString();
 };
 
-/*! GGGG: MAX_NUM_READS defined in CMakeFiles.txt */
+// GGGG: MAX_KMER_SIZE is defined in CMakeFile.txt
 /*! Currently records 1 position per (k-mer, read) pair */
 typedef std::array<PosInRead, MAX_NUM_READS> POSITIONS;
 typedef std::array<ReadId,    MAX_NUM_READS> READIDS;
@@ -165,8 +166,7 @@ typedef std::array<ReadId,    MAX_NUM_READS> READIDS;
 typedef tuple<READIDS, POSITIONS, int> KmerCountType;
 typedef pair<Kmer::MERARR, KmerCountType>  KmerValue;
 
-/*! GGGG: might need to modify this */
-/*! GGGG: import vector map */
+// GGGG: might need to modify this 
 typedef VectorMap<Kmer::MERARR, KmerCountType, std::hash<Kmer::MERARR>, std::less<Kmer::MERARR>, std::equal_to<Kmer::MERARR>> KmerCountsType;
 
 #endif // DIBELLA_KMER_HPP
