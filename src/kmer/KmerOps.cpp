@@ -4,10 +4,11 @@
 //
 
 #include <numeric>
+#include "KmerCounter.cpp"
+
 #include "../../include/kmer/KmerOps.hpp"
 #include "../../include/NearestKmers2.hpp"
 
-#define MAX_NUM_READS 7 // GGGG: just temporary while cleaning code to avoid compile time errors on VS
 #define MEGA 1000000.0
 #define MILLION 1000000
 #define COUNT_THRESHOLD 300000

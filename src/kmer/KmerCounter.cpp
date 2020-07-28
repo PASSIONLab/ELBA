@@ -144,8 +144,8 @@ void DealWithInMemoryData(VectorKmer& mykmers, int pass, struct bloom* bm, Vecto
         for (size_t i = 0; i < count; ++i)
         {
             /* There will be a second pass, just insert into bloom, and map, but do not count */
-            KmerInfo ki(mykmers[i]);
-            ki.checkBloomAndInsert(bm, false);
+            // KmerInfo ki(mykmers[i]);
+            // ki.checkBloomAndInsert(bm, false);
         }
     }
     else
@@ -154,9 +154,9 @@ void DealWithInMemoryData(VectorKmer& mykmers, int pass, struct bloom* bm, Vecto
         size_t count = mykmers.size();
         for(size_t i=0; i < count; ++i)
         {
-            KmerInfo ki(mykmers[i], myreadids[i], mypositions[i]);
-			ASSERT(!bm, "");
-			ki.includeCount(true);
+            // KmerInfo ki(mykmers[i], myreadids[i], mypositions[i]);
+			// ASSERT(!bm, "");
+			// ki.includeCount(true);
         }
     }
 }
@@ -180,22 +180,22 @@ double Exchange(VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorV
     size_t bytesperkmer  = Kmer::numBytes();
     size_t bytesperentry = bytesperkmer + (pass == 2 ? sizeof(ReadId) + sizeof(PosInRead) : 0);
 
-    int * sendcnt = new int[nprocs];
+    int* sendcnt = new int[nprocs];
 
     for(int i = 0; i < nprocs; ++i)
     {
         sendcnt[i] = (int) outgoing[i].size() * bytesperentry;
 
-        if (pass == 2)
-        {
-            ASSERT( outgoing[i].size() == readids[i].size(), "" );
-            ASSERT( outgoing[i].size() == positions[i].size(), "" );
-        }
-        else
-        {
-            ASSERT (readids[i].size() == 0, "");
-            ASSERT (positions[i].size() == 0, "");
-        }
+        // if (pass == 2)
+        // {
+        //     ASSERT( outgoing[i].size() == readids[i].size(), "" );
+        //     ASSERT( outgoing[i].size() == positions[i].size(), "" );
+        // }
+        // else
+        // {
+        //     ASSERT (readids[i].size() == 0, "");
+        //     ASSERT (positions[i].size() == 0, "");
+        // }
     }
 
     int* sdispls = new int[nprocs];
