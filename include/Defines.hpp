@@ -15,6 +15,9 @@
 //#define MAX_ALLTOALL_MEM (12*1024*1024) /*  12 MB */
 #endif
 
+typedef long long int lld;
+typedef unsigned long long int llu;
+
 #ifdef DEBUG
 #   define ASSERT(condition, message) \
     do { \
@@ -100,7 +103,6 @@ struct ReadOverlapPair {
 inline std::ostream & operator<<(std::ostream & str, const ReadOverlapPair& pair) {
 	return (str << "[" << pair.readId1 << ", " << pair.readId2 << ": " << pair.posInRead1 << ", " << pair.posInRead2 <<"]");
 }
-
 
 #define GET_KMER_PACKED_LEN(k) ((k + 3) / 4)
 

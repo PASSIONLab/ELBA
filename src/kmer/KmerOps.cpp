@@ -7,6 +7,16 @@
 #include "../../include/kmer/KmerOps.hpp"
 #include "../../include/NearestKmers2.hpp"
 
+#define MAX_NUM_READS 7 // GGGG: just temporary while cleaning code to avoid compile time errors on VS
+#define MEGA 1000000.0
+#define MILLION 1000000
+#define COUNT_THRESHOLD 300000
+#define COUNT_THRESHOLD_HIGH 30300000
+#define HIGH_BIN 100
+#define HIGH_NUM_BINS ((COUNT_THRESHOLD_HIGH-COUNT_THRESHOLD)/HIGH_BIN)
+
+int ERR_THRESHOLD;
+
 /*! GGGG: define this type somewhere
  *  local_kmers is not used anymore in dibella */
 /*! GGGG: this contains the read id and pos information in some fency array
@@ -18,6 +28,9 @@ int myrank;
 int64_t nonerrorkmers;
 int64_t kmersprocessed;
 int64_t readsprocessed;
+
+int minKmerFreq = 2;
+int maxKmerFreq = MAX_NUM_READS;
 
 namespace dibella
 {
