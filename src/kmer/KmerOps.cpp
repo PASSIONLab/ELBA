@@ -1,4 +1,7 @@
-// Created by Saliya Ekanayake on 10/15/19 and modified by Giulia Guidi on 07/23/20.
+//
+// Created by Saliya Ekanayake on 2019-10-15
+// Modified by Giulia Guidi on 2020-07-23
+//
 
 #include <numeric>
 #include "../../include/kmer/KmerOps.hpp"
@@ -9,6 +12,11 @@
 /*! GGGG: this contains the read id and pos information in some fency array
  * Data as I need them might aready be in line 1647 */
 KmerCountsType *kmercounts = NULL;
+
+int nprocs;
+int myrank;
+int64_t nonerrorkmers;
+int64_t kmersprocessed;
 int64_t readsprocessed;
 
 namespace dibella
@@ -37,7 +45,6 @@ namespace dibella
   tp->times["start_kmerop:gen_A:loop_add_kmers()"] = std::chrono::system_clock::now();
 
   /*! GGGG: cardinality estimate */
-  int nprocs;
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
   unsigned int readsxproc = 0;
