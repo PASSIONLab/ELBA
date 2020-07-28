@@ -9,10 +9,10 @@
 #include <cstring>
 #include <string>
 #include <array>
+#include <vector>
 #include <functional>
 #include <cstdint>
-#include <set>
-#include <vector>
+// #include <set>
 
 #include "../Alphabet.hpp"
 #include "../HashFuncs.h"
@@ -147,7 +147,7 @@ namespace std
         {
             return km.hash();
         }
-    }
+    };
     
     template<> struct hash<Kmer::MERARR>
     {
@@ -175,7 +175,6 @@ typedef pair<Kmer::MERARR, KmerCountType>  KmerValue;
 typedef VectorMap<Kmer::MERARR, KmerCountType, std::hash<Kmer::MERARR>, std::less<Kmer::MERARR>, std::equal_to<Kmer::MERARR>> KmerCountsType;
 
 // namespace dibella {
-
 //   struct Kmer {
 //   private:
 //     uint64_t kmer_code;
