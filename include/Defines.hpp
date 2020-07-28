@@ -1,5 +1,5 @@
-#ifndef __DEFINES_H_
-#define __DEFINES_H_
+#ifndef _DIBELLA_DEFINES_H_
+#define _DIBELLA_DEFINES_H_
 
 #include <stdlib.h> 
 #include <array>
@@ -104,4 +104,4 @@ inline std::ostream & operator<<(std::ostream & str, const ReadOverlapPair& pair
 
 #define GET_KMER_PACKED_LEN(k) ((k + 3) / 4)
 
-#endif /* __DEFINES_H_ */
+#endif /* _DIBELLA_DEFINES_H_ */
