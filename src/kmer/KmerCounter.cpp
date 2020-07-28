@@ -1,6 +1,14 @@
+//
+// Originally authored and developed for short read analysis by: Aydin Buluc, Evangelos Georganas, and Rob Egan.
+// Extended for long read analysis by Marquita Ellis and Giulia Guidi.
+//
+
 #include <numeric>
-#include "../../include/kmer/KmerOps.hpp"
+#include "KmerOps.cpp"
 #include "../../include/NearestKmers2.hpp"
+
+using namespace std;
+using namespace dibella;
 
 /////////////////////////////////////////////
 // StoreReadName                           //
@@ -40,8 +48,8 @@ void countTotalKmersAndCleanHash()
     int64_t distinctnonerror;
 
     CHECK_MPI(MPI_Reduce(&nonerrorkmers, &totalnonerror, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
-    CHECK_MPI(MPI_Reduce(&hashsize, &distinctnonerror, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
-    CHECK_MPI(MPI_Allreduce(&maxcount, &globalmaxcount, 1, MPI_LONG_LONG, MPI_MAX, MPI_COMM_WORLD));
+    CHECK_MPI(MPI_Reduce(&hashsize,   &distinctnonerror, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
+    CHECK_MPI(MPI_Allreduce(&maxcount,&globalmaxcount,   1, MPI_LONG_LONG, MPI_MAX,    MPI_COMM_WORLD));
 
     if(myrank == 0)
     {
@@ -331,9 +339,6 @@ double Exchange(VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorV
 /* The bloom filter pass; extensions are ignored */
 inline size_t FinishPackPass1(VectorVectorKmer& outgoing, Kmer& kmerreal)
 {
-    int nprocs;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    
     /* whichever one is the representative */
     uint64_t myhash = kmerreal.hash(); 
 
@@ -354,9 +359,6 @@ inline size_t FinishPackPass2(VectorVectorKmer& outgoing, VectorVectorReadId& re
     VectorVectorChar& extreads, Kmer& kmerreal, ReadId readId, PosInRead pos)
 {
     assert(kmerreal == kmerreal.rep());
-
-    int nprocs;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
     /* whichever one is the representative */
     uint64_t myhash = kmerreal.hash();
@@ -419,8 +421,7 @@ size_t PackEndsKmer(string& seq, int j, Kmer& kmerreal, ReadId readid, PosInRead
 size_t ParseNPack(FastaData& lfd, VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorVectorPos& positions, 
     ReadId& startReadIndex, VectorVectorChar& extreads, std::unordered_map<ReadId, std::string>& readNameMap, int pass, size_t offset)
 {
-    int nprocs, len, start_offset, end_offset_inclusive;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    int len, start_offset, end_offset_inclusive;
 
     /* offset left over from orginal piece of codes */
     size_t nreads = lfd->local_count();
