@@ -58,16 +58,18 @@ void countTotalKmersAndCleanHash()
         cout << __FUNCTION__ << ": Kmerscount non error kmers count is " << totalnonerror << endl;
         cout << __FUNCTION__ << ": Global max count is " << globalmaxcount << endl;
         cout << __FUNCTION__ << ": Large count histogram is of size " << HIGH_NUM_BINS << endl;
-        ADD_DIAG("%lld", "distinct_non_error_kmers", (lld) distinctnonerror);
-        ADD_DIAG("%lld", "total_non_error_kmers", (lld) totalnonerror);
-        ADD_DIAG("%lld", "global_max_count", (lld) globalmaxcount);
+
+        /*! GGGG: define DIAG when code is clean and working */
+        // ADD_DIAG("%lld", "distinct_non_error_kmers", (lld) distinctnonerror);
+        // ADD_DIAG("%lld", "total_non_error_kmers", (lld) totalnonerror);
+        // ADD_DIAG("%lld", "global_max_count", (lld) globalmaxcount);
     }
 
     /*! GGGG: heavy hitters part removed for now */  
-
     if (globalmaxcount == 0)
     {
-        SDIE("There were no kmers found, perhaps your KLEN (%d) is longer than your reads?", KLEN);
+        /*! GGGG: error message and terminate when code is clean and working */
+        // SDIE("There were no kmers found, perhaps your KLEN (%d) is longer than your reads?", KLEN);
     }
 
     /* Reset */
@@ -80,7 +82,7 @@ void countTotalKmersAndCleanHash()
     while(itr != kmercounts->end())
     {
         int allcount =  get<2>(itr->second);
-        if(allcount < ERR_THRESHOLD || (reliable_max > 0 && allcount > reliable_max))
+        if(allcount < ERR_THRESHOLD || (maxKmerFreq > 0 && allcount > maxKmerFreq))
         {
             --hashsize;
             itr = kmercounts->erase(itr);
@@ -103,12 +105,13 @@ void countTotalKmersAndCleanHash()
 
     if(myrank == 0)
     {
-        cout << __FUNCTION__ << ": Erroneous count < " << ERR_THRESHOLD  << " and high frequency > "<< reliable_max <<" cases removed " << endl;
+        cout << __FUNCTION__ << ": Erroneous count < " << ERR_THRESHOLD  << " and high frequency > "<< maxKmerFreq <<" cases removed " << endl;
         cout << __FUNCTION__ << ": Kmerscount hash includes " << distinctnonerror << " distinct elements" << endl;
         cout << __FUNCTION__ << ": Kmerscount non error kmers count is " << totalnonerror << endl;
-        ADD_DIAG("%lld", "distinct_non_error_kmers", (lld) distinctnonerror);
-        ADD_DIAG("%lld", "total_non_error_kmers", (lld) totalnonerror);
-        ADD_DIAG("%lld", "global_max_count", (lld) globalmaxcount);
+
+        // ADD_DIAG("%lld", "distinct_non_error_kmers", (lld) distinctnonerror);
+        // ADD_DIAG("%lld", "total_non_error_kmers", (lld) totalnonerror);
+        // ADD_DIAG("%lld", "global_max_count", (lld) globalmaxcount);
     }
 }
 

@@ -138,4 +138,137 @@ namespace dibella {
     typedef VectorMap<Kmer, KmerCountType, std::hash<Kmer>, std::less<Kmer>, std::equal_to<Kmer>> KmerCountsType;
 }
 
+/////////////////////////////////////////////
+// KmerInfo                                //
+///////////////////////////////////////////// 
+
+// class KmerInfo {
+// public:
+//     //typedef array<char,2> TwoChar;
+//     //typedef unsigned int ReadId;
+// private:
+//     Kmer kmer;
+//     //TwoChar quals,seqs;
+//     ReadId readId;
+//     PosInRead position;
+// public:
+//     KmerInfo() {}
+//     KmerInfo(Kmer k): kmer(k), readId( (ReadId) nullReadId), position( (PosInRead) initPos ) {}
+//     KmerInfo(Kmer k, ReadId r, PosInRead p): kmer(k), readId(r), position(p) {}
+//     //KmerInfo(Kmer k, ReadId r): kmer(k), quals(), seqs(), readId(r) {}
+//     //KmerInfo(Kmer k, TwoChar q, TwoChar s, ReadId r): kmer(k), quals(q), seqs(s), readId(r) {}
+//     KmerInfo(const KmerInfo &copy) {
+//         kmer = copy.kmer;
+//         //quals = copy.quals;
+//         //seqs = copy.seqs;
+//         readId = copy.readId;
+//         position = copy.position;
+//     }
+//     const Kmer& getKmer() const {
+//         return kmer;
+//     }
+//     int write(GZIP_FILE f) {
+//         int count = GZIP_FWRITE(this, sizeof(*this), 1, f);
+// #ifndef NO_GZIP
+//         if (count != sizeof(*this)*1) { DIE("There was a problem writing the kmerInfo file! %s\n", strerror(errno)); }
+// #else
+//         if (count != 1) { DIE("There was a problem writing the kmerInfo file! %s\n", strerror(errno)); }
+// #endif
+//         return count;
+//     }
+//     int read(GZIP_FILE f) {
+//         int count = GZIP_FREAD(this, sizeof(*this), 1, f);
+// #ifndef NO_GZIP
+//         if (count != sizeof(*this)*1 && !GZIP_EOF(f)) { DIE("There was a problem reading the kmerInfo file! %s\n", strerror(errno)); }
+// #else
+//         if (count != 1 && ! feof(f)) { DIE("There was a problem reading the kmerInfo file! %s\n", strerror(errno)); }
+// #endif
+//         return count;
+//     }
+//     // returns true if in bloom, does not modify
+//     bool checkBloom(struct bloom *bm) {
+//         MPI_Pcontrol(1,"BloomFilter");
+//         bool inBloom = bloom_check(bm, kmer.getBytes(), kmer.getNumBytes()) == 1;
+//         MPI_Pcontrol(-1,"BloomFilter");
+//         return inBloom;	
+//     }
+//     // returns true if in bloom, inserts if not
+//     bool checkBloomAndRemember(struct bloom *bm) {
+//         bool inBloom = checkBloom(bm);
+//         if (!inBloom) {
+//             MPI_Pcontrol(1,"BloomFilter");
+//             bloom_add(bm, kmer.getBytes(), kmer.getNumBytes());
+//             MPI_Pcontrol(-1,"BloomFilter");
+//         }
+//         return inBloom;
+//     }
+//     // returns true when kmer is already in bloom, if in bloom, inserts into map, if andCount, increments map count
+//     bool checkBloomAndInsert(struct bloom *bm, bool andCount) {
+//         bool inBloom = checkBloomAndRemember(bm);
+
+//         if (inBloom) {
+//             MPI_Pcontrol(1,"InsertOrUpdate");
+//             auto got = kmercounts->find(kmer.getArray());  // kmercounts is a global variable
+//             if(got == kmercounts->end())
+//             {
+// #ifdef KHASH
+//                 kmercounts->insert(kmer.getArray(), make_tuple(newReadIdList(), newPositionsList(), 0));
+// #else
+//                 kmercounts->insert(make_pair(kmer.getArray(), make_tuple(newReadIdList(), newPositionsList(), 0)));
+// #endif
+//                 if (andCount) includeCount(false);
+//             } else {
+//             		if (andCount) { includeCount(got); }
+//             }
+//             MPI_Pcontrol(-1,"InsertOrUpdate");
+//         }
+//         return inBloom;
+//     }
+
+//     void updateReadIds(KmerCountsType::iterator got) {
+// #ifdef KHASH
+//         READIDS reads = get<0>(*got);  // ::value returns (const valtype_t &) but ::* returns (valtype_t &), which can be changed
+//         POSITIONS& positions = get<1>(*got);
+// #else
+//         READIDS& reads = get<0>(got->second);
+//         POSITIONS& positions = get<1>(got->second);
+// #endif
+//         ASSERT(readId > nullReadId,"");
+
+//         // never add duplicates, also currently doesn't support more than 1 positions per read ID
+//         int index;
+//         for (index = 0; index < reliable_max && reads[index] > nullReadId; index++) {
+// 			if (reads[index] == readId) return;
+// 		}
+//         // if the loop finishes without returning, the index is set to the next open space or there are no open spaces
+//         if (index >= reliable_max || reads[index] > nullReadId) return;
+//         ASSERT(reads[index] == nullReadId, "reads[index] does not equal expected value of nullReadId");
+//         reads[index] = readId;
+//         	positions[index] = position;
+//     }
+
+//     bool includeCount(bool doStoreReadId) {
+//         auto got = kmercounts->find(kmer.getArray());  // kmercounts is a global variable
+//         if ( doStoreReadId && (got != kmercounts->end()) ) { updateReadIds(got); }
+//         return includeCount(got);
+//     }
+
+//     bool includeCount(KmerCountsType::iterator got) {
+//         MPI_Pcontrol(1,"HashTable");
+//         bool inserted = false;
+//         if(got != kmercounts->end()) // don't count anything else
+//         {
+// 			// count the kmer in mercount
+// #ifdef KHASH
+// 			++(get<2>(*got));  // ::value returns (const valtype_t &) but ::* returns (valtype_t &), which can be changed
+// #else
+// 			++(get<2>(got->second)); // increment the counter regardless of quality extensions
+// #endif
+//             inserted = true;
+//         }
+//         MPI_Pcontrol(-1,"HashTable");
+//         return inserted;
+//     }
+// };
+
 #endif //DIBELLA_KMER_HPP
