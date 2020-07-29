@@ -22,10 +22,10 @@ public:
 };
 
 typedef vector<vector<array<char, 2>>>  VectorVectorChar;
-typedef vector<vector<dibella::Kmer>>   VectorVectorKmer;
+typedef vector<vector<Kmer>>   VectorVectorKmer;
 typedef vector<vector<ReadId>> VectorVectorReadId;
 typedef vector<vector<PosInRead>> VectorVectorPos;
-typedef vector<dibella::Kmer>  VectorKmer;
+typedef vector<Kmer>  VectorKmer;
 typedef vector<array<char, 2>> VectorChar;
 typedef vector<PosInRead> VectorPos;
 typedef vector<ReadId> VectorReadId;

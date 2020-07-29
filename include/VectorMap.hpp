@@ -6,6 +6,7 @@
 #include <iterator>
 #include <cstdint>
 #include <cassert>
+#include <assert.h>
 
 #ifdef VM_USE_SPARSEPP
 #include "sparsepp.h"
@@ -386,7 +387,7 @@ public:
 	size_type getBucketIdx(const key_type &k) const
     {
 		assert(!_data.empty());
-		assert(_vectorMask + 1 == _data.size();
+		assert(_vectorMask + 1 == _data.size());
 
 		if (_data.size() == 1)
             return 0;

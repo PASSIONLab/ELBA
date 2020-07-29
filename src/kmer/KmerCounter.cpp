@@ -3,9 +3,9 @@
 // Extended for long read analysis by Marquita Ellis and Giulia Guidi.
 //
 
-#include <numeric>
-#include "KmerOps.cpp"
-#include "../../include/NearestKmers2.hpp"
+// #include <numeric>
+// #include "KmerOps.cpp"
+// #include "../../include/NearestKmers2.hpp"
 
 using namespace std;
 using namespace dibella;

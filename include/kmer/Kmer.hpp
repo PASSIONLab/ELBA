@@ -12,7 +12,6 @@
 #include <vector>
 #include <functional>
 #include <cstdint>
-// #include <set>
 
 #include "../Alphabet.hpp"
 #include "../HashFuncs.h"
@@ -50,6 +49,7 @@ class Kmer {
     {
     	std::memcpy (longs.data(), arr.data(), sizeof(uint64_t) * (N_LONGS));
     }
+
     static std::vector<Kmer> getKmers(std::string seq);
     
     Kmer& operator=(const Kmer& o);  
