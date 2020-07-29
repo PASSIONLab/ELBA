@@ -66,7 +66,7 @@ To build diBELLA, you can use the following commands:
   ```
     mkdir build_release
     cd build_release
-    cmake ..
+    cmake -DCMAKE_C_COMPILER=/usr/local/bin/gcc-10 -DCMAKE_CXX_COMPILER=/usr/local/bin/g++-10 ..
     make -j4  
   ```
 Or type:
