@@ -32,14 +32,14 @@ void dibella::NearestKmers2::populate_sorted_sm(Alphabet& alph, dibella::ScoreMa
   }
 }
 
-std::vector<dibella::Kmer>
-    dibella::NearestKmers2::find_sub_kmers(const dibella::Kmer& root, ushort m)
+std::vector<Kmer>
+    dibella::NearestKmers2::find_sub_kmers(const Kmer& root, ushort m)
 {
-  std::vector<dibella::Kmer> nbrs;
-  minmax::MinMaxHeap<dibella::Kmer, std::vector<dibella::Kmer>, dibella::Kmer> mmheap;
+  std::vector<Kmer> nbrs;
+  minmax::MinMaxHeap<Kmer, std::vector<Kmer>, Kmer> mmheap;
   explore(root, mmheap, root, m);
   while(nbrs.size() < m){
-    dibella::Kmer min_kmer = mmheap.findMin();
+    Kmer min_kmer = mmheap.findMin();
     nbrs.push_back(min_kmer);
     if (min_kmer.get_free_idxs().size() > 0) {
       // Explore further only if this min_kmer has 
@@ -69,9 +69,9 @@ dibella::NearestKmers2::NearestKmers2(Alphabet& alph, dibella::ScoreMatrix& sm)
 
 void
 dibella::NearestKmers2::explore(
-    const dibella::Kmer& p,
-    minmax::MinMaxHeap<dibella::Kmer, std::vector<dibella::Kmer>, dibella::Kmer>& mmheap,
-    const dibella::Kmer& root, ushort m) {
+    const Kmer& p,
+    minmax::MinMaxHeap<Kmer, std::vector<Kmer>, Kmer>& mmheap,
+    const Kmer& root, ushort m) {
   std::priority_queue<dibella::MinSub, std::vector<dibella::MinSub>, dibella::MinSub> minheap;
   for (auto& free_idx : p.get_free_idxs()){
     char base_at_free_idx = p[free_idx];
@@ -100,7 +100,7 @@ dibella::NearestKmers2::explore(
 void
 dibella::NearestKmers2::create_new_sub_kmer(
     const Kmer& p, std::priority_queue<dibella::MinSub, std::vector<dibella::MinSub>, dibella::MinSub>& minheap,
-    minmax::MinMaxHeap<Kmer, std::vector<dibella::Kmer>, dibella::Kmer>& mmheap, bool pop_max, MinSub& ms)
+    minmax::MinMaxHeap<Kmer, std::vector<Kmer>, Kmer>& mmheap, bool pop_max, MinSub& ms)
 {
   minheap.pop();
   std::pair<short, char> cost_and_subc = sorted_sm[ms.base_at_free_idx][ms.sub_idx_in_base];
@@ -140,14 +140,14 @@ int main2(int argc, char** argv)
 //  std::string kmer_str{"TACTBZDP"};
   std::string kmer_str{"****"};
   // Root k-mer
-  dibella::Kmer root(kmer_str, alph);
-  dibella::Kmer subk = root.substitute(0, 'T', sm.dist(root[0], 'T'), alph);
+  Kmer root(kmer_str, alph);
+  Kmer subk = root.substitute(0, 'T', sm.dist(root[0], 'T'), alph);
   std::cout << root << std::endl;
   std::cout << subk << std::endl;
   subk = subk.substitute(2, 'G', sm.dist(subk[2], 'G'), alph);
   std::cout << subk << std::endl;
 
-//  std::vector<dibella::Kmer> nearest_kmers = nk2.find_nearest_kmers(root, M);
+//  std::vector<Kmer> nearest_kmers = nk2.find_nearest_kmers(root, M);
 
 
   std::priority_queue<dibella::MinSub, std::vector<dibella::MinSub>, dibella::MinSub> pq;

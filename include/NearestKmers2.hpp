@@ -52,15 +52,15 @@ namespace dibella {
   public:
     NearestKmers2(Alphabet& alph, dibella::ScoreMatrix& sm);
     void print_sorted_sm();
-    std::vector<dibella::Kmer> find_sub_kmers(const dibella::Kmer& root, ushort m);
+    std::vector<Kmer> find_sub_kmers(const Kmer& root, ushort m);
 
   private:
     void populate_sorted_sm(Alphabet& alph, ScoreMatrix& sm);
     void explore(const Kmer& p,
-                 minmax::MinMaxHeap<dibella::Kmer, std::vector<dibella::Kmer>,
-                     dibella::Kmer>& mmheap, const Kmer& root, ushort m);
+                 minmax::MinMaxHeap<Kmer, std::vector<Kmer>,
+                     Kmer>& mmheap, const Kmer& root, ushort m);
     void create_new_sub_kmer(const Kmer& p, std::priority_queue<dibella::MinSub, std::vector<dibella::MinSub>, dibella::MinSub>& minheap,
-                             minmax::MinMaxHeap<dibella::Kmer, std::vector<dibella::Kmer>, dibella::Kmer>& mmheap, bool pop_max,
+                             minmax::MinMaxHeap<Kmer, std::vector<Kmer>, Kmer>& mmheap, bool pop_max,
                              MinSub& ms);
     // Note, this includes the diagonal.
     SortedSM_T sorted_sm;

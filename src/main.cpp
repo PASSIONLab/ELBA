@@ -179,13 +179,13 @@ int main(int argc, char **argv) {
   Alphabet alph(alph_t);
 
   /*! Generate sequences by kmers matrix */
-  std::unordered_set<dibella::Kmer, dibella::Kmer> local_kmers;
+  std::unordered_set<Kmer, Kmer> local_kmers;
 
   tp->times["start_main:genA()"] = std::chrono::system_clock::now();
   PSpMat<dibella::MatrixEntry>::MPI_DCCols A =
       dibella::KmerOps::generate_A(
           seq_count,dfd, klength, kstride,
-          alph, parops, tp, local_kmers);
+          alph, parops, tp); //, local_kmers);
 
   tu.print_str("Matrix A: ");
   tu.print_str("\nLoad imbalance: " + std::to_string(A.LoadImbalance()) + "\n");
@@ -206,7 +206,7 @@ int main(int argc, char **argv) {
   // PSpMat<dibella::MatrixEntry>::MPI_DCCols* S = nullptr;
   // if (add_substitue_kmers) {
   //   tp->times["start_main:genS()"] = std::chrono::system_clock::now();;
-  //   S = new PSpMat<dibella::MatrixEntry>::MPI_DCCols(dibella::KmerOps::generate_S(klength, subk_count, alph, parops, tp,
+  //   S = new PSpMat<dibella::MatrixEntry>::MPI_DCCols(KmerOps::generate_S(klength, subk_count, alph, parops, tp,
   //                                 local_kmers));
   //   tp->times["end_main:genS()"] = std::chrono::system_clock::now();;
   //   tu.print_str("Matrix S: ");
