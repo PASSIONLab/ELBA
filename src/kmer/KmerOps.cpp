@@ -7,7 +7,7 @@
 // #include "KmerCounter.cpp"
 
 #include "../../include/kmer/KmerOps.hpp"
-#include "../../include/NearestKmers2.hpp"
+// #include "../../include/NearestKmers2.hpp"
 
 #define MEGA 1000000.0
 #define MILLION 1000000
@@ -780,7 +780,7 @@ MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, uint64_t& found, b
 // ProudlyParallelCardinalityEstimate      //
 /////////////////////////////////////////////
 
-void ProudlyParallelCardinalityEstimate(FastaData& lfd, double& cardinality)
+void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
 {
 	HyperLogLog hll(12);
     int64_t numreads = lfd->local_count();
@@ -864,40 +864,6 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
 	readsxproc = readsprocessed / nprocs;
 
   double tcardinalitye = MPI_Wtime() - tstart;
-
-  // int64_t sums[3] = {0, 0, 0};
-  // int64_t &cardinality = sums[0];
-  // int64_t &totreads    = sums[1];
-  // int64_t &totbases    = sums[2];
-
-  // totreads = lfd->local_count();
-  // for (uint64_t lseq_idx = 0; lseq_idx < lfd->local_count(); ++lseq_idx)
-  // {
-  //   /*! GGGG: loading sequence string in buff */
-  //   buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
-  //   totbases += len;
-  // }
-
-  // if (totreads > 0)
-  // {
-  //   /*! GGGG: double check k == kmer len */
-  //   int64_t kmersxread = ((totbases + totreads - 1) / totreads) - k + 1;
-  //   cardinality += kmersxread * totreads;
-  // }
-
-  // MPI_Allreduce(MPI_IN_PLACE, sums, 3, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
-
-  // if (myrank == 0)
-  // {
-  //   std::cout << "Estimated cardinality: " << cardinality << " totreads: " << totreads << " totbases: " << totbases << std::endl;
-  // }
-
-  // /*! GGGG: from dibella v1 this is baseline for 10M kmers */
-  // if (cardinality < 10000000) cardinality = 10000000;
-
-  // /*! Assume maximum of 90% of the kmers are unique, because at least some have to repeat */
-  // cardinality = 0.9 * cardinality / (double) nprocs;
-  // readsxproc = totreads / nprocs;
 
   /*! GGGG: print using PASTIS way */
   if (myrank == 0)
