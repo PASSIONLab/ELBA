@@ -4,10 +4,10 @@
 //
 
 #include <numeric>
-// #include "KmerCounter.cpp"
 
 #include "../../include/kmer/KmerOps.hpp"
-// #include "../../include/NearestKmers2.hpp"
+
+
 
 #define MEGA 1000000.0
 #define MILLION 1000000
