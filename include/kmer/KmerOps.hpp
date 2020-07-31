@@ -11,6 +11,7 @@
 #include "../ScoreMat.hpp"
 #include "../Utils.hpp"
 #include "../Defines.hpp"
+#include "../Buffer.h"
 #include "../DistributedFastaData.hpp"
 #include "Kmer.hpp"
 

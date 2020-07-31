@@ -17,12 +17,17 @@ set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG
 find_package(MPI REQUIRED)
 find_package(OpenMP REQUIRED)
 
+add_subdirectory(src/libbloom)
+
 add_executable(dibella
         src/Alphabet.cpp
         include/Alphabet.hpp
         src/Constants.cpp
         include/Constants.hpp
         include/cxxopts.hpp
+        include/MPIUtils.hpp
+        include/Defines.hpp
+        include/VectorMap.hpp
         src/DistributedPairwiseRunner.cpp
         include/DistributedPairwiseRunner.hpp
         src/DistributedFastaData.cpp
@@ -47,6 +52,10 @@ add_executable(dibella
         include/AlignmentInfo.hpp
         include/ScoreMat.hpp
         src/ScoreMat.cpp
+        src/MemoryChk.c
+        include/MemoryChk.h
+        src/Buffer.c
+        include/Buffer.h
         include/pw/BandedAligner.hpp
         include/pw/FullAligner.hpp
         src/pw/BandedAligner.cpp
@@ -58,8 +67,6 @@ add_executable(dibella
         src/kmer/KmerOps.cpp
         src/kmer/Kmer.cpp
         include/kmer/Kmer.hpp
-        include/NearestKmers2.hpp
-        src/NearestKmers2.cpp
         include/kmer/SubKmerIntersectSR.hpp
         )
 
