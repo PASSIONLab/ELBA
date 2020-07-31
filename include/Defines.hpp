@@ -15,6 +15,7 @@
 /*! IMPORTANT TEMPORARY */
 #define MAX_KMER_SIZE 17  // GGGG: just temporary while cleaning code to avoid compile time errors on VS
 #define MAX_NUM_READS 7   // GGGG: just temporary while cleaning code to avoid compile time errors on VS
+#define KLEN 17           // GGGG: just temporary while cleaning code to avoid compile time errors on VS
 
 #ifndef MAX_ALLTOALL_MEM
 #define MAX_ALLTOALL_MEM (128*1024*1024)  /* 128 MB */

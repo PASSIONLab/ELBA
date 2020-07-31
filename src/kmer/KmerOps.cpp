@@ -6,7 +6,15 @@
 #include <numeric>
 
 #include "../../include/kmer/KmerOps.hpp"
+#include "../../include/HyperLogLog.hpp"
 
+extern "C" {
+#ifdef HIPMER_BLOOM64
+#include "libbloom/bloom64.h"
+#else
+#include "libbloom/bloom.h"
+#endif
+}
 
 
 #define MEGA 1000000.0
@@ -193,7 +201,7 @@ void DealWithInMemoryData(VectorKmer& mykmers, int pass, struct bloom* bm, Vecto
 // ExchangePass                            //
 /////////////////////////////////////////////
 
-double Exchange(VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorVectorPos& positions, VectorVectorChar& extreads,
+double ExchangePass(VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorVectorPos& positions, VectorVectorChar& extreads,
               VectorKmer& mykmers, VectorReadId& myreadids, VectorPos& mypositions, int pass, Buffer scratch1, Buffer scratch2)
 {
     double totexch = MPI_Wtime();
@@ -266,7 +274,7 @@ double Exchange(VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorV
         cerr << myrank << " detected overflow in totrecv calculation, line" << __LINE__ << endl;
     }
 
-    DBG("totsend = %lld totrecv = %lld\n", (lld) totsend, (lld) totrecv);
+    // DBG("totsend = %lld totrecv = %lld\n", (lld) totsend, (lld) totrecv);
 
     /* It's gonna exit if totsend is negative */
     growBuffer(scratch1, sizeof(uint8_t) * totsend); 
@@ -295,7 +303,7 @@ double Exchange(VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorV
         outgoing[i].clear();
         readids[i].clear();
         positions[i].clear();
-        extquals[i].clear();
+        // extquals[i].clear();
         extreads[i].clear();
     }
 
@@ -329,8 +337,8 @@ double Exchange(VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorV
     double global_max_time = 0.0;
     CHECK_MPI(MPI_Reduce(&texch, &global_max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD));
 
-    serial_printf("KmerMatch:%s exchange iteration %d pass %d: sent min %lld bytes, sent max %lld bytes, recv min %lld bytes, recv max %lld bytes, in min %.3f s, max %.3f s\n",
-        __FUNCTION__, iter, pass, global_mins[SND], global_maxs[SND], global_mins[RCV], global_maxs[RCV], global_min_time, global_max_time);
+    // serial_printf("KmerMatch:%s exchange iteration %d pass %d: sent min %lld bytes, sent max %lld bytes, recv min %lld bytes, recv max %lld bytes, in min %.3f s, max %.3f s\n",
+    //     __FUNCTION__, iter, pass, global_mins[SND], global_maxs[SND], global_mins[RCV], global_maxs[RCV], global_min_time, global_max_time);
 
     perftime = MPI_Wtime()-perftime;
     /*************************************/
@@ -353,10 +361,10 @@ double Exchange(VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorV
         }
     }
 
-    DBG("DeleteAll: recvcount = %lld, sendct = %lld\n", (lld) recvcnt, (lld) sendcnt);
+    // DBG("DeleteAll: recvcount = %lld, sendct = %lld\n", (lld) recvcnt, (lld) sendcnt);
     DeleteAll(rdispls, sdispls, recvcnt, sendcnt);
 
-    iter++;
+    // iter++;
     totexch = MPI_Wtime() - totexch - perftime;
 
     // MPI_Pcontrol(-1,"Exchange");
@@ -414,7 +422,7 @@ inline size_t FinishPackPass2(VectorVectorKmer& outgoing, VectorVectorReadId& re
 
 size_t PackEndsKmer(string& seq, int j, Kmer& kmerreal, ReadId readid, PosInRead pos, VectorVectorKmer& outgoing,
         VectorVectorReadId& readids, VectorVectorPos& positions, VectorVectorChar& extreads, 
-        int pass, int lastCountedBase, int KLEN)
+        int pass, int lastCountedBase)
 {
     bool isCounted = lastCountedBase >= j + KLEN;
     size_t procSendCount;
@@ -449,10 +457,11 @@ size_t PackEndsKmer(string& seq, int j, Kmer& kmerreal, ReadId readid, PosInRead
 
 /* Kmer is of length k */
 /* HyperLogLog counting, bloom filtering, and std::maps use Kmer as their key */
-size_t ParseNPack(FastaData& lfd, VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorVectorPos& positions, 
+size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorVectorPos& positions, 
     ReadId& startReadIndex, VectorVectorChar& extreads, std::unordered_map<ReadId, std::string>& readNameMap, int pass, size_t offset)
 {
-    int len, start_offset, end_offset_inclusive;
+    uint64_t start_offset, end_offset_inclusive;
+    ushort len;
 
     /* offset left over from orginal piece of codes */
     size_t nreads = lfd->local_count();
@@ -464,14 +473,22 @@ size_t ParseNPack(FastaData& lfd, VectorVectorKmer& outgoing, VectorVectorReadId
     /*! GGGG: where this startReadIndex come from? */
     ReadId readIndex = startReadIndex;
 
+    vector<string> names;
+    vector<string> reads;
+
+    char* buff;
+
     /*! GGGG: make sure name are consistent with ids */
     for (uint64_t lreadidx = offset; lreadidx < nreads; ++lreadidx)
     {
         buff = lfd->get_sequence_id(lreadidx, len, start_offset, end_offset_inclusive);
-        names.push_back(buff.c_str());
+        string myname = string(buff);
+        names.push_back(myname);
 
         buff = lfd->get_sequence(lreadidx, len, start_offset, end_offset_inclusive);
-        reads.push_back(buff.c_str());
+        string myseq = string(buff);
+        reads.push_back(myseq);
+
 
         /*! GGGG: extract kmers for this sequence but skip this sequence if the length is too short */
         if (len <= KLEN)
@@ -485,25 +502,25 @@ size_t ParseNPack(FastaData& lfd, VectorVectorKmer& outgoing, VectorVectorReadId
         kmersthisbatch += nkmers;
         
         /* Calculate kmers */
-        VectorKmer kmers = Kmer::getKmers(buff.c_str());
+        VectorKmer kmers = Kmer::getKmers(myseq);
         ASSERT(kmers.size() == nkmers, "");
-        size_t Nfound = buff.c_str().find('N');
+        size_t Nfound = myseq.find('N');
 
         size_t j;
         for(j = 0; j < nkmers; ++j)
         {
             while (Nfound != string::npos && Nfound < j) 
-                Nfound = buff.c_str().find('N', Nfound + 1);
+                Nfound = myseq.find('N', Nfound + 1);
 
             /* If there is an 'N', toss it */
             if (Nfound != string::npos && Nfound < j + KLEN)
                 continue;  
 
-            ASSERT(kmers[j] == Kmer(buff.c_str().c_str() + j), "");
+            ASSERT(kmers[j] == Kmer(myseq.c_str() + j), "");
 
             /*! GGGG: where all these variables come from? */
-            size_t sending = PackEndsKmer(buff.c_str(), j, kmers[j], readIndex, j, outgoing,
-                    readids, positions, extreads, pass, len, KLEN);
+            size_t sending = PackEndsKmer(myseq, j, kmers[j], readIndex, j, outgoing,
+                    readids, positions, extreads, pass, len);
 
             if (sending > maxsending)
                 maxsending = sending;
@@ -512,7 +529,7 @@ size_t ParseNPack(FastaData& lfd, VectorVectorKmer& outgoing, VectorVectorReadId
         /*! GGGG: where is read id determined? */
         if (pass == 2)
         {   
-            StoreReadName(readIndex, names[i], readNameMap);
+            StoreReadName(readIndex, names[lreadidx], readNameMap);
         }
 
         /* Always start with next read index whether exiting or continuing the loop */
@@ -521,7 +538,7 @@ size_t ParseNPack(FastaData& lfd, VectorVectorKmer& outgoing, VectorVectorReadId
         if (maxsending * bytesperentry >= memthreshold || (kmersthisbatch + len) * bytesperentry >= MAX_ALLTOALL_MEM)
         { 
             /* Start with next read */
-            nreads = i + 1; 
+            nreads = lreadidx + 1; 
             if (pass == 2)
             { 
                 startReadIndex = readIndex;
@@ -537,7 +554,7 @@ size_t ParseNPack(FastaData& lfd, VectorVectorKmer& outgoing, VectorVectorReadId
 // ProcessFiles                            //
 /////////////////////////////////////////////
 
-size_t ProcessFiles(FastaData& lfd, int pass, double& cardinality, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap)
+size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap)
 {
     /*! GGGG: include bloom filter source code */
     struct bloom * bm = NULL;
@@ -587,6 +604,8 @@ size_t ProcessFiles(FastaData& lfd, int pass, double& cardinality, ReadId& readI
     size_t offset = 0;
     size_t nreads = lfd->local_count();
 
+    int exchanges = 0;
+
     /* Extract kmers and counts from read sequences (seqs) */
     do {
         double texchstart = MPI_Wtime();
@@ -604,7 +623,7 @@ size_t ProcessFiles(FastaData& lfd, int pass, double& cardinality, ReadId& readI
         double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
 
         totexch += texch;
-        DBG("Exchanged and received %lld %0.3f sec\n", (lld) mykmers.size(), texch);
+        // DBG("Exchanged and received %lld %0.3f sec\n", (lld) mykmers.size(), texch);
 
         if (exchangeAndCountPass == 2)
         {
@@ -631,8 +650,8 @@ size_t ProcessFiles(FastaData& lfd, int pass, double& cardinality, ReadId& readI
         double proctime = MPI_Wtime() - texchstart - tpack - texch;
         totproctime += proctime;
 
-        DBG("Processed (%lld): remainingToExchange = %lld %0.3f sec\n", (lld) mykmers.size(), (lld) nreads - offset, proctime);
-        DBG("Checking global state: morereads = %d moreToExchange = %d moreFiles = %d\n", /* morereads, */ moreToExchange /*, moreFiles */);
+        // DBG("Processed (%lld): remainingToExchange = %lld %0.3f sec\n", (lld) mykmers.size(), (lld) nreads - offset, proctime);
+        // DBG("Checking global state: morereads = %d moreToExchange = %d moreFiles = %d\n", /* morereads, */ moreToExchange /*, moreFiles */);
 
         // CHECK_MPI(MPI_Allreduce(moreflags, allmore2go, 3, MPI_INT, MPI_SUM, MPI_COMM_WORLD));
         // DBG("Got global state: allmorereads = %d allmoreToExchange = %d allmoreFiles = %d\n", allmorereads, allmoreToExchange, allmoreFiles);
@@ -787,13 +806,14 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
 
     /*! GGGG: so where do I get these? */
     uint64_t start_offset, end_offset_inclusive;
-    uint64_t len;
+    ushort len;
 
     for (uint64_t lreadidx = 0; lreadidx < numreads; ++lreadidx)
     {
         /*! GGGG: loading sequence string in buff */
-        char* myread = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
-		MoreHLLTimers mt = InsertIntoHLL(myread.c_str(), hll, len, true);
+        char* myread = lfd->get_sequence(lreadidx, len, start_offset, end_offset_inclusive);
+        std::string mystr = std::string(myread);
+		MoreHLLTimers mt = InsertIntoHLL(mystr, hll, (uint64_t)len, true);
     }
 	
     // LOGF("HLL timings: reads %lld, duration %0.4f, parsing %0.4f, getKmer %0.4f, lexKmer %0.4f, thll %0.4f, hhTime %0.4f\n", 
@@ -864,12 +884,6 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
 	readsxproc = readsprocessed / nprocs;
 
   double tcardinalitye = MPI_Wtime() - tstart;
-
-  /*! GGGG: print using PASTIS way */
-  if (myrank == 0)
-  {
-    std::cout << "Estimated cardinality: " << cardinality << " totreads: " << totreads << " totbases: " << totbases << std::endl;
-  }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GGGG: First pass k-mer counter
@@ -1004,7 +1018,7 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
   /*! GGGG: Once k-mers are consolidated in a single global location, 
    *  the other processors don’t need to know the ids of kmers they sent off to other processors. */
 
-  std::unordered_map<Kmer::MERARR, uint64_t>* kmerIdMap = new std::unordered_map<Kmer, uint64_t>();
+  std::unordered_map<Kmer::MERARR, uint64_t>* kmerIdMap = new std::unordered_map<Kmer::MERARR, uint64_t>();
   for(auto itr = kmercounts->begin(); itr != kmercounts->end(); ++itr)
   {
 
@@ -1016,13 +1030,13 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
     READIDS readids  = get<0>(itr->second);
     POSITIONS values = get<1>(itr->second);
 
-    uint64_t num = itr->second.size();  
-    for(int j = 0; j < num; j++)
-    {
-      lcol_ids.push_back();
-      lrow_ids.push_back(readids[j]);
-      lvals.push_back(values[j]);
-    }
+    // uint64_t num = itr->second.size();  
+    // for(int j = 0; j < num; j++)
+    // {
+    //   lcol_ids.push_back();
+    //   lrow_ids.push_back(readids[j]);
+    //   lvals.push_back(values[j]);
+    // }
   }
 
 #ifndef NDEBUG
@@ -1057,4 +1071,5 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
   tp->times["end_kmerop:gen_A:spMatA()"]   = std::chrono::system_clock::now();
 
   return A;
+  }
 }
