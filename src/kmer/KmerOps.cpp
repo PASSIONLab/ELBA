@@ -10,9 +10,9 @@
 
 extern "C" {
 #ifdef HIPMER_BLOOM64
-#include "libbloom/bloom64.h"
+#include "../libbloom/bloom64.h"
 #else
-#include "libbloom/bloom.h"
+#include "../libbloom/bloom.h"
 #endif
 }
 
@@ -565,9 +565,6 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     It's tunable if needed */
     Buffer scratch1 = initBuffer(MAX_ALLTOALL_MEM);
     Buffer scratch2 = initBuffer(MAX_ALLTOALL_MEM);
-
-    Buffer scratch1 = initBuffer(MAX_ALLTOALL_MEM);
-    Buffer scratch2 = initBuffer(MAX_ALLTOALL_MEM);
     
     /*! Initialize bloom filter */
     if(pass == 1)
@@ -805,15 +802,18 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
     int64_t numreads = lfd->local_count();
 
     /*! GGGG: so where do I get these? */
-    uint64_t start_offset, end_offset_inclusive;
+    uint64_t start_offset, end_offset_inclusive, found;
     ushort len;
 
     for (uint64_t lreadidx = 0; lreadidx < numreads; ++lreadidx)
     {
         /*! GGGG: loading sequence string in buff */
         char* myread = lfd->get_sequence(lreadidx, len, start_offset, end_offset_inclusive);
+
         std::string mystr = std::string(myread);
-		MoreHLLTimers mt = InsertIntoHLL(mystr, hll, (uint64_t)len, true);
+        found = len;
+        
+		MoreHLLTimers mt = InsertIntoHLL(mystr, hll, found, true);
     }
 	
     // LOGF("HLL timings: reads %lld, duration %0.4f, parsing %0.4f, getKmer %0.4f, lexKmer %0.4f, thll %0.4f, hhTime %0.4f\n", 
