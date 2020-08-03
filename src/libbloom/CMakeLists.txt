@@ -1,4 +1,3 @@
-
 message("Building libbloom")
 add_subdirectory(murmur2)
 include_directories(murmur2)

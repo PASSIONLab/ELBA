@@ -14,6 +14,7 @@
 #include "../Buffer.h"
 #include "../DistributedFastaData.hpp"
 #include "Kmer.hpp"
+#include <stdint.h>
 
 namespace dibella {
   class KmerOps {

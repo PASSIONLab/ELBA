@@ -4,15 +4,24 @@ set(CMAKE_CXX_STANDARD 14)
 
 include_directories(
 	$ENV{SEQAN_HOME}/include 
-	$ENV{COMBBLAS_HOME}/CombBLAS/install/include)
+	$ENV{COMBBLAS_HOME}/CombBLAS/install/include
+	$ENV{BLOOM_HOME})
 	# possibly add path to boost library (not necessary on Cori, just type 'module load boost')
-link_directories($ENV{COMBBLAS_HOME}/CombBLAS/install/lib)
+link_directories(
+    $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
+    $ENV{BLOOM_HOME}/build)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
+if(DISCOVER_LIBC)
+  find_library(libc c)
+else()
+  set(libc "")
+endif()
+
+set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -static-libstdc++ -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
 
 find_package(MPI REQUIRED)
 find_package(OpenMP REQUIRED)
@@ -34,6 +43,8 @@ add_executable(dibella
         include/DistributedFastaData.hpp
         src/FastaData.cpp
         include/FastaData.hpp
+        src/HashFuncs.c
+        include/HashFuncs.h
         src/main.cpp
         src/ParallelFastaReader.cpp
         include/ParallelFastaReader.hpp
@@ -70,8 +81,8 @@ add_executable(dibella
         include/kmer/SubKmerIntersectSR.hpp
         )
 
-
 target_link_libraries(dibella PUBLIC CombBLAS GraphGenlib Usortlib)
+
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
     target_link_libraries(dibella PUBLIC ${MPI_LIBRARIES})
