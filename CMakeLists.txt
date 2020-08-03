@@ -82,7 +82,7 @@ add_executable(dibella
         include/kmer/SubKmerIntersectSR.hpp
         )
 
-target_link_libraries(dibella PUBLIC CombBLAS GraphGenlib Usortlib LIBBLOOM-NOUPC)
+target_link_libraries(dibella PUBLIC CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC)
 
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
