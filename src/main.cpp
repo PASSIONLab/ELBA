@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
   Alphabet alph(alph_t);
 
   /*! Generate sequences by kmers matrix */
-  std::unordered_set<Kmer, Kmer> local_kmers;
+  //std::unordered_set<Kmer, Kmer> local_kmers;
 
   tp->times["start_main:genA()"] = std::chrono::system_clock::now();
   PSpMat<dibella::MatrixEntry>::MPI_DCCols A =
