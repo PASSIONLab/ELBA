@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 3.11)
 project(dibella)
 set(CMAKE_CXX_STANDARD 14)
 
+add_subdirectory($ENV{BLOOM_HOME})
+
 include_directories(
 	$ENV{SEQAN_HOME}/include 
-	$ENV{COMBBLAS_HOME}/CombBLAS/install/include
-	$ENV{BLOOM_HOME})
+	$ENV{COMBBLAS_HOME}/CombBLAS/install/include)
 	# possibly add path to boost library (not necessary on Cori, just type 'module load boost')
 link_directories(
     $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
@@ -21,12 +22,12 @@ else()
   set(libc "")
 endif()
 
-set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -static-libstdc++ -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
+set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
 
 find_package(MPI REQUIRED)
 find_package(OpenMP REQUIRED)
 
-add_subdirectory(src/libbloom)
+#add_subdirectory(src/libbloom)
 
 add_executable(dibella
         src/Alphabet.cpp
@@ -81,7 +82,7 @@ add_executable(dibella
         include/kmer/SubKmerIntersectSR.hpp
         )
 
-target_link_libraries(dibella PUBLIC CombBLAS GraphGenlib Usortlib)
+target_link_libraries(dibella PUBLIC CombBLAS GraphGenlib Usortlib LIBBLOOM-NOUPC)
 
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})

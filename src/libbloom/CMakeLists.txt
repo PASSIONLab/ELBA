@@ -1,3 +1,5 @@
+cmake_minimum_required(VERSION 3.14)
+
 message("Building libbloom")
 add_subdirectory(murmur2)
 include_directories(murmur2)
