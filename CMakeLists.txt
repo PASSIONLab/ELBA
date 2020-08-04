@@ -27,7 +27,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG
 find_package(MPI REQUIRED)
 find_package(OpenMP REQUIRED)
 
-#add_subdirectory(src/libbloom)
+find_package(ZLIB)
 
 add_executable(dibella
         src/Alphabet.cpp
@@ -82,7 +82,7 @@ add_executable(dibella
         include/kmer/SubKmerIntersectSR.hpp
         )
 
-target_link_libraries(dibella PUBLIC CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC)
+target_link_libraries(dibella PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC)
 
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
