@@ -889,127 +889,126 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
 // GGGG: First pass k-mer counter
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//   /*! Prepare for first pass over input data with k-mer extraction */
-//   ASSERT(kmercounts == NULL, "");
+  /*! Prepare for first pass over input data with k-mer extraction */
+  ASSERT(kmercounts == NULL, "");
 
-//   /*! GGGG: what is this? */
-//   kmercounts = new KmerCountsType();
+  /*! GGGG: what is this? */
+  kmercounts = new KmerCountsType();
 
-//   /*! Assume we have at least 10x depth of kmers to store and a minimum 64k */
-//   uint64_t reserve = cardinality * 0.1 + 64000; 
-//   /*! This is the maximum supported by khash */
-//   if (reserve >= 4294967291ul) reserve = 4294967290ul; // 
+  /*! Assume we have at least 10x depth of kmers to store and a minimum 64k */
+  uint64_t reserve = cardinality * 0.1 + 64000; 
+  /*! This is the maximum supported by khash */
+  if (reserve >= 4294967291ul) reserve = 4294967290ul; // 
 
-//   /*! GGGG: define this macros */
-//   LOGF("Reserving %lld entries in VectorMap for cardinality %lld\n", (lld) reserve, (lld) cardinality);
-//   kmercounts->reserve(reserve);
-//   DBG("Reserved kmercounts\n");
+  /*! GGGG: define this macros */
+  // LOGF("Reserving %lld entries in VectorMap for cardinality %lld\n", (lld) reserve, (lld) cardinality);
+  kmercounts->reserve(reserve);
+  // DBG("Reserved kmercounts\n");
 
-//   /* Initialize readNameMap for storing ReadID -> names/tags of reads */
-//   /* GGGG: define ReadId type */
-//   std::unordered_map<ReadId, std::string>* readNameMap = new std::unordered_map<ReadId, std::string>();
+  /* Initialize readNameMap for storing ReadID -> names/tags of reads */
+  /* GGGG: define ReadId type */
+  std::unordered_map<ReadId, std::string>* readNameMap = new std::unordered_map<ReadId, std::string>();
 
-//   /*! GGGG: I don't what the original one, I wnt the new one with consecutive entries; also I only need the first one; it's gonna be incremented later in ParseNPack */
-//   uint64_t GlobalReadOffset = dfd->g_seq_offsets[parops->world_proc_rank];  
-//   ReadId myReadStartIndex = GlobalReadOffset;
+  /*! GGGG: I don't what the original one, I wnt the new one with consecutive entries; also I only need the first one; it's gonna be incremented later in ParseNPack */
+  uint64_t GlobalReadOffset = dfd->g_seq_offsets[parops->world_proc_rank];  
+  ReadId myReadStartIndex = GlobalReadOffset;
 
-//   /*! GGGG: let's extract the function (I'll separate later once I understood what's going on) */
-//   /*! GGGG: functions in KmerCounter.cpp */
-//   /*  Determine final hash-table entries using bloom filter */
-//   int nreads = ProcessFiles(allfiles, 1, cardinality, cacheio, mydir, myReadStartIndex, *readNameMap);
+  /*! GGGG: let's extract the function (I'll separate later once I understood what's going on) */
+  /*! GGGG: functions in KmerCounter.cpp */
+  /*  Determine final hash-table entries using bloom filter */
+  int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, *readNameMap);
 
-//   firstpasstime = MPI_Wtime() - tstart;
+  double firstpasstime = MPI_Wtime() - tstart;
 
-//   /*! GGGG: TODO print using PASTIS way */
-//   if (myrank == 0)
-//   {
-//     std::cout << "Reads: " << nreads << std::endl;
-//     std::cout << "First input data pass, elapsed time: " << firstpasstime << std::endl;
-//   }   
+  /*! GGGG: TODO print using PASTIS way */
+  if (myrank == 0)
+  {
+    std::cout << "Reads: " << nreads << std::endl;
+    std::cout << "First input data pass, elapsed time: " << firstpasstime << std::endl;
+  }   
 
-//   tstart = MPI_Wtime();
+  tstart = MPI_Wtime();
 
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////
-// // GGGG: Second pass k-mer counter        
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+// GGGG: Second pass k-mer counter        
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//   /*! GGGG: prepare for second pass over the input data, extracting k-mers with read ID's, names, etc. */
-//   /* Exchange number of reads-per-processor to calculate read indices */
-//   uint64_t sndReadCounts[nprocs];
+  /*! GGGG: prepare for second pass over the input data, extracting k-mers with read ID's, names, etc. */
+  /* Exchange number of reads-per-processor to calculate read indices */
+  uint64_t sndReadCounts[nprocs];
 
-//   for (int i = 0; i < nprocs; i++)
-//   {
-//     sndReadCounts[i] = nreads;
-//   }
+  for (int i = 0; i < nprocs; i++)
+  {
+    sndReadCounts[i] = nreads;
+  }
 
-//   uint64_t recvReadCounts[nprocs];
+  uint64_t recvReadCounts[nprocs];
 
-//   CHECK_MPI(MPI_Alltoall(sndReadCounts, 1, MPI_UINT64_T, recvReadCounts, 1, MPI_UINT64_T, MPI_COMM_WORLD));
+  CHECK_MPI(MPI_Alltoall(sndReadCounts, 1, MPI_UINT64_T, recvReadCounts, 1, MPI_UINT64_T, MPI_COMM_WORLD));
   
-//   myReadStartIndex = 1;
-//   for (int i = 0; i < myrank; i++)
-//   {
-//     myReadStartIndex += recvReadCounts[i];
-//   }
+  myReadStartIndex = 1;
+  for (int i = 0; i < myrank; i++)
+  {
+    myReadStartIndex += recvReadCounts[i];
+  }
 
-// #ifdef DEBUG
-//     if(myrank == nprocs - 1)
-//       for (int i = 0; i < nprocs; i++)
-//         LOGF("recvReadCounts[%lld] = %lld\n", recvReadCounts[i]);
-// #endif
+#ifdef DEBUG
+    if(myrank == nprocs - 1)
+      for (int i = 0; i < nprocs; i++)
+        LOGF("recvReadCounts[%lld] = %lld\n", recvReadCounts[i]);
+#endif
 //   DBG("my startReadIndex = %lld\n", myReadStartIndex);
 
-//   CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
+  CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
-//   /* Initialize end read ranges */
-//   ReadId readRanges[nprocs];
-//   ReadId last = 0;
+  /* Initialize end read ranges */
+  ReadId readRanges[nprocs];
+  ReadId last = 0;
 
-//   for (int i = 0; i < nprocs; i++)
-//   {
-//     readRanges[i] = last + recvReadCounts[i];
-//     last += recvReadCounts[i];
-//   }
+  for (int i = 0; i < nprocs; i++)
+  {
+    readRanges[i] = last + recvReadCounts[i];
+    last += recvReadCounts[i];
+  }
 
 //   DBG("My read range is [%lld - %lld]\n", (myrank==0? 1 : readRanges[myrank-1]+1), readRanges[myrank]);
 
-//   /* Second pass */
-//   ProcessFiles(allfiles, 2, cardinality, cacheio, mydir, myReadStartIndex, *readNameMap);
+  /* Second pass */
+  ProcessFiles(lfd, 2, cardinality, myReadStartIndex, *readNameMap);
 
-//   timesecondpass = MPI_Wtime() - tstart;
-//   serial_printf("%s: 2nd input data pass, elapsed time: %0.3f s\n", __FUNCTION__, timesecondpass);
-//   tstart = MPI_Wtime();
+  double timesecondpass = MPI_Wtime() - tstart;
+  // serial_printf("%s: 2nd input data pass, elapsed time: %0.3f s\n", __FUNCTION__, timesecondpass);
+  tstart = MPI_Wtime();
 
-//   int64_t sendbuf = kmercounts->size(); 
-//   int64_t recvbuf, totcount, maxcount;
+  int64_t sendbuf = kmercounts->size(); 
+  int64_t recvbuf, totcount, maxcount;
 
-//   CHECK_MPI(MPI_Exscan(&sendbuf, &recvbuf, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD));
-//   CHECK_MPI(MPI_Allreduce(&sendbuf, &totcount, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD));
-//   CHECK_MPI(MPI_Allreduce(&sendbuf, &maxcount, 1, MPI_LONG_LONG, MPI_MAX, MPI_COMM_WORLD));
+  CHECK_MPI(MPI_Exscan(&sendbuf, &recvbuf, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD));
+  CHECK_MPI(MPI_Allreduce(&sendbuf, &totcount, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD));
+  CHECK_MPI(MPI_Allreduce(&sendbuf, &maxcount, 1, MPI_LONG_LONG, MPI_MAX, MPI_COMM_WORLD));
 
-//   int64_t totkmersprocessed;
+  int64_t totkmersprocessed;
 
-//   CHECK_MPI(MPI_Reduce(&kmersprocessed, &totkmersprocessed, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
+  CHECK_MPI(MPI_Reduce(&kmersprocessed, &totkmersprocessed, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
 
-//   timeloadimbalance = MPI_Wtime() - tstart;
+  double timeloadimbalance = MPI_Wtime() - tstart;
 
-//   if(myrank  == 0)
-//   {
-//     cout << __FUNCTION__ << ": Total number of stored k-mers: " << totcount << endl;
+  if(myrank  == 0)
+  {
+    cout << __FUNCTION__ << ": Total number of stored k-mers: " << totcount << endl;
 
-//     double imbalance = static_cast<double>(nprocs * maxcount) / static_cast<double>(totcount);  
+    double imbalance = static_cast<double>(nprocs * maxcount) / static_cast<double>(totcount);  
     
-//     cout << __FUNCTION__ << ": Load imbalance for final k-mer counts: " << imbalance << endl;
-//     cout << __FUNCTION__ << ": CardinalityEstimate " << static_cast<double>(totkmersprocessed) / (MEGA * max((time_cardinality_est), 0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (time_cardinality_est) << " seconds"<< endl;
-//     cout << __FUNCTION__ << ": Bloom filter + hash table (key) initialization " << static_cast<double>(totkmersprocessed) / (MEGA * max((firstpasstime),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (firstpasstime) << " seconds" << endl;
-//     cout << __FUNCTION__ << ": Hash table (value) initialization  " << static_cast<double>(totkmersprocessed) / (MEGA * max((timesecondpass),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (timesecondpass) << " seconds" << endl;
-//   }
+    cout << __FUNCTION__ << ": Load imbalance for final k-mer counts: " << imbalance << endl;
+    cout << __FUNCTION__ << ": CardinalityEstimate " << static_cast<double>(totkmersprocessed) / (MEGA * max((tcardinalitye), 0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (tcardinalitye) << " seconds"<< endl;
+    cout << __FUNCTION__ << ": Bloom filter + hash table (key) initialization " << static_cast<double>(totkmersprocessed) / (MEGA * max((firstpasstime),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (firstpasstime) << " seconds" << endl;
+    cout << __FUNCTION__ << ": Hash table (value) initialization  " << static_cast<double>(totkmersprocessed) / (MEGA * max((timesecondpass),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (timesecondpass) << " seconds" << endl;
+  }
 
 //   serial_printf("%s: Total time computing load imbalance: %0.3f s\n", __FUNCTION__, timeloadimbalance);
+  CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
   
-//   CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-  
-//   tstart = MPI_Wtime();
+  tstart = MPI_Wtime();
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GGGG: Build matrix A
@@ -1027,12 +1026,13 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
     Kmer::MERARR key = itr->first;
 
     /*! GGGG: run tests, read idx should be consistent now */
-    READIDS readids  = get<0>(itr->second);
+    READIDS  readids = get<0>(itr->second);
     POSITIONS values = get<1>(itr->second);
 
     // uint64_t num = itr->second.size();  
     // for(int j = 0; j < num; j++)
     // {
+    /*!  GGGG: I need kmer id here */
     //   lcol_ids.push_back();
     //   lrow_ids.push_back(readids[j]);
     //   lvals.push_back(values[j]);
