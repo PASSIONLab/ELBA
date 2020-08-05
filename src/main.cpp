@@ -146,8 +146,15 @@ int main(int argc, char **argv) {
   print_str = "\nINFO: Program started on ";
   print_str.append(std::ctime(&start_prog_time));
   print_str.append("\nINFO: Job ID ").append(job_name).append("\n");
+  tu.print_str(print_str);
   pretty_print_config(print_str);
   tu.print_str(print_str);
+
+  // if(myrank == 0)
+  // {
+  //     std::cout << ">> Gonna end soon" << std::endl;
+  // }
+  // exit(0);
 
   /*! Read and distribute fasta data */
   tp->times["start_main:newDFD()"] = std::chrono::system_clock::now();
@@ -156,6 +163,8 @@ int main(int argc, char **argv) {
       input_file.c_str(), idx_map_file.c_str(), input_overlap,
       klength, parops, tp, tu);
   tp->times["end_main:newDFD()"] = std::chrono::system_clock::now();
+  
+  exit(0);
 
 #ifndef NDEBUG
   //  TraceUtils::print_fasta_data(fd, parops);
@@ -573,11 +582,6 @@ int parse_args(int argc, char **argv) {
     alph_t = Alphabet::DNA;
   }
 
-  if (result.count(CMD_OPTION_SUBS)) {
-    add_substitue_kmers = true;
-    subk_count = result[CMD_OPTION_SUBS].as<int>();
-  }
-
   boost::uuids::random_generator gen;
   boost::uuids::uuid id = gen();
   if (result.count(CMD_OPTION_JOB_NAME_PREFIX)) {
@@ -612,8 +616,6 @@ void pretty_print_config(std::string &append_to) {
     "Overlap in bytes (-O)",
     "Max seed count (--sc)",
     "Gap open penalty (-g)",
-    "Mismatch penalty (-mi)",
-    "Match penalty (--ma)",
     "Gap extension penalty (-e)",
     "Overlap file (--of)",
     "Alignment file (--af)",
@@ -623,8 +625,7 @@ void pretty_print_config(std::string &append_to) {
     "Xdrop align (--xa)",
     "Banded align (--ba)",
     "Index map (--idxmap)",
-    "Alphabet (--alph)",
-    "Use substitute kmers (--subs)"
+    "Alphabet (--alph)"
   };
 
   std::vector<std::string> vals = {
@@ -644,30 +645,28 @@ void pretty_print_config(std::string &append_to) {
     bool_to_str(xdrop_align) + (xdrop_align ? "| xdrop: " + std::to_string(xdrop) : ""),
     bool_to_str(banded_align) + (banded_align ? " | half band: " + std::to_string(banded_half_width) : ""),
     !idx_map_file.empty() ? idx_map_file : "None",
-    std::to_string(alph_t),
-    bool_to_str(add_substitue_kmers) + (add_substitue_kmers ? " | sub kmers: " + std::to_string(subk_count) : ""),
+    std::to_string(alph_t)
   };
 
   ushort max_length = 0;
-  for (const auto &param : params) {
-    if (param.size() > max_length) {
+  for (const auto &param : params)
+  {
+    if (param.size() > max_length)
+    {
       max_length = static_cast<ushort>(param.size());
     }
   }
 
   std::string prefix = "  ";
-  append_to.append("Parameters...\n");
-  for (ushort i = 0; i < params.size(); ++i) {
+  append_to.append("Parameters:\n");
+
+  for (ushort i = 0; i < params.size(); ++i)
+  {
     std::string param = params[i];
     append_to.append(prefix).append(param).append(": ")
       .append(get_padding(
         static_cast<ushort>(max_length - param.size()), ""))
       .append(vals[i]).append("\n");
-
-//    append_to.append(get_padding(
-//        static_cast<ushort>(max_length + 1 - param.row_size()), prefix))
-//        .append(param).append(": ")
-//        .append(vals[i]).append("\n");
   }
 }
 
