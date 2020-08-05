@@ -26,7 +26,7 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
   ushort seq_len = 0;
   /*! nc_count means No character count. This includes new line and * characters
    * It also includes entire sequences that are less than k-mer length */
-  ushort nc_count = 0;
+  uint64_t nc_count = 0;
   uint64_t idx;
   /*! Assume the FASTA content is valid */
   for (uint64_t i = l_start; i <= l_end; ++i) {

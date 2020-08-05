@@ -1007,7 +1007,8 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
 
 //   serial_printf("%s: Total time computing load imbalance: %0.3f s\n", __FUNCTION__, timeloadimbalance);
   CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
-  
+ 
+  exit(0); 
   tstart = MPI_Wtime();
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
