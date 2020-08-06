@@ -48,6 +48,7 @@ void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int ran
   MPI_File_get_size(f, &file_size);
   file_size--;  /* get rid of text file eof */
   l_chunk_size = static_cast<uint64_t >(file_size / world_size);
+
   g_start = rank * l_chunk_size;
   g_end = g_start + l_chunk_size - 1;
   if (rank == world_size - 1) g_end = file_size - 1;
@@ -56,7 +57,7 @@ void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int ran
   if (rank != world_size - 1)
     g_end += overlap;
 
-  l_chunk_size = static_cast<uint64_t >(g_end - g_start + 1);
+  l_chunk_size = static_cast<uint64_t >(g_end - g_start + 1); // >> 2 l_chunk_size  8793948
 
   buff = static_cast<char *>(malloc((l_chunk_size + 1) * sizeof(char)));
 
@@ -67,7 +68,6 @@ void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int ran
                        MPI_CHAR, MPI_STATUS_IGNORE);
   buff[l_chunk_size] = '\0';
 
-
   /*
    * everyone calculate what their start and end *really* are by going
    * from the first newline after start to the first newline after the
@@ -75,10 +75,16 @@ void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int ran
    */
 
   l_start = 0, l_end = l_chunk_size - 1;
-  if (rank != 0) {
+
+  if (rank != 0)
+  {
     while (buff[l_start] != '>') l_start++;
   }
-  if (rank != world_size - 1) {
+
+  // std::cout << ">> overlap " << overlap << std::endl;
+
+  if (rank != world_size - 1)
+  {
     l_end -= overlap;
     while (buff[l_end] != '>') l_end++;
     // minus 2 because we don't need '>' as well as the '\n' before that
