@@ -25,7 +25,7 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
   bool in_name = false;
   bool in_seq  = false;
 
-  ushort seq_len = 0;
+  uint64_t seq_len = 0;
   /*! nc_count means No character count. This includes new line and * characters
    * It also includes entire sequences that are less than k-mer length */
   uint64_t nc_count = 0;
@@ -37,6 +37,8 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
     c = buff[i];
     idx = i - nc_count;
     buff[idx] = c;
+
+    // std::cout << c << " ";
 
     // Modify 'u' or 'U' in sequences to 'T'.
     // This is according to http://meme-suite.org/doc/alphabets.html
@@ -71,7 +73,8 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
         {
           ++nc_count;
         }
-        else if (buff[i + 1] == '>')
+        // else 
+        if (buff[i + 1] == '>')
         {
           if (seq_len < k)
           {
@@ -93,7 +96,6 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
     {
       if (in_seq)
       {
-        std::cout << ">> c == '*'" << std::endl;
         ++nc_count;
       }
     }
@@ -101,15 +103,10 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
     {
       if (in_seq)
       {
-        std::cout << ">> in_seq" << std::endl;
         ++seq_len;
       }
     }
   }
-
-  // std::cout << ">> Good so far" << std::endl;
-  MPI_Barrier(MPI_COMM_WORLD);
-  exit(0);
 
   // Remove the last sequence as well if it's shorter than k
   if (seq_len < k) {
