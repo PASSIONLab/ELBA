@@ -62,16 +62,9 @@ DistributedFastaData::DistributedFastaData(
 
   tp->times["end_dfd:pfr->read_fasta()"] = std::chrono::system_clock::now();
 
-  std::cout << ">> Good so far" << std::endl;
-  MPI_Barrier(MPI_COMM_WORLD);
-
   tp->times["start_dfd:new_FD()"] = tp->times["end_dfd:pfr->read_fasta()"];
   fd = new FastaData(buff, k, l_start, l_end, tp, tu);
   l_seq_count = fd->local_count();
-
-  // GGGG: sum of local seq counts adds up to the tot number of seqs but there's a seq fault here in FasaData
-  MPI_Barrier(MPI_COMM_WORLD);
-  exit(0);
 
   tp->times["end_dfd:new_FD()"] = std::chrono::system_clock::now();
 

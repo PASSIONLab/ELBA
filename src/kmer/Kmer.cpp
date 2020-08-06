@@ -169,6 +169,7 @@ std::vector<Kmer> Kmer::getKmers(std::string seq)
     assert(lastLong >= 0 && lastLong < N_LONGS);
 
     std::vector<Kmer> kmers(seq.size() - k + 1, Kmer());
+
     uint64_t buf[ bufsize ];
     uint8_t *bufPtr = (uint8_t*) buf;
     memset(buf, 0, bufsize*8);
@@ -222,7 +223,7 @@ std::vector<Kmer> Kmer::getKmers(std::string seq)
 
             for(int l = 0; l < numLongs; l++)
             {
-                    kmers[i].longs[l] = BE2H( *( (uint64_t *) (bufPtr + byteOffset + l*8) ) );
+                kmers[i].longs[l] = BE2H( *( (uint64_t *) (bufPtr + byteOffset + l*8) ) );
             }
 
             // set remaining bits to 0

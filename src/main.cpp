@@ -152,24 +152,18 @@ int main(int argc, char **argv) {
   /*! Read and distribute fasta data */
   tp->times["start_main:newDFD()"] = std::chrono::system_clock::now();
 
-  // if(myrank == 0)
-  // {
-  //     std::cout << ">> Gonna end soon" << std::endl;
-  // }
-  // exit(0);
-
   std::shared_ptr<DistributedFastaData> dfd = std::make_shared<DistributedFastaData>(
       input_file.c_str(), idx_map_file.c_str(), input_overlap,
       klength, parops, tp, tu);
       
   tp->times["end_main:newDFD()"] = std::chrono::system_clock::now();
 
-
 #ifndef NDEBUG
   //  TraceUtils::print_fasta_data(fd, parops);
 #endif
 
-  if (dfd->global_count() != seq_count) {
+  if (dfd->global_count() != seq_count)
+  {
     uint64_t final_seq_count = dfd->global_count();
     print_str = "\nINFO: Modfied sequence count\n";
     print_str.append("  Final sequence count: ")
@@ -194,6 +188,12 @@ int main(int argc, char **argv) {
       dibella::KmerOps::generate_A(
           seq_count,dfd, klength, kstride,
           alph, parops, tp); //, local_kmers);
+
+  // if(myrank == 0)
+  // {
+  //     std::cout << ">> Gonna end soon" << std::endl;
+  // }
+  // exit(0);
 
   tu.print_str("Matrix A: ");
   tu.print_str("\nLoad imbalance: " + std::to_string(A.LoadImbalance()) + "\n");

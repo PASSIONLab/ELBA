@@ -816,6 +816,8 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
 		MoreHLLTimers mt = InsertIntoHLL(mystr, hll, found, true);
     }
 	
+    exit(0);
+    
     // LOGF("HLL timings: reads %lld, duration %0.4f, parsing %0.4f, getKmer %0.4f, lexKmer %0.4f, thll %0.4f, hhTime %0.4f\n", 
     // (lld) numreads, mt.duration, mt.parsingTime, mt.getKmerTime, mt.lexKmerTime, mt.thll, mt.hhTime);
     // LOGF("My cardinality before reduction: %f\n", hll.estimate());
@@ -878,6 +880,8 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
 
   double cardinality;
   double tstart = MPI_Wtime(); 
+
+  Kmer::set_k(KLEN);
   
   /* Doesn't update kmersprocessed yet (but updates readsprocessed */
   ProudlyParallelCardinalityEstimate(lfd, cardinality); 
