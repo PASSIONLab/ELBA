@@ -146,9 +146,11 @@ int main(int argc, char **argv) {
   print_str = "\nINFO: Program started on ";
   print_str.append(std::ctime(&start_prog_time));
   print_str.append("\nINFO: Job ID ").append(job_name).append("\n");
-  tu.print_str(print_str);
   pretty_print_config(print_str);
   tu.print_str(print_str);
+
+  /*! Read and distribute fasta data */
+  tp->times["start_main:newDFD()"] = std::chrono::system_clock::now();
 
   // if(myrank == 0)
   // {
@@ -156,15 +158,12 @@ int main(int argc, char **argv) {
   // }
   // exit(0);
 
-  /*! Read and distribute fasta data */
-  tp->times["start_main:newDFD()"] = std::chrono::system_clock::now();
-  std::shared_ptr<DistributedFastaData> dfd
-    = std::make_shared<DistributedFastaData>(
+  std::shared_ptr<DistributedFastaData> dfd = std::make_shared<DistributedFastaData>(
       input_file.c_str(), idx_map_file.c_str(), input_overlap,
       klength, parops, tp, tu);
+      
   tp->times["end_main:newDFD()"] = std::chrono::system_clock::now();
-  
-  exit(0);
+
 
 #ifndef NDEBUG
   //  TraceUtils::print_fasta_data(fd, parops);

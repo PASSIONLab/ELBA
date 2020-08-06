@@ -15,31 +15,38 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
                      const std::shared_ptr<TimePod> &tp, TraceUtils tu)
                      : tp(tp), tu(tu) {
 
-  id_starts = new uvec_64();
+  id_starts  = new uvec_64();
   seq_starts = new uvec_64();
-  del_idxs = new uvec_64();
+  del_idxs   = new uvec_64();
 
   l_seq_count = 0;
   char c;
+
   bool in_name = false;
-  bool in_seq = false;
+  bool in_seq  = false;
+
   ushort seq_len = 0;
   /*! nc_count means No character count. This includes new line and * characters
    * It also includes entire sequences that are less than k-mer length */
   uint64_t nc_count = 0;
   uint64_t idx;
+
   /*! Assume the FASTA content is valid */
-  for (uint64_t i = l_start; i <= l_end; ++i) {
+  for (uint64_t i = l_start; i <= l_end; ++i)
+  {
     c = buff[i];
     idx = i - nc_count;
     buff[idx] = c;
 
     // Modify 'u' or 'U' in sequences to 'T'.
     // This is according to http://meme-suite.org/doc/alphabets.html
-    if ((c == 'U' || c == 'u') && in_seq){
+    if ((c == 'U' || c == 'u') && in_seq)
+    {
       buff[idx] = 'T';
     }
-    if (c == '>' && !in_name) {
+
+    if (c == '>' && !in_name) 
+    {
       /*! Note. the !in_name logic is important as some fasta files
        * have > character in the middle of the sequence identifier. If we
        * didn't have this test then we'll consider that as the start of another
@@ -47,18 +54,27 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
       id_starts->push_back(idx);
       seq_len = 0;
       in_name = true;
-      in_seq = false;
+      in_seq  = false;
       ++l_seq_count;
-    } else if (c == '\n') {
-      if (in_name && i + 1 <= l_end) {
+    }
+    else if (c == '\n')
+    {
+      if (in_name && (i + 1 <= l_end))
+      {
         seq_starts->push_back(idx + 1);
         in_name = false;
-        in_seq = true;
-      } else if (in_seq && i + 1 <= l_end) {
-        if (buff[i + 1] != '>') {
+        in_seq  = true;
+      }
+      else if (in_seq && i + 1 <= l_end)
+      {
+        if (buff[i + 1] != '>')
+        {
           ++nc_count;
-        } else if (buff[i + 1] == '>') {
-          if (seq_len < k) {
+        }
+        else if (buff[i + 1] == '>')
+        {
+          if (seq_len < k)
+          {
             ++seq_len; // capture the new line character too for removal
             uint64_t seq_id_start = id_starts->back();
             uint64_t seq_start = seq_starts->back();
@@ -72,16 +88,28 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
           }
         }
       }
-    } else if (c == '*') {
-      if (in_seq) {
+    }
+    else if (c == '*')
+    {
+      if (in_seq)
+      {
+        std::cout << ">> c == '*'" << std::endl;
         ++nc_count;
       }
-    } else {
-      if (in_seq) {
+    }
+    else
+    {
+      if (in_seq)
+      {
+        std::cout << ">> in_seq" << std::endl;
         ++seq_len;
       }
     }
   }
+
+  // std::cout << ">> Good so far" << std::endl;
+  MPI_Barrier(MPI_COMM_WORLD);
+  exit(0);
 
   // Remove the last sequence as well if it's shorter than k
   if (seq_len < k) {
