@@ -578,11 +578,9 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
 
         if(myrank == 0)
         {
-            std::cout << "First pass: Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
-            std::cout << "First pass: Optimal number of hash functions is : " << bm->hashes << endl;
+            std::cout << __FUNCTION__ << ": First pass: Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
+            std::cout << __FUNCTION__ << ": First pass: Optimal number of hash functions is : " << bm->hashes << endl;
         }
-
-        // LOGF("Initialized bloom filter with %lld bits and %d hash functions\n", (lld) bm->bits, (int) bm->hashes);
     }
 
     VectorVectorKmer  outgoing(nprocs);
@@ -637,6 +635,12 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
 
         /*! GGGG: when this is the case? */
+
+        std::cout << __FUNCTION__ << ": offset " << offset << std::endl;
+        std::cout << __FUNCTION__ << ": nreads " << nreads << std::endl;
+
+        exit(0);
+
         moreToExchange = offset < nreads;
 
         mykmers.clear();
@@ -815,8 +819,6 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
         
 		MoreHLLTimers mt = InsertIntoHLL(mystr, hll, found, true);
     }
-	
-    exit(0);
     
     // LOGF("HLL timings: reads %lld, duration %0.4f, parsing %0.4f, getKmer %0.4f, lexKmer %0.4f, thll %0.4f, hhTime %0.4f\n", 
     // (lld) numreads, mt.duration, mt.parsingTime, mt.getKmerTime, mt.lexKmerTime, mt.thll, mt.hhTime);
@@ -833,8 +835,6 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
     {
 		cout << __FUNCTION__ << ": Embarrassingly parallel k-mer count estimate is " << cardinality << endl;
 		cout << __FUNCTION__ << ": Total reads processed over all processors is " << readsprocessed << endl;
-        // ADD_DIAG("%f", "cardinality", cardinality);
-        // ADD_DIAG("%lld", "total_reads", (lld) readsprocessed);
 	}
     
     // SLOG("%s: total cardinality %f\n", __FUNCTION__, cardinality);
@@ -846,7 +846,11 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
 
     /* 10% benefit of doubt */
 	cardinality *= 1.1;
-    // LOGF("Adjusted per-process cardinality: %f\n", cardinality);
+
+	if(myrank == 0)
+    {
+		cout << __FUNCTION__ << ": Adjusted per-process cardinality: " << cardinality << endl;
+	}
 }
 
 PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
@@ -921,6 +925,8 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
   /*! GGGG: functions in KmerCounter.cpp */
   /*  Determine final hash-table entries using bloom filter */
   int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, *readNameMap);
+
+  exit(0);
 
   double firstpasstime = MPI_Wtime() - tstart;
 
