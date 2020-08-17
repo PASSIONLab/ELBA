@@ -611,8 +611,9 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         double tpack = MPI_Wtime() - texchstart;
         totpack += tpack;
 
-        if (offset == nreads)
-            offset = 0;
+        /* GGGG: change this logic --too confusing; this temporary change might introduce a bug on big data set */
+        // if (offset == nreads)
+        //     offset = 0;
 
         /* Outgoing arrays will be all empty, shouldn't crush */
         double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
@@ -638,8 +639,6 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
 
         std::cout << __FUNCTION__ << ": offset " << offset << std::endl;
         std::cout << __FUNCTION__ << ": nreads " << nreads << std::endl;
-
-        exit(0);
 
         moreToExchange = offset < nreads;
 
@@ -668,10 +667,10 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
                 //  << ", rank "                    << myrank 
                 //  << " morereads: "               << morereads 
                  << " moreToExchange: "          << moreToExchange;
-            cout << " tpackime: "                << std::fixed << std::setprecision( 3 ) << tpack
-                 << " exchange_time: "           << std::fixed << std::setprecision( 3 ) << texch
-                 << " proctimeime: "             << std::fixed << std::setprecision( 3 ) << proctime
-                 << " elapsed: "                 << std::fixed << std::setprecision( 3 ) << now - t01
+            cout << " tpackime: "                << std::fixed << std::setprecision(3) << tpack
+                 << " exchange_time: "           << std::fixed << std::setprecision(3) << texch
+                 << " proctimeime: "             << std::fixed << std::setprecision(3) << totproctime
+                 << " elapsed: "                 << std::fixed << std::setprecision(3) << now - t01
                  << endl;
         }
 
@@ -686,8 +685,6 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     tots[1] = totexch;
     tots[2] = totproctime;
     tots[3] = t02 - t01;
-
-    // LOGF("Process Total times: pack: %0.3f exch: %0.3f process: %0.3f\n", /* pfqTime, */ totpack, totexch, totproctime);
 
     CHECK_MPI(MPI_Reduce(&tots, &gtots, 4, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD));
 
@@ -706,11 +703,8 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         cout << __FUNCTION__ << " pass " << pass << ": Read/distributed/processed reads in " << t02 - t01 << " seconds" << endl;
     }
 
-    // LOGF("Finished pass %d, freeing bloom and other memory - kmercounts: %lld entries\n", pass, (lld) kmercounts->size());
-
     if (bm)
     {
-        // LOGF("Freeing Bloom filter\n");
         bloom_free(bm);
         free(bm);
         bm = NULL;
@@ -926,8 +920,6 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
   /*  Determine final hash-table entries using bloom filter */
   int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, *readNameMap);
 
-  exit(0);
-
   double firstpasstime = MPI_Wtime() - tstart;
 
   /*! GGGG: TODO print using PASTIS way */
@@ -967,7 +959,6 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
       for (int i = 0; i < nprocs; i++)
         LOGF("recvReadCounts[%lld] = %lld\n", recvReadCounts[i]);
 #endif
-//   DBG("my startReadIndex = %lld\n", myReadStartIndex);
 
   CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
 
@@ -981,10 +972,12 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
     last += recvReadCounts[i];
   }
 
-//   DBG("My read range is [%lld - %lld]\n", (myrank==0? 1 : readRanges[myrank-1]+1), readRanges[myrank]);
+  // DBG("My read range is [%lld - %lld]\n", (myrank==0? 1 : readRanges[myrank-1]+1), readRanges[myrank]);
 
   /* Second pass */
   ProcessFiles(lfd, 2, cardinality, myReadStartIndex, *readNameMap);
+
+  exit(0);
 
   double timesecondpass = MPI_Wtime() - tstart;
   // serial_printf("%s: 2nd input data pass, elapsed time: %0.3f s\n", __FUNCTION__, timesecondpass);
