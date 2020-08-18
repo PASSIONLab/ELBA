@@ -75,8 +75,8 @@ private:
     PosInRead position;
 public:
     KmerInfo() {}
-    KmerInfo(Kmer k): kmer(k), readId( (ReadId) nullReadId), position( (PosInRead) initPos ) {}
-    KmerInfo(Kmer k, ReadId r, PosInRead p): kmer(k), readId(r), position(p) {}
+    KmerInfo(Kmer k): kmer(k), readId((ReadId) nullReadId), position( (PosInRead) initPos ) {}
+    KmerInfo(Kmer k, ReadId r, PosInRead p): kmer(k), readId(r), position(p) { }
     //KmerInfo(Kmer k, ReadId r): kmer(k), quals(), seqs(), readId(r) {}
     //KmerInfo(Kmer k, TwoChar q, TwoChar s, ReadId r): kmer(k), quals(q), seqs(s), readId(r) {}
     KmerInfo(const KmerInfo &copy) {
@@ -169,9 +169,11 @@ public:
 		}
         // if the loop finishes without returning, the index is set to the next open space or there are no open spaces
         if (index >= maxKmerFreq || reads[index] > nullReadId) return;
+
         ASSERT(reads[index] == nullReadId, "reads[index] does not equal expected value of nullReadId");
         reads[index] = readId;
-        	positions[index] = position;
+
+        positions[index] = position;
     }
 
     bool includeCount(bool doStoreReadId) {
@@ -340,6 +342,7 @@ void DealWithInMemoryData(VectorKmer& mykmers, int pass, struct bloom* bm, Vecto
         size_t count = mykmers.size();
         for(size_t i=0; i < count; ++i)
         {
+            // std::cout << "myreadids[i] in DealWithIt " << myreadids[i] << std::endl;
             KmerInfo ki(mykmers[i], myreadids[i], mypositions[i]);
 			ASSERT(!bm, "");
 			ki.includeCount(true);
@@ -372,16 +375,16 @@ double ExchangePass(VectorVectorKmer& outgoing, VectorVectorReadId& readids, Vec
     {
         sendcnt[i] = (int) outgoing[i].size() * bytesperentry;
 
-        // if (pass == 2)
-        // {
-        //     ASSERT( outgoing[i].size() == readids[i].size(), "" );
-        //     ASSERT( outgoing[i].size() == positions[i].size(), "" );
-        // }
-        // else
-        // {
-        //     ASSERT (readids[i].size() == 0, "");
-        //     ASSERT (positions[i].size() == 0, "");
-        // }
+        if (pass == 2)
+        {
+            ASSERT( outgoing[i].size() == readids[i].size(), "" );
+            ASSERT( outgoing[i].size() == positions[i].size(), "" );
+        }
+        else
+        {
+            ASSERT (readids[i].size() == 0, "");
+            ASSERT (positions[i].size() == 0, "");
+        }
     }
 
     int* sdispls = new int[nprocs];
@@ -561,6 +564,8 @@ inline size_t FinishPackPass2(VectorVectorKmer& outgoing, VectorVectorReadId& re
     /* Count here */
     outgoing[owner].push_back(kmerreal);
     readids[owner].push_back(readId);
+
+
     positions[owner].push_back(pos);
 
     return outgoing[owner].size();
@@ -1009,7 +1014,7 @@ PSpMat<POSITIONS>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
 
   /* typedef std::vector<uint64_t> uvec_64; */
   uvec_64 lrow_ids, lcol_ids;
-  std::vector<POSITIONS> lvals;
+  std::vector<PosInRead> lvals;
 
   uint64_t offset = dfd->global_start_idx();
   FastaData *lfd  = dfd->lfd();
@@ -1068,7 +1073,7 @@ PSpMat<POSITIONS>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
   /*! GGGG: let's extract the function (I'll separate later once I understood what's going on) */
   /*! GGGG: functions in KmerCounter.cpp */
   /*  Determine final hash-table entries using bloom filter */
-  int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, *readNameMap);
+  int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, *readNameMap);//, readids);
 
   double firstpasstime = MPI_Wtime() - tstart;
 
@@ -1125,7 +1130,7 @@ PSpMat<POSITIONS>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
   // DBG("My read range is [%lld - %lld]\n", (myrank==0? 1 : readRanges[myrank-1]+1), readRanges[myrank]);
 
   /* Second pass */
-  ProcessFiles(lfd, 2, cardinality, myReadStartIndex, *readNameMap);
+  ProcessFiles(lfd, 2, cardinality, myReadStartIndex, *readNameMap);//, readids);
 
   double timesecondpass = MPI_Wtime() - tstart;
   // serial_printf("%s: 2nd input data pass, elapsed time: %0.3f s\n", __FUNCTION__, timesecondpass);
@@ -1170,35 +1175,38 @@ PSpMat<POSITIONS>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
 
     std::unordered_map<Kmer::MERARR, uint64_t>* kmerIdMap = new std::unordered_map<Kmer::MERARR, uint64_t>();
 
-    uint64_t num = kmercounts->size();  
+    uint64_t kmerid = 0;
     for(auto itr = kmercounts->begin(); itr != kmercounts->end(); ++itr)
     {
         
         /*! GGGG: TODO assing ids to local kmers here, they need to be consecutive on procs */
         /*! kmer string */
-        // Kmer::MERARR key = itr->first;
+        Kmer::MERARR key = itr->first;
 
         /*! GGGG: run tests, read idx should be consistent now */
         READIDS  readids = get<0>(itr->second);
         POSITIONS values = get<1>(itr->second);
 
-        for(int j = 0; j < num; j++)
+        assert(readids.size() == values.size());
+
+        for(int j = 0; j < readids.size(); j++)
         {
             /*!  GGGG: I need kmer id here */
             // j just works on 1 node
-            lcol_ids.push_back(j);
-            std::cout << j << " out of 12446" << std::endl;
-            std::cout << "Cols" << std::endl;
-
-            std::cout << "readids[j] " << readids[j] << std::endl;
+            lcol_ids.push_back(kmerid);
             lrow_ids.push_back(readids[j]);
-            std::cout << "Rows" << std::endl;
+            lvals.push_back(values[j]);
 
-            lvals.push_back(values);
-            std::cout << "Positions" << std::endl;
+            std::cout << "k " << kmerid     << " " << key << std::endl;
+            std::cout << "r " << readids[j] << std::endl;
+            std::cout << "v " << values[j]  << std::endl;
         }
+        kmerid++;
     }
+
+    assert(kmerid == kmercounts->size());
     exit(0); 
+
 #ifndef NDEBUG
   {
     std::string title = "Local matrix info:";
