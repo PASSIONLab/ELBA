@@ -52,7 +52,7 @@ namespace dibella
 
 READIDS newReadIdList() {
 	READIDS toreturn = *(new READIDS);
-	ASSERT(nullReadId == 0, "Read ID lists are being initialized to 0, despite the reserved null read ID being non-zero..."); // TODO
+	ASSERT(nullReadId == 0, "Read ID lists are being initialized to 0, despite the reserved null read ID being non-zero"); // TODO
 	std::memset(&toreturn, 0, MAX_NUM_READS*sizeof(ReadId));
 	return toreturn;
 }
@@ -340,7 +340,7 @@ void DealWithInMemoryData(VectorKmer& mykmers, int pass, struct bloom* bm, Vecto
     {
         ASSERT(pass == 2, "");
         size_t count = mykmers.size();
-        for(size_t i=0; i < count; ++i)
+        for(size_t i = 0; i < count; ++i)
         {
             // std::cout << "myreadids[i] in DealWithIt " << myreadids[i] << std::endl;
             KmerInfo ki(mykmers[i], myreadids[i], mypositions[i]);
@@ -1182,24 +1182,26 @@ PSpMat<POSITIONS>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
         /*! GGGG: TODO assing ids to local kmers here, they need to be consecutive on procs */
         /*! kmer string */
         Kmer::MERARR key = itr->first;
+        Kmer mykmer(key);
 
         /*! GGGG: run tests, read idx should be consistent now */
         READIDS  readids = get<0>(itr->second);
         POSITIONS values = get<1>(itr->second);
 
-        assert(readids.size() == values.size());
-
         for(int j = 0; j < readids.size(); j++)
         {
-            /*!  GGGG: I need kmer id here */
-            // j just works on 1 node
-            lcol_ids.push_back(kmerid);
-            lrow_ids.push_back(readids[j]);
-            lvals.push_back(values[j]);
+            if(readids[j] != 0)
+            {
+            /*!  GGGG: I need kmer id here 
+             *   This temp solution only works on 1 node */
+                lcol_ids.push_back(kmerid);
+                lrow_ids.push_back(readids[j]);
+                lvals.push_back(values[j]);
 
-            std::cout << "k " << kmerid     << " " << key << std::endl;
-            std::cout << "r " << readids[j] << std::endl;
-            std::cout << "v " << values[j]  << std::endl;
+                std::cout << "k " << kmerid     << " " << mykmer << std::endl;
+                std::cout << "r " << readids[j] << std::endl;
+                std::cout << "v " << values[j]  << std::endl;
+            }
         }
         kmerid++;
     }
