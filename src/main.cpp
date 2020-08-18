@@ -27,8 +27,8 @@ using namespace combblas;
 
 /*! Type definitions */
 //typedef KmerIntersect<ushort, CommonKmers> KmerIntersectSR_t;
-typedef dibella::KmerIntersect<dibella::MatrixEntry, dibella::CommonKmers> KmerIntersectSR_t;
-typedef dibella::SubKmerIntersect<dibella::MatrixEntry, dibella::MatrixEntry> SubKmerIntersectSR_t;
+typedef dibella::KmerIntersect<POSITIONS, dibella::CommonKmers> KmerIntersectSR_t;
+typedef dibella::SubKmerIntersect<POSITIONS, POSITIONS> SubKmerIntersectSR_t;
 
 /*! Function signatures */
 int parse_args(int argc, char **argv);
@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
   //std::unordered_set<Kmer, Kmer> local_kmers;
 
   tp->times["start_main:genA()"] = std::chrono::system_clock::now();
-  PSpMat<dibella::MatrixEntry>::MPI_DCCols A =
+  PSpMat<POSITIONS>::MPI_DCCols A =
       dibella::KmerOps::generate_A(
           seq_count,dfd, klength, kstride,
           alph, parops, tp); //, local_kmers);
@@ -211,10 +211,10 @@ int main(int argc, char **argv) {
 
   /*! GGGG: there's no S matrix in diBELLA */
 
-  // PSpMat<dibella::MatrixEntry>::MPI_DCCols* S = nullptr;
+  // PSpMat<POSITIONS>::MPI_DCCols* S = nullptr;
   // if (add_substitue_kmers) {
   //   tp->times["start_main:genS()"] = std::chrono::system_clock::now();;
-  //   S = new PSpMat<dibella::MatrixEntry>::MPI_DCCols(KmerOps::generate_S(klength, subk_count, alph, parops, tp,
+  //   S = new PSpMat<POSITIONS>::MPI_DCCols(KmerOps::generate_S(klength, subk_count, alph, parops, tp,
   //                                 local_kmers));
   //   tp->times["end_main:genS()"] = std::chrono::system_clock::now();;
   //   tu.print_str("Matrix S: ");
@@ -223,8 +223,8 @@ int main(int argc, char **argv) {
 
   //   tp->times["start_main:AxS()"] = tp->times["end_main:genS()"];
   //   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AS" << std::endl;
-  //   //A = Mult_AnXBn_Synch<SubKmerIntersectSR_t, dibella::MatrixEntry, PSpMat<dibella::MatrixEntry>::DCCols>(A, *S);
-  //   A = Mult_AnXBn_DoubleBuff<SubKmerIntersectSR_t, dibella::MatrixEntry, PSpMat<dibella::MatrixEntry>::DCCols>(A, *S);
+  //   //A = Mult_AnXBn_Synch<SubKmerIntersectSR_t, POSITIONS, PSpMat<POSITIONS>::DCCols>(A, *S);
+  //   A = Mult_AnXBn_DoubleBuff<SubKmerIntersectSR_t, POSITIONS, PSpMat<POSITIONS>::DCCols>(A, *S);
   //   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AS" << std::endl;
   //   // Note, AS is now A.
   //   tu.print_str("Matrix AS: ");
@@ -234,194 +234,194 @@ int main(int argc, char **argv) {
   //   delete S;
   // }
 
-  tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
-  proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
+//   tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
+//   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
 
-  PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);
+//   PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);
   
-  proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
-  tu.print_str(
-      "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
-      + std::to_string(C.getnnz() - seq_count)
-      + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
-  tp->times["end_main:(AS)At()"] = std::chrono::system_clock::now();
+//   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
+//   tu.print_str(
+//       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
+//       + std::to_string(C.getnnz() - seq_count)
+//       + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
+//   tp->times["end_main:(AS)At()"] = std::chrono::system_clock::now();
 
-  tu.print_str("Matrix B, i.e AAt or ASAt: ");
-  C.PrintInfo();
+//   tu.print_str("Matrix B, i.e AAt or ASAt: ");
+//   C.PrintInfo();
 
-  /*! GGGG: there's no S matrix in diBELLA */
+//   /*! GGGG: there's no S matrix in diBELLA */
 
-  // the output matrix may be non-symmetric when substitutes are used
-  // if (add_substitue_kmers)
-  // {
-  // 	auto CT = C;
-  // 	CT.Transpose();
-  // 	CT.Apply([] (dibella::CommonKmers &arg)
-  // 			 {
-  // 				 std::swap(arg.first.first, arg.first.second);
-  // 				 std::swap(arg.second.first, arg.second.second);
-  // 				 return arg;
-  // 			 });
-  // 	C += CT;
+//   // the output matrix may be non-symmetric when substitutes are used
+//   // if (add_substitue_kmers)
+//   // {
+//   // 	auto CT = C;
+//   // 	CT.Transpose();
+//   // 	CT.Apply([] (dibella::CommonKmers &arg)
+//   // 			 {
+//   // 				 std::swap(arg.first.first, arg.first.second);
+//   // 				 std::swap(arg.second.first, arg.second.second);
+//   // 				 return arg;
+//   // 			 });
+//   // 	C += CT;
   	
-  // 	tu.print_str("Matrix B, i.e AAt or ASAt: (after sym) ");
-  // 	C.PrintInfo();
-  // }
-  // tu.print_str("Matrix C: ");
-  // tu.print_str("\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
+//   // 	tu.print_str("Matrix B, i.e AAt or ASAt: (after sym) ");
+//   // 	C.PrintInfo();
+//   // }
+//   // tu.print_str("Matrix C: ");
+//   // tu.print_str("\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
   
 
-#ifndef NDEBUG
-  /*! Test multiplication */
+// #ifndef NDEBUG
+//   /*! Test multiplication */
 
-  // tu.print_str("Matrix B, i.e AAt or ASAt: ");
-  // C.PrintInfo();
+//   // tu.print_str("Matrix B, i.e AAt or ASAt: ");
+//   // C.PrintInfo();
 
-  // rows and cols in the result
-  //  uint64_t n_cols = seq_count;
-  //  uint64_t n_rows = n_cols;
-  //  int pr = parops->grid->GetGridRows();
-  //  int pc = parops->grid->GetGridCols();
-  //
-  //  int row_rank = parops->grid->GetRankInProcRow();
-  //  int col_rank = parops->grid->GetRankInProcCol();
-  //  uint64_t m_perproc = n_rows / pr;
-  //  uint64_t n_perproc = n_cols / pc;
-  //  PSpMat<dibella::CommonKmers>::DCCols *spSeq = C.seqptr(); // local submatrix
-  //  uint64_t l_row_start = col_rank * m_perproc; // first row in this process
-  //  uint64_t l_col_start = row_rank * n_perproc; // first col in this process
-  //
-  //  std::cout<<std::endl<<spSeq->begcol().colid()<<" " <<spSeq->endcol().colid()<<std::endl;
+//   // rows and cols in the result
+//   //  uint64_t n_cols = seq_count;
+//   //  uint64_t n_rows = n_cols;
+//   //  int pr = parops->grid->GetGridRows();
+//   //  int pc = parops->grid->GetGridCols();
+//   //
+//   //  int row_rank = parops->grid->GetRankInProcRow();
+//   //  int col_rank = parops->grid->GetRankInProcCol();
+//   //  uint64_t m_perproc = n_rows / pr;
+//   //  uint64_t n_perproc = n_cols / pc;
+//   //  PSpMat<dibella::CommonKmers>::DCCols *spSeq = C.seqptr(); // local submatrix
+//   //  uint64_t l_row_start = col_rank * m_perproc; // first row in this process
+//   //  uint64_t l_col_start = row_rank * n_perproc; // first col in this process
+//   //
+//   //  std::cout<<std::endl<<spSeq->begcol().colid()<<" " <<spSeq->endcol().colid()<<std::endl;
 
-  //  std::ofstream rf, cf, vf;
-  //  int flag;
-  //  if (parops->world_proc_rank > 0) {
-  //    MPI_Recv(&flag, 1, MPI_INT, parops->world_proc_rank - 1,
-  //             99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  //  }
-  //  rf.open("row_ids.txt", std::ios::app);
-  //  cf.open("col_ids.txt", std::ios::app);
-  //  vf.open("values.txt", std::ios::app);
+//   //  std::ofstream rf, cf, vf;
+//   //  int flag;
+//   //  if (parops->world_proc_rank > 0) {
+//   //    MPI_Recv(&flag, 1, MPI_INT, parops->world_proc_rank - 1,
+//   //             99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+//   //  }
+//   //  rf.open("row_ids.txt", std::ios::app);
+//   //  cf.open("col_ids.txt", std::ios::app);
+//   //  vf.open("values.txt", std::ios::app);
 
-  //
-  //  std::cout << "\nRank: " << parops->world_proc_rank << "\n writing data\n";
-  //
-  //  for (auto colit = spSeq->begcol();
-  //       colit != spSeq->endcol(); ++colit) // iterate over columns
-  //  {
-  //    int64_t lj = colit.colid(); // local numbering
-  //    int64_t j = lj + l_col_start;
-  //
-  //    for (auto nzit = spSeq->begnz(colit);
-  //         nzit < spSeq->endnz(colit); ++nzit) {
-  //
-  //      int64_t li = nzit.rowid();
-  //      int64_t i = li + l_row_start;
-  //      rf << i << ",";
-  //      cf << j << ",";
-  //      vf << nzit.value().count << ",";
-  //    }
-  //  }
-  //
-  //  rf.close();
-  //  cf.close();
-  //  vf.close();
-  //
-  //  if (parops->world_proc_rank < parops->world_procs_count - 1) {
-  //    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99,
-  //             MPI_COMM_WORLD);
-  //  }
-  //
-  //  MPI_Barrier(MPI_COMM_WORLD);
-#endif
+//   //
+//   //  std::cout << "\nRank: " << parops->world_proc_rank << "\n writing data\n";
+//   //
+//   //  for (auto colit = spSeq->begcol();
+//   //       colit != spSeq->endcol(); ++colit) // iterate over columns
+//   //  {
+//   //    int64_t lj = colit.colid(); // local numbering
+//   //    int64_t j = lj + l_col_start;
+//   //
+//   //    for (auto nzit = spSeq->begnz(colit);
+//   //         nzit < spSeq->endnz(colit); ++nzit) {
+//   //
+//   //      int64_t li = nzit.rowid();
+//   //      int64_t i = li + l_row_start;
+//   //      rf << i << ",";
+//   //      cf << j << ",";
+//   //      vf << nzit.value().count << ",";
+//   //    }
+//   //  }
+//   //
+//   //  rf.close();
+//   //  cf.close();
+//   //  vf.close();
+//   //
+//   //  if (parops->world_proc_rank < parops->world_procs_count - 1) {
+//   //    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99,
+//   //             MPI_COMM_WORLD);
+//   //  }
+//   //
+//   //  MPI_Barrier(MPI_COMM_WORLD);
+// #endif
 
-  /*! Wait until data distribution is complete */
+//   /*! Wait until data distribution is complete */
 
-  tp->times["start_main:dfd->wait()"] = std::chrono::system_clock::now();
-  if (!dfd->is_ready())
-  {
-    dfd->wait();
-  }
-  tp->times["end_main:dfd->wait()"] = std::chrono::system_clock::now();
+//   tp->times["start_main:dfd->wait()"] = std::chrono::system_clock::now();
+//   if (!dfd->is_ready())
+//   {
+//     dfd->wait();
+//   }
+//   tp->times["end_main:dfd->wait()"] = std::chrono::system_clock::now();
 
-  uint64_t n_rows, n_cols;
-  n_rows = n_cols = dfd->global_count();
-  int gr_rows = parops->grid->GetGridRows();
-  int gr_cols = parops->grid->GetGridCols();
-  int gr_col_idx = parops->grid->GetRankInProcRow();
-  int gr_row_idx = parops->grid->GetRankInProcCol();
-  uint64_t avg_rows_in_grid = n_rows / gr_rows;
-  uint64_t avg_cols_in_grid = n_cols / gr_cols;
-  uint64_t row_offset = gr_row_idx * avg_rows_in_grid;  // first row in this process
-  uint64_t col_offset = gr_col_idx * avg_cols_in_grid;	// first col in this process
+//   uint64_t n_rows, n_cols;
+//   n_rows = n_cols = dfd->global_count();
+//   int gr_rows = parops->grid->GetGridRows();
+//   int gr_cols = parops->grid->GetGridCols();
+//   int gr_col_idx = parops->grid->GetRankInProcRow();
+//   int gr_row_idx = parops->grid->GetRankInProcCol();
+//   uint64_t avg_rows_in_grid = n_rows / gr_rows;
+//   uint64_t avg_cols_in_grid = n_cols / gr_cols;
+//   uint64_t row_offset = gr_row_idx * avg_rows_in_grid;  // first row in this process
+//   uint64_t col_offset = gr_col_idx * avg_cols_in_grid;	// first col in this process
 
-  DistributedPairwiseRunner dpr(dfd, C.seqptr(), afreq, row_offset, col_offset, parops);
-  if (!no_align)
-  {
-    /*! GGGG: define match, mismatch 
-        Don't need affine gap penalty in diBELLA */
+//   DistributedPairwiseRunner dpr(dfd, C.seqptr(), afreq, row_offset, col_offset, parops);
+//   if (!no_align)
+//   {
+//     /*! GGGG: define match, mismatch 
+//         Don't need affine gap penalty in diBELLA */
 
-    int match, mismatch;
+//     int match, mismatch;
 
-    tp->times["start_main:dpr->align()"] = std::chrono::system_clock::now();
-    ScoringScheme scoring_scheme(match, mismatch, gap_ext);
+//     tp->times["start_main:dpr->align()"] = std::chrono::system_clock::now();
+//     ScoringScheme scoring_scheme(match, mismatch, gap_ext);
 
-    align_file += "_Rank_" + std::to_string(parops->world_proc_rank) + ".txt";
+//     align_file += "_Rank_" + std::to_string(parops->world_proc_rank) + ".txt";
 
-    PairwiseFunction* pf = nullptr;
-    uint64_t local_alignments = 1;
+//     PairwiseFunction* pf = nullptr;
+//     uint64_t local_alignments = 1;
 
-    if (xdrop_align)
-    {
-      pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);
-	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
-	    local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
-    }
-    else if (full_align)
-    {
-      pf = new FullAligner(scoring_scheme);
-	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
-	    local_alignments = static_cast<FullAligner*>(pf)->nalignments;
-    }
-    else if(banded_align)
-    {
-      pf = new BandedAligner (scoring_scheme, banded_half_width);
-	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
-	    local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
-    }
+//     if (xdrop_align)
+//     {
+//       pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);
+// 	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
+// 	    local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
+//     }
+//     else if (full_align)
+//     {
+//       pf = new FullAligner(scoring_scheme);
+// 	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
+// 	    local_alignments = static_cast<FullAligner*>(pf)->nalignments;
+//     }
+//     else if(banded_align)
+//     {
+//       pf = new BandedAligner (scoring_scheme, banded_half_width);
+// 	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
+// 	    local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
+//     }
 
-    tp->times["end_main:dpr->align()"] = std::chrono::system_clock::now();
-    delete pf;
+//     tp->times["end_main:dpr->align()"] = std::chrono::system_clock::now();
+//     delete pf;
 	
-    uint64_t total_alignments = 0;
-    MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
-               MPI_COMM_WORLD);
+//     uint64_t total_alignments = 0;
+//     MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
+//                MPI_COMM_WORLD);
 
-    if (is_print_rank) {
-      std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments
-                << std::endl;
-    }
-  }
+//     if (is_print_rank) {
+//       std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments
+//                 << std::endl;
+//     }
+//   }
 
-  tp->times["start_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
-  if (write_overlaps){
-    dpr.write_overlaps(overlap_file.c_str());
-  }
-  tp->times["end_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
+//   tp->times["start_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
+//   if (write_overlaps){
+//     dpr.write_overlaps(overlap_file.c_str());
+//   }
+//   tp->times["end_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
 
-  tp->times["end_main"] = std::chrono::system_clock::now();
+//   tp->times["end_main"] = std::chrono::system_clock::now();
 
-  std::time_t end_prog_time = std::chrono::system_clock::to_time_t(
-    tp->times["end_main"]);
-  print_str = "INFO: Program ended on ";
-  print_str.append(std::ctime(&end_prog_time));
-  tu.print_str(print_str);
-  tu.print_str(tp->to_string());
+//   std::time_t end_prog_time = std::chrono::system_clock::to_time_t(
+//     tp->times["end_main"]);
+//   print_str = "INFO: Program ended on ";
+//   print_str.append(std::ctime(&end_prog_time));
+//   tu.print_str(print_str);
+//   tu.print_str(tp->to_string());
 
-  proc_log_stream.close();
+//   proc_log_stream.close();
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  parops->teardown_parallelism();
+//   MPI_Barrier(MPI_COMM_WORLD);
+//   parops->teardown_parallelism();
   return 0;
 }
 

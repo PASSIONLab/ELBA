@@ -997,7 +997,7 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
 	}
 }
 
-PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
+PSpMat<POSITIONS>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
       std::shared_ptr<DistributedFastaData> &dfd, ushort k, ushort s,
       Alphabet &alph, const std::shared_ptr<ParallelOps> &parops,
       const std::shared_ptr<TimePod> &tp) /*, std::unordered_set<Kmer, Kmer>& local_kmers) */
@@ -1009,7 +1009,7 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
 
   /* typedef std::vector<uint64_t> uvec_64; */
   uvec_64 lrow_ids, lcol_ids;
-  std::vector<MatrixEntry> lvals;
+  std::vector<POSITIONS> lvals;
 
   uint64_t offset = dfd->global_start_idx();
   FastaData *lfd  = dfd->lfd();
@@ -1127,8 +1127,6 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
   /* Second pass */
   ProcessFiles(lfd, 2, cardinality, myReadStartIndex, *readNameMap);
 
-  exit(0);
-
   double timesecondpass = MPI_Wtime() - tstart;
   // serial_printf("%s: 2nd input data pass, elapsed time: %0.3f s\n", __FUNCTION__, timesecondpass);
   tstart = MPI_Wtime();
@@ -1158,41 +1156,49 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
     cout << __FUNCTION__ << ": Hash table (value) initialization  " << static_cast<double>(totkmersprocessed) / (MEGA * max((timesecondpass),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (timesecondpass) << " seconds" << endl;
   }
 
-//   serial_printf("%s: Total time computing load imbalance: %0.3f s\n", __FUNCTION__, timeloadimbalance);
+  // serial_printf("%s: Total time computing load imbalance: %0.3f s\n", __FUNCTION__, timeloadimbalance);
   CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));
  
-  exit(0); 
   tstart = MPI_Wtime();
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GGGG: Build matrix A
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  /*! GGGG: Once k-mers are consolidated in a single global location, 
-   *  the other processors don’t need to know the ids of kmers they sent off to other processors. */
+    /*! GGGG: Once k-mers are consolidated in a single global location, 
+     *  the other processors don’t need to know the ids of kmers they sent off to other processors. */
 
-  std::unordered_map<Kmer::MERARR, uint64_t>* kmerIdMap = new std::unordered_map<Kmer::MERARR, uint64_t>();
-  for(auto itr = kmercounts->begin(); itr != kmercounts->end(); ++itr)
-  {
+    std::unordered_map<Kmer::MERARR, uint64_t>* kmerIdMap = new std::unordered_map<Kmer::MERARR, uint64_t>();
 
-    /*! GGGG: TODO assing ids to local kmers here, they need to be consecutive on procs */
-    /*! kmer string */
-    Kmer::MERARR key = itr->first;
+    uint64_t num = kmercounts->size();  
+    for(auto itr = kmercounts->begin(); itr != kmercounts->end(); ++itr)
+    {
+        
+        /*! GGGG: TODO assing ids to local kmers here, they need to be consecutive on procs */
+        /*! kmer string */
+        // Kmer::MERARR key = itr->first;
 
-    /*! GGGG: run tests, read idx should be consistent now */
-    READIDS  readids = get<0>(itr->second);
-    POSITIONS values = get<1>(itr->second);
+        /*! GGGG: run tests, read idx should be consistent now */
+        READIDS  readids = get<0>(itr->second);
+        POSITIONS values = get<1>(itr->second);
 
-    // uint64_t num = itr->second.size();  
-    // for(int j = 0; j < num; j++)
-    // {
-    /*!  GGGG: I need kmer id here */
-    //   lcol_ids.push_back();
-    //   lrow_ids.push_back(readids[j]);
-    //   lvals.push_back(values[j]);
-    // }
-  }
+        for(int j = 0; j < num; j++)
+        {
+            /*!  GGGG: I need kmer id here */
+            // j just works on 1 node
+            lcol_ids.push_back(j);
+            std::cout << j << " out of 12446" << std::endl;
+            std::cout << "Cols" << std::endl;
 
+            std::cout << "readids[j] " << readids[j] << std::endl;
+            lrow_ids.push_back(readids[j]);
+            std::cout << "Rows" << std::endl;
+
+            lvals.push_back(values);
+            std::cout << "Positions" << std::endl;
+        }
+    }
+    exit(0); 
 #ifndef NDEBUG
   {
     std::string title = "Local matrix info:";
@@ -1208,22 +1214,22 @@ PSpMat<MatrixEntry>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
 
   assert(lrow_ids.size() == lcol_ids.size() && lcol_ids.size() == lvals.size());
 
-  /*! Create distributed sparse matrix of sequence x kmers */
-  FullyDistVec<uint64_t, uint64_t> drows(lrow_ids, parops->grid);
-  FullyDistVec<uint64_t, uint64_t> dcols(lcol_ids, parops->grid);
-  FullyDistVec<uint64_t, MatrixEntry> dvals(lvals, parops->grid);
+//   /*! Create distributed sparse matrix of sequence x kmers */
+//   FullyDistVec<uint64_t, uint64_t> drows(lrow_ids, parops->grid);
+//   FullyDistVec<uint64_t, uint64_t> dcols(lcol_ids, parops->grid);
+//   FullyDistVec<uint64_t, POSITIONS> dvals(lvals, parops->grid);
 
-  uint64_t nrows = seq_count;
-  /*! Columns of the matrix are direct maps to kmers identified
-   * by their |alphabet| base number. E.g. for proteins this is
-   * base 20, so the direct map has to be 20^k in size. */
+//   uint64_t nrows = seq_count;
+//   /*! Columns of the matrix are direct maps to kmers identified
+//    * by their |alphabet| base number. E.g. for proteins this is
+//    * base 20, so the direct map has to be 20^k in size. */
 
-  /*! GGGG: this is the reliable k-mer space */
-  auto ncols = static_cast<uint64_t>(pow(alph.size, k));
-  tp->times["start_kmerop:gen_A:spMatA()"] = std::chrono::system_clock::now();
-  PSpMat<MatrixEntry>::MPI_DCCols A(nrows, ncols, drows, dcols, dvals, false);
-  tp->times["end_kmerop:gen_A:spMatA()"]   = std::chrono::system_clock::now();
-
-  return A;
+//   /*! GGGG: this is the reliable k-mer space */
+//   auto ncols = static_cast<uint64_t>(pow(alph.size, k));
+//   tp->times["start_kmerop:gen_A:spMatA()"] = std::chrono::system_clock::now();
+//   PSpMat<POSITIONS>::MPI_DCCols A(nrows, ncols, drows, dcols, dvals, false);
+//   tp->times["end_kmerop:gen_A:spMatA()"]   = std::chrono::system_clock::now();
+  
+//   return A;
   }
 }
