@@ -20,7 +20,7 @@ namespace dibella {
   class KmerOps {
   public:
     // GGGG: PSpMat needs CombBLAS 
-    static PSpMat<POSITIONS>::MPI_DCCols generate_A(uint64_t seq_count,
+    static PSpMat<PosInRead>::MPI_DCCols generate_A(uint64_t seq_count,
         std::shared_ptr<DistributedFastaData>& dfd, ushort k, ushort s,
         Alphabet &alph, const std::shared_ptr<ParallelOps>& parops,
         const std::shared_ptr<TimePod>& tp); //, std::unordered_set<Kmer, Kmer>& local_kmers);
