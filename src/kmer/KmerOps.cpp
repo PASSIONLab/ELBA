@@ -1015,7 +1015,7 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
 	}
 }
 
-PSpMat<POSITIONS>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
+PSpMat<PosInRead>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
       std::shared_ptr<DistributedFastaData> &dfd, ushort k, ushort s,
       Alphabet &alph, const std::shared_ptr<ParallelOps> &parops,
       const std::shared_ptr<TimePod> &tp) /*, std::unordered_set<Kmer, Kmer>& local_kmers) */
@@ -1211,16 +1211,15 @@ PSpMat<POSITIONS>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
                 lrow_ids.push_back(readids[j]);
                 lvals.push_back(values[j]);
 
-                std::cout << "k " << kmerid     << " " << mykmer << std::endl;
-                std::cout << "r " << readids[j] << std::endl;
-                std::cout << "v " << values[j]  << std::endl;
+                // std::cout << "k " << kmerid     << " " << mykmer << std::endl;
+                // std::cout << "r " << readids[j] << std::endl;
+                // std::cout << "v " << values[j]  << std::endl;
             }
         }
         kmerid++;
     }
 
     assert(kmerid == kmercounts->size());
-    exit(0); 
 
 #ifndef NDEBUG
   {
@@ -1235,24 +1234,21 @@ PSpMat<POSITIONS>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
   }
 #endif
 
-  assert(lrow_ids.size() == lcol_ids.size() && lcol_ids.size() == lvals.size());
+    assert(lrow_ids.size() == lcol_ids.size() && lcol_ids.size() == lvals.size());
 
-//   /*! Create distributed sparse matrix of sequence x kmers */
-//   FullyDistVec<uint64_t, uint64_t> drows(lrow_ids, parops->grid);
-//   FullyDistVec<uint64_t, uint64_t> dcols(lcol_ids, parops->grid);
-//   FullyDistVec<uint64_t, POSITIONS> dvals(lvals, parops->grid);
+    /*! Create distributed sparse matrix of sequence x kmers */
+    FullyDistVec<uint64_t, uint64_t>    drows(lrow_ids, parops->grid);
+    FullyDistVec<uint64_t, uint64_t>    dcols(lcol_ids, parops->grid);
+    FullyDistVec<uint64_t, PosInRead>   dvals(lvals, parops->grid);
 
-//   uint64_t nrows = seq_count;
-//   /*! Columns of the matrix are direct maps to kmers identified
-//    * by their |alphabet| base number. E.g. for proteins this is
-//    * base 20, so the direct map has to be 20^k in size. */
 
-//   /*! GGGG: this is the reliable k-mer space */
-//   auto ncols = static_cast<uint64_t>(pow(alph.size, k));
-//   tp->times["start_kmerop:gen_A:spMatA()"] = std::chrono::system_clock::now();
-//   PSpMat<POSITIONS>::MPI_DCCols A(nrows, ncols, drows, dcols, dvals, false);
-//   tp->times["end_kmerop:gen_A:spMatA()"]   = std::chrono::system_clock::now();
-  
-//   return A;
+    uint64_t nrows = seq_count;
+    uint64_t ncols = kmerid; // GGGG: this is the reliable k-mer space
+
+    tp->times["start_kmerop:gen_A:spMatA()"] = std::chrono::system_clock::now();
+    PSpMat<PosInRead>::MPI_DCCols A(nrows, ncols, drows, dcols, dvals, false);
+    tp->times["end_kmerop:gen_A:spMatA()"]   = std::chrono::system_clock::now();
+    
+    return A;
   }
 }

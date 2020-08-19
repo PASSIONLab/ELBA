@@ -184,16 +184,10 @@ int main(int argc, char **argv) {
   //std::unordered_set<Kmer, Kmer> local_kmers;
 
   tp->times["start_main:genA()"] = std::chrono::system_clock::now();
-  PSpMat<POSITIONS>::MPI_DCCols A =
+  PSpMat<PosInRead>::MPI_DCCols A =
       dibella::KmerOps::generate_A(
           seq_count,dfd, klength, kstride,
           alph, parops, tp); //, local_kmers);
-
-  // if(myrank == 0)
-  // {
-  //     std::cout << ">> Gonna end soon" << std::endl;
-  // }
-  // exit(0);
 
   tu.print_str("Matrix A: ");
   tu.print_str("\nLoad imbalance: " + std::to_string(A.LoadImbalance()) + "\n");
@@ -211,31 +205,11 @@ int main(int argc, char **argv) {
 
   /*! GGGG: there's no S matrix in diBELLA */
 
-  // PSpMat<POSITIONS>::MPI_DCCols* S = nullptr;
-  // if (add_substitue_kmers) {
-  //   tp->times["start_main:genS()"] = std::chrono::system_clock::now();;
-  //   S = new PSpMat<POSITIONS>::MPI_DCCols(KmerOps::generate_S(klength, subk_count, alph, parops, tp,
-  //                                 local_kmers));
-  //   tp->times["end_main:genS()"] = std::chrono::system_clock::now();;
-  //   tu.print_str("Matrix S: ");
-  //   tu.print_str("\nLoad imbalance: " + std::to_string(S->LoadImbalance()) + "\n");
-  //   S->PrintInfo();
+  tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
+  proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
 
-  //   tp->times["start_main:AxS()"] = tp->times["end_main:genS()"];
-  //   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AS" << std::endl;
-  //   //A = Mult_AnXBn_Synch<SubKmerIntersectSR_t, POSITIONS, PSpMat<POSITIONS>::DCCols>(A, *S);
-  //   A = Mult_AnXBn_DoubleBuff<SubKmerIntersectSR_t, POSITIONS, PSpMat<POSITIONS>::DCCols>(A, *S);
-  //   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AS" << std::endl;
-  //   // Note, AS is now A.
-  //   tu.print_str("Matrix AS: ");
-  //   tu.print_str("\nLoad imbalance: " + std::to_string(A.LoadImbalance()) + "\n");
-  //   A.PrintInfo();
-  //   tp->times["end_main:AxS()"] = std::chrono::system_clock::now();
-  //   delete S;
-  // }
-
-//   tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
-//   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
+  MPI_Finalize();
+  exit(0); 
 
 //   PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);
   
