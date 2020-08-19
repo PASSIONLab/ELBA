@@ -18,7 +18,6 @@
 #include "../include/pw/BandedAligner.hpp"
 #include "../include/kmer/KmerOps.hpp"
 #include "../include/kmer/KmerIntersectSR.hpp"
-#include "../include/kmer/SubKmerIntersectSR.hpp"
 #include <map>
 #include <fstream>
 
@@ -208,42 +207,20 @@ int main(int argc, char **argv) {
   tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
 
+  PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);
+  
+  proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
+  tu.print_str(
+      "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
+      + std::to_string(C.getnnz() - seq_count)
+      + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
+  tp->times["end_main:(AS)At()"] = std::chrono::system_clock::now();
+
+  tu.print_str("Matrix B, i.e AAt or ASAt: ");
+  C.PrintInfo();
+
   MPI_Finalize();
   exit(0); 
-
-//   PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);
-  
-//   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
-//   tu.print_str(
-//       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
-//       + std::to_string(C.getnnz() - seq_count)
-//       + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
-//   tp->times["end_main:(AS)At()"] = std::chrono::system_clock::now();
-
-//   tu.print_str("Matrix B, i.e AAt or ASAt: ");
-//   C.PrintInfo();
-
-//   /*! GGGG: there's no S matrix in diBELLA */
-
-//   // the output matrix may be non-symmetric when substitutes are used
-//   // if (add_substitue_kmers)
-//   // {
-//   // 	auto CT = C;
-//   // 	CT.Transpose();
-//   // 	CT.Apply([] (dibella::CommonKmers &arg)
-//   // 			 {
-//   // 				 std::swap(arg.first.first, arg.first.second);
-//   // 				 std::swap(arg.second.first, arg.second.second);
-//   // 				 return arg;
-//   // 			 });
-//   // 	C += CT;
-  	
-//   // 	tu.print_str("Matrix B, i.e AAt or ASAt: (after sym) ");
-//   // 	C.PrintInfo();
-//   // }
-//   // tu.print_str("Matrix C: ");
-//   // tu.print_str("\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
-  
 
 // #ifndef NDEBUG
 //   /*! Test multiplication */
@@ -309,14 +286,14 @@ int main(int argc, char **argv) {
 //   //  MPI_Barrier(MPI_COMM_WORLD);
 // #endif
 
-//   /*! Wait until data distribution is complete */
+  /*! Wait until data distribution is complete */
 
-//   tp->times["start_main:dfd->wait()"] = std::chrono::system_clock::now();
-//   if (!dfd->is_ready())
-//   {
-//     dfd->wait();
-//   }
-//   tp->times["end_main:dfd->wait()"] = std::chrono::system_clock::now();
+  tp->times["start_main:dfd->wait()"] = std::chrono::system_clock::now();
+  if (!dfd->is_ready())
+  {
+    dfd->wait();
+  }
+  tp->times["end_main:dfd->wait()"] = std::chrono::system_clock::now();
 
 //   uint64_t n_rows, n_cols;
 //   n_rows = n_cols = dfd->global_count();

@@ -1,9 +1,21 @@
-// Created by Saliya Ekanayake on 10/15/19.
+// Created by Saliya Ekanayake on 10/15/19 and modified by Giulia Guidi on 08/19/20.
 
 #ifndef DIBELLA_KMERINTERSECTSR_HPP
 #define DIBELLA_KMERINTERSECTSR_HPP
 
 #include "../ParallelOps.hpp"
+
+template <typename T,typename U>
+std::pair<T,U> distance(const std::pair<T,U>& l, const std::pair<T,U>& r) {
+	return {std::abs(l.first - r.first), std::abs(l.second - r.second)};
+}
+
+template <typename T,typename U>
+bool operator>(const std::pair<T,U>& l, const T& c) {
+	if(l.first > c && l.second > c) return true;
+	else return false;
+}
+
 namespace dibella {
   template<typename IN, typename OUT>
   struct KmerIntersect {
@@ -14,27 +26,52 @@ namespace dibella {
 
     static bool returnedSAID() { return false; }
 
-    static OUT add(const OUT &arg1, const OUT &arg2) {
+    static OUT add(const OUT &arg1, const OUT &arg2)
+    {
+  #ifdef TWOSEED
       OUT res(arg1.count + arg2.count);
-      // TODO: perhaps improve this late with something that'll check how far
-      // apart are the kmers.
-      res.first.first = arg1.first.first;
-      res.first.second = arg1.first.second;
-      res.second.first = arg2.first.first;
+
+      res.first.first   = arg1.first.first;
+      res.first.second  = arg1.first.second;
+      res.second.first  = arg2.first.first;
       res.second.second = arg2.first.second;
+
       return res;
+  #else
+      OUT res(arg1);
+      std::vector<std::pair<PosInRead, PosInRead>> kmertobeinserted; //(arg1->pos.size()); GGGG: techinically i don't need size
+
+      for(int i = 0; i < arg2->pos.size(); ++i)	
+        for(int j = 0; j < arg1->pos.size(); ++j)
+        {
+          auto kmer1 = arg1->pos[j];
+          auto kmer2 = arg2->pos[i];
+
+          if(distance(kmer1, kmer2) > KLEN)
+            kmertobeinserted.push_back(kmer2);
+        }
+
+      for (int i = 0; i < kmertobeinserted.size(); i++)
+      {
+        res.count	+= kmertobeinserted.size();
+        res.pos.insert(res.pos.end(), kmertobeinserted.begin(), kmertobeinserted.end());
+      } 
+      return res;
+  #endif
     }
 
-//    /* This doesn't make sense */
-//    static IN add(const OUT &arg1, const IN &arg2) {
-//      IN res(arg2.cost, arg2.offset);
-//      return res;
-//    }
-
-    static OUT multiply(const IN &arg1, const IN &arg2) {
+    static OUT multiply(const IN &arg1, const IN &arg2)
+    {
       OUT a;
-      a.first.first = arg1.offset;
-      a.first.second = arg2.offset;
+
+  #ifdef TWOSEED
+      a.first.first  = arg1;
+      a.first.second = arg2;
+  #else
+      std::vector<std::pair<IN, IN>> vec{std::make_pair(arg1, arg2)};
+      a.pos.push_back(vec);
+  #endif
+
       return a;
     }
 
