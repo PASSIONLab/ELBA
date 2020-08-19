@@ -243,6 +243,7 @@ std::vector<Kmer> Kmer::getKmers(std::string seq)
     #endif
         }
     }
+
     return kmers; 
 }
 

@@ -342,7 +342,7 @@ void DealWithInMemoryData(VectorKmer& mykmers, int pass, struct bloom* bm, Vecto
         size_t count = mykmers.size();
         for(size_t i = 0; i < count; ++i)
         {
-            // std::cout << "myreadids[i] in DealWithIt " << myreadids[i] << std::endl;
+            // std::cout << mykmers[i] << " " << mypositions[i] << " " << myreadids[i] << std::endl;
             KmerInfo ki(mykmers[i], myreadids[i], mypositions[i]);
 			ASSERT(!bm, "");
 			ki.includeCount(true);
@@ -619,7 +619,7 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
     ushort len;
 
     /* offset left over from orginal piece of codes */
-    size_t nreads = lfd->local_count();
+    size_t nreads     = lfd->local_count();
     size_t maxsending = 0, kmersthisbatch = 0, nskipped = 0;
     size_t bytesperkmer  = Kmer::numBytes();
     size_t bytesperentry = bytesperkmer + 4;
@@ -633,17 +633,29 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
 
     char* buff;
 
+    // GGGG: this is OK
+    // std::cout << nreads << std::endl;
+    // exit(0);
+
     /*! GGGG: make sure name are consistent with ids */
     for (uint64_t lreadidx = offset; lreadidx < nreads; ++lreadidx)
     {
+        // GGGG: it does point to only the first header but why does it stores everything else
+        // std::cout << lreadidx << " " << len << " " << start_offset <<  " " << end_offset_inclusive << std::endl;
         buff = lfd->get_sequence_id(lreadidx, len, start_offset, end_offset_inclusive);
-        string myname = string(buff);
+
+        string myname{buff + start_offset, buff + end_offset_inclusive + 1};
         names.push_back(myname);
+    
+        // std::cout << myname << std::endl;
 
         buff = lfd->get_sequence(lreadidx, len, start_offset, end_offset_inclusive);
-        string myseq = string(buff);
+
+        string myseq{buff + start_offset, buff + end_offset_inclusive + 1};
         reads.push_back(myseq);
 
+        // std::cout << myseq << std::endl;
+        // exit(0);
 
         /*! GGGG: extract kmers for this sequence but skip this sequence if the length is too short */
         if (len <= KLEN)
@@ -658,6 +670,7 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
         
         /* Calculate kmers */
         VectorKmer kmers = Kmer::getKmers(myseq);
+
         ASSERT(kmers.size() == nkmers, "");
         size_t Nfound = myseq.find('N');
 
