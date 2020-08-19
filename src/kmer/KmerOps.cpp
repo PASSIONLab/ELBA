@@ -1186,7 +1186,8 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
     /*! GGGG: Once k-mers are consolidated in a single global location, 
      *  the other processors don’t need to know the ids of kmers they sent off to other processors. */
 
-    std::unordered_map<Kmer::MERARR, uint64_t>* kmerIdMap = new std::unordered_map<Kmer::MERARR, uint64_t>();
+    // std::unordered_map<Kmer::MERARR, uint64_t>* kmerIdMap = new std::unordered_map<Kmer::MERARR, uint64_t>();
+    // GGGG: communicate offsets for kmers and check if I need to communicate read ids as well
 
     uint64_t kmerid = 0;
     for(auto itr = kmercounts->begin(); itr != kmercounts->end(); ++itr)
@@ -1194,8 +1195,8 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
         
         /*! GGGG: TODO assing ids to local kmers here, they need to be consecutive on procs */
         /*! kmer string */
-        Kmer::MERARR key = itr->first;
-        Kmer mykmer(key);
+        // Kmer::MERARR key = itr->first;
+        // Kmer mykmer(key);
 
         /*! GGGG: run tests, read idx should be consistent now */
         READIDS  readids = get<0>(itr->second);
