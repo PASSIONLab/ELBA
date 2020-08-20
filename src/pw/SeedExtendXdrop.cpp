@@ -13,7 +13,7 @@ SeedExtendXdrop::SeedExtendXdrop(
 void SeedExtendXdrop::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
-    seqan::Peptide *seq_h, seqan::Peptide *seq_v,
+    seqan::Dna5String *seq_h, seqan::Dna5String *seq_v,
     dibella::CommonKmers &cks, std::stringstream& ss) {
 
   AlignmentInfo ai[2];
@@ -43,7 +43,7 @@ void SeedExtendXdrop::apply(
     auto end_time = std::chrono::system_clock::now();
     add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
 
-    seqan::Align<seqan::Peptide> align;
+    seqan::Align<seqan::Dna5String> align;
     resize(rows(align), 2);
     assignSource(row(align, 0), infix(*seq_h, beginPositionH(seed),
                                       endPositionH(seed)));
@@ -107,8 +107,8 @@ void SeedExtendXdrop::apply(
 void
 SeedExtendXdrop::apply_batch
 (
-    seqan::StringSet<seqan::Gaps<seqan::Peptide>> &seqsh,
-	seqan::StringSet<seqan::Gaps<seqan::Peptide>> &seqsv,
+    seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsh,
+	seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsv,
 	uint64_t *lids,
 	uint64_t col_offset,
 	uint64_t row_offset,
@@ -141,8 +141,8 @@ SeedExtendXdrop::apply_batch
 	{
 		auto start_time = std::chrono::system_clock::now();
 
-		seqan::StringSet<seqan::Gaps<seqan::Peptide>> seqsh_ex;
-		seqan::StringSet<seqan::Gaps<seqan::Peptide>> seqsv_ex;
+		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsh_ex;
+		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsv_ex;
 		resize(seqsh_ex, npairs, seqan::Exact{});
 		resize(seqsv_ex, npairs, seqan::Exact{});
 		

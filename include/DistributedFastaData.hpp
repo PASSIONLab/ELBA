@@ -47,8 +47,8 @@ public:
   bool is_diagonal();
 
   /* GGGG: fix this */
-  seqan::Peptide * row_seq(uint64_t l_row_idx);
-  seqan::Peptide * col_seq(uint64_t l_col_idx);
+  seqan::Dna5String * row_seq(uint64_t l_row_idx);
+  seqan::Dna5String * col_seq(uint64_t l_col_idx);
 
   FastaData* fd = nullptr;
 
@@ -93,8 +93,8 @@ private:
   uint64_t col_seq_start_idx;
   uint64_t col_seq_end_idx;
 
-  std::vector<seqan::Peptide *> row_seqs;
-  std::vector<seqan::Peptide *> col_seqs;
+  std::vector<seqan::Dna5String *> row_seqs;
+  std::vector<seqan::Dna5String *> col_seqs;
 
   /*! recv counts and buffers */
   int recv_nbrs_count;
