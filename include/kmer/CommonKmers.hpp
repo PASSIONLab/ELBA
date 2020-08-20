@@ -4,6 +4,7 @@
 #define DIBELLA_COMMONKMERS_HPP
 
 #include "../Types.hpp"
+#include "../Defines.hpp"
 
 namespace dibella {
   struct CommonKmers {
@@ -31,13 +32,13 @@ namespace dibella {
     CommonKmers() : count(1) {
     }
 
-    explicit CommonKmers(ushort count) : count(count){
+    explicit CommonKmers(ushort count) : count(count) {
     }
 
-#ifndef TWOSEED
-	explicit CommonKmers(CommonKmers kmer) : count(kmer.count), pos(kmer.pos) {
-    }
-#endif
+// #ifndef TWOSEED
+// 	explicit CommonKmers(const CommonKmers& kmer) : count(kmer.count), pos(kmer.pos) {
+//     }
+// #endif
 
     friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m)
 	{
@@ -47,7 +48,7 @@ namespace dibella {
          m.second.first << "," << m.second.second << ")| ";
 #else
       os << "|" << m.count << "(";
-	  for(int i = 0; i < pos.size(); i++)
+	  for(int i = 0; i < m.pos.size(); i++)
 	  {
 	  	os << m.pos[i].first << "," << m.pos[i].second << ")| ";  
 	  }

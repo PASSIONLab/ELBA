@@ -4,13 +4,17 @@
 #define DIBELLA_KMERINTERSECTSR_HPP
 
 #include "../ParallelOps.hpp"
+#include "../Defines.hpp"
 
-template <typename T,typename U>
+#include <cstdlib>
+#include <cmath>
+
+template <typename T, typename U>
 std::pair<T,U> distance(const std::pair<T,U>& l, const std::pair<T,U>& r) {
 	return {std::abs(l.first - r.first), std::abs(l.second - r.second)};
 }
 
-template <typename T,typename U>
+template <typename T, typename U>
 bool operator>(const std::pair<T,U>& l, const T& c) {
 	if(l.first > c && l.second > c) return true;
 	else return false;
@@ -32,20 +36,23 @@ namespace dibella {
       OUT res(arg1.count + arg2.count);
 
       res.first.first   = arg1.first.first;
-      res.first.second  = arg1.first.second;
       res.second.first  = arg2.first.first;
+
+      res.first.second  = arg1.first.second;
       res.second.second = arg2.first.second;
 
       return res;
   #else
-      OUT res(arg1);
+      OUT res(arg1.count);
+      res.pos = arg1.pos;
+
       std::vector<std::pair<PosInRead, PosInRead>> kmertobeinserted; //(arg1->pos.size()); GGGG: techinically i don't need size
 
-      for(int i = 0; i < arg2->pos.size(); ++i)	
-        for(int j = 0; j < arg1->pos.size(); ++j)
+      for(int i = 0; i < arg2.pos.size(); ++i)	
+        for(int j = 0; j < arg1.pos.size(); ++j)
         {
-          auto kmer1 = arg1->pos[j];
-          auto kmer2 = arg2->pos[i];
+          auto kmer1 = arg1.pos[j];
+          auto kmer2 = arg2.pos[i];
 
           if(distance(kmer1, kmer2) > KLEN)
             kmertobeinserted.push_back(kmer2);
@@ -56,6 +63,7 @@ namespace dibella {
         res.count	+= kmertobeinserted.size();
         res.pos.insert(res.pos.end(), kmertobeinserted.begin(), kmertobeinserted.end());
       } 
+
       return res;
   #endif
     }
@@ -68,8 +76,8 @@ namespace dibella {
       a.first.first  = arg1;
       a.first.second = arg2;
   #else
-      std::vector<std::pair<IN, IN>> vec{std::make_pair(arg1, arg2)};
-      a.pos.push_back(vec);
+      std::pair<IN, IN> mypair{std::make_pair(arg1, arg2)};
+      a.pos.push_back(mypair);
   #endif
 
       return a;
