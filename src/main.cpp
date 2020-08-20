@@ -207,8 +207,14 @@ int main(int argc, char **argv) {
   tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
 
+  std::cout << "Start AAt" << std::endl;
+
   // GGGG: there's some bug in the vector version (new one stack error)
   PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);  
+
+  std::cout << "End AAt" << std::endl;
+  MPI_Finalize();
+  exit(0); 
 
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
   tu.print_str(
@@ -219,9 +225,6 @@ int main(int argc, char **argv) {
 
   tu.print_str("Matrix B, i.e AAt or ASAt: ");
   C.PrintInfo();
-
-  MPI_Finalize();
-  exit(0); 
 
 // #ifndef NDEBUG
 //   /*! Test multiplication */
