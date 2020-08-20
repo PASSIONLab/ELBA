@@ -35,11 +35,6 @@ namespace dibella {
     explicit CommonKmers(ushort count) : count(count) {
     }
 
-// #ifndef TWOSEED
-// 	explicit CommonKmers(const CommonKmers& kmer) : count(kmer.count), pos(kmer.pos) {
-//     }
-// #endif
-
     friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m)
 	{
 #ifdef TWOSEED
