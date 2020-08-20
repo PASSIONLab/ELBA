@@ -232,7 +232,7 @@ DistributedPairwiseRunner::runv2
 			"col_seq_align_len,row_seq_align_len, num_gap_opens,"
 			"col_seq_len_coverage,row_seq_len_coverage,common_count"
 				  << std::endl;
-
+	
 	uint64_t *algn_cnts = new uint64_t[numThreads + 1];
 	while (batch_idx < batch_cnt)
 	{
@@ -266,7 +266,6 @@ DistributedPairwiseRunner::runv2
 
 			algn_cnts[tid + 1] = algn_cnt;
 		}
-		
 
 		// for (int i = 1; i < numThreads + 1; ++i)
 		// 	lfs << "thread " << (i - 1) << ": " << algn_cnts[i] << " - ";
@@ -289,7 +288,6 @@ DistributedPairwiseRunner::runv2
 		resize(seqsh, algn_cnts[numThreads], seqan::Exact{});
 		resize(seqsv, algn_cnts[numThreads], seqan::Exact{});
 		uint64_t *lids = new uint64_t[algn_cnts[numThreads]];
-
 		
 		// fill StringSet
 		#pragma omp parallel
@@ -301,34 +299,31 @@ DistributedPairwiseRunner::runv2
 
 			uint64_t algn_idx = algn_cnts[tid];
 
-			#pragma omp for schedule(static, 1000)
+		#pragma omp for schedule(static, 1000)
 			for (uint64_t i = beg; i < end; ++i)
 			{
-				auto		l_row_idx = mattuples.rowindex(i);
-				auto		l_col_idx = mattuples.colindex(i);
-				uint64_t	g_col_idx = l_col_idx + col_offset;
-				uint64_t	g_row_idx = l_row_idx + row_offset;
-				if ((l_col_idx >= l_row_idx) &&
-					(l_col_idx != l_row_idx || g_col_idx > g_row_idx))
+				auto		l_row_idx = mattuples.rowindex(i) - 1; 	// GGGG: -1 bc dibella kmer counter uses 1-based indexing; double check to make sure this doesn't create inconsistencies
+				auto		l_col_idx = mattuples.colindex(i) - 1; 	// GGGG: -1 bc dibella kmer counter uses 1-based indexing; double check to make sure this doesn't create inconsistencies
+				uint64_t	g_col_idx = l_col_idx + col_offset; 
+				uint64_t	g_row_idx = l_row_idx + row_offset; 
+
+				if ((l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx || g_col_idx > g_row_idx))
 				{
-					seqsh[algn_idx] =
-						seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));
-					seqsv[algn_idx] =
-						seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
-					// lcrds[algn_idx].first  = l_col_idx;
-					// lcrds[algn_idx].second = l_row_idx;
+					seqsh[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));
+					seqsv[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
+
 					lids[algn_idx] = i;
 					++algn_idx;
 				}
 			}
-		}
-		
+		}	
 
 		// call aligner
 		lfs << "calling aligner for batch idx " << batch_idx
 			<< " cur #algnments " << algn_cnts[numThreads]
 			<< " overall " << nalignments
 			<< std::endl;
+
 		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples,
 						af_stream, lfs);
 		
