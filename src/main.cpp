@@ -25,9 +25,7 @@
 using namespace combblas;
 
 /*! Type definitions */
-//typedef KmerIntersect<ushort, CommonKmers> KmerIntersectSR_t;
-typedef dibella::KmerIntersect<POSITIONS, dibella::CommonKmers> KmerIntersectSR_t;
-typedef dibella::SubKmerIntersect<POSITIONS, POSITIONS> SubKmerIntersectSR_t;
+typedef dibella::KmerIntersect<PosInRead, dibella::CommonKmers> KmerIntersectSR_t;
 
 /*! Function signatures */
 int parse_args(int argc, char **argv);
