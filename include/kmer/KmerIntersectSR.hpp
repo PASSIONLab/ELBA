@@ -8,14 +8,13 @@
 
 #include <cstdlib>
 #include <cmath>
+#include <functional>
 
-template <typename T, typename U>
-std::pair<T,U> distance(const std::pair<T,U>& l, const std::pair<T,U>& r) {
-	return {std::abs(l.first - r.first), std::abs(l.second - r.second)};
+std::pair<int, int> distance(const std::pair<PosInRead, PosInRead>& l, const std::pair<PosInRead, PosInRead>& r) {
+	return {std::abs(static_cast<int>(l.first - r.first)), std::abs(static_cast<int>(l.second - r.second))};
 }
 
-template <typename T, typename U>
-bool operator>(const std::pair<T,U>& l, const T& c) {
+bool operator>(const std::pair<int, int>& l, const int& c) {
 	if(l.first > c && l.second > c) return true;
 	else return false;
 }
