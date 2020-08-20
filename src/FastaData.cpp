@@ -31,14 +31,19 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
   uint64_t nc_count = 0;
   uint64_t idx;
 
+  // std::string mybuff(buff);
+  // std::cout << "mybuff " << mybuff.size() << std::endl;
+  // std::cout << "l_end  " << l_end << std::endl;
+
   /*! Assume the FASTA content is valid */
   for (uint64_t i = l_start; i <= l_end; ++i)
   {
     c = buff[i];
+
+    // std::cout << c << " " << std::endl;
+
     idx = i - nc_count;
     buff[idx] = c;
-
-    // std::cout << c << " ";
 
     // Modify 'u' or 'U' in sequences to 'T'.
     // This is according to http://meme-suite.org/doc/alphabets.html
@@ -73,8 +78,7 @@ FastaData::FastaData(char *buff, ushort k, uint64_t l_start, uint64_t &l_end,
         {
           ++nc_count;
         }
-        // else 
-        if (buff[i + 1] == '>')
+        else if (buff[i + 1] == '>')
         {
           if (seq_len < k)
           {

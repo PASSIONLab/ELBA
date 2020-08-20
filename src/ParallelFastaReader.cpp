@@ -49,23 +49,30 @@ void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int ran
   file_size--;  /* get rid of text file eof */
   l_chunk_size = static_cast<uint64_t >(file_size / world_size);
 
-  g_start = rank * l_chunk_size;
-  g_end = g_start + l_chunk_size - 1;
-  if (rank == world_size - 1) g_end = file_size - 1;
+  g_start = rank    * l_chunk_size;
+  g_end   = g_start + l_chunk_size - 1;
 
-  /* add overlap to the end of everyone's chunk except last proc... */
+  if (rank == world_size - 1)
+    g_end = file_size - 1;
+
+  /* add overlap to the end of everyone's chunk except last proc */
   if (rank != world_size - 1)
     g_end += overlap;
 
   l_chunk_size = static_cast<uint64_t >(g_end - g_start + 1); // >> 2 l_chunk_size  8793948
 
-  buff = static_cast<char *>(malloc((l_chunk_size + 1) * sizeof(char)));
+  // std::cout << "ChunkSize " << l_chunk_size << " rank " << rank << std::endl; 
+
+  buff = static_cast<char*>(malloc((l_chunk_size + 1)*sizeof(char)));
 
   /* everyone reads in their part */
+
   // TODO - Saliya: fix if l_chunk_size > int max. Read multiple times
   assert(l_chunk_size <= std::numeric_limits<int>::max());
+
   MPI_File_read_at_all(f, g_start, buff, static_cast<int>(l_chunk_size),
                        MPI_CHAR, MPI_STATUS_IGNORE);
+                    
   buff[l_chunk_size] = '\0';
 
   /*
@@ -81,8 +88,6 @@ void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int ran
     while (buff[l_start] != '>') l_start++;
   }
 
-  // std::cout << ">> overlap " << overlap << std::endl;
-
   if (rank != world_size - 1)
   {
     l_end -= overlap;
@@ -90,10 +95,13 @@ void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int ran
     // minus 2 because we don't need '>' as well as the '\n' before that
     l_end -= 2;
   }
+
+  if(rank == world_size - 1)
+  {
+    std::string mbuff(buff);
+    std::cout << mbuff << " rank " << rank << std::endl;
+  }
+
+  if(l_end <= l_start)
+      std::cout << "Error on rank " << rank  << ": FASTA could be too small for " << world_size << " procs" << std::endl;
 }
-
-
-
-
-
-

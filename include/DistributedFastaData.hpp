@@ -46,11 +46,8 @@ public:
   bool is_ready();
   bool is_diagonal();
 
-  /* GGGG: fix this */
   seqan::Dna5String * row_seq(uint64_t l_row_idx);
   seqan::Dna5String * col_seq(uint64_t l_col_idx);
-
-  FastaData* fd = nullptr;
 
   uint64_t  l_seq_count;
   uint64_t* l_seq_counts = nullptr;
@@ -83,6 +80,7 @@ private:
   TraceUtils tu;
   ushort k;
   uint64_t overlap;
+  FastaData* fd = nullptr;
 
   bool is_diagonal_cell = false;
 
