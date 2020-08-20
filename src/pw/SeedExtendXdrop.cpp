@@ -18,12 +18,19 @@ void SeedExtendXdrop::apply(
 
   AlignmentInfo ai[2];
   for (int count = 0; count < seed_count; ++count) {
+#ifdef TWOSEED
     // row sequence is the same thing as vertical sequence
     ushort l_row_seed_start_offset = (count == 0) ? cks.first.first
                                                   : cks.second.first;
     // col sequence is the same thing as horizontal sequence
     ushort l_col_seed_start_offset = (count == 0) ? cks.first.second
                                                   : cks.second.second;
+#else
+    // row sequence is the same thing as vertical sequence
+    ushort l_row_seed_start_offset = cks.pos[0].first;
+    // col sequence is the same thing as horizontal sequence
+    ushort l_col_seed_start_offset = cks.pos[0].second;
+#endif
 
     // Seed creation params are:
     // horizontal seed start offset, vertical seed start offset, length
@@ -140,14 +147,20 @@ SeedExtendXdrop::apply_batch
 		resize(seqsv_ex, npairs, seqan::Exact{});
 		
 		// extend the current seed and form a new gaps object
-		#pragma omp parallel for
+	#pragma omp parallel for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
 			dibella::CommonKmers &cks = mattuples.numvalue(lids[i]);
+
+		#ifdef TWOSEED
 			ushort l_row_seed_start_offset =
 				(count == 0) ? cks.first.first : cks.second.first;
 			ushort l_col_seed_start_offset =
 				(count == 0) ? cks.first.second : cks.second.second;
+		#else
+			ushort l_row_seed_start_offset = cks.pos[0].first;
+			ushort l_col_seed_start_offset = cks.pos[0].second;
+		#endif
 
 			TSeed seed(l_col_seed_start_offset, l_row_seed_start_offset,
 					   seed_length);
@@ -169,7 +182,6 @@ SeedExtendXdrop::apply_batch
 		auto end_time = std::chrono::system_clock::now();
     	add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
 
-		
 		start_time = std::chrono::system_clock::now();
 
 		// alignment
@@ -178,13 +190,12 @@ SeedExtendXdrop::apply_batch
 		end_time = std::chrono::system_clock::now();
     	add_time("XA:global_alignment", (ms_t(end_time - start_time)).count());
 
-
 		start_time = std::chrono::system_clock::now();
 		
 		// stats
 		if (count == 0)			// overwrite in the first seed
 		{
-			#pragma omp parallel for
+		#pragma omp parallel for
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
 				computeAlignmentStats(ai[i].stats, seqsh_ex[i], seqsv_ex[i],
@@ -199,7 +210,7 @@ SeedExtendXdrop::apply_batch
 		}
 		else
 		{
-			#pragma omp parallel for
+		#pragma omp parallel for
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
 				seqan::AlignmentStats stats;
