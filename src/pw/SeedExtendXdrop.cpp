@@ -158,6 +158,7 @@ SeedExtendXdrop::apply_batch
 			ushort l_col_seed_start_offset =
 				(count == 0) ? cks.first.second : cks.second.second;
 		#else
+		// GGGG: TODO check reverse complement
 			ushort l_row_seed_start_offset = cks.pos[0].first;
 			ushort l_col_seed_start_offset = cks.pos[0].second;
 		#endif
