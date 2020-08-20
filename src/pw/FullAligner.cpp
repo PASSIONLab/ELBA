@@ -12,10 +12,10 @@ FullAligner::FullAligner(ScoringScheme scoring_scheme) :
 void FullAligner::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
-    seqan::Peptide *seq_h, seqan::Peptide *seq_v,
+    seqan::Dna5String *seq_h, seqan::Dna5String *seq_v,
     dibella::CommonKmers &cks, std::stringstream &ss) {
 
-  seqan::Align<seqan::Peptide> align;
+  seqan::Align<seqan::Dna5String> align;
   resize(rows(align), 2);
   assignSource(row(align, 0), *seq_h);
   assignSource(row(align, 1), *seq_v);
@@ -70,8 +70,8 @@ void FullAligner::apply(
 void
 FullAligner::apply_batch
 (
-    seqan::StringSet<seqan::Gaps<seqan::Peptide>> &seqsh,
-	seqan::StringSet<seqan::Gaps<seqan::Peptide>> &seqsv,
+    seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsh,
+	seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsv,
 	uint64_t *lids,
 	uint64_t col_offset,
 	uint64_t row_offset,

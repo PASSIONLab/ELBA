@@ -479,7 +479,7 @@ DistributedFastaData::push_seqs(int rc_flag, FastaData *fd, uint64_t seqs_count,
   for (uint64_t i = 0; i < seqs_count; ++i) {
     char *buff = fd->get_sequence(seq_start_idx + i, len, start_offset,
                                   end_offset_inclusive);
-    seqan::Peptide *seq = new seqan::Peptide(buff + start_offset, len);
+    seqan::Dna5String *seq = new seqan::Dna5String(buff + start_offset, len);
     if (rc_flag == 1) {
       /*! grid row sequence */
       row_seqs.push_back(seq);
@@ -561,10 +561,10 @@ void DistributedFastaData::wait() {
   tp->times["end_dfd:extract_recv_seqs"] = std::chrono::system_clock::now();
 }
 
-seqan::Peptide *DistributedFastaData::row_seq(uint64_t l_row_idx) {
+seqan::Dna5String *DistributedFastaData::row_seq(uint64_t l_row_idx) {
   return row_seqs[l_row_idx];
 }
 
-seqan::Peptide *DistributedFastaData::col_seq(uint64_t l_col_idx) {
+seqan::Dna5String *DistributedFastaData::col_seq(uint64_t l_col_idx) {
   return col_seqs[l_col_idx];
 }

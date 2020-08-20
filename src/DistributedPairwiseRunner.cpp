@@ -118,8 +118,8 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 	uint64_t g_col_idx = l_col_idx + col_offset;
 	uint64_t g_row_idx = l_row_idx + row_offset;		  
 
-	seqan::Peptide *seq_h = dfd->col_seq(l_col_idx);  
-	seqan::Peptide *seq_v = dfd->row_seq(l_row_idx);
+	seqan::Dna5String *seq_h = dfd->col_seq(l_col_idx);  
+	seqan::Dna5String *seq_v = dfd->row_seq(l_row_idx);
 
 	current_nnz_count++;
 	if (current_nnz_count % log_freq == 0){
@@ -284,8 +284,8 @@ DistributedPairwiseRunner::runv2
 		}
 		
 		// allocate StringSet
-		seqan::StringSet<seqan::Gaps<seqan::Peptide>> seqsh;
-		seqan::StringSet<seqan::Gaps<seqan::Peptide>> seqsv;
+		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsh;
+		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsv;
 		resize(seqsh, algn_cnts[numThreads], seqan::Exact{});
 		resize(seqsv, algn_cnts[numThreads], seqan::Exact{});
 		uint64_t *lids = new uint64_t[algn_cnts[numThreads]];
@@ -312,9 +312,9 @@ DistributedPairwiseRunner::runv2
 					(l_col_idx != l_row_idx || g_col_idx > g_row_idx))
 				{
 					seqsh[algn_idx] =
-						seqan::Gaps<seqan::Peptide>(*(dfd->col_seq(l_col_idx)));
+						seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));
 					seqsv[algn_idx] =
-						seqan::Gaps<seqan::Peptide>(*(dfd->row_seq(l_row_idx)));
+						seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
 					// lcrds[algn_idx].first  = l_col_idx;
 					// lcrds[algn_idx].second = l_row_idx;
 					lids[algn_idx] = i;

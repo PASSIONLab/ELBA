@@ -11,8 +11,8 @@ OverlapFinder::OverlapFinder(const char *file, bool perform_alignment)
 
 void
 OverlapFinder::apply(uint64_t l_col_idx, uint64_t g_col_idx, uint64_t l_row_idx,
-                     uint64_t g_row_idx, seqan::Peptide *seq_h,
-                     seqan::Peptide *seq_v, dibella::CommonKmers &cks, std::stringstream& ss) {
+                     uint64_t g_row_idx, seqan::Dna5String *seq_h,
+                     seqan::Dna5String *seq_v, dibella::CommonKmers &cks, std::stringstream& ss) {
 
 }
 
