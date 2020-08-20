@@ -207,14 +207,8 @@ int main(int argc, char **argv) {
   tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
 
-  std::cout << "Start AAt" << std::endl;
-
   // GGGG: there's some bug in the vector version (new one stack error)
   PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);  
-
-  std::cout << "End AAt" << std::endl;
-  MPI_Finalize();
-  exit(0); 
 
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
   tu.print_str(
@@ -223,72 +217,72 @@ int main(int argc, char **argv) {
       + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
   tp->times["end_main:(AS)At()"] = std::chrono::system_clock::now();
 
-  tu.print_str("Matrix B, i.e AAt or ASAt: ");
+  tu.print_str("Matrix B, i.e AAt: ");
   C.PrintInfo();
 
-// #ifndef NDEBUG
-//   /*! Test multiplication */
+#ifndef NDEBUG
+  /*! Test multiplication */
 
-//   // tu.print_str("Matrix B, i.e AAt or ASAt: ");
-//   // C.PrintInfo();
+  // tu.print_str("Matrix B, i.e AAt: ");
+  // C.PrintInfo();
 
-//   // rows and cols in the result
-//   //  uint64_t n_cols = seq_count;
-//   //  uint64_t n_rows = n_cols;
-//   //  int pr = parops->grid->GetGridRows();
-//   //  int pc = parops->grid->GetGridCols();
-//   //
-//   //  int row_rank = parops->grid->GetRankInProcRow();
-//   //  int col_rank = parops->grid->GetRankInProcCol();
-//   //  uint64_t m_perproc = n_rows / pr;
-//   //  uint64_t n_perproc = n_cols / pc;
-//   //  PSpMat<dibella::CommonKmers>::DCCols *spSeq = C.seqptr(); // local submatrix
-//   //  uint64_t l_row_start = col_rank * m_perproc; // first row in this process
-//   //  uint64_t l_col_start = row_rank * n_perproc; // first col in this process
-//   //
-//   //  std::cout<<std::endl<<spSeq->begcol().colid()<<" " <<spSeq->endcol().colid()<<std::endl;
+  // rows and cols in the result
+  //  uint64_t n_cols = seq_count;
+  //  uint64_t n_rows = n_cols;
+  //  int pr = parops->grid->GetGridRows();
+  //  int pc = parops->grid->GetGridCols();
+  //
+  //  int row_rank = parops->grid->GetRankInProcRow();
+  //  int col_rank = parops->grid->GetRankInProcCol();
+  //  uint64_t m_perproc = n_rows / pr;
+  //  uint64_t n_perproc = n_cols / pc;
+  //  PSpMat<dibella::CommonKmers>::DCCols *spSeq = C.seqptr(); // local submatrix
+  //  uint64_t l_row_start = col_rank * m_perproc; // first row in this process
+  //  uint64_t l_col_start = row_rank * n_perproc; // first col in this process
+  //
+  //  std::cout<<std::endl<<spSeq->begcol().colid()<<" " <<spSeq->endcol().colid()<<std::endl;
 
-//   //  std::ofstream rf, cf, vf;
-//   //  int flag;
-//   //  if (parops->world_proc_rank > 0) {
-//   //    MPI_Recv(&flag, 1, MPI_INT, parops->world_proc_rank - 1,
-//   //             99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-//   //  }
-//   //  rf.open("row_ids.txt", std::ios::app);
-//   //  cf.open("col_ids.txt", std::ios::app);
-//   //  vf.open("values.txt", std::ios::app);
+  //  std::ofstream rf, cf, vf;
+  //  int flag;
+  //  if (parops->world_proc_rank > 0) {
+  //    MPI_Recv(&flag, 1, MPI_INT, parops->world_proc_rank - 1,
+  //             99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  //  }
+  //  rf.open("row_ids.txt", std::ios::app);
+  //  cf.open("col_ids.txt", std::ios::app);
+  //  vf.open("values.txt", std::ios::app);
 
-//   //
-//   //  std::cout << "\nRank: " << parops->world_proc_rank << "\n writing data\n";
-//   //
-//   //  for (auto colit = spSeq->begcol();
-//   //       colit != spSeq->endcol(); ++colit) // iterate over columns
-//   //  {
-//   //    int64_t lj = colit.colid(); // local numbering
-//   //    int64_t j = lj + l_col_start;
-//   //
-//   //    for (auto nzit = spSeq->begnz(colit);
-//   //         nzit < spSeq->endnz(colit); ++nzit) {
-//   //
-//   //      int64_t li = nzit.rowid();
-//   //      int64_t i = li + l_row_start;
-//   //      rf << i << ",";
-//   //      cf << j << ",";
-//   //      vf << nzit.value().count << ",";
-//   //    }
-//   //  }
-//   //
-//   //  rf.close();
-//   //  cf.close();
-//   //  vf.close();
-//   //
-//   //  if (parops->world_proc_rank < parops->world_procs_count - 1) {
-//   //    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99,
-//   //             MPI_COMM_WORLD);
-//   //  }
-//   //
-//   //  MPI_Barrier(MPI_COMM_WORLD);
-// #endif
+  //
+  //  std::cout << "\nRank: " << parops->world_proc_rank << "\n writing data\n";
+  //
+  //  for (auto colit = spSeq->begcol();
+  //       colit != spSeq->endcol(); ++colit) // iterate over columns
+  //  {
+  //    int64_t lj = colit.colid(); // local numbering
+  //    int64_t j = lj + l_col_start;
+  //
+  //    for (auto nzit = spSeq->begnz(colit);
+  //         nzit < spSeq->endnz(colit); ++nzit) {
+  //
+  //      int64_t li = nzit.rowid();
+  //      int64_t i = li + l_row_start;
+  //      rf << i << ",";
+  //      cf << j << ",";
+  //      vf << nzit.value().count << ",";
+  //    }
+  //  }
+  //
+  //  rf.close();
+  //  cf.close();
+  //  vf.close();
+  //
+  //  if (parops->world_proc_rank < parops->world_procs_count - 1) {
+  //    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99,
+  //             MPI_COMM_WORLD);
+  //  }
+  //
+  //  MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
   /*! Wait until data distribution is complete */
 
@@ -299,84 +293,86 @@ int main(int argc, char **argv) {
   }
   tp->times["end_main:dfd->wait()"] = std::chrono::system_clock::now();
 
-//   uint64_t n_rows, n_cols;
-//   n_rows = n_cols = dfd->global_count();
-//   int gr_rows = parops->grid->GetGridRows();
-//   int gr_cols = parops->grid->GetGridCols();
-//   int gr_col_idx = parops->grid->GetRankInProcRow();
-//   int gr_row_idx = parops->grid->GetRankInProcCol();
-//   uint64_t avg_rows_in_grid = n_rows / gr_rows;
-//   uint64_t avg_cols_in_grid = n_cols / gr_cols;
-//   uint64_t row_offset = gr_row_idx * avg_rows_in_grid;  // first row in this process
-//   uint64_t col_offset = gr_col_idx * avg_cols_in_grid;	// first col in this process
+  uint64_t n_rows, n_cols;
+  n_rows = n_cols = dfd->global_count();
+  int gr_rows = parops->grid->GetGridRows();
+  int gr_cols = parops->grid->GetGridCols();
+  int gr_col_idx = parops->grid->GetRankInProcRow();
+  int gr_row_idx = parops->grid->GetRankInProcCol();
+  uint64_t avg_rows_in_grid = n_rows / gr_rows;
+  uint64_t avg_cols_in_grid = n_cols / gr_cols;
+  uint64_t row_offset = gr_row_idx * avg_rows_in_grid;  // first row in this process
+  uint64_t col_offset = gr_col_idx * avg_cols_in_grid;	// first col in this process
 
-//   DistributedPairwiseRunner dpr(dfd, C.seqptr(), afreq, row_offset, col_offset, parops);
-//   if (!no_align)
-//   {
-//     /*! GGGG: define match, mismatch 
-//         Don't need affine gap penalty in diBELLA */
+  DistributedPairwiseRunner dpr(dfd, C.seqptr(), afreq, row_offset, col_offset, parops);
 
-//     int match, mismatch;
+  if (!no_align)
+  {
+    /*! GGGG: define match, mismatch 
+        Don't need affine gap penalty in diBELLA */
 
-//     tp->times["start_main:dpr->align()"] = std::chrono::system_clock::now();
-//     ScoringScheme scoring_scheme(match, mismatch, gap_ext);
+    int match = 1, mismatch = -1;
+    gap_ext = -1;
 
-//     align_file += "_Rank_" + std::to_string(parops->world_proc_rank) + ".txt";
+    tp->times["start_main:dpr->align()"] = std::chrono::system_clock::now();
+    ScoringScheme scoring_scheme(match, mismatch, gap_ext);
 
-//     PairwiseFunction* pf = nullptr;
-//     uint64_t local_alignments = 1;
+    align_file += "_Rank_" + std::to_string(parops->world_proc_rank) + ".txt";
 
-//     if (xdrop_align)
-//     {
-//       pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);
-// 	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
-// 	    local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
-//     }
-//     else if (full_align)
-//     {
-//       pf = new FullAligner(scoring_scheme);
-// 	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
-// 	    local_alignments = static_cast<FullAligner*>(pf)->nalignments;
-//     }
-//     else if(banded_align)
-//     {
-//       pf = new BandedAligner (scoring_scheme, banded_half_width);
-// 	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
-// 	    local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
-//     }
+    PairwiseFunction* pf = nullptr;
+    uint64_t local_alignments = 1;
 
-//     tp->times["end_main:dpr->align()"] = std::chrono::system_clock::now();
-//     delete pf;
+    if (xdrop_align)
+    {
+      pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
+      dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
+	    local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
+    }
+    else if (full_align)
+    {
+      pf = new FullAligner(scoring_scheme);
+	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
+	    local_alignments = static_cast<FullAligner*>(pf)->nalignments;
+    }
+    else if(banded_align)
+    {
+      pf = new BandedAligner (scoring_scheme, banded_half_width);
+	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
+	    local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
+    }
+
+    tp->times["end_main:dpr->align()"] = std::chrono::system_clock::now();
+    delete pf;
 	
-//     uint64_t total_alignments = 0;
-//     MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
-//                MPI_COMM_WORLD);
+    uint64_t total_alignments = 0;
+    MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
+               MPI_COMM_WORLD);
 
-//     if (is_print_rank) {
-//       std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments
-//                 << std::endl;
-//     }
-//   }
+    if (is_print_rank) {
+      std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments
+                << std::endl;
+    }
+  }
 
-//   tp->times["start_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
-//   if (write_overlaps){
-//     dpr.write_overlaps(overlap_file.c_str());
-//   }
-//   tp->times["end_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
+  tp->times["start_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
+  if (write_overlaps){
+    dpr.write_overlaps(overlap_file.c_str());
+  }
+  tp->times["end_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
 
-//   tp->times["end_main"] = std::chrono::system_clock::now();
+  tp->times["end_main"] = std::chrono::system_clock::now();
 
-//   std::time_t end_prog_time = std::chrono::system_clock::to_time_t(
-//     tp->times["end_main"]);
-//   print_str = "INFO: Program ended on ";
-//   print_str.append(std::ctime(&end_prog_time));
-//   tu.print_str(print_str);
-//   tu.print_str(tp->to_string());
+  std::time_t end_prog_time = std::chrono::system_clock::to_time_t(
+    tp->times["end_main"]);
+  print_str = "INFO: Program ended on ";
+  print_str.append(std::ctime(&end_prog_time));
+  tu.print_str(print_str);
+  tu.print_str(tp->to_string());
 
-//   proc_log_stream.close();
+  proc_log_stream.close();
 
-//   MPI_Barrier(MPI_COMM_WORLD);
-//   parops->teardown_parallelism();
+  MPI_Barrier(MPI_COMM_WORLD);
+  parops->teardown_parallelism();
   return 0;
 }
 

@@ -24,7 +24,8 @@ const std::shared_ptr<ParallelOps> ParallelOps::init(int *argc, char ***argv) {
 void ParallelOps::teardown_parallelism() {
   int flag;
   MPI_Initialized(&flag);
-  if(!flag) {
+  if(!flag)
+  {
     MPI_Finalize();
   }
 }

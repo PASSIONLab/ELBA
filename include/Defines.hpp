@@ -11,6 +11,7 @@
 #include <string>
 
 #include "MPIUtils.hpp"
+#define TWOSEED
 
 /*! IMPORTANT TEMPORARY */
 #define MAX_KMER_SIZE 32  // GGGG: just temporary while cleaning code to avoid compile time errors on VS
