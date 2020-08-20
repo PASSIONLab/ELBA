@@ -21,6 +21,8 @@
 #include <map>
 #include <fstream>
 
+#define TWOSEED
+
 /*! Namespace declarations */
 using namespace combblas;
 
@@ -205,8 +207,9 @@ int main(int argc, char **argv) {
   tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
 
-  PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);
-  
+  // GGGG: there's some bug in the vector version (new one stack error)
+  PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);  
+
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
   tu.print_str(
       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
