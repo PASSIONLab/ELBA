@@ -179,8 +179,6 @@ int main(int argc, char **argv) {
   /*! Create alphabet */
   Alphabet alph(alph_t);
 
-  /*! Generate sequences by kmers matrix */
-  //std::unordered_set<Kmer, Kmer> local_kmers;
 
   tp->times["start_main:genA()"] = std::chrono::system_clock::now();
   PSpMat<PosInRead>::MPI_DCCols A =
