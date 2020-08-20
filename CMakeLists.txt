@@ -79,8 +79,7 @@ add_executable(dibella
         src/kmer/KmerOps.cpp
         src/kmer/Kmer.cpp
         include/kmer/Kmer.hpp
-        include/kmer/SubKmerIntersectSR.hpp
-        )
+	)
 
 target_link_libraries(dibella PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC)
 
