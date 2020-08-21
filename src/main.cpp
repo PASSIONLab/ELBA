@@ -139,9 +139,10 @@ int main(int argc, char **argv) {
   TraceUtils tu(is_print_rank);
 
   /*! Print start time information */
-  tp->times["start_main"] = std::chrono::system_clock::now();
+  tp->times["StartMain"] = std::chrono::system_clock::now();
   std::time_t start_prog_time = std::chrono::system_clock::to_time_t(
-    tp->times["start_main"]);
+  tp->times["StartMain"]);
+  
   print_str = "\nINFO: Program started on ";
   print_str.append(std::ctime(&start_prog_time));
   print_str.append("\nINFO: Job ID ").append(job_name).append("\n");
@@ -149,13 +150,13 @@ int main(int argc, char **argv) {
   tu.print_str(print_str);
 
   /*! Read and distribute fasta data */
-  tp->times["start_main:newDFD()"] = std::chrono::system_clock::now();
+  tp->times["StartMain:newDFD()"] = std::chrono::system_clock::now();
 
   std::shared_ptr<DistributedFastaData> dfd = std::make_shared<DistributedFastaData>(
       input_file.c_str(), idx_map_file.c_str(), input_overlap,
       klength, parops, tp, tu);
       
-  tp->times["end_main:newDFD()"] = std::chrono::system_clock::now();
+  tp->times["EndMain:newDFD()"] = std::chrono::system_clock::now();
 
 #ifndef NDEBUG
   //  TraceUtils::print_fasta_data(fd, parops);
@@ -164,7 +165,7 @@ int main(int argc, char **argv) {
   if (dfd->global_count() != seq_count)
   {
     uint64_t final_seq_count = dfd->global_count();
-    print_str = "\nINFO: Modfied sequence count\n";
+    print_str = "\nINFO: Modified sequence count\n";
     print_str.append("  Final sequence count: ")
       .append(std::to_string(final_seq_count))
       .append(" (").append(
@@ -179,8 +180,7 @@ int main(int argc, char **argv) {
   /*! Create alphabet */
   Alphabet alph(alph_t);
 
-
-  tp->times["start_main:genA()"] = std::chrono::system_clock::now();
+  tp->times["StartMain:GenerateA()"] = std::chrono::system_clock::now();
   PSpMat<PosInRead>::MPI_DCCols A =
       dibella::KmerOps::generate_A(
           seq_count,dfd, klength, kstride,
@@ -189,20 +189,20 @@ int main(int argc, char **argv) {
   tu.print_str("Matrix A: ");
   tu.print_str("\nLoad imbalance: " + std::to_string(A.LoadImbalance()) + "\n");
 
-  tp->times["end_main:genA()"] = std::chrono::system_clock::now();
+  tp->times["EndMain:GenerateA()"] = std::chrono::system_clock::now();
 
   A.PrintInfo();
 
   auto At = A;
-  tp->times["start_main:At()"] = tp->times["end_main:genA()"];
+  tp->times["StartMain:At()"] = tp->times["EndMain:GenerateA()"];
   At.Transpose();
   tu.print_str("Matrix At: ");
   At.PrintInfo();
-  tp->times["end_main:At()"] = std::chrono::system_clock::now();
+  tp->times["EndMain:At()"] = std::chrono::system_clock::now();
 
   /*! GGGG: there's no S matrix in diBELLA */
 
-  tp->times["start_main:(AS)At()"] = std::chrono::system_clock::now();
+  tp->times["StartMain:AAt()"] = std::chrono::system_clock::now();
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
 
   // GGGG: there's some bug in the vector version (new one stack error)
@@ -213,7 +213,7 @@ int main(int argc, char **argv) {
       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
       + std::to_string(C.getnnz() - seq_count)
       + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
-  tp->times["end_main:(AS)At()"] = std::chrono::system_clock::now();
+  tp->times["EndMain:AAt()"] = std::chrono::system_clock::now();
 
   tu.print_str("Matrix B, i.e AAt: ");
   C.PrintInfo();
@@ -284,12 +284,12 @@ int main(int argc, char **argv) {
 
   /*! Wait until data distribution is complete */
 
-  tp->times["start_main:dfd->wait()"] = std::chrono::system_clock::now();
+  tp->times["StartMain:DfdWait()"] = std::chrono::system_clock::now();
   if (!dfd->is_ready())
   {
     dfd->wait();
   }
-  tp->times["end_main:dfd->wait()"] = std::chrono::system_clock::now();
+  tp->times["EndMain:DfdWait()"] = std::chrono::system_clock::now();
 
   uint64_t n_rows, n_cols;
   n_rows = n_cols = dfd->global_count();
@@ -312,7 +312,7 @@ int main(int argc, char **argv) {
     int match = 1, mismatch = -1;
     gap_ext = -1;
 
-    tp->times["start_main:dpr->align()"] = std::chrono::system_clock::now();
+    tp->times["StartMain:DprAlign()"] = std::chrono::system_clock::now();
     ScoringScheme scoring_scheme(match, mismatch, gap_ext);
 
     align_file += "_Rank_" + std::to_string(parops->world_proc_rank) + ".txt";
@@ -339,7 +339,7 @@ int main(int argc, char **argv) {
 	    local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
     }
 
-    tp->times["end_main:dpr->align()"] = std::chrono::system_clock::now();
+    tp->times["EndMain:DprAlign()"] = std::chrono::system_clock::now();
     delete pf;
 	
     uint64_t total_alignments = 0;
@@ -352,16 +352,16 @@ int main(int argc, char **argv) {
     }
   }
 
-  tp->times["start_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
+  tp->times["StartMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
   if (write_overlaps){
     dpr.write_overlaps(overlap_file.c_str());
   }
-  tp->times["end_main:dpr->write_overlaps()"] = std::chrono::system_clock::now();
+  tp->times["EndMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
 
-  tp->times["end_main"] = std::chrono::system_clock::now();
+  tp->times["EndMain"] = std::chrono::system_clock::now();
 
   std::time_t end_prog_time = std::chrono::system_clock::to_time_t(
-    tp->times["end_main"]);
+    tp->times["EndMain"]);
   print_str = "INFO: Program ended on ";
   print_str.append(std::ctime(&end_prog_time));
   tu.print_str(print_str);

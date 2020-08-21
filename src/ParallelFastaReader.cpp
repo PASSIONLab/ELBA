@@ -96,12 +96,6 @@ void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int ran
     l_end -= 2;
   }
 
-  if(rank == world_size - 1)
-  {
-    std::string mbuff(buff);
-    std::cout << mbuff << " rank " << rank << std::endl;
-  }
-
   if(l_end <= l_start)
       std::cout << "Error on rank " << rank  << ": FASTA could be too small for " << world_size << " procs" << std::endl;
 }

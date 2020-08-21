@@ -8,33 +8,31 @@
 
 struct TimePod {
   std::unordered_map<std::string, ticks_t> times;
-  std::string names[18] = {"main",
-                           "main:newDFD()",
-                           "dfd:pfr->read_fasta()",
-                           "dfd:new_FD()",
-                           "kmerop:gen_A:loop_add_kmers()",
-                           "kmerop:gen_A:spMatA()",
-                           "main:genA()",
-                           "main:At()",
-                           "kmerop:gen_S:find_sub_kmers()",
-                           "kmerop:gen_S:spMatS()",
-                           "main:genS()",
-                           "main:AxS()",
-                           "main:(AS)At()",
-                           "main:dfd->wait()",
-                           "dfd:MPI_Waitall(seqs)",
-                           "dfd:extract_recv_seqs",
-                           "main:dpr->align()",
-                           "main:dpr->write_overlaps()"
+  std::string names[16] = {"Main",
+                           "Main:newDFD()",
+                           "Dfd:PfrReadFasta()",
+                           "Dfd:newFD()",
+                           "KmerOp:GenerateA:CardinalityHLL()",
+                           "KmerOp:GenerateA:FirstPass()",
+                           "KmerOp:GenerateA:SecondPass()",
+                           "KmerOp:GenerateA:SpMatA()",
+                           "Main:GenerateA()",
+                           "Main:At()",
+                           "Main:AAt()",
+                           "Main:DfdWait()",
+                           "Dfd:MPI_Waitall(seqs)",
+                           "Dfd:ExtractRecvSeqs",
+                           "Main:DprAlign()",
+                           "Main:DprWriteOverlaps()"
   };
 
   std::string to_string() {
-    std::string str = "\nINFO: Program timings ...\n";
+    std::string str = "\nINFO: Program timings:\n";
     ticks_t ts, te;
     for (const auto &name : names) {
-      if (times.find("start_" + name) != times.end()) {
-        ts = times["start_" + name];
-        te = times["end_" + name];
+      if (times.find("Start" + name) != times.end()) {
+        ts = times["Start" + name];
+        te = times["End" + name];
         str.append("  ").append(name).append(":")
           .append(std::to_string((ms_t(te - ts)).count())).append(" ms\n");
       } else {
@@ -47,7 +45,7 @@ struct TimePod {
 
 class TraceUtils {
 public:
-//  static void print_fasta_data(const std::unique_ptr<FastaData> &dfd,
+//  static void print_fasta_data(const std::unique_ptr<FastaData> &Dfd,
 //    const std::shared_ptr<ParallelOps> &parops);
   static void print_msg(const std::string &title, const std::string &msg,
                         const std::shared_ptr<ParallelOps> &parops);

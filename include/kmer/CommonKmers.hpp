@@ -22,8 +22,8 @@ namespace dibella {
 
 #ifdef TWOSEED
 	// GGGG: just use two seeds per read
-    std::pair<ushort, ushort> first;
-    std::pair<ushort, ushort> second;
+    std::pair<PosInRead, PosInRead> first;
+    std::pair<PosInRead, PosInRead> second;
 #else
 	// GGGG: need this to compute distance
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
