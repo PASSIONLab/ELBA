@@ -787,8 +787,8 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         /* we might still receive data even if we didn't send any */
         DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
 
-        std::cout << __FUNCTION__ << ": offset " << offset << std::endl;
-        std::cout << __FUNCTION__ << ": nreads " << nreads << std::endl;
+        // std::cout << __FUNCTION__ << ": offset " << offset << std::endl;
+        // std::cout << __FUNCTION__ << ": nreads " << nreads << std::endl;
 
         moreToExchange = offset < nreads;
 
@@ -810,11 +810,11 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
 
         if (myrank == 0 && !(exchanges % 30))
         {
-            cout << __FUNCTION__ << " pass "     << pass << ": "
+            cout << __FUNCTION__ << " pass "     << pass << ":"
                  << " moreToExchange: "          << moreToExchange;
-            cout << " tpackime: "                << std::fixed << std::setprecision(3) << tpack
-                 << " exchange_time: "           << std::fixed << std::setprecision(3) << texch
-                 << " proctimeime: "             << std::fixed << std::setprecision(3) << totproctime
+            cout << " tpacktime: "               << std::fixed << std::setprecision(3) << tpack
+                 << " exchangetime: "            << std::fixed << std::setprecision(3) << texch
+                 << " proctime: "                << std::fixed << std::setprecision(3) << totproctime
                  << " elapsed: "                 << std::fixed << std::setprecision(3) << now - t01
                  << endl;
         }
@@ -1063,14 +1063,6 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
 
   // std::cout << nreads << std::endl;
   double firstpasstime = MPI_Wtime() - tstart;
-
-  /*! GGGG: TODO print using PASTIS way */
-  if (myrank == 0)
-  {
-    std::cout << "Reads: " << nreads << std::endl;
-    std::cout << "First input data pass, elapsed time: " << firstpasstime << std::endl;
-  }
-
   tstart = MPI_Wtime();
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
