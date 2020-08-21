@@ -78,7 +78,7 @@ namespace dibella {
       std::pair<IN, IN> mypair{std::make_pair(arg1, arg2)};
       a.pos.push_back(mypair);
   #endif
-
+  
       return a;
     }
 

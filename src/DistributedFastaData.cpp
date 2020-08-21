@@ -53,20 +53,20 @@ DistributedFastaData::DistributedFastaData(
   is_diagonal_cell =
     parops->grid->GetRankInProcRow() == parops->grid->GetRankInProcCol();
 
-  tp->times["start_dfd:pfr->read_fasta()"] = std::chrono::system_clock::now();
+  tp->times["StartDfd:PfrReadFasta()"] = std::chrono::system_clock::now();
   char *buff;
   uint64_t l_start, l_end;
   ParallelFastaReader::read_fasta(file, overlap, parops->world_proc_rank,
                                   parops->world_procs_count, buff, l_start,
                                   l_end);
 
-  tp->times["end_dfd:pfr->read_fasta()"] = std::chrono::system_clock::now();
+  tp->times["EndDfd:PfrReadFasta()"] = std::chrono::system_clock::now();
 
-  tp->times["start_dfd:new_FD()"] = tp->times["end_dfd:pfr->read_fasta()"];
+  tp->times["StartDfd:newFD()"] = tp->times["EndDfd:PfrReadFasta()"];
   fd = new FastaData(buff, k, l_start, l_end, tp, tu);
   l_seq_count = fd->local_count();
 
-  tp->times["end_dfd:new_FD()"] = std::chrono::system_clock::now();
+  tp->times["EndDfd:newFD()"] = std::chrono::system_clock::now();
 
 #ifndef NDEBUG
   {
@@ -491,10 +491,10 @@ DistributedFastaData::push_seqs(int rc_flag, FastaData *fd, uint64_t seqs_count,
 }
 
 void DistributedFastaData::wait() {
-  tp->times["start_dfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
+  tp->times["StartDfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
   MPI_Waitall(recv_nbrs_count, recv_nbrs_buffs_reqs, recv_nbrs_buffs_stats);
   MPI_Waitall(to_nbrs_count, to_nbrs_buffs_reqs, to_nbrs_buffs_stat);
-  tp->times["end_dfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
+  tp->times["EndDfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
 
 #ifndef NDEBUG
   {
@@ -512,7 +512,7 @@ void DistributedFastaData::wait() {
   std::string msg;
 #endif
 
-  tp->times["start_dfd:extract_recv_seqs"] = std::chrono::system_clock::now();
+  tp->times["StartDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
   int recv_nbr_idx = 0;
   for (auto &nbr : my_nbrs) {
     uint64_t nbr_seqs_count = (nbr.nbr_seq_end_idx - nbr.nbr_seq_start_idx) + 1;
@@ -558,7 +558,7 @@ void DistributedFastaData::wait() {
          col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
 
   ready = true;
-  tp->times["end_dfd:extract_recv_seqs"] = std::chrono::system_clock::now();
+  tp->times["EndDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
 }
 
 seqan::Dna5String *DistributedFastaData::row_seq(uint64_t l_row_idx) {

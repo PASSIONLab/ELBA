@@ -24,7 +24,7 @@ extern "C" {
 #define HIGH_BIN 100
 #define HIGH_NUM_BINS ((COUNT_THRESHOLD_HIGH-COUNT_THRESHOLD)/HIGH_BIN)
 
-int ERR_THRESHOLD;
+int ERR_THRESHOLD = 2;
 
 /*! GGGG: define this type somewhere
  *  local_kmers is not used anymore in dibella */
@@ -220,47 +220,39 @@ void countTotalKmersAndCleanHash()
     int64_t maxcount = 0;
     int64_t globalmaxcount = 0;
 
-    /*! GGGG: where is kmercounts being filled? */
+    // std::cout << "kmercounts size in countTotalKmersAndCleanHash " << kmercounts->size() << std::endl;
+
     for(auto itr = kmercounts->begin(); itr != kmercounts->end(); ++itr)
     {
-
       int allcount = get<2>(itr->second);
-      if(allcount > maxcount)
-        maxcount = allcount;
+      if(allcount > maxcount) maxcount = allcount;
 
       nonerrorkmers += allcount;
       ++hashsize;
     }
 
-    // LOGF("my hashsize = %lld, nonerrorkmers = %lld, maxcount = %lld\n", (lld) hashsize, (lld) nonerrorkmers, (lld) maxcount);
-
-    int64_t totalnonerror;
-    int64_t distinctnonerror;
+    uint64_t totalnonerror;
+    uint64_t distinctnonerror;
 
     CHECK_MPI(MPI_Reduce(&nonerrorkmers, &totalnonerror, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
     CHECK_MPI(MPI_Reduce(&hashsize,   &distinctnonerror, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
-    CHECK_MPI(MPI_Allreduce(&maxcount,&globalmaxcount,   1, MPI_LONG_LONG, MPI_MAX,    MPI_COMM_WORLD));
+    CHECK_MPI(MPI_Allreduce(&maxcount,  &globalmaxcount, 1, MPI_LONG_LONG, MPI_MAX,    MPI_COMM_WORLD));
 
-    if(myrank == 0)
-    {
-        cout << "Counting finished " << endl;
-        cout << __FUNCTION__ << ": Kmerscount hash includes " << distinctnonerror << " distinct elements" << endl;
-        cout << __FUNCTION__ << ": Kmerscount non error kmers count is " << totalnonerror << endl;
-        cout << __FUNCTION__ << ": Global max count is " << globalmaxcount << endl;
-        cout << __FUNCTION__ << ": Large count histogram is of size " << HIGH_NUM_BINS << endl;
-
-        /*! GGGG: define DIAG when code is clean and working */
-        // ADD_DIAG("%lld", "distinct_non_error_kmers", (lld) distinctnonerror);
-        // ADD_DIAG("%lld", "total_non_error_kmers", (lld) totalnonerror);
-        // ADD_DIAG("%lld", "global_max_count", (lld) globalmaxcount);
-    }
+    // if(myrank == 0)
+    // {
+    //     cout << "Counting finished " << endl;
+    //     cout << __FUNCTION__ << ": Kmerscount hash includes " << distinctnonerror << " distinct elements" << endl;
+    //     cout << __FUNCTION__ << ": Kmerscount non error kmers count is " << totalnonerror << endl;
+    //     cout << __FUNCTION__ << ": Global max count is " << globalmaxcount << endl;
+    //     cout << __FUNCTION__ << ": Large count histogram is of size " << HIGH_NUM_BINS << endl;
+    // }
 
     /*! GGGG: heavy hitters part removed for now */  
-    if (globalmaxcount == 0)
-    {
-        /*! GGGG: error message and terminate when code is clean and working */
-        // SDIE("There were no kmers found, perhaps your KLEN (%d) is longer than your reads?", KLEN);
-    }
+    // if (globalmaxcount == 0)
+    // {
+    //     /*! GGGG: error message and terminate when code is clean and working */
+    //     SDIE("There were no kmers found, perhaps your KLEN (%d) is longer than your reads?", KLEN);
+    // }
 
     /* Reset */
     nonerrorkmers = 0;
@@ -295,13 +287,9 @@ void countTotalKmersAndCleanHash()
 
     if(myrank == 0)
     {
-        cout << __FUNCTION__ << ": Erroneous count < " << ERR_THRESHOLD  << " and high frequency > "<< maxKmerFreq <<" cases removed " << endl;
+        cout << __FUNCTION__ << ": Erroneous count < " << ERR_THRESHOLD << " and high frequency > " << maxKmerFreq << " cases removed " << endl;
         cout << __FUNCTION__ << ": Kmerscount hash includes " << distinctnonerror << " distinct elements" << endl;
         cout << __FUNCTION__ << ": Kmerscount non error kmers count is " << totalnonerror << endl;
-
-        // ADD_DIAG("%lld", "distinct_non_error_kmers", (lld) distinctnonerror);
-        // ADD_DIAG("%lld", "total_non_error_kmers", (lld) totalnonerror);
-        // ADD_DIAG("%lld", "global_max_count", (lld) globalmaxcount);
     }
 }
 
@@ -633,10 +621,6 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
 
     char* buff;
 
-    // GGGG: this is OK
-    // std::cout << nreads << std::endl;
-    // exit(0);
-
     /*! GGGG: make sure name are consistent with ids */
     for (uint64_t lreadidx = offset; lreadidx < nreads; ++lreadidx)
     {
@@ -803,8 +787,6 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         /* we might still receive data even if we didn't send any */
         DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
 
-        /*! GGGG: when this is the case? */
-
         std::cout << __FUNCTION__ << ": offset " << offset << std::endl;
         std::cout << __FUNCTION__ << ": nreads " << nreads << std::endl;
 
@@ -829,11 +811,6 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         if (myrank == 0 && !(exchanges % 30))
         {
             cout << __FUNCTION__ << " pass "     << pass << ": "
-                //  << " active ranks morereads: "  << allmorereads
-                //  << " moreToExchange: "          << allmoreToExchange
-                //  << " moreFiles: "               << allmoreFiles  
-                //  << ", rank "                    << myrank 
-                //  << " morereads: "               << morereads 
                  << " moreToExchange: "          << moreToExchange;
             cout << " tpackime: "                << std::fixed << std::setprecision(3) << tpack
                  << " exchange_time: "           << std::fixed << std::setprecision(3) << texch
@@ -841,8 +818,6 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
                  << " elapsed: "                 << std::fixed << std::setprecision(3) << now - t01
                  << endl;
         }
-
-        // LOGF("Exchange timings pack: %0.3f exch: %0.3f process: %0.3f elapsed: %0.3f\n", tpack, texch, proctime, now - t01);
     } while (moreToExchange);
 
     double t02 = MPI_Wtime();
@@ -981,10 +956,6 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
         
 		MoreHLLTimers mt = InsertIntoHLL(mystr, hll, found, true);
     }
-    
-    // LOGF("HLL timings: reads %lld, duration %0.4f, parsing %0.4f, getKmer %0.4f, lexKmer %0.4f, thll %0.4f, hhTime %0.4f\n", 
-    // (lld) numreads, mt.duration, mt.parsingTime, mt.getKmerTime, mt.lexKmerTime, mt.thll, mt.hhTime);
-    // LOGF("My cardinality before reduction: %f\n", hll.estimate());
 
 	/* Using MPI_UNSIGNED_CHAR because MPI_MAX is not allowed on MPI_BYTE */
 	int count = hll.M.size();
@@ -999,8 +970,6 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
 		cout << __FUNCTION__ << ": Total reads processed over all processors is " << readsprocessed << endl;
 	}
     
-    // SLOG("%s: total cardinality %f\n", __FUNCTION__, cardinality);
-
 	MPI_Barrier(MPI_COMM_WORLD);
 
     /* Assume a balanced distribution */
@@ -1036,7 +1005,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
 // GGGG: Cardinality estimation
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  tp->times["start_kmerop:gen_A:loop_add_kmers()"] = std::chrono::system_clock::now();
+  tp->times["StartKmerOp:GenerateA:CardinalityHLL()"] = std::chrono::system_clock::now();
 
   /*! GGGG: cardinality estimate */
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -1055,6 +1024,8 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
 
   double tcardinalitye = MPI_Wtime() - tstart;
 
+  tp->times["EndKmerOp:GenerateA:CardinalityHLL()"] = std::chrono::system_clock::now();
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GGGG: First pass k-mer counter
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1071,23 +1042,26 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
   if (reserve >= 4294967291ul) reserve = 4294967290ul; // 
 
   /*! GGGG: define this macros */
-  // LOGF("Reserving %lld entries in VectorMap for cardinality %lld\n", (lld) reserve, (lld) cardinality);
   kmercounts->reserve(reserve);
-  // DBG("Reserved kmercounts\n");
 
   /* Initialize readNameMap for storing ReadID -> names/tags of reads */
   /* GGGG: define ReadId type */
   std::unordered_map<ReadId, std::string>* readNameMap = new std::unordered_map<ReadId, std::string>();
 
-  /*! GGGG: I don't what the original one, I wnt the new one with consecutive entries; also I only need the first one; it's gonna be incremented later in ParseNPack */
+  /*! GGGG: I don't what the original one, I want the new one with consecutive entries; also I only need the first one; it's gonna be incremented later in ParseNPack */
   uint64_t GlobalReadOffset = dfd->g_seq_offsets[parops->world_proc_rank];  
-  ReadId myReadStartIndex = GlobalReadOffset;
+  ReadId myReadStartIndex = GlobalReadOffset + 1;
+
+  tp->times["StartKmerOp:GenerateA:FirstPass()"] = std::chrono::system_clock::now();
 
   /*! GGGG: let's extract the function (I'll separate later once I understood what's going on) */
   /*! GGGG: functions in KmerCounter.cpp */
   /*  Determine final hash-table entries using bloom filter */
   int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, *readNameMap);//, readids);
 
+  tp->times["EndKmerOp:GenerateA:FirstPass()"] = std::chrono::system_clock::now();
+
+  // std::cout << nreads << std::endl;
   double firstpasstime = MPI_Wtime() - tstart;
 
   /*! GGGG: TODO print using PASTIS way */
@@ -1095,7 +1069,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
   {
     std::cout << "Reads: " << nreads << std::endl;
     std::cout << "First input data pass, elapsed time: " << firstpasstime << std::endl;
-  }   
+  }
 
   tstart = MPI_Wtime();
 
@@ -1141,9 +1115,12 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
   }
 
   // DBG("My read range is [%lld - %lld]\n", (myrank==0? 1 : readRanges[myrank-1]+1), readRanges[myrank]);
+  tp->times["StartKmerOp:GenerateA:SecondPass()"] = std::chrono::system_clock::now();
 
   /* Second pass */
   ProcessFiles(lfd, 2, cardinality, myReadStartIndex, *readNameMap);//, readids);
+
+  tp->times["EndKmerOp:GenerateA:SecondPass()"] = std::chrono::system_clock::now();
 
   double timesecondpass = MPI_Wtime() - tstart;
   // serial_printf("%s: 2nd input data pass, elapsed time: %0.3f s\n", __FUNCTION__, timesecondpass);
@@ -1186,14 +1163,22 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
     /*! GGGG: Once k-mers are consolidated in a single global location, 
      *  the other processors don’t need to know the ids of kmers they sent off to other processors. */
 
-    // std::unordered_map<Kmer::MERARR, uint64_t>* kmerIdMap = new std::unordered_map<Kmer::MERARR, uint64_t>();
+    // std::unordered_map<Kmer::MERARR, uint64_t>* kmerIdMap = new std::unordered_map<Kmer::MERARR, uint64_t>()
+
+    uint64_t mykmers = kmercounts->size();
+    uint64_t *totkmers = (uint64_t *)malloc(sizeof(uint64_t) * nprocs);
+
     // GGGG: communicate offsets for kmers and check if I need to communicate read ids as well
+    MPI_Allgather(&mykmers, 1, MPI_UINT64_T, totkmers, 1, MPI_UINT64_T, MPI_COMM_WORLD);
 
     uint64_t kmerid = 0;
+    for(int i = 1; i <= myrank; i++)
+    {
+        kmerid += totkmers[myrank-i];
+    }
+
     for(auto itr = kmercounts->begin(); itr != kmercounts->end(); ++itr)
     {
-        
-        /*! GGGG: TODO assing ids to local kmers here, they need to be consecutive on procs */
         /*! kmer string */
         // Kmer::MERARR key = itr->first;
         // Kmer mykmer(key);
@@ -1206,21 +1191,13 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
         {
             if(readids[j] != 0)
             {
-            /*!  GGGG: I need kmer id here 
-             *   This temp solution only works on 1 node */
                 lcol_ids.push_back(kmerid);
                 lrow_ids.push_back(readids[j]);
                 lvals.push_back(values[j]);
-
-                // std::cout << "k " << kmerid     << " " << mykmer << std::endl;
-                // std::cout << "r " << readids[j] << std::endl;
-                // std::cout << "v " << values[j]  << std::endl;
             }
         }
         kmerid++;
     }
-
-    assert(kmerid == kmercounts->size());
 
 #ifndef NDEBUG
   {
@@ -1242,13 +1219,12 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::generate_A(uint64_t seq_count,
     FullyDistVec<uint64_t, uint64_t>    dcols(lcol_ids, parops->grid);
     FullyDistVec<uint64_t, PosInRead>   dvals(lvals, parops->grid);
 
-
     uint64_t nrows = seq_count;
-    uint64_t ncols = kmerid; // GGGG: this is the reliable k-mer space
+    uint64_t ncols = totcount; // GGGG: this is the reliable k-mer space
 
-    tp->times["start_kmerop:gen_A:spMatA()"] = std::chrono::system_clock::now();
+    tp->times["StartKmerOp:GenerateA:SpMatA()"] = std::chrono::system_clock::now();
     PSpMat<PosInRead>::MPI_DCCols A(nrows, ncols, drows, dcols, dvals, false);
-    tp->times["end_kmerop:gen_A:spMatA()"]   = std::chrono::system_clock::now();
+    tp->times["EndKmerOp:GenerateA:SpMatA()"]   = std::chrono::system_clock::now();
     
     return A;
   }
