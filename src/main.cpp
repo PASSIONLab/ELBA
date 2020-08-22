@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
 
   tp->times["StartMain:GenerateA()"] = std::chrono::system_clock::now();
   PSpMat<PosInRead>::MPI_DCCols A =
-      dibella::KmerOps::generate_A(
+      dibella::KmerOps::GenerateA(
           seq_count,dfd, klength, kstride,
           alph, parops, tp); //, local_kmers);
 
