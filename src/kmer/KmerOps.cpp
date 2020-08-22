@@ -588,23 +588,18 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
 
     ReadId readIndex = startReadIndex;
 
-    vector<string> names;
-    vector<string> reads;
-
     char* buff;
 
     /*! GGGG: make sure name are consistent with ids */
     for (uint64_t lreadidx = offset; lreadidx < nreads; ++lreadidx)
     {
         buff = lfd->get_sequence_id(lreadidx, len, start_offset, end_offset_inclusive);
-
         string myname{buff + start_offset, buff + end_offset_inclusive + 1};
-        names.push_back(myname);
 
         buff = lfd->get_sequence(lreadidx, len, start_offset, end_offset_inclusive);
-
         string myseq{buff + start_offset, buff + end_offset_inclusive + 1};
-        reads.push_back(myseq);
+
+        len = myseq.size();
 
         /*! GGGG: extract kmers for this sequence but skip this sequence if the length is too short */
         if (len <= KLEN)
@@ -645,7 +640,7 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
 
         if (pass == 2)
         {   
-            StoreReadName(readIndex, names[lreadidx], readNameMap);
+            StoreReadName(readIndex, myname, readNameMap);
         }
 
         /* Always start with next read index whether exiting or continuing the loop */
@@ -662,6 +657,11 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
             break;
         }            
     } /*! GGGG: end of for all the local sequences */
+    
+    if (pass == 2)
+    { 
+        startReadIndex = readIndex;
+    }
 
   return nreads;
 }
@@ -685,6 +685,7 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     /*! Initialize bloom filter */
     if(pass == 1)
     {
+        unsigned int random_seed = 0xA57EC3B2;
         bm = (struct bloom*) malloc(sizeof(struct bloom));
 
         const double fp_probability = 0.05;
@@ -704,17 +705,17 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     VectorVectorPos  positions(nprocs);
         
     VectorKmer mykmers;
-    VectorChar myreads;
+    // VectorChar myreads;
     VectorPos  mypositions;
     VectorReadId myreadids;
 
     double t01 = MPI_Wtime();
     double totproctime = 0, totpack = 0, totexch = 0;
+
     int moreToExchange = 0;
+
     size_t offset = 0;
     size_t nreads = lfd->local_count();
-
-    int exchanges = 0;
 
     /* Extract kmers and counts from read sequences (seqs) */
     do {
@@ -748,29 +749,25 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
 
         /* we might still receive data even if we didn't send any */
         DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
-
         moreToExchange = offset < nreads;
-
-        mykmers.clear();
-        myreads.clear();
-        mypositions.clear();
-        myreadids.clear();
 
         double proctime = MPI_Wtime() - texchstart - tpack - texch;
         totproctime += proctime;
 
-        double now = MPI_Wtime();
+        mykmers.clear();
+        mypositions.clear();
+        myreadids.clear();
 
-        if (myrank == 0 && !(exchanges % 30))
-        {
-            cout << __FUNCTION__ << " pass "     << pass << ":"
-                 << " moreToExchange: "          << moreToExchange;
-            cout << " tpacktime: "               << std::fixed << std::setprecision(3) << tpack
-                 << " exchangetime: "            << std::fixed << std::setprecision(3) << texch
-                 << " proctime: "                << std::fixed << std::setprecision(3) << totproctime
-                 << " elapsed: "                 << std::fixed << std::setprecision(3) << now - t01
-                 << endl;
-        }
+        // if (myrank == 0)
+        // {
+        //     cout << __FUNCTION__ << " pass "     << pass << ":"
+        //          << " moreToExchange: "          << moreToExchange;
+        //     cout << " tpacktime: "               << std::fixed << std::setprecision(3) << tpack
+        //          << " exchangetime: "            << std::fixed << std::setprecision(3) << texch
+        //          << " proctime: "                << std::fixed << std::setprecision(3) << proctime
+        //          << " elapsed: "                 << std::fixed << std::setprecision(3) << now - t01
+        //          << endl;
+        // }
     } while (moreToExchange);
 
     double t02 = MPI_Wtime();
@@ -799,6 +796,8 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         cout << __FUNCTION__ << " pass " << pass << ": Read/distributed/processed reads in " << t02 - t01 << " seconds" << endl;
     }
 
+    t02 = MPI_Wtime();
+
     if (bm)
     {
         bloom_free(bm);
@@ -810,7 +809,9 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     freeBuffer(scratch2);
 
     if (exchangeAndCountPass == 2)
-        countTotalKmersAndCleanHash();
+    {
+        countTotalKmersAndCleanHash(); 
+    }
 
     return nreads;
 }
@@ -899,6 +900,8 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
     uint64_t start_offset, end_offset_inclusive, found;
     ushort len;
 
+    readsprocessed += numreads; 
+
     for (uint64_t lreadidx = 0; lreadidx < numreads; ++lreadidx)
     {
         /*! GGGG: loading sequence string in buff */
@@ -913,7 +916,7 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
 	/* Using MPI_UNSIGNED_CHAR because MPI_MAX is not allowed on MPI_BYTE */
 	int count = hll.M.size();
 	CHECK_MPI(MPI_Allreduce(MPI_IN_PLACE, hll.M.data(), count, MPI_UNSIGNED_CHAR, MPI_MAX, MPI_COMM_WORLD));
-	CHECK_MPI(MPI_Allreduce(MPI_IN_PLACE, &numreads, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD));
+	CHECK_MPI(MPI_Allreduce(MPI_IN_PLACE, &readsprocessed, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD));
 
 	cardinality = hll.estimate();
 
@@ -1101,7 +1104,9 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
 
   /* Second pass */
   ProcessFiles(lfd, 2, cardinality, myReadStartIndex, *readNameMap);//, readids);
-
+  
+//   exit(0);
+  
   tp->times["EndKmerOp:GenerateA:SecondPass()"] = std::chrono::system_clock::now();
 
   double timesecondpass = MPI_Wtime() - tstart;
