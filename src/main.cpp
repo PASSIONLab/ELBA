@@ -283,7 +283,6 @@ int main(int argc, char **argv) {
 #endif
 
   /*! Wait until data distribution is complete */
-
   tp->times["StartMain:DfdWait()"] = std::chrono::system_clock::now();
   if (!dfd->is_ready())
   {

@@ -116,4 +116,13 @@ inline std::ostream & operator<<(std::ostream & str, const ReadOverlapPair& pair
 
 #define GET_KMER_PACKED_LEN(k) ((k + 3) / 4)
 
+#define SerialPrintf(fmt, ...)                     \
+    do {                                            \
+        if (MYTHREAD == 0) {                        \
+            fprintf(stdout, fmt, ##__VA_ARGS__);    \
+            fflush(stdout);                         \
+            if (_sv != NULL) { if(MYSV._my_log != NULL) { if (strchr(fmt, '\n')) { LOGF(fmt, ##__VA_ARGS__); } else { LOGFN(fmt, ##__VA_ARGS__); } } }  \
+        }                                           \
+    } while (0)
+
 #endif /* _DIBELLA_DEFINES_H_ */

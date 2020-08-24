@@ -322,6 +322,8 @@ void DealWithInMemoryData(VectorKmer& mykmers, int pass, struct bloom* bm, Vecto
     }
 }
 
+static int exchange_iter = 0;
+
 /////////////////////////////////////////////
 // ExchangePass                            //
 /////////////////////////////////////////////
@@ -459,6 +461,13 @@ double ExchangePass(VectorVectorKmer& outgoing, VectorVectorReadId& readids, Vec
     double global_max_time = 0.0;
     CHECK_MPI(MPI_Reduce(&texch, &global_max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD));
 
+    // for(int i = 0; i < nprocs; i++)
+    // {
+    //     if(myrank == i)
+    //         printf("KmerMatch: %s exchange_iter %d pass %d: sent min %lld bytes, sent max %lld bytes, recv min %lld bytes, recv max %lld bytes, in min %.3f s, max %.3f s\n",
+	// 	__FUNCTION__, exchange_iter, pass, global_mins[SND], global_maxs[SND], global_mins[RCV], global_maxs[RCV], global_min_time, global_max_time);
+    // }
+
     perftime = MPI_Wtime()-perftime;
     /*************************************/
 
@@ -481,6 +490,7 @@ double ExchangePass(VectorVectorKmer& outgoing, VectorVectorReadId& readids, Vec
     }
 
     DeleteAll(rdispls, sdispls, recvcnt, sendcnt);
+    exchange_iter++;
 
     totexch = MPI_Wtime() - totexch - perftime;
 
@@ -562,7 +572,7 @@ size_t PackEndsKmer(string& seq, int j, Kmer& kmerreal, ReadId readid, PosInRead
         {
             kmerreal = kmertwin;
         }
-        procSendCount = FinishPackPass2(outgoing, readids, positions, extreads, kmerreal, readid, pos);
+        procSendCount = FinishPackPass2(outgoing, readids, positions, extreads, kmerreal, readid, pos);    
     }
     return procSendCount;
 }
@@ -574,13 +584,13 @@ size_t PackEndsKmer(string& seq, int j, Kmer& kmerreal, ReadId readid, PosInRead
 /* Kmer is of length k */
 /* HyperLogLog counting, bloom filtering, and std::maps use Kmer as their key */
 size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorVectorPos& positions, 
-    ReadId& startReadIndex, VectorVectorChar& extreads, std::unordered_map<ReadId, std::string>& readNameMap, int pass, size_t offset)
+    ReadId& startReadIndex, VectorVectorChar& extreads, std::unordered_map<ReadId, std::string>& readNameMap, int pass, size_t offset, int nreads)
 {
     uint64_t start_offset, end_offset_inclusive;
     ushort len;
 
     /* offset left over from orginal piece of codes */
-    size_t nreads     = lfd->local_count();
+    // size_t nreads     = lfd->local_count();
     size_t maxsending = 0, kmersthisbatch = 0, nskipped = 0;
     size_t bytesperkmer  = Kmer::numBytes();
     size_t bytesperentry = bytesperkmer + 4;
@@ -591,13 +601,16 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
     char* buff;
 
     /*! GGGG: make sure name are consistent with ids */
-    for (uint64_t lreadidx = offset; lreadidx < nreads; ++lreadidx)
+    for (uint64_t lreadidx = offset; lreadidx < (nreads + offset); ++lreadidx)
     {
+        // GGGG: the next few lines might be responsable for some runtime overhead in packing time wrt diBELLA v1
+        /*******************************************************************************************/
         buff = lfd->get_sequence_id(lreadidx, len, start_offset, end_offset_inclusive);
         string myname{buff + start_offset, buff + end_offset_inclusive + 1};
 
         buff = lfd->get_sequence(lreadidx, len, start_offset, end_offset_inclusive);
         string myseq{buff + start_offset, buff + end_offset_inclusive + 1};
+        /*******************************************************************************************/
 
         len = myseq.size();
 
@@ -657,13 +670,13 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
             break;
         }            
     } /*! GGGG: end of for all the local sequences */
-    
+
     if (pass == 2)
     { 
         startReadIndex = readIndex;
     }
 
-  return nreads;
+  return offset + nreads;
 }
 
 /////////////////////////////////////////////
@@ -705,7 +718,6 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     VectorVectorPos  positions(nprocs);
         
     VectorKmer mykmers;
-    // VectorChar myreads;
     VectorPos  mypositions;
     VectorReadId myreadids;
 
@@ -717,19 +729,18 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     size_t offset = 0;
     size_t nreads = lfd->local_count();
 
-    /* Extract kmers and counts from read sequences (seqs) */
-    do {
+    int batch = 500, i = 0;
+    int iters = nreads / batch;
+
+    for (; i < iters; i++) 
+    {
         double texchstart = MPI_Wtime();
 
         /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
-        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset);
+        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, batch);
 
         double tpack = MPI_Wtime() - texchstart;
         totpack += tpack;
-
-        /* GGGG: change this logic --too confusing; this temporary change might introduce a bug on big data set */
-        // if (offset == nreads)
-        //     offset = 0;
 
         /* Outgoing arrays will be all empty, shouldn't crush */
         double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
@@ -749,7 +760,6 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
 
         /* we might still receive data even if we didn't send any */
         DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
-        moreToExchange = offset < nreads;
 
         double proctime = MPI_Wtime() - texchstart - tpack - texch;
         totproctime += proctime;
@@ -757,18 +767,45 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         mykmers.clear();
         mypositions.clear();
         myreadids.clear();
+    }
 
-        // if (myrank == 0)
-        // {
-        //     cout << __FUNCTION__ << " pass "     << pass << ":"
-        //          << " moreToExchange: "          << moreToExchange;
-        //     cout << " tpacktime: "               << std::fixed << std::setprecision(3) << tpack
-        //          << " exchangetime: "            << std::fixed << std::setprecision(3) << texch
-        //          << " proctime: "                << std::fixed << std::setprecision(3) << proctime
-        //          << " elapsed: "                 << std::fixed << std::setprecision(3) << now - t01
-        //          << endl;
-        // }
-    } while (moreToExchange);
+    int lastbatch = nreads - (iters*batch);
+    if (lastbatch % batch)
+    {
+        double texchstart = MPI_Wtime();
+
+        /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
+        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, lastbatch);
+
+        double tpack = MPI_Wtime() - texchstart;
+        totpack += tpack;
+
+        /* Outgoing arrays will be all empty, shouldn't crush */
+        double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
+
+        totexch += texch;
+
+        if (exchangeAndCountPass == 2)
+        {
+            ASSERT(mykmers.size() == myreadids.size(), "");
+            ASSERT(mykmers.size() == mypositions.size(), "");
+        }
+        else
+        {
+            ASSERT(myreadids.size() == 0, "");
+            ASSERT(mypositions.size() == 0, "");
+        }
+
+        /* we might still receive data even if we didn't send any */
+        DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
+
+        double proctime = MPI_Wtime() - texchstart - tpack - texch;
+        totproctime += proctime;
+
+        mykmers.clear();
+        mypositions.clear();
+        myreadids.clear();
+    }
 
     double t02 = MPI_Wtime();
 
