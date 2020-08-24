@@ -512,7 +512,7 @@ void DistributedFastaData::wait() {
   std::string msg;
 #endif
 
-  tp->times["StartDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
+  // tp->times["StartDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
   int recv_nbr_idx = 0;
   for (auto &nbr : my_nbrs) {
     uint64_t nbr_seqs_count = (nbr.nbr_seq_end_idx - nbr.nbr_seq_start_idx) + 1;
@@ -558,7 +558,7 @@ void DistributedFastaData::wait() {
          col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
 
   ready = true;
-  tp->times["EndDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
+  // tp->times["EndDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
 }
 
 seqan::Dna5String *DistributedFastaData::row_seq(uint64_t l_row_idx) {
