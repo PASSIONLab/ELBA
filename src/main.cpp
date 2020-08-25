@@ -42,6 +42,8 @@ std::string input_file;
 uint64_t input_overlap;
 uint64_t seq_count;
 int xdrop;
+int match;
+int  mismatch_sc;
 int gap_open;
 int gap_ext;
 ushort klength;
@@ -305,14 +307,14 @@ int main(int argc, char **argv) {
 
   if (!no_align)
   {
-    /*! GGGG: define match, mismatch 
+    /*! GGGG: define match,  mismatch_sc 
         Don't need affine gap penalty in diBELLA */
 
-    int match = 1, mismatch = -1;
-    gap_ext = -1;
+    // int match = 1,  mismatch_sc = -1;
+    // gap_ext = -1;
 
     tp->times["StartMain:DprAlign()"] = std::chrono::system_clock::now();
-    ScoringScheme scoring_scheme(match, mismatch, gap_ext);
+    ScoringScheme scoring_scheme(match,  mismatch_sc, gap_ext);
 
     align_file += "_Rank_" + std::to_string(parops->world_proc_rank) + ".txt";
 
@@ -386,6 +388,10 @@ int parse_args(int argc, char **argv) {
      cxxopts::value<uint64_t>())
     (CMD_OPTION_SEED_COUNT, CMD_OPTION_DESCRIPTION_SEED_COUNT,
      cxxopts::value<int>())
+    (CMD_OPTION_MATCH, CMD_OPTION_DESCRIPTION_MATCH,
+    cxxopts::value<int>())
+    (CMD_OPTION_MISMATCH, CMD_OPTION_DESCRIPTION_MISMATCH,
+    cxxopts::value<int>())
     (CMD_OPTION_GAP_OPEN, CMD_OPTION_DESCRIPTION_GAP_OPEN,
      cxxopts::value<int>())
     (CMD_OPTION_GAP_EXT, CMD_OPTION_DESCRIPTION_GAP_EXT,
@@ -460,16 +466,28 @@ int parse_args(int argc, char **argv) {
     seed_count = 2;
   }
 
+  if (result.count(CMD_OPTION_MATCH)) {
+    match = result[CMD_OPTION_MATCH].as<int>();
+  } else {
+    match = 1;
+  }
+
+  if (result.count(CMD_OPTION_MISMATCH)) {
+     mismatch_sc = result[CMD_OPTION_MISMATCH].as<int>();
+  } else {
+     mismatch_sc = -1;
+  }
+
   if (result.count(CMD_OPTION_GAP_OPEN)) {
     gap_open = result[CMD_OPTION_GAP_OPEN].as<int>();
   } else {
-    gap_open = -11;
+    gap_open = 0;
   }
 
   if (result.count(CMD_OPTION_GAP_EXT)) {
     gap_ext = result[CMD_OPTION_GAP_EXT].as<int>();
   } else {
-    gap_ext = -2;
+    gap_ext = -1;
   }
 
   if (result.count(CMD_OPTION_KMER_LENGTH)) {
@@ -553,7 +571,7 @@ auto bool_to_str = [](bool b){
   return b ? "True" : "False";
 };
 
-/*! GGGG: add input match/mismatch */
+/*! GGGG: add input match/ mismatch_sc */
 void pretty_print_config(std::string &append_to) {
   std::vector<std::string> params = {
     "Input file (-i)",
@@ -562,6 +580,8 @@ void pretty_print_config(std::string &append_to) {
     "Kmer stride (s)",
     "Overlap in bytes (-O)",
     "Max seed count (--sc)",
+    "Base match score (--ma)",
+    "Base mismatch score (--mi)",
     "Gap open penalty (-g)",
     "Gap extension penalty (-e)",
     "Overlap file (--of)",
@@ -582,14 +602,16 @@ void pretty_print_config(std::string &append_to) {
     std::to_string(kstride),
     std::to_string(input_overlap),
     std::to_string(seed_count),
+    std::to_string(match),
+    std::to_string(mismatch_sc),
     std::to_string(gap_open),
     std::to_string(gap_ext),
-    !overlap_file.empty() ? overlap_file : "None",
-    !align_file.empty() ? align_file : "None",
-    !align_file.empty() ? std::to_string(afreq) : "None",
+    !overlap_file.empty() ? overlap_file  : "None",
+    !align_file.empty()   ? align_file    : "None",
+    !align_file.empty()   ? std::to_string(afreq) : "None",
     bool_to_str(no_align),
     bool_to_str(full_align),
-    bool_to_str(xdrop_align) + (xdrop_align ? "| xdrop: " + std::to_string(xdrop) : ""),
+    bool_to_str(xdrop_align)  + (xdrop_align  ? " | xdrop: " + std::to_string(xdrop) : ""),
     bool_to_str(banded_align) + (banded_align ? " | half band: " + std::to_string(banded_half_width) : ""),
     !idx_map_file.empty() ? idx_map_file : "None",
     std::to_string(alph_t)

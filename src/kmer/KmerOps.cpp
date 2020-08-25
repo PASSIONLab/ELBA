@@ -1009,49 +1009,49 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
   double tstart = MPI_Wtime();
 
   Kmer::set_k(KLEN);
+  double cardinality;
 
 #ifdef USEHLL
-  double cardinality;
   /* Doesn't update kmersprocessed yet (but updates readsprocessed */
   ProudlyParallelCardinalityEstimate(lfd, cardinality);
   readsxproc = readsprocessed / nprocs;
 #else // GGGG: this doesn't wotk yet
   int64_t sums[3] = {0, 0, 0};
   
-  double  &cardinality = sums[0]);
-  int64_t &totreads    = sums[1];
-  int64_t &totbases    = sums[2];
+  int64_t &mycardinality = sums[0];
+  int64_t &mytotreads    = sums[1];
+  int64_t &mytotbases    = sums[2];
 
-  totreads = lfd->local_count();
-  for (uint64_t lseq_idx = 0; lseq_idx < lfd->local_count(); ++lseq_idx)
+  mytotreads = lfd->local_count();
+  for (uint64_t lseq_idx = 0; lseq_idx < mytotreads; ++lseq_idx)
   {
       /*! GGGG: loading sequence string in buff */
       buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
 
       string myseq{buff + start_offset, buff + end_offset_inclusive + 1};
-      totbases += myseq.size();
+      mytotbases += myseq.size();
   }
 
-  if (totreads > 0)
+  if (mytotreads > 0)
   {
       /*! GGGG: double check k == kmer len */
-      int64_t kmersxread = ((totbases + totreads - 1) / totreads) - k + 1;
-      cardinality += kmersxread * totreads;
+      int64_t kmersxread = ((mytotbases + mytotreads - 1) / mytotreads) - k + 1;
+      mycardinality += kmersxread * mytotreads;
   }
 
   MPI_Allreduce(MPI_IN_PLACE, sums, 3, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
 
   if (myrank == 0)
   {
-      std::cout << "Estimated cardinality: " << cardinality << " totreads: " << totreads << " totbases: " << totbases << std::endl;
+      std::cout << "Estimated cardinality: " << mycardinality << " totreads: " << mytotreads << " totbases: " << mytotbases << std::endl;
   }
 
   /*! GGGG: from dibella v1 this is baseline for 10M kmers */
-  if (cardinality < 10000000) cardinality = 10000000;
+  if (mycardinality < 10000000) mycardinality = 10000000;
 
   /*! Assume maximum of 90% of the kmers are unique, because at least some have to repeat */
-  cardinality = 0.9 * cardinality / (double) nprocs;
-  readsxproc = totreads / nprocs;
+  cardinality = 0.9 * mycardinality / (double) nprocs;
+  readsxproc = mytotreads / nprocs;
 #endif
 
   tp->times["EndKmerOp:GenerateA:CardinalityHLL()"] = std::chrono::system_clock::now();
