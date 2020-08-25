@@ -22,6 +22,12 @@ extern const char *CMD_OPTION_DESCRIPTION_SEED_COUNT;
 extern const char *CMD_OPTION_KMER_LENGTH;
 extern const char *CMD_OPTION_DESCRIPTION_KMER_LENGTH;
 
+extern const char *CMD_OPTION_MATCH;
+extern const char *CMD_OPTION_DESCRIPTION_MATCH;
+
+extern const char *CMD_OPTION_MISMATCH;
+extern const char *CMD_OPTION_DESCRIPTION_MISMATCH;
+
 extern const char *CMD_OPTION_GAP_OPEN;
 extern const char *CMD_OPTION_DESCRIPTION_GAP_OPEN;
 
