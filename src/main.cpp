@@ -1,8 +1,8 @@
 #include <iostream>
 #include <cmath>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
+// #include <boost/uuid/uuid.hpp>
+// #include <boost/uuid/uuid_generators.hpp>
+// #include <boost/uuid/uuid_io.hpp>
 #include "../include/Constants.hpp"
 #include "../include/ParallelOps.hpp"
 #include "../include/ParallelFastaReader.hpp"
@@ -86,7 +86,7 @@ std::string print_str;
 int seed_count = 2;
 
 /*! Logging information */
-std::string job_name = "";
+std::string job_name = "dibella";
 std::string proc_log_file;
 std::ofstream proc_log_stream;
 int log_freq;
@@ -545,15 +545,6 @@ int parse_args(int argc, char **argv) {
     }
   } else {
     alph_t = Alphabet::DNA;
-  }
-
-  boost::uuids::random_generator gen;
-  boost::uuids::uuid id = gen();
-  if (result.count(CMD_OPTION_JOB_NAME_PREFIX)) {
-    std::string tmp = result[CMD_OPTION_JOB_NAME_PREFIX].as<std::string>();
-    job_name = tmp + "_" +  boost::uuids::to_string(id);
-  } else {
-    job_name = boost::uuids::to_string(id);
   }
 
   if (result.count(CMD_OPTION_LOG_FREQ)) {
