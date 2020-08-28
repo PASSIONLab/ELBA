@@ -103,7 +103,6 @@ DistributedFastaData::DistributedFastaData(
   std::printf("Rank: %d orig_l_seq_count: %lld\n",
           parops->world_proc_rank, orig_l_seq_count);
 #endif
-
   collect_grid_seqs();
 }
 
@@ -184,7 +183,8 @@ void DistributedFastaData::collect_grid_seqs() {
   // indexes will keep track of the indexes of my neighbors to receive from
   recv_nbrs_count = 0;
   for (int i = 0; i < my_nbrs.size(); ++i) {
-    if (my_nbrs[i].nbr_rank == parops->world_proc_rank) {
+    if (my_nbrs[i].nbr_rank == parops->world_proc_rank)
+    {
       // No need to receive from self
       continue;
     }
@@ -197,7 +197,10 @@ void DistributedFastaData::collect_grid_seqs() {
   */
   auto *recv_nbrs_buff_lengths_reqs = new MPI_Request[recv_nbrs_count];
   recv_nbrs_buff_lengths = new uint64_t[recv_nbrs_count];
-  for (int i = 0; i < recv_nbrs_count; ++i) {
+
+  for (int i = 0; i < recv_nbrs_count; ++i)
+  {
+
     MPI_Irecv(recv_nbrs_buff_lengths + i, 1, MPI_UINT64_T,
               my_nbrs[recv_nbrs_idxs[i]].nbr_rank,
               99+my_nbrs[recv_nbrs_idxs[i]].rc_flag,
@@ -284,8 +287,10 @@ void DistributedFastaData::collect_grid_seqs() {
             [](const NbrData &a, const NbrData &b) -> bool {
               return a.nbr_rank < b.nbr_rank;
             });
-  for (int i = 0; i < all_nbrs_count; ++i) {
-    if (all_nbrs[i].nbr_rank != parops->world_proc_rank) {
+  for (int i = 0; i < all_nbrs_count; ++i) 
+  {
+    if (all_nbrs[i].nbr_rank != parops->world_proc_rank)
+    {
       // Not requesting my sequences, so continue.
       continue;
     }
@@ -354,7 +359,9 @@ void DistributedFastaData::collect_grid_seqs() {
   }
   recv_nbrs_buffs_reqs = new MPI_Request[recv_nbrs_count];
   recv_nbrs_buffs_stats = new MPI_Status[recv_nbrs_count];
-  for (int i = 0; i < recv_nbrs_count; ++i) {
+
+  for (int i = 0; i < recv_nbrs_count; ++i)
+  {
     MPI_Irecv(recv_nbrs_buffs[i], static_cast<int>(recv_nbrs_buff_lengths[i]),
               MPI_CHAR, my_nbrs[recv_nbrs_idxs[i]].nbr_rank,
               77+my_nbrs[recv_nbrs_idxs[i]].rc_flag, MPI_COMM_WORLD,
@@ -387,11 +394,15 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
                                      const uint64_t avg_grid_seq_count,
                                      const uint64_t rc_seq_start_idx,
                                      const ushort rc_flag,
-                                     std::vector<NbrData> &my_nbrs) {
+                                     std::vector<NbrData> &my_nbrs)
+{
   // Note, this rank might not have the sequence, if so we'll search further.
-  int start_rank
-    = static_cast<int>((rc_seq_start_idx + 1) / avg_l_seq_count);
-  while (g_seq_offsets[start_rank] > rc_seq_start_idx) {
+  int start_rank = static_cast<int>((rc_seq_start_idx + 1) / avg_l_seq_count);
+
+  // GGGG: problem here when too many processes for a given file, long reads destroy the logic
+
+  while (g_seq_offsets[start_rank] > rc_seq_start_idx)
+  {
     /*! This loop is unlikely to happen unless the ranks above the original
      * start rank were heavily pruned during sequence removal step, which
      * removes sequences in lenght less than k-mer length.
@@ -402,7 +413,8 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
   assert(start_rank >= 0 && start_rank < parops->world_procs_count);
 
   while (g_seq_offsets[start_rank] + l_seq_counts[start_rank] <
-         rc_seq_start_idx) {
+         rc_seq_start_idx)
+  {
     /*! Another highly unlikely loop. This could happen if the above start_rank
      * contains much less number of sequences than the avg_l_seq_count due to
      * sequence pruning, which means we have to search in the ranks ahead of it
@@ -423,7 +435,10 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
   uint64_t nbr_seq_start_idx, nbr_seq_end_idx;
   uint64_t count = 0;
   uint64_t seq_start_idx = rc_seq_start_idx;
-  while (count < rc_seq_count_needed) {
+  while (count < rc_seq_count_needed)
+  {
+
+
     nbr_rank = start_rank;
     nbr_seq_start_idx = seq_start_idx - g_seq_offsets[start_rank];
     /* See how many sequences to grab from start_rank */
@@ -433,15 +448,19 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
     uint64_t remaining_in_start_rank = l_seq_counts[start_rank] -
                                        (seq_start_idx -
                                         g_seq_offsets[start_rank]);
-    if (remaining_needed >= remaining_in_start_rank) {
+    if (remaining_needed >= remaining_in_start_rank)
+    {
       count += remaining_in_start_rank;
       nbr_seq_end_idx = ((seq_start_idx + remaining_in_start_rank - 1) -
                          g_seq_offsets[start_rank]);
-    } else {
+    }
+    else
+    {
       count += remaining_needed;
       nbr_seq_end_idx =
         (seq_start_idx + remaining_needed - 1) - g_seq_offsets[start_rank];
     }
+
     my_nbrs.emplace_back(rc_flag, parops->world_proc_rank, nbr_rank,
                          nbr_seq_start_idx, nbr_seq_end_idx);
     ++start_rank;
@@ -512,7 +531,7 @@ void DistributedFastaData::wait() {
   std::string msg;
 #endif
 
-  tp->times["StartDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
+  // tp->times["StartDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
   int recv_nbr_idx = 0;
   for (auto &nbr : my_nbrs) {
     uint64_t nbr_seqs_count = (nbr.nbr_seq_end_idx - nbr.nbr_seq_start_idx) + 1;
@@ -558,7 +577,7 @@ void DistributedFastaData::wait() {
          col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
 
   ready = true;
-  tp->times["EndDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
+  // tp->times["EndDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
 }
 
 seqan::Dna5String *DistributedFastaData::row_seq(uint64_t l_row_idx) {

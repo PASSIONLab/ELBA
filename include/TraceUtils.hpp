@@ -8,7 +8,7 @@
 
 struct TimePod {
   std::unordered_map<std::string, ticks_t> times;
-  std::string names[16] = {"Main",
+  std::string names[15] = {"Main",
                            "Main:newDFD()",
                            "Dfd:PfrReadFasta()",
                            "Dfd:newFD()",
@@ -21,7 +21,6 @@ struct TimePod {
                            "Main:AAt()",
                            "Main:DfdWait()",
                            "Dfd:MPI_Waitall(seqs)",
-                           "Dfd:ExtractRecvSeqs",
                            "Main:DprAlign()",
                            "Main:DprWriteOverlaps()"
   };

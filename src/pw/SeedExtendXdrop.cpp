@@ -13,42 +13,88 @@ SeedExtendXdrop::SeedExtendXdrop(
 void SeedExtendXdrop::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
-    seqan::Dna5String *seq_h, seqan::Dna5String *seq_v,
+    seqan::Dna5String *seqH, seqan::Dna5String *seqV,
     dibella::CommonKmers &cks, std::stringstream& ss) {
 
   AlignmentInfo ai[2];
   for (int count = 0; count < seed_count; ++count) {
 #ifdef TWOSEED
     // row sequence is the same thing as vertical sequence
-    ushort l_row_seed_start_offset = (count == 0) ? cks.first.first
+    ushort LocalSeedVOffset = (count == 0) ? cks.first.first
                                                   : cks.second.first;
+	// l_row_seed_start_offset = LocalSeedVOffset											  
     // col sequence is the same thing as horizontal sequence
-    ushort l_col_seed_start_offset = (count == 0) ? cks.first.second
+    ushort LocalSeedHOffset = (count == 0) ? cks.first.second 
                                                   : cks.second.second;
+	// l_col_seed_start_offset = LocalSeedHOffset
 #else
     // row sequence is the same thing as vertical sequence
-    ushort l_row_seed_start_offset = cks.pos[0].first;
+    ushort LocalSeedVOffset = cks.pos[0].first;
     // col sequence is the same thing as horizontal sequence
-    ushort l_col_seed_start_offset = cks.pos[0].second;
+    ushort LocalSeedHOffset = cks.pos[0].second;
 #endif
+
+	seqan::Dna5String seedH;
+	seqan::Dna5String seedV;
+
+	// std::string strand;
 
     // Seed creation params are:
     // horizontal seed start offset, vertical seed start offset, length
-    TSeed seed(l_col_seed_start_offset, l_row_seed_start_offset,
-               seed_length);
-    auto start_time = std::chrono::system_clock::now();
-    extendSeed(seed, *seq_h, *seq_v, seqan::EXTEND_BOTH, scoring_scheme,
-               xdrop,
-               seqan::GappedXDrop());
-    auto end_time = std::chrono::system_clock::now();
-    add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
+    TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
 
-    seqan::Align<seqan::Dna5String> align;
-    resize(rows(align), 2);
-    assignSource(row(align, 0), infix(*seq_h, beginPositionH(seed),
-                                      endPositionH(seed)));
-    assignSource(row(align, 1), infix(*seq_v, beginPositionV(seed),
-                                      endPositionV(seed)));
+	seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
+	seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
+
+	seqan::Dna5StringReverseComplement twin(seedH);
+
+	seqan::Align<seqan::Dna5String> align;
+	resize(rows(align), 2);
+
+	if(twin == seedV)
+	{
+		// strand = 'c';
+		seqan::Dna5String twinseqH = seqH;
+		seqan::Dna5StringReverseComplement twinRead(twinseqH);
+		LocalSeedHOffset = length(twinseqH) - LocalSeedHOffset - seed_length;
+
+		setBeginPositionH(seed, LocalSeedHOffset);
+		setBeginPositionV(seed, LocalSeedVOffset);
+		setEndPositionH(seed, LocalSeedHOffset + seed_length);
+		setEndPositionV(seed, LocalSeedVOffset, + seed_length);
+
+		/* Perform match extension */
+		auto start_time = std::chrono::system_clock::now();
+		extendSeed(seed, *twinseqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme,
+				xdrop,
+				seqan::GappedXDrop());
+		auto end_time = std::chrono::system_clock::now();
+		add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
+
+		assignSource(row(align, 0), infix(*twinseqH, beginPositionH(seed),
+										endPositionH(seed)));
+		assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
+										endPositionV(seed)));
+
+	} else
+	{
+		strand = 'n';
+		auto start_time = std::chrono::system_clock::now();
+		extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme,
+				xdrop,
+				seqan::GappedXDrop());
+		auto end_time = std::chrono::system_clock::now();
+		add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
+
+		seqan::Align<seqan::Dna5String> align;
+		resize(rows(align), 2);
+
+		assignSource(row(align, 0), infix(*seqH, beginPositionH(seed),
+										endPositionH(seed)));
+		assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
+										endPositionV(seed)));
+
+	} 
 
     /*! Note. This aligns the extended seeds globally, NOT the original
      * two sequences.
@@ -70,8 +116,8 @@ void SeedExtendXdrop::apply(
     end_time = std::chrono::system_clock::now();
     add_time("XA:compute_stats", (ms_t(end_time - start_time)).count());
 
-    ai[count].seq_h_length = length(*seq_h);
-    ai[count].seq_v_length = length(*seq_v);
+    ai[count].seq_h_length = length(*seqH);
+    ai[count].seq_v_length = length(*seqV);
     ai[count].seq_h_seed_length = static_cast<ushort>(seed._endPositionH -
                                                       seed._beginPositionH);
     ai[count].seq_v_seed_length = static_cast<ushort>(seed._endPositionV -
@@ -153,17 +199,17 @@ SeedExtendXdrop::apply_batch
 			dibella::CommonKmers &cks = mattuples.numvalue(lids[i]);
 
 		#ifdef TWOSEED
-			ushort l_row_seed_start_offset =
+			ushort LocalSeedVOffset =
 				(count == 0) ? cks.first.first : cks.second.first;
-			ushort l_col_seed_start_offset =
+			ushort LocalSeedHOffset =
 				(count == 0) ? cks.first.second : cks.second.second;
 		#else
 		// GGGG: TODO check reverse complement
-			ushort l_row_seed_start_offset = cks.pos[0].first;
-			ushort l_col_seed_start_offset = cks.pos[0].second;
+			ushort LocalSeedVOffset = cks.pos[0].first;
+			ushort LocalSeedHOffset = cks.pos[0].second;
 		#endif
 
-			TSeed seed(l_col_seed_start_offset, l_row_seed_start_offset,
+			TSeed seed(LocalSeedHOffset, LocalSeedVOffset,
 					   seed_length);
 			extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]),
 					   seqan::EXTEND_BOTH, scoring_scheme,

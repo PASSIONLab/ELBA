@@ -13,6 +13,12 @@ const char *CMD_OPTION_DESCRIPTION_INPUT_OVERLAP = "Number of bytes to overlap w
 const char *CMD_OPTION_SEED_COUNT = "sc";
 const char *CMD_OPTION_DESCRIPTION_SEED_COUNT = "Seed count.";
 
+const char *CMD_OPTION_MATCH = "ma";
+const char *CMD_OPTION_DESCRIPTION_MATCH = "Base match score (positive value).";
+
+const char *CMD_OPTION_MISMATCH = "mi";
+const char *CMD_OPTION_DESCRIPTION_MISMATCH = "Base mismatch penalty (negative value).";
+
 const char *CMD_OPTION_GAP_OPEN = "g";
 const char *CMD_OPTION_DESCRIPTION_GAP_OPEN = "Gap open penalty (negative value).";
 
