@@ -2,6 +2,56 @@
 
 #include "../../include/pw/SeedExtendXdrop.hpp"
 
+void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed)
+{
+	auto maxseed = ai.seed;	// returns a seqan:Seed object
+
+	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
+	// these four return seqan:Tposition objects
+	int begpV = beginPositionV(maxseed);
+	int endpV = endPositionV  (maxseed);
+	int begpH = beginPositionH(maxseed);
+	int endpH = endPositionH  (maxseed);
+	
+	// ai.xscore = xscore;
+	// ai.strand = strand;
+
+	unsigned short int overlapLenH = ai.seq_h_seed_length;
+	unsigned short int overlapLenV = ai.seq_v_seed_length;
+
+	unsigned short int read1len = ai.seq_h_length;
+	unsigned short int read2len = ai.seq_v_length;
+
+	unsigned short int minLeft  = min(begpV, begpH);
+	unsigned short int minRight = min(read2len - endpV, read1len - endpH);
+	unsigned short int ov       = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
+
+	unsigned short int normLen  = max(overlapLenV, overlapLenH);
+	unsigned short int minLen   = min(overlapLenV, overlapLenH);
+
+	// GGGG: TODO implement this at the beginning so we don't have to compute it over and over again
+	// double slope(double error)
+	// {
+	// 	double p_mat = pow(1-error,2);  // match
+	// 	double p_mis = 1-p_mat;         // mismatch/gap
+	// 	double alpha = 1;               // match penalty
+	// 	double beta  = 1;               // mismatch/gap penalty
+
+	// 	return alpha*p_mat - beta*p_mis;
+	// }
+
+#ifndef FIXEDTHR
+	// GGGG: 1*(0.85^2)-1(1-0.85^2) temporary
+	float mythreshold = (1 - DELTACHERNOFF) * (0.445 * (float)ov);
+
+	if((float)ai.xscore >= mythreshold)
+		passed = true;
+#else
+	if(ai.xscore >= FIXEDTHR)
+		passed = true;
+#endif
+}
+
 SeedExtendXdrop::SeedExtendXdrop(
     ScoringScheme scoring_scheme,
     ushort seed_length, int xdrop, int seed_count):
@@ -10,14 +60,16 @@ SeedExtendXdrop::SeedExtendXdrop(
     seed_length(seed_length), xdrop(xdrop), seed_count(seed_count){
 }
 
-void SeedExtendXdrop::apply(
+AlignmentInfo SeedExtendXdrop::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
     seqan::Dna5String *seqH, seqan::Dna5String *seqV,
-    dibella::CommonKmers &cks, std::stringstream& ss) {
+    dibella::CommonKmers &cks, std::stringstream& ss)
+{
+  AlignmentInfo ai;
 
-  AlignmentInfo ai[2];
-  for (int count = 0; count < seed_count; ++count) {
+  for (int count = 0; count < seed_count; ++count)
+  {
 #ifdef TWOSEED
     // row sequence is the same thing as vertical sequence
     ushort LocalSeedVOffset = (count == 0) ? cks.first.first
@@ -38,6 +90,9 @@ void SeedExtendXdrop::apply(
 	seqan::Dna5String seedV;
 
 	std::string strand;
+	int xscore;
+	bool passed = false;
+
 	auto start_time = std::chrono::system_clock::now();
 	auto end_time   = std::chrono::system_clock::now();
 
@@ -67,32 +122,36 @@ void SeedExtendXdrop::apply(
 
 		/* Perform match extension */
 		start_time = std::chrono::system_clock::now();
-		extendSeed(seed, twinseqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme,
+		xscore = extendSeed(seed, twinseqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme,
 				xdrop,
 				seqan::GappedXDrop());
 		end_time = std::chrono::system_clock::now();
 		add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
 
+	#ifdef STATS
 		assignSource(row(align, 0), infix(twinseqH, beginPositionH(seed),
 										endPositionH(seed)));
 		assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
 										endPositionV(seed)));
+	#endif
 
-	} else
+	}
+	else
 	{
 		strand = 'n';
 		start_time = std::chrono::system_clock::now();
-		extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme,
+		xscore = extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme,
 				xdrop,
 				seqan::GappedXDrop());
 		end_time = std::chrono::system_clock::now();
 		add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
 
+	#ifdef STATS
 		assignSource(row(align, 0), infix(*seqH, beginPositionH(seed),
 										endPositionH(seed)));
 		assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
 										endPositionV(seed)));
-
+	#endif
 	} 
 
     /*! Note. This aligns the extended seeds globally, NOT the original
@@ -116,23 +175,32 @@ void SeedExtendXdrop::apply(
     add_time("XA:compute_stats", (ms_t(end_time - start_time)).count());
 #endif
 
-    ai[count].seq_h_length = length(*seqH);
-    ai[count].seq_v_length = length(*seqV);
-    ai[count].seq_h_seed_length = static_cast<ushort>(seed._endPositionH -
-                                                      seed._beginPositionH);
-    ai[count].seq_v_seed_length = static_cast<ushort>(seed._endPositionV -
-                                                      seed._beginPositionV);
-    ai[count].seq_h_g_idx = g_col_idx;
-    ai[count].seq_v_g_idx = g_row_idx;
+    ai.seq_h_length = length(*seqH);
+    ai.seq_v_length = length(*seqV);
+
+	ai.seed = seed;
+    ai.seq_h_seed_length = static_cast<ushort>(seed._endPositionH -
+                                               seed._beginPositionH);
+    ai.seq_v_seed_length = static_cast<ushort>(seed._endPositionV -
+                                               seed._beginPositionV);
+    ai.seq_h_g_idx = g_col_idx;
+    ai.seq_v_g_idx = g_row_idx;
+	
+	ai.xscore = xscore;
+	ai.strand = strand;
+
+	passed = PostAlignmentDecision();
+
+	if (passed) break;
   }
 
   /* GGGG: import BELLA's post alignment logic here and add modified SeqAn 
   ...
   */
 
-  AlignmentInfo max_ai = ai[0];
 #ifdef STATS
-  if (seed_count > 2) {
+  if (seed_count > 2)
+  {
     max_ai = ai[0].stats.alignmentIdentity > ai[1].stats.alignmentIdentity
     ? ai[0] : ai[1];
   }
@@ -146,6 +214,8 @@ void SeedExtendXdrop::apply(
 	 << "," << cks.count
 	 << std::endl;
 #endif
+
+	return ai;
 }
 
 // @NOTE This is hard-coded to the number of seeds being <= 2
@@ -191,7 +261,7 @@ SeedExtendXdrop::apply_batch
 		resize(seqsh_ex, npairs, seqan::Exact{});
 		resize(seqsv_ex, npairs, seqan::Exact{});
 		
-		// extend the current seed and form a new gaps object
+	// extend the current seed and form a new gaps object
 	#pragma omp parallel for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
@@ -239,6 +309,7 @@ SeedExtendXdrop::apply_batch
 		start_time = std::chrono::system_clock::now();
 		
 		// stats
+	#ifdef STATS
 		if (count == 0)			// overwrite in the first seed
 		{
 		#pragma omp parallel for
@@ -273,13 +344,14 @@ SeedExtendXdrop::apply_batch
 
 		end_time = std::chrono::system_clock::now();
     	add_time("XA:compute_stats", (ms_t(end_time - start_time)).count());
+	#endif
 	}
 
 	delete [] seedlens;
 
 	auto start_time = std::chrono::system_clock::now();
 
-	// stats dump
+	// Dump alignment info
 	#pragma omp parallel
 	{
 		std::stringstream ss;
@@ -287,19 +359,26 @@ SeedExtendXdrop::apply_batch
 		#pragma omp for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
-			seqan::AlignmentStats &stats = ai[i].stats;			
+		#ifdef STATS
+			seqan::AlignmentStats &stats = ai[i].stats;		
 			double alen_minus_gapopens =
 				stats.alignmentLength - stats.numGapOpens;
+		#endif	
 			ss << ai[i].seq_h_g_idx << ","
 			   << ai[i].seq_v_g_idx  << ","
+			   << ai[i].xscore  << ","
+		#ifdef STATS
 			   << stats.alignmentIdentity << ","
+		#endif	
 			   << ai[i].seq_h_length << ","
 			   << ai[i].seq_v_length << ","
 			   << ai[i].seq_h_seed_length << ","
-			   << ai[i].seq_v_seed_length << ","
+			   << ai[i].seq_v_seed_length 
+		#ifdef STATS
 			   << stats.numGapOpens << ","
 			   << (alen_minus_gapopens / ai[i].seq_h_length) << ","
 			   << (alen_minus_gapopens / ai[i].seq_v_length)
+		#endif
 			   << "\n";
 		}
 
@@ -311,10 +390,9 @@ SeedExtendXdrop::apply_batch
 	}
 
 	auto end_time = std::chrono::system_clock::now();
-  	add_time("XA:string_op",
+  	add_time("XA:StringOp",
 			 (ms_t(end_time - start_time)).count());
 
 	delete [] ai;
-
 	return;
 }
