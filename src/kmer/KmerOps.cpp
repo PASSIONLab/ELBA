@@ -22,7 +22,6 @@ extern "C" {
 #define HIGH_BIN 100
 #define HIGH_NUM_BINS ((COUNT_THRESHOLD_HIGH-COUNT_THRESHOLD)/HIGH_BIN)
 
-int ERR_THRESHOLD = 2;
 KmerCountsType *kmercounts = NULL;
 
 int nprocs;
@@ -31,7 +30,7 @@ int64_t nonerrorkmers;
 int64_t kmersprocessed;
 int64_t readsprocessed;
 
-int minKmerFreq = 2;
+int minKmerFreq = ERR_THRESHOLD;
 int maxKmerFreq = MAX_NUM_READS;
 
 using namespace std;
@@ -236,7 +235,7 @@ void countTotalKmersAndCleanHash()
     // if (globalmaxcount == 0)
     // {
     //     /*! GGGG: error message and terminate when code is clean and working */
-    //     SDIE("There were no kmers found, perhaps your KLEN (%d) is longer than your reads?", KLEN);
+    //     SDIE("There were no kmers found, perhaps your k (%d) is longer than your reads?", k);
     // }
 
     /* Reset */
@@ -548,13 +547,13 @@ inline size_t FinishPackPass2(VectorVectorKmer& outgoing, VectorVectorReadId& re
 
 size_t PackEndsKmer(string& seq, int j, Kmer& kmerreal, ReadId readid, PosInRead pos, VectorVectorKmer& outgoing,
         VectorVectorReadId& readids, VectorVectorPos& positions, VectorVectorChar& extreads, 
-        int pass, int lastCountedBase)
+        int pass, int lastCountedBase, ushort k)
 {
-    bool isCounted = lastCountedBase >= j + KLEN;
+    bool isCounted = lastCountedBase >= j + k;
     size_t procSendCount;
 
-    assert(seq.size() >= j + KLEN);
-    assert(seq.substr(j, KLEN).find('N') == std::string::npos);
+    assert(seq.size() >= j + k);
+    assert(seq.substr(j, k).find('N') == std::string::npos);
     assert(kmerreal == Kmer(seq.c_str() + j));
 
     if (pass == 1)
@@ -584,7 +583,7 @@ size_t PackEndsKmer(string& seq, int j, Kmer& kmerreal, ReadId readid, PosInRead
 /* Kmer is of length k */
 /* HyperLogLog counting, bloom filtering, and std::maps use Kmer as their key */
 size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorVectorPos& positions, 
-    ReadId& startReadIndex, VectorVectorChar& extreads, std::unordered_map<ReadId, std::string>& readNameMap, int pass, size_t offset, int nreads)
+    ReadId& startReadIndex, VectorVectorChar& extreads, std::unordered_map<ReadId, std::string>& readNameMap, int pass, size_t offset, int nreads, ushort k)
 {
     uint64_t start_offset, end_offset_inclusive;
     ushort len;
@@ -615,13 +614,13 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
         len = myseq.size();
 
         /*! GGGG: extract kmers for this sequence but skip this sequence if the length is too short */
-        if (len <= KLEN)
+        if (len <= k)
         {
             nskipped++;
             continue;
         }
 
-        int nkmers = (len - KLEN + 1);
+        int nkmers = (len - k + 1);
         kmersprocessed += nkmers;
         kmersthisbatch += nkmers;
         
@@ -638,14 +637,14 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
                 Nfound = myseq.find('N', Nfound + 1);
 
             /* If there is an 'N', toss it */
-            if (Nfound != string::npos && Nfound < j + KLEN)
+            if (Nfound != string::npos && Nfound < j + k)
                 continue;  
 
             ASSERT(kmers[j] == Kmer(myseq.c_str() + j), "");
 
             /*! GGGG: where all these variables come from? */
             size_t sending = PackEndsKmer(myseq, j, kmers[j], readIndex, j, outgoing,
-                    readids, positions, extreads, pass, len);
+                    readids, positions, extreads, pass, len, k);
 
             if (sending > maxsending)
                 maxsending = sending;
@@ -683,7 +682,7 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
 // ProcessFiles                            //
 /////////////////////////////////////////////
 
-size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap)
+size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap, ushort k)
 {
     /*! GGGG: include bloom filter source code */
     struct bloom * bm = NULL;
@@ -737,7 +736,7 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         double texchstart = MPI_Wtime();
 
         /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
-        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, batch);
+        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, batch, k);
 
         double tpack = MPI_Wtime() - texchstart;
         totpack += tpack;
@@ -775,7 +774,7 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         double texchstart = MPI_Wtime();
 
         /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
-        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, lastbatch);
+        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, lastbatch, k);
 
         double tpack = MPI_Wtime() - texchstart;
         totpack += tpack;
@@ -870,7 +869,7 @@ inline double getDuration(MoreHLLTimers &t)
     return t.last - delta;
 }
 
-MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, uint64_t& found, bool extraTimers = false)
+MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, uint64_t& found, ushort k, bool extraTimers = false)
 {
     MoreHLLTimers t;
 
@@ -882,7 +881,7 @@ MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, uint64_t& found, b
     }
 
     /* Otherwise size_t being unsigned will underflow */
-    if(found >= KLEN) 
+    if(found >= k) 
     {
         if (extraTimers) t.parsingTime += getDuration(t);
 
@@ -890,15 +889,15 @@ MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, uint64_t& found, b
         std::vector<Kmer> kmers = Kmer::getKmers(myread); 
         if (extraTimers) t.getKmerTime += getDuration(t);
 
-        ASSERT(kmers.size() >= found-KLEN+1, "");
+        ASSERT(kmers.size() >= found-k+1, "");
         size_t Nfound = myread.find('N');
         
-        for(size_t j = 0; j < found-KLEN+1; ++j)
+        for(size_t j = 0; j < found-k+1; ++j)
         {
             ASSERT(kmers[j] == Kmer(myread.c_str() + j), "");
             while (Nfound!=std::string::npos && Nfound < j) Nfound = myread.find('N', Nfound+1);
 
-            if (Nfound!=std::string::npos && Nfound < j+KLEN)
+            if (Nfound!=std::string::npos && Nfound < j+k)
                 continue;	/* if there is an 'N', toss it */
             Kmer &mykmer = kmers[j];
 
@@ -928,7 +927,7 @@ MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, uint64_t& found, b
 // ProudlyParallelCardinalityEstimate      //
 /////////////////////////////////////////////
 
-void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
+void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality, ushort k)
 {
 	HyperLogLog hll(12);
     int64_t numreads = lfd->local_count();
@@ -947,7 +946,7 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality)
         string myseq{myread + start_offset, myread + end_offset_inclusive + 1};
         found = myseq.size();
         
-		MoreHLLTimers mt = InsertIntoHLL(myseq, hll, found, true);
+		MoreHLLTimers mt = InsertIntoHLL(myseq, hll, found, k, true);
     }
 
 	/* Using MPI_UNSIGNED_CHAR because MPI_MAX is not allowed on MPI_BYTE */
@@ -1008,12 +1007,12 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
 
   double tstart = MPI_Wtime();
 
-  Kmer::set_k(KLEN);
+  Kmer::set_k(k);
   double cardinality;
 
 #ifdef USEHLL
   /* Doesn't update kmersprocessed yet (but updates readsprocessed */
-  ProudlyParallelCardinalityEstimate(lfd, cardinality);
+  ProudlyParallelCardinalityEstimate(lfd, cardinality, k);
   readsxproc = readsprocessed / nprocs;
 #else // GGGG: this doesn't wotk yet
   int64_t sums[3] = {0, 0, 0};
@@ -1087,7 +1086,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
   /*! GGGG: let's extract the function (I'll separate later once I understood what's going on) */
   /*! GGGG: functions in KmerCounter.cpp */
   /*  Determine final hash-table entries using bloom filter */
-  int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, *readNameMap);//, readids);
+  int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, *readNameMap, k);//, readids);
 
   tp->times["EndKmerOp:GenerateA:FirstPass()"] = std::chrono::system_clock::now();
 
@@ -1140,10 +1139,8 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
   tp->times["StartKmerOp:GenerateA:SecondPass()"] = std::chrono::system_clock::now();
 
   /* Second pass */
-  ProcessFiles(lfd, 2, cardinality, myReadStartIndex, *readNameMap);//, readids);
-  
-//   exit(0);
-  
+  ProcessFiles(lfd, 2, cardinality, myReadStartIndex, *readNameMap, k);//, readids);
+
   tp->times["EndKmerOp:GenerateA:SecondPass()"] = std::chrono::system_clock::now();
 
   double timesecondpass = MPI_Wtime() - tstart;

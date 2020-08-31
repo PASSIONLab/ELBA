@@ -29,6 +29,10 @@ find_package(OpenMP REQUIRED)
 
 find_package(ZLIB)
 
+add_definitions(-DMAX_KMER_SIZE=32)
+add_definitions(-DERR_THRESHOLD=2)
+add_definitions(-DMAX_NUM_READS=4)
+
 add_executable(dibella
         src/Alphabet.cpp
         include/Alphabet.hpp
