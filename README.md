@@ -34,19 +34,10 @@
     make -j4
     make install         
   ```
-3. SeqAn.
-  * Download SeqAn `2.4.0` from `https://github.com/seqan/seqan/releases/tag/seqan-v2.4.0` or clone the repository using the release tag as follows:
-  ```
-    git clone --branch seqan-v2.4.0 https://github.com/seqan/seqan.git
-  ```
+3. SeqAn (included in this repository).
   * Create an environment variable, `SEQAN_HOME`, pointing to it:
   ```
     export SEQAN_HOME=/path/to/seqan
-  ```
-  * Checkout to `develop` branch of SeqAn `2.4.0`:
-  ```
-    cd $SEQAN_HOME
-    git checkout develop
   ```
   * This is a header only library, so there's no need to build it.
 
