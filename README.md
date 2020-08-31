@@ -13,8 +13,6 @@
 
 3. CMake 3.11 or above.
 
-4. Boost C++ Libraries.
-
 ## Dependencies
     
 1. CombBLAS.
