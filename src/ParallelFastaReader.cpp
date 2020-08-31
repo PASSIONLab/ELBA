@@ -9,7 +9,6 @@
 #include "../include/ParallelFastaReader.hpp"
 #include "../include/DistributedFastaData.hpp"
 
-
 void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int rank,
                                      int world_size, char *&buff,
                                      uint64_t &l_start, uint64_t &l_end) {
@@ -96,6 +95,21 @@ void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int ran
     l_end -= 2;
   }
 
+  /* GGGG: terminate program if error detected (https://stackoverflow.com/questions/10818740/gracefully-exit-with-mpi) */
+  // int error = 0, therank;
+  // if(l_end <= l_start)
+  // {
+  //   error = 1;
+  //   therank = rank;
+  // }
+
   if(l_end <= l_start)
-      std::cout << "Error on rank " << rank  << ": FASTA could be too small for " << world_size << " procs" << std::endl;
+  {
+    std::cout<< "Error: Program terminated because FASTA is too small for " << world_size << " procs. Run with fewer procs than the number of input reads." << std::endl;
+
+    MPI_Abort(MPI_COMM_WORLD, 1);
+    /* No further code will execute */
+    MPI_Finalize();
+    exit(1);
+  }
 }

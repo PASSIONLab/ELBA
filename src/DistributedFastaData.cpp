@@ -3,7 +3,6 @@
 #include "../include/DistributedFastaData.hpp"
 #include "../include/ParallelFastaReader.hpp"
 
-
 DistributedFastaData::~DistributedFastaData() {
   for (auto &row_seq : row_seqs) {
     delete (row_seq);
@@ -396,10 +395,31 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
                                      const ushort rc_flag,
                                      std::vector<NbrData> &my_nbrs)
 {
+  int error = 0, rank;
+
   // Note, this rank might not have the sequence, if so we'll search further.
   int start_rank = static_cast<int>((rc_seq_start_idx + 1) / avg_l_seq_count);
+  
+  if(start_rank >= parops->world_procs_count)
+  { 
+    std::cout<< "Error: Program terminated because FASTA is too small for " << parops->world_procs_count << " procs. Run with fewer procs than the number of input reads." << std::endl;
+    
+    MPI_Abort(MPI_COMM_WORLD, 1);
+    /* No further code will execute */
+    MPI_Finalize();
+    exit(1);
+  //   error = 1;
+  //   rank = parops->world_proc_rank;
+  // }
+  
+  // if(error != 0)
+  // {
+  //   if(parops->world_proc_rank == rank)
+  //     std::cout << "Error: Program terminated because FASTA is too small for " << parops->world_procs_count << " procs. Run with fewer procs than the number of input reads." << std::endl;
 
-  // GGGG: problem here when too many processes for a given file, long reads destroy the logic
+  //   MPI_Finalize();
+  //   exit(error); 
+  }
 
   while (g_seq_offsets[start_rank] > rc_seq_start_idx)
   {
@@ -410,7 +430,13 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
     --start_rank;
   }
 
-  assert(start_rank >= 0 && start_rank < parops->world_procs_count);
+  if(start_rank >= parops->world_procs_count)
+  { 
+    MPI_Abort(MPI_COMM_WORLD, 1);
+    /* No further code will execute */
+    MPI_Finalize();
+    exit(1);
+  }
 
   while (g_seq_offsets[start_rank] + l_seq_counts[start_rank] <
          rc_seq_start_idx)
@@ -421,8 +447,6 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
      * to find the sequence we are interested in. */
     ++start_rank;
   }
-
-  assert(start_rank >= 0 && start_rank < parops->world_procs_count);
 
   uint64_t rc_seq_count_needed = avg_grid_seq_count;
   if (grid_rc_id == grid_rc_procs_count - 1) {
@@ -435,9 +459,19 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
   uint64_t nbr_seq_start_idx, nbr_seq_end_idx;
   uint64_t count = 0;
   uint64_t seq_start_idx = rc_seq_start_idx;
+
   while (count < rc_seq_count_needed)
   {
-
+    /* GGGG: terminate program if error detected (https://stackoverflow.com/questions/10818740/gracefully-exit-with-mpi) */
+    if(start_rank >= parops->world_procs_count)
+    { 
+      std::cout<< "Error: Program terminated because FASTA is too small for " << parops->world_procs_count << " procs. Run with fewer procs than the number of input reads." << std::endl;
+    
+      MPI_Abort(MPI_COMM_WORLD, 1);
+      /* No further code will execute */
+      MPI_Finalize();
+      exit(1);
+    }
 
     nbr_rank = start_rank;
     nbr_seq_start_idx = seq_start_idx - g_seq_offsets[start_rank];
@@ -509,10 +543,17 @@ DistributedFastaData::push_seqs(int rc_flag, FastaData *fd, uint64_t seqs_count,
   }
 }
 
-void DistributedFastaData::wait() {
+void DistributedFastaData::wait(int myrank) {
   tp->times["StartDfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
+  
+  // double StartWaitAll = MPI_Wtime();
+
   MPI_Waitall(recv_nbrs_count, recv_nbrs_buffs_reqs, recv_nbrs_buffs_stats);
   MPI_Waitall(to_nbrs_count, to_nbrs_buffs_reqs, to_nbrs_buffs_stat);
+
+  // double WaitAll = MPI_Wtime() - StartWaitAll;
+  // std::cout << "WaitAll on rank " << myrank << " took " << WaitAll << std::endl;
+
   tp->times["EndDfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
 
 #ifndef NDEBUG
