@@ -49,17 +49,7 @@
     git checkout develop
   ```
   * This is a header only library, so there's no need to build it.
-  
-## Use scripts to install dependencies
------
-  ```
-    source modules.sh
-    source combblas.sh
-    cd ../../../
-    source seqan.sh
-    source utils.sh
-    cd ../        
-  ```
+
 # Build diBELLA
 -----
 
@@ -67,17 +57,14 @@ To build diBELLA, you can use the following commands:
   ```
     mkdir build_release
     cd build_release
-    cmake -DCMAKE_C_COMPILER=/usr/local/bin/gcc-10 -DCMAKE_CXX_COMPILER=/usr/local/bin/g++-10 -DMAX_NUM_READS=8 ..
+    cmake -DCMAKE_C_COMPILER=/usr/local/bin/gcc-10 -DCMAKE_CXX_COMPILER=/usr/local/bin/g++-10 ..
     make -j4  
   ```
-Or type:
-  ```
-    source build.sh 
-  ```
-Default macro definition:
+Default macro definition in CMakeFiles.txt:
   ```
     #define MAX_KMER_SIZE 32
     #define ERR_THRESHOLD 2
+    #define MAX_NUM_READS 8
   ```
 Based on the dataset, one might want to change the above definitions. *MAX_NUM_READS*: reliable k-mer upper bound (8 works for E. coli (Sample) 30X and 4 for Human CCS), *ERR_THRESHOLD*: reliable k-mer lower bound.
 
