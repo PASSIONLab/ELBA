@@ -7,6 +7,7 @@
 #include "FastaData.hpp"
 #include "ParallelOps.hpp"
 #include "TraceUtils.hpp"
+#include "Defines.hpp"
 
 struct NbrData {
   ushort rc_flag;
@@ -73,7 +74,7 @@ public:
   uint64_t  g_seq_count;
   uint64_t* g_seq_offsets = nullptr;
 
-  void wait();
+  void wait(int myrank);
 
 private:
   std::shared_ptr<TimePod> tp;

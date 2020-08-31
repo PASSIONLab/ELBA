@@ -284,11 +284,12 @@ int main(int argc, char **argv) {
   //  MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
+  // MPI_Barrier(MPI_COMM_WORLD);
   /*! Wait until data distribution is complete */
   tp->times["StartMain:DfdWait()"] = std::chrono::system_clock::now();
   if (!dfd->is_ready())
   {
-    dfd->wait();
+    dfd->wait(myrank);
   }
   tp->times["EndMain:DfdWait()"] = std::chrono::system_clock::now();
 
@@ -323,9 +324,9 @@ int main(int argc, char **argv) {
 
     if (xdrop_align)
     {
-      pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
-      dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
-	    local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
+      // pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
+      // dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
+	    // local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
     }
     else if (full_align)
     {
