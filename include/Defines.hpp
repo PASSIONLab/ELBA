@@ -15,10 +15,10 @@
 #define TWOSEED
 // #define USEHLL
 
-/*! IMPORTANT TEMPORARY */
-#define MAX_KMER_SIZE 32  // GGGG: just temporary while cleaning code to avoid compile time errors on VS
-#define MAX_NUM_READS 8   // GGGG: just temporary while cleaning code to avoid compile time errors on VS
-#define KLEN 17           // GGGG: just temporary while cleaning code to avoid compile time errors on VS
+/* Defined in CMakeFiles.txt */ 
+// #define MAX_KMER_SIZE
+// #define MAX_NUM_READS
+// #define ERR_THRESHOLD
 
 #ifndef MAX_ALLTOALL_MEM
 #define MAX_ALLTOALL_MEM (128*1024*1024)  /* 128 MB */

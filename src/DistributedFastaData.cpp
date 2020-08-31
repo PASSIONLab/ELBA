@@ -403,22 +403,10 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
   if(start_rank >= parops->world_procs_count)
   { 
     std::cout<< "Error: Program terminated because FASTA is too small for " << parops->world_procs_count << " procs. Run with fewer procs than the number of input reads." << std::endl;
-    
     MPI_Abort(MPI_COMM_WORLD, 1);
     /* No further code will execute */
     MPI_Finalize();
     exit(1);
-  //   error = 1;
-  //   rank = parops->world_proc_rank;
-  // }
-  
-  // if(error != 0)
-  // {
-  //   if(parops->world_proc_rank == rank)
-  //     std::cout << "Error: Program terminated because FASTA is too small for " << parops->world_procs_count << " procs. Run with fewer procs than the number of input reads." << std::endl;
-
-  //   MPI_Finalize();
-  //   exit(error); 
   }
 
   while (g_seq_offsets[start_rank] > rc_seq_start_idx)
@@ -432,8 +420,8 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
 
   if(start_rank >= parops->world_procs_count)
   { 
+    std::cout<< "Error: Program terminated because FASTA is too small for " << parops->world_procs_count << " procs. Run with fewer procs than the number of input reads." << std::endl;
     MPI_Abort(MPI_COMM_WORLD, 1);
-    /* No further code will execute */
     MPI_Finalize();
     exit(1);
   }
@@ -462,13 +450,11 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
 
   while (count < rc_seq_count_needed)
   {
-    /* GGGG: terminate program if error detected (https://stackoverflow.com/questions/10818740/gracefully-exit-with-mpi) */
+    /* GGGG: terminate program if error detected */
     if(start_rank >= parops->world_procs_count)
     { 
       std::cout<< "Error: Program terminated because FASTA is too small for " << parops->world_procs_count << " procs. Run with fewer procs than the number of input reads." << std::endl;
-    
       MPI_Abort(MPI_COMM_WORLD, 1);
-      /* No further code will execute */
       MPI_Finalize();
       exit(1);
     }

@@ -67,13 +67,20 @@ To build diBELLA, you can use the following commands:
   ```
     mkdir build_release
     cd build_release
-    cmake -DCMAKE_C_COMPILER=/usr/local/bin/gcc-10 -DCMAKE_CXX_COMPILER=/usr/local/bin/g++-10 ..
+    cmake -DCMAKE_C_COMPILER=/usr/local/bin/gcc-10 -DCMAKE_CXX_COMPILER=/usr/local/bin/g++-10 -DMAX_NUM_READS=8 ..
     make -j4  
   ```
 Or type:
   ```
     source build.sh 
   ```
+Default macro definition:
+  ```
+    #define MAX_KMER_SIZE 32
+    #define ERR_THRESHOLD 2
+  ```
+Based on the dataset, one might want to change the above definitions. *MAX_NUM_READS*: reliable k-mer upper bound (8 works for E. coli (Sample) 30X and 4 for Human CCS), *ERR_THRESHOLD*: reliable k-mer lower bound.
+
 # Run diBELLA
 -----
 
@@ -101,14 +108,18 @@ The parameters and options of diBELLA are as follows:
 - ```-c <integer>```: Number of sequences in the FASTA file.
 - ```--sc <integer>```: Seed count. ```[default: 2]```
 - ```-k <integer>```: K-mer length.
-- ```-s <integer>```: K-mers stride ```[default: 1]```
-- ```--subs <integer>```: Number of substitute K-mers. 
-- ```-g <integer>```: Gap open penalty (negative). ```[default: -11]```
-- ```-e <integer>```: Gap extension penalty (negative). ```[default: -2]```
+- ```-s <integer>```: K-mers stride. ```[default: 1]```
+- ```--ma <integer>```: Base match score (positive). ```[default: 1]```
+- ```--mi <integer>```: Base mismatch score (negative). ```[default: -1]```
+- ```-g <integer>```: Gap open penalty (negative). ```[default: 0]```
+- ```-e <integer>```: Gap extension penalty (negative). ```[default: -1]```
 - ```-O <integer>```: Number of bytes to overlap when reading the input file in parallel. ```[default: 10000]```
+- ```--afreq <integer>```: Alignment write frequency.
 - ```--na```: Do not perform alignment.
-- ```--fa```: Smith-Waterman alignment.
+- ```--fa```: Full Smith-Waterman alignment.
 - ```--xa <integer>```: X-drop alignment with the indicated drop value.
 - ```--ba <integer>```: Banded alignment with the indicated band size.
+- ```--of <string>```: Overlap file.
 - ```--af <string>```: Output file to write alignment information. 
 - ```--idxmap <string>```: Output file for input sequences to ids used in diBELLA.
+- ```--alph <dna|protein>```: Alphabet.
