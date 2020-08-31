@@ -55,7 +55,7 @@ Default macro definition in CMakeFiles.txt:
     #define ERR_THRESHOLD 2
     #define MAX_NUM_READS 8
   ```
-Based on the dataset, one might want to change the above definitions. *MAX_NUM_READS*: reliable k-mer upper bound (8 works for E. coli (Sample) 30X and 4 for Human CCS), *ERR_THRESHOLD*: reliable k-mer lower bound.
+Based on the dataset, one might want to change the above definitions. **MAX_NUM_READS**: reliable k-mer upper bound (8 works for E. coli (Sample) 30X and 4 for Human CCS), **ERR_THRESHOLD**: reliable k-mer lower bound.
 
 # Run diBELLA
 -----
