@@ -37,7 +37,7 @@ void SeedExtendXdrop::apply(
 	seqan::Dna5String seedH;
 	seqan::Dna5String seedV;
 
-	// std::string strand;
+	std::string strand;
 	auto start_time = std::chrono::system_clock::now();
 	auto end_time   = std::chrono::system_clock::now();
 
@@ -55,7 +55,7 @@ void SeedExtendXdrop::apply(
 
 	if(twin == seedV)
 	{
-		// strand = 'c';
+		strand = 'c';
 		seqan::Dna5String twinseqH = *seqH;
 		seqan::Dna5StringReverseComplement twinRead(twinseqH);
 		LocalSeedHOffset = length(twinseqH) - LocalSeedHOffset - seed_length;
@@ -80,7 +80,7 @@ void SeedExtendXdrop::apply(
 
 	} else
 	{
-		// strand = 'n';
+		strand = 'n';
 		start_time = std::chrono::system_clock::now();
 		extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme,
 				xdrop,
@@ -103,17 +103,18 @@ void SeedExtendXdrop::apply(
      * way to get the alignment info in SeqAn.
      * See https://seqan.readthedocs.io/en/master/Tutorial/Algorithms/SeedExtension.html
      */
+#ifdef STATS
     start_time = std::chrono::system_clock::now();
     globalAlignment(align, scoring_scheme);
     end_time = std::chrono::system_clock::now();
     add_time("XA:global_alignment", (ms_t(end_time - start_time)).count());
 
     // Compute the statistics of the alignment.
-
     start_time = std::chrono::system_clock::now();
     computeAlignmentStats(ai[count].stats, align, scoring_scheme);
     end_time = std::chrono::system_clock::now();
     add_time("XA:compute_stats", (ms_t(end_time - start_time)).count());
+#endif
 
     ai[count].seq_h_length = length(*seqH);
     ai[count].seq_v_length = length(*seqV);
@@ -125,18 +126,16 @@ void SeedExtendXdrop::apply(
     ai[count].seq_v_g_idx = g_row_idx;
   }
 
-  /* Hard coding quality constraints for now */
-
-  // TODO - Saliya
-  // For now only keeps the largest alignment > 30% identity.
-  // Incorporate length coverage restrictions later.
+  /* GGGG: import BELLA's post alignment logic here and add modified SeqAn 
+  ...
+  */
 
   AlignmentInfo max_ai = ai[0];
+#ifdef STATS
   if (seed_count > 2) {
     max_ai = ai[0].stats.alignmentIdentity > ai[1].stats.alignmentIdentity
     ? ai[0] : ai[1];
   }
-
   double alen_minus_gapopens = (max_ai.stats.alignmentLength - max_ai.stats.numGapOpens) * 1.0;
   ss << g_col_idx << "," << g_row_idx << "," << max_ai.stats.alignmentIdentity
      << "," << max_ai.seq_h_length << "," << max_ai.seq_v_length
@@ -146,6 +145,7 @@ void SeedExtendXdrop::apply(
      << "," << alen_minus_gapopens / max_ai.seq_v_length
 	 << "," << cks.count
 	 << std::endl;
+#endif
 }
 
 // @NOTE This is hard-coded to the number of seeds being <= 2

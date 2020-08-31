@@ -279,13 +279,14 @@ extendSeed(Seed<ChainedSeed, TConfig> & seed,
 // ---------------------------------------------------------------------------
 
 template <typename TConfig, typename TDatabase, typename TQuery, typename TScoreValue, typename TScoreSpec>
-inline void
+inline int
 extendSeed(Seed<Simple, TConfig> & seed,
            TDatabase const & database,
            TQuery const & query,
            ExtensionDirection direction,
            Score<TScoreValue, TScoreSpec> const & scoringScheme,
            TScoreValue scoreDropOff,
+           TScoreValue kmerLen,
            UnGappedXDrop const &)
 {
     // For ungapped X-drop extension of Simple Seeds, we can simply
@@ -295,11 +296,14 @@ extendSeed(Seed<Simple, TConfig> & seed,
     typedef Seed<ChainedSeed, TConfig> TSeed;
     typedef typename Position<TSeed>::Type TPosition;
     typedef typename Size<TSeed>::Type TSize;
+    TScoreValue tmpScoreLeft = 0;
+    TScoreValue tmpScoreRight = 0;
+    TScoreValue tmpScore;
 
     // Extension to the left
     if (direction == EXTEND_LEFT || direction == EXTEND_BOTH)
     {
-        TScoreValue tmpScore = 0;
+        TScoreValue tmpScoreLeft = 0;
         TPosition posH = beginPositionH(seed);
         TPosition posV = beginPositionV(seed);
         TPosition mismatchingSuffixLength = 0;
@@ -310,6 +314,7 @@ extendSeed(Seed<Simple, TConfig> & seed,
             if (database[posH - 1] == query[posV - 1])
             {
                 mismatchingSuffixLength = 0;
+                tmpScoreLeft++;
                 if (tmpScore > static_cast<TScoreValue>(0))
                     tmpScore = 0;
             }
@@ -327,7 +332,7 @@ extendSeed(Seed<Simple, TConfig> & seed,
     // Extension to the right
     if (direction == EXTEND_RIGHT || direction == EXTEND_BOTH)
     {
-        TScoreValue tmpScore = 0;
+        TScoreValue tmpScoreRight = 0;
         TSize lengthH = length(database);
         TSize lengthV = length(query);
         TPosition posH = endPositionH(seed);
@@ -340,6 +345,7 @@ extendSeed(Seed<Simple, TConfig> & seed,
             if (database[posH] == query[posV])
             {
                 mismatchingSuffixLength = 0;
+                tmpScoreRight++;
                 if (tmpScore > static_cast<TScoreValue>(0))
                     tmpScore = 0;
             }
@@ -353,6 +359,9 @@ extendSeed(Seed<Simple, TConfig> & seed,
         setEndPositionH(seed, posH - mismatchingSuffixLength);
         setEndPositionV(seed, posV - mismatchingSuffixLength);
     }
+
+    tmpScore = tmpScoreRight + tmpScoreLeft + kmerLen;
+    return (int)tmpScore;
 
     // TODO(holtgrew): Update score?!
 }
@@ -776,13 +785,14 @@ _extendSeedGappedXDropOneDirection(
 }
 
 template <typename TConfig, typename TDatabase, typename TQuery, typename TScoreValue, typename TScoreSpec>
-inline void
+inline int
 extendSeed(Seed<Simple, TConfig> & seed,
            TDatabase const & database,
            TQuery const & query,
            ExtensionDirection direction,
            Score<TScoreValue, TScoreSpec> const & scoringScheme,
            TScoreValue scoreDropOff,
+           TScoreValue kmerLen,
            GappedXDrop const &)
 {
     // For gapped X-drop extension of Simple Seeds, we can simply
@@ -797,6 +807,9 @@ extendSeed(Seed<Simple, TConfig> & seed,
     SEQAN_ASSERT_LT(scoreGapOpen(scoringScheme), 0);
     SEQAN_ASSERT_LT(scoreGapExtend(scoringScheme), 0);
     SEQAN_ASSERT_EQ(scoreGapExtend(scoringScheme), scoreGapOpen(scoringScheme));
+    TScoreValue longestExtensionScoreLeft  = 0;
+    TScoreValue longestExtensionScoreRight = 0;
+    TScoreValue longestExtensionScore;
 
     if (direction == EXTEND_LEFT || direction == EXTEND_BOTH)
     {
@@ -809,7 +822,7 @@ extendSeed(Seed<Simple, TConfig> & seed,
         TDatabasePrefix databasePrefix = prefix(database, beginPositionH(seed));
         TQueryPrefix queryPrefix = prefix(query, beginPositionV(seed));
         // TODO(holtgrew): Update _extendSeedGappedXDropOneDirection and switch query/database order.
-        _extendSeedGappedXDropOneDirection(seed, queryPrefix, databasePrefix, EXTEND_LEFT, scoringScheme, scoreDropOff);
+        longestExtensionScoreLeft = _extendSeedGappedXDropOneDirection(seed, queryPrefix, databasePrefix, EXTEND_LEFT, scoringScheme, scoreDropOff);
     }
 
     if (direction == EXTEND_RIGHT || direction == EXTEND_BOTH)
@@ -827,9 +840,11 @@ extendSeed(Seed<Simple, TConfig> & seed,
         // std::cout << "query = " << query << std::endl;
         // std::cout << "query Suffix = " << querySuffix << std::endl;
         // TODO(holtgrew): Update _extendSeedGappedXDropOneDirection and switch query/database order.
-        _extendSeedGappedXDropOneDirection(seed, querySuffix, databaseSuffix, EXTEND_RIGHT, scoringScheme, scoreDropOff);
+        longestExtensionScoreRight =  _extendSeedGappedXDropOneDirection(seed, querySuffix, databaseSuffix, EXTEND_RIGHT, scoringScheme, scoreDropOff);
     }
-
+    
+    longestExtensionScore = longestExtensionScoreRight + longestExtensionScoreLeft;
+    return (int)(longestExtensionScore + kmerLen);
     // TODO(holtgrew): Update seed's score?!
 }
 
