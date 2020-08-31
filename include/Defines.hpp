@@ -14,6 +14,7 @@
 
 #define TWOSEED
 // #define USEHLL
+// #define STATS /* GGGG: compute global alignment and significantly increase execution time */
 
 /* Defined in CMakeFiles.txt */ 
 // #define MAX_KMER_SIZE
