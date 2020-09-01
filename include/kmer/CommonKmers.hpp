@@ -33,7 +33,7 @@ namespace dibella {
     CommonKmers() : count(1), overhang(0) {
     }
 
-    explicit CommonKmers(ushort count, ushort overhang) : count(count), overhang(0) {
+    explicit CommonKmers(ushort count) : count(count), overhang(0) {
     }
 
     friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m)
