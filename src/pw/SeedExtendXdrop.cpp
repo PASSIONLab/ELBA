@@ -63,7 +63,7 @@ SeedExtendXdrop::SeedExtendXdrop(
 void SeedExtendXdrop::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
-    seqan::Dna5String *seqH, seqan::Dna5String *seqV,
+    seqan::Dna5String *seqH, seqan::Dna5String *seqV, ushort k,
     dibella::CommonKmers &cks, std::stringstream& ss)
 {
   AlignmentInfo ai;
@@ -118,7 +118,7 @@ void SeedExtendXdrop::apply(
 
 		/* Perform match extension */
 		start_time = std::chrono::system_clock::now();
-		ai.xscore  = extendSeed(seed, twinseqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, seqan::GappedXDrop());
+		ai.xscore  = extendSeed(seed, twinseqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, (int)k, seqan::GappedXDrop());
 		end_time   = std::chrono::system_clock::now();
 		add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
 
@@ -134,7 +134,7 @@ void SeedExtendXdrop::apply(
 	{
 		ai.strand = 'n';
 		start_time = std::chrono::system_clock::now();
-		ai.xscore = extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, seqan::GappedXDrop());
+		ai.xscore = extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, (int)k, seqan::GappedXDrop());
 		end_time = std::chrono::system_clock::now();
 		add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
 
@@ -207,6 +207,7 @@ SeedExtendXdrop::apply_batch
 	uint64_t col_offset,
 	uint64_t row_offset,
 	PSpMat<dibella::CommonKmers>::Tuples &mattuples,
+	ushort k,
 	std::ofstream &afs,
 	std::ofstream &lfs
 )
@@ -295,7 +296,7 @@ SeedExtendXdrop::apply_batch
 				/* Perform match extension */
 				start_time = std::chrono::system_clock::now();
 				xscores[i] = extendSeed(seed, twinseqH, seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
-						xdrop,
+						xdrop, (int)k,
 						seqan::GappedXDrop());
 				end_time = std::chrono::system_clock::now();
 				add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
@@ -312,7 +313,7 @@ SeedExtendXdrop::apply_batch
 				strands[i] = 'n';
 				start_time = std::chrono::system_clock::now();
 				xscores[i] = extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
-						xdrop,
+						xdrop, (int)k, 
 						seqan::GappedXDrop());
 				end_time = std::chrono::system_clock::now();
 				add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
@@ -326,9 +327,9 @@ SeedExtendXdrop::apply_batch
 			}
 
 		#ifdef STATS
-			extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]),
+			xscores[i] = extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]),
 					   seqan::EXTEND_BOTH, scoring_scheme,
-					   xdrop, seqan::GappedXDrop());
+					   xdrop, (int)k, seqan::GappedXDrop());
 			assignSource(seqsh_ex[i],
 						 infix(seqan::source(seqsh[i]),
 							   beginPositionH(seed), endPositionH(seed)));
