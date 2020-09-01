@@ -60,7 +60,7 @@ SeedExtendXdrop::SeedExtendXdrop(
     seed_length(seed_length), xdrop(xdrop), seed_count(seed_count){
 }
 
-AlignmentInfo SeedExtendXdrop::apply(
+void SeedExtendXdrop::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
     seqan::Dna5String *seqH, seqan::Dna5String *seqV,
@@ -89,10 +89,6 @@ AlignmentInfo SeedExtendXdrop::apply(
 	seqan::Dna5String seedH;
 	seqan::Dna5String seedV;
 
-	std::string strand;
-	int xscore;
-	bool passed = false;
-
 	auto start_time = std::chrono::system_clock::now();
 	auto end_time   = std::chrono::system_clock::now();
 
@@ -110,7 +106,7 @@ AlignmentInfo SeedExtendXdrop::apply(
 
 	if(twin == seedV)
 	{
-		strand = 'c';
+		ai.strand = 'c';
 		seqan::Dna5String twinseqH = *seqH;
 		seqan::Dna5StringReverseComplement twinRead(twinseqH);
 		LocalSeedHOffset = length(twinseqH) - LocalSeedHOffset - seed_length;
@@ -122,10 +118,8 @@ AlignmentInfo SeedExtendXdrop::apply(
 
 		/* Perform match extension */
 		start_time = std::chrono::system_clock::now();
-		xscore = extendSeed(seed, twinseqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme,
-				xdrop,
-				seqan::GappedXDrop());
-		end_time = std::chrono::system_clock::now();
+		ai.xscore  = extendSeed(seed, twinseqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, seqan::GappedXDrop());
+		end_time   = std::chrono::system_clock::now();
 		add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
 
 	#ifdef STATS
@@ -138,11 +132,9 @@ AlignmentInfo SeedExtendXdrop::apply(
 	}
 	else
 	{
-		strand = 'n';
+		ai.strand = 'n';
 		start_time = std::chrono::system_clock::now();
-		xscore = extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme,
-				xdrop,
-				seqan::GappedXDrop());
+		ai.xscore = extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, seqan::GappedXDrop());
 		end_time = std::chrono::system_clock::now();
 		add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
 
@@ -185,18 +177,7 @@ AlignmentInfo SeedExtendXdrop::apply(
                                                seed._beginPositionV);
     ai.seq_h_g_idx = g_col_idx;
     ai.seq_v_g_idx = g_row_idx;
-	
-	ai.xscore = xscore;
-	ai.strand = strand;
-
-	passed = PostAlignmentDecision();
-
-	if (passed) break;
   }
-
-  /* GGGG: import BELLA's post alignment logic here and add modified SeqAn 
-  ...
-  */
 
 #ifdef STATS
   if (seed_count > 2)
@@ -214,8 +195,6 @@ AlignmentInfo SeedExtendXdrop::apply(
 	 << "," << cks.count
 	 << std::endl;
 #endif
-
-	return ai;
 }
 
 // @NOTE This is hard-coded to the number of seeds being <= 2
@@ -252,7 +231,10 @@ SeedExtendXdrop::apply_batch
 	AlignmentInfo *ai = new AlignmentInfo[npairs];
 	std::pair<ushort, ushort> *seedlens = new std::pair<ushort, ushort>[npairs];
 
-	for (int count = 0; count < seed_count; ++count)
+	std::string *strands = new std::string[npairs];
+	int *xscores = new int[npairs];
+
+	for(int count = 0; count < seed_count; ++count)
 	{
 		auto start_time = std::chrono::system_clock::now();
 
@@ -278,8 +260,72 @@ SeedExtendXdrop::apply_batch
 			ushort LocalSeedHOffset = cks.pos[0].second;
 		#endif
 
-			TSeed seed(LocalSeedHOffset, LocalSeedVOffset,
-					   seed_length);
+			seqan::Dna5String seedH;
+			seqan::Dna5String seedV;
+
+			auto start_time = std::chrono::system_clock::now();
+			auto end_time   = std::chrono::system_clock::now();
+
+			// Seed creation params are:
+			// horizontal seed start offset, vertical seed start offset, length
+			TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
+
+			seedH = infix(seqan::source(seqsh[i]), beginPositionH(seed), endPositionH(seed));
+			seedV = infix(seqan::source(seqsv[i]), beginPositionV(seed), endPositionV(seed));
+
+			seqan::Dna5StringReverseComplement twin(seedH);
+
+		#ifdef STATS
+			seqan::Align<seqan::Dna5String> align;
+			resize(rows(align), 2);
+		#endif
+
+			if(twin == seedV)
+			{
+				strands[i] = 'c';
+				seqan::Dna5String twinseqH = seqan::source(seqsh[i]);
+				seqan::Dna5StringReverseComplement twinRead(twinseqH);
+				LocalSeedHOffset = length(twinseqH) - LocalSeedHOffset - seed_length;
+
+				setBeginPositionH(seed, LocalSeedHOffset);
+				setBeginPositionV(seed, LocalSeedVOffset);
+				setEndPositionH(seed, LocalSeedHOffset + seed_length);
+				setEndPositionV(seed, LocalSeedVOffset + seed_length);
+
+				/* Perform match extension */
+				start_time = std::chrono::system_clock::now();
+				xscores[i] = extendSeed(seed, twinseqH, seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
+						xdrop,
+						seqan::GappedXDrop());
+				end_time = std::chrono::system_clock::now();
+				add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
+
+			#ifdef STATS
+				assignSource(row(align, 0), infix(twinseqH, beginPositionH(seed),
+												endPositionH(seed)));
+				assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
+												endPositionV(seed)));
+			#endif
+			}
+			else
+			{
+				strands[i] = 'n';
+				start_time = std::chrono::system_clock::now();
+				xscores[i] = extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
+						xdrop,
+						seqan::GappedXDrop());
+				end_time = std::chrono::system_clock::now();
+				add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
+
+			#ifdef STATS
+				assignSource(row(align, 0), infix(*seqH, beginPositionH(seed),
+												endPositionH(seed)));
+				assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
+												endPositionV(seed)));
+			#endif
+			}
+
+		#ifdef STATS
 			extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]),
 					   seqan::EXTEND_BOTH, scoring_scheme,
 					   xdrop, seqan::GappedXDrop());
@@ -289,8 +335,9 @@ SeedExtendXdrop::apply_batch
 			assignSource(seqsv_ex[i],
 						 infix(seqan::source(seqsv[i]),
 							   beginPositionV(seed), endPositionV(seed)));
-			seedlens[i].first = static_cast<ushort>(seed._endPositionH -
-													seed._beginPositionH);
+		#endif
+			seedlens[i].first  = static_cast<ushort>(seed._endPositionH -
+													 seed._beginPositionH);
 			seedlens[i].second = static_cast<ushort>(seed._endPositionV -
 													 seed._beginPositionV);
 		}
@@ -298,29 +345,35 @@ SeedExtendXdrop::apply_batch
 		auto end_time = std::chrono::system_clock::now();
     	add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
 
+	#ifdef STATS
 		start_time = std::chrono::system_clock::now();
-
 		// alignment
 		globalAlignment(exec_policy, seqsh_ex, seqsv_ex, scoring_scheme);
 		
 		end_time = std::chrono::system_clock::now();
     	add_time("XA:global_alignment", (ms_t(end_time - start_time)).count());
-
+	#endif
 		start_time = std::chrono::system_clock::now();
 		
-		// stats
-	#ifdef STATS
-		if (count == 0)			// overwrite in the first seed
+		// Compute stats
+		if (count == 0)	// overwrite in the first seed
 		{
 		#pragma omp parallel for
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
+			#ifdef STATS
 				computeAlignmentStats(ai[i].stats, seqsh_ex[i], seqsv_ex[i],
 									  scoring_scheme);
+			#endif
+				ai[i].xscore = xscores[i];
+				ai[i].strand = strands[i];
+
 				ai[i].seq_h_length = seqan::length(seqan::source(seqsh[i]));
 				ai[i].seq_v_length = seqan::length(seqan::source(seqsv[i]));
+
 				ai[i].seq_h_seed_length = seedlens[i].first;
 				ai[i].seq_v_seed_length = seedlens[i].second;
+
 				ai[i].seq_h_g_idx = col_offset + mattuples.colindex(lids[i]);
     			ai[i].seq_v_g_idx = row_offset + mattuples.rowindex(lids[i]);
 			}
@@ -330,24 +383,36 @@ SeedExtendXdrop::apply_batch
 		#pragma omp parallel for
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
+			#ifdef STATS
 				seqan::AlignmentStats stats;
 				computeAlignmentStats(stats, seqsh_ex[i], seqsv_ex[i],
 									  scoring_scheme);
+		
 				if (stats.alignmentIdentity > ai[i].stats.alignmentIdentity)
 				{
 					ai[i].stats				= stats;
 					ai[i].seq_h_seed_length = seedlens[i].first;
 					ai[i].seq_v_seed_length = seedlens[i].second;
 				}
+			#else
+				if (xscores[i] > ai[i].xscore) // GGGG: TODO double check this logic with fresh neurons!
+				{
+					ai[i].xscore = xscores[i];
+					ai[i].strand = strands[i];
+					ai[i].seq_h_seed_length = seedlens[i].first;
+					ai[i].seq_v_seed_length = seedlens[i].second;
+				}
+			#endif
 			}
 		}
 
 		end_time = std::chrono::system_clock::now();
     	add_time("XA:compute_stats", (ms_t(end_time - start_time)).count());
-	#endif
 	}
 
 	delete [] seedlens;
+	delete [] xscores;
+	delete [] strands;
 
 	auto start_time = std::chrono::system_clock::now();
 
@@ -356,7 +421,7 @@ SeedExtendXdrop::apply_batch
 	{
 		std::stringstream ss;
 
-		#pragma omp for
+	    #pragma omp for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
 		#ifdef STATS
@@ -364,9 +429,11 @@ SeedExtendXdrop::apply_batch
 			double alen_minus_gapopens =
 				stats.alignmentLength - stats.numGapOpens;
 		#endif	
-			ss << ai[i].seq_h_g_idx << ","
+			ss << ai[i].seq_h_g_idx  << ","
 			   << ai[i].seq_v_g_idx  << ","
-			   << ai[i].xscore  << ","
+			   << ai[i].xscore       << ","
+			   << ai[i].strand       << ","
+			//    << ai[i].count        << "," // GGGG: TODO add this
 		#ifdef STATS
 			   << stats.alignmentIdentity << ","
 		#endif	
@@ -394,5 +461,6 @@ SeedExtendXdrop::apply_batch
 			 (ms_t(end_time - start_time)).count());
 
 	delete [] ai;
+
 	return;
 }
