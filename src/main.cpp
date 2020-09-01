@@ -308,16 +308,11 @@ int main(int argc, char **argv) {
 
   if (!no_align)
   {
-    /*! GGGG: define match,  mismatch_sc 
-        Don't need affine gap penalty in diBELLA */
-
-    // int match = 1,  mismatch_sc = -1;
-    // gap_ext = -1;
 
     tp->times["StartMain:DprAlign()"] = std::chrono::system_clock::now();
-    ScoringScheme scoring_scheme(match,  mismatch_sc, gap_ext);
+    ScoringScheme scoring_scheme(match, mismatch_sc, gap_ext);
 
-    align_file += "_Rank_" + std::to_string(parops->world_proc_rank) + ".txt";
+    align_file += "_rank_" + std::to_string(parops->world_proc_rank) + ".txt";
 
     PairwiseFunction* pf = nullptr;
     uint64_t local_alignments = 1;

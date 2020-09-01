@@ -15,6 +15,7 @@ namespace dibella {
      * we can represent the count as unsigned short as well.
      */
     ushort count;
+	ushort overhang; /*! GGGG: this is either the suffix or prefix entry need for the transitive reduction */
 
     /*! The position within the sequence, which is
      * much less than 2^16 - 1 for proteins
@@ -29,10 +30,10 @@ namespace dibella {
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
 #endif
 
-    CommonKmers() : count(1) {
+    CommonKmers() : count(1), overhang(0) {
     }
 
-    explicit CommonKmers(ushort count) : count(count) {
+    explicit CommonKmers(ushort count, ushort overhang) : count(count), overhang(0) {
     }
 
     friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m)
