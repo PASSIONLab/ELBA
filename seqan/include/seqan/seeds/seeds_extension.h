@@ -804,9 +804,11 @@ extendSeed(Seed<Simple, TConfig> & seed,
     // TODO(holtgrew): Originally, this function only worked for simple scoring schemes, does the algorithm also work correctly for BLOSUM62? This matrix contains zeroes. Also see [10729].
     // SEQAN_ASSERT_GT(scoreMatch(scoringScheme), 0);
     // SEQAN_ASSERT_LT(scoreMismatch(scoringScheme), 0);
+    
     SEQAN_ASSERT_LT(scoreGapOpen(scoringScheme), 0);
     SEQAN_ASSERT_LT(scoreGapExtend(scoringScheme), 0);
     SEQAN_ASSERT_EQ(scoreGapExtend(scoringScheme), scoreGapOpen(scoringScheme));
+
     TScoreValue longestExtensionScoreLeft  = 0;
     TScoreValue longestExtensionScoreRight = 0;
     TScoreValue longestExtensionScore;
