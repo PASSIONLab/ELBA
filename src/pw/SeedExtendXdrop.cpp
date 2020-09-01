@@ -235,6 +235,7 @@ SeedExtendXdrop::apply_batch
 	std::string *strands = new std::string[npairs];
 	int *xscores = new int[npairs];
 
+	/* GGGG: seed_count is hardcoded here (2) */
 	for(int count = 0; count < seed_count; ++count)
 	{
 		auto start_time = std::chrono::system_clock::now();
@@ -374,6 +375,14 @@ SeedExtendXdrop::apply_batch
 
 				ai[i].seq_h_seed_length = seedlens[i].first;
 				ai[i].seq_v_seed_length = seedlens[i].second;
+
+				/*  GGGG: big quesition is how do I ensure constency? 
+					Create option for directed and bidirected.
+				*/
+
+				/* GGGG: update the overhang length and make sure strands are consistent across pairs
+				cks.overhang = 
+				*/
 
 				ai[i].seq_h_g_idx = col_offset + mattuples.colindex(lids[i]);
     			ai[i].seq_v_g_idx = row_offset + mattuples.rowindex(lids[i]);

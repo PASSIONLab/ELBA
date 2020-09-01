@@ -211,10 +211,11 @@ DistributedPairwiseRunner::runv2
 	af_stream.open(file);
 
 	uint64_t	local_nnz_count = spSeq->getnnz();
-	int			batch_size		= 1e7;
+	int			batch_size		= 1e8;
 	int			batch_cnt		= (local_nnz_count / batch_size) + 1;
 	int			batch_idx		= 0;
 	uint64_t	nalignments		= 0;
+
 	PSpMat<dibella::CommonKmers>::Tuples mattuples(*spSeq);
 		
 	lfs << "Local nnz count: " << local_nnz_count << std::endl;
