@@ -70,7 +70,7 @@ bool xdrop_align = false;
 
 /*! Perform banded alignment */
 bool banded_align = false;
-int banded_half_width = 5;
+int  banded_half_width = 5;
 
 /*! File path to output global sequence index to original global sequence
  * index mapping */
@@ -91,10 +91,19 @@ std::string proc_log_file;
 std::ofstream proc_log_stream;
 int log_freq;
 
-int main(int argc, char **argv) {
+/*! Common k-mer threshold */
+int ckthr = 0;
+
+/*! Score threshold */
+float mosthr = -1.0;
+
+int main(int argc, char **argv)
+{
   parops = ParallelOps::init(&argc, &argv);
   int ret = parse_args(argc, argv);
-  if (ret < 0) {
+
+  if (ret < 0)
+  {
     parops->teardown_parallelism();
     return ret;
   }
@@ -186,7 +195,7 @@ int main(int argc, char **argv) {
   PSpMat<PosInRead>::MPI_DCCols A =
       dibella::KmerOps::GenerateA(
           seq_count,dfd, klength, kstride,
-          alph, parops, tp); //, local_kmers);
+          alph, parops, tp);
 
   tu.print_str("Matrix A: ");
   tu.print_str("\nLoad imbalance: " + std::to_string(A.LoadImbalance()) + "\n");
@@ -219,70 +228,6 @@ int main(int argc, char **argv) {
 
   tu.print_str("Matrix B, i.e AAt: ");
   C.PrintInfo();
-
-#ifndef NDEBUG
-  /*! Test multiplication */
-
-  // tu.print_str("Matrix B, i.e AAt: ");
-  // C.PrintInfo();
-
-  // rows and cols in the result
-  //  uint64_t n_cols = seq_count;
-  //  uint64_t n_rows = n_cols;
-  //  int pr = parops->grid->GetGridRows();
-  //  int pc = parops->grid->GetGridCols();
-  //
-  //  int row_rank = parops->grid->GetRankInProcRow();
-  //  int col_rank = parops->grid->GetRankInProcCol();
-  //  uint64_t m_perproc = n_rows / pr;
-  //  uint64_t n_perproc = n_cols / pc;
-  //  PSpMat<dibella::CommonKmers>::DCCols *spSeq = C.seqptr(); // local submatrix
-  //  uint64_t l_row_start = col_rank * m_perproc; // first row in this process
-  //  uint64_t l_col_start = row_rank * n_perproc; // first col in this process
-  //
-  //  std::cout<<std::endl<<spSeq->begcol().colid()<<" " <<spSeq->endcol().colid()<<std::endl;
-
-  //  std::ofstream rf, cf, vf;
-  //  int flag;
-  //  if (parops->world_proc_rank > 0) {
-  //    MPI_Recv(&flag, 1, MPI_INT, parops->world_proc_rank - 1,
-  //             99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  //  }
-  //  rf.open("row_ids.txt", std::ios::app);
-  //  cf.open("col_ids.txt", std::ios::app);
-  //  vf.open("values.txt", std::ios::app);
-
-  //
-  //  std::cout << "\nRank: " << parops->world_proc_rank << "\n writing data\n";
-  //
-  //  for (auto colit = spSeq->begcol();
-  //       colit != spSeq->endcol(); ++colit) // iterate over columns
-  //  {
-  //    int64_t lj = colit.colid(); // local numbering
-  //    int64_t j = lj + l_col_start;
-  //
-  //    for (auto nzit = spSeq->begnz(colit);
-  //         nzit < spSeq->endnz(colit); ++nzit) {
-  //
-  //      int64_t li = nzit.rowid();
-  //      int64_t i = li + l_row_start;
-  //      rf << i << ",";
-  //      cf << j << ",";
-  //      vf << nzit.value().count << ",";
-  //    }
-  //  }
-  //
-  //  rf.close();
-  //  cf.close();
-  //  vf.close();
-  //
-  //  if (parops->world_proc_rank < parops->world_procs_count - 1) {
-  //    MPI_Send(&flag, 1, MPI_INT, parops->world_proc_rank + 1, 99,
-  //             MPI_COMM_WORLD);
-  //  }
-  //
-  //  MPI_Barrier(MPI_COMM_WORLD);
-#endif
 
   // MPI_Barrier(MPI_COMM_WORLD);
   /*! Wait until data distribution is complete */
@@ -321,18 +266,24 @@ int main(int argc, char **argv) {
     {
       pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
       dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq, klength);
+      // GGGG: from Oguz
+      // dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, mosthr * klength, tu);
 	    local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
     }
     else if (full_align)
     {
       pf = new FullAligner(scoring_scheme);
 	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq, klength);
+      // GGGG: from Oguz
+      // dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, mosthr * klength, tu);
 	    local_alignments = static_cast<FullAligner*>(pf)->nalignments;
     }
     else if(banded_align)
     {
       pf = new BandedAligner (scoring_scheme, banded_half_width);
 	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq, klength);
+      // GGGG: from Oguz
+      // dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, mosthr * klength, tu);
 	    local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
     }
 
