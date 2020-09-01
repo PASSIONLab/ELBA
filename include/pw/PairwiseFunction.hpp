@@ -24,6 +24,7 @@ public:
   virtual void apply(uint64_t l_col_idx, uint64_t g_col_idx,
       uint64_t l_row_idx, uint64_t g_row_idx,
       seqan::Dna5String *seq_h, seqan::Dna5String *seq_v,
+      ushort k,
       dibella::CommonKmers &cks, std::stringstream& ss) = 0;
 
   virtual
@@ -34,6 +35,7 @@ public:
 			   uint64_t col_offset,
 			   uint64_t row_offset,
 			   PSpMat<dibella::CommonKmers>::Tuples &mattuples,
+         ushort k,
 			   std::ofstream &afs,
 			   std::ofstream &lfs) = 0;
 

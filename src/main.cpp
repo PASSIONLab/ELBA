@@ -325,19 +325,19 @@ int main(int argc, char **argv) {
     if (xdrop_align)
     {
       pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
-      dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
+      dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq, klength);
 	    local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
     }
     else if (full_align)
     {
       pf = new FullAligner(scoring_scheme);
-	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
+	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq, klength);
 	    local_alignments = static_cast<FullAligner*>(pf)->nalignments;
     }
     else if(banded_align)
     {
       pf = new BandedAligner (scoring_scheme, banded_half_width);
-	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq);
+	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq, klength);
 	    local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
     }
 

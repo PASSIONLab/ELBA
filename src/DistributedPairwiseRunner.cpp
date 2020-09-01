@@ -74,7 +74,7 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
   parops->write_file_in_parallel(file, overlaps_str);
 }
 
-void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std::ofstream& lfs, int log_freq) {
+void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std::ofstream& lfs, int log_freq, ushort k) {
   /*! There are two types of rows and columns below.
    * The sequences are arranged as an NxN matrix in
    * mat (this is not how it's stored internally).
@@ -155,7 +155,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 #endif
 
 	++nalignments;
-	pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, cks, ss[myThread]);
+	pf->apply(l_col_idx, g_col_idx, l_row_idx, g_row_idx, seq_h, seq_v, k, cks, ss[myThread]);
 	line_count++;
 
 	if (line_count % afreq == 0)
@@ -203,7 +203,8 @@ DistributedPairwiseRunner::runv2
     PairwiseFunction	*pf,
 	const char*			 file,
 	std::ofstream&		 lfs,
-	int					 log_freq
+	int					 log_freq,
+	ushort k
 )
 {
 	std::ofstream af_stream;
@@ -324,7 +325,7 @@ DistributedPairwiseRunner::runv2
 			<< " overall " << nalignments
 			<< std::endl;
 
-		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples,
+		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, k,
 						af_stream, lfs);
 		
 		
