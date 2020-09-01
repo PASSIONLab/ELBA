@@ -16,7 +16,7 @@ public:
   void
   PostAlignDecision(const AlignmentInfo& ai, bool& passed);
 
-  AlignmentInfo
+  void
   apply(uint64_t l_col_idx, uint64_t g_col_idx,
         uint64_t l_row_idx, uint64_t g_row_idx,
         seqan::Dna5String *seq_h, seqan::Dna5String *seq_v,
