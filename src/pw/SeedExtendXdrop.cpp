@@ -2,7 +2,7 @@
 
 #include "../../include/pw/SeedExtendXdrop.hpp"
 
-void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed)
+void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -12,9 +12,6 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed)
 	int endpV = endPositionV  (maxseed);
 	int begpH = beginPositionH(maxseed);
 	int endpH = endPositionH  (maxseed);
-	
-	// ai.xscore = xscore;
-	// ai.strand = strand;
 
 	unsigned short int overlapLenH = ai.seq_h_seed_length;
 	unsigned short int overlapLenV = ai.seq_v_seed_length;
@@ -29,22 +26,23 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed)
 	unsigned short int normLen  = max(overlapLenV, overlapLenH);
 	unsigned short int minLen   = min(overlapLenV, overlapLenH);
 
-	// GGGG: TODO implement this at the beginning so we don't have to compute it over and over again
-	// double slope(double error)
-	// {
-	// 	double p_mat = pow(1-error,2);  // match
-	// 	double p_mis = 1-p_mat;         // mismatch/gap
-	// 	double alpha = 1;               // match penalty
-	// 	double beta  = 1;               // mismatch/gap penalty
-
-	// 	return alpha*p_mat - beta*p_mis;
-	// }
+	/* GGGG: TODO implement this at the beginning so we don't have to compute it over and over again; 
+	 *       for now this is hardcoded in the function definition
+	 *	
+	 *	double slope(double error)
+	 *	{
+	 *		double p_mat = pow(1-error,2);  // match
+	 *		double p_mis = 1-p_mat;         // mismatch/gap
+	 *		double alpha = 1;               // match penalty
+	 *		double beta  = 1;               // mismatch/gap penalty
+	 *		return alpha*p_mat - beta*p_mis;
+	 *	}
+	 */
 
 #ifndef FIXEDTHR
-	// GGGG: 1*(0.85^2)-1(1-0.85^2) temporary
-	float mythreshold = (1 - DELTACHERNOFF) * (0.445 * (float)ov);
+	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)ov);
 
-	if((float)ai.xscore >= mythreshold)
+	if((float)ai.xscore >= myThr)
 		passed = true;
 #else
 	if(ai.xscore >= FIXEDTHR)
@@ -209,8 +207,8 @@ SeedExtendXdrop::apply_batch
     PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
     std::ofstream &lfs,
 	ushort k,
-    double thr_cov, // GGGG: this is my ratiophi variable change name later
-    int thr_ani
+    float ratioScoreOverlap, // GGGG: this is my ratioScoreOverlap variable change name later
+    int debugThr
 )
 {
 	seqan::ExecutionPolicy<seqan::Parallel, seqan::Vectorial> exec_policy;
@@ -438,17 +436,16 @@ SeedExtendXdrop::apply_batch
 			double alen_minus_gapopens = stats.alignmentLength - stats.numGapOpens;
 		#endif	
 		
-			// GGGG: TODO modify for diBELLA
-			// Only keep alignments that meet coverage and ani criteria
+			// Only keep alignments that meet BELLA criteria
+			bool passed = false;
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap);
 	
-			// if (std::max((alen_minus_gapopens / ai[i].seq_h_length),
-			// 			 (alen_minus_gapopens / ai[i].seq_v_length)) >= thr_cov &&
-			// 	stats.alignmentIdentity >= thr_ani)
-			// {
-			// 	dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-			// 	cks->score_aln = (float)stats.alignmentIdentity / 100.0f;
-			// 	cks->score = 1;	// keep this
-			// }
+			if (passed)
+			{
+				dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
+				cks->score_aln = ai[i].xscore;
+				cks->score = 1;	// keep this
+			}
 		}
 	}
 

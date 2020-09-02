@@ -79,8 +79,8 @@ FullAligner::apply_batch
     PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
     std::ofstream &lfs,
 	ushort k,
-    double thr_cov,
-	int thr_ani
+    float ratioScoreOverlap,
+	int debugThr
 )
 {
 	seqan::ExecutionPolicy<seqan::Parallel, seqan::Vectorial> exec_policy;
@@ -127,8 +127,8 @@ FullAligner::apply_batch
 
 			// only keep alignments that meet coverage and ani criteria
 			if (std::max((alen_minus_gapopens / len_seqh),
-						 (alen_minus_gapopens / len_seqv)) >= thr_cov &&
-				stats.alignmentIdentity >= thr_ani)
+						 (alen_minus_gapopens / len_seqv)) >= ratioScoreOverlap &&
+				stats.alignmentIdentity >= debugThr)
 			{
 				dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 				cks->score_aln = (float)stats.alignmentIdentity / 100.0f;

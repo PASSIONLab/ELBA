@@ -93,8 +93,8 @@ BandedAligner::apply_batch
     PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
     std::ofstream &lfs,
 	ushort k,
-    double thr_cov,
-	int thr_ani
+    float ratioScoreOverlap,
+	int debugThr
 )
 {
 	// seqan::ExecutionPolicy<seqan::Parallel, seqan::Vectorial> exec_policy;
