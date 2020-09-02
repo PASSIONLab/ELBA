@@ -95,7 +95,7 @@ int log_freq;
 int ckthr = 1;
 
 /*! Score threshold */
-bool aln_score_thr = false;
+bool aln_score_thr = false; // GGGG: Currently not used but I'm gonna leave it here for now in case it comes handy
 
 int main(int argc, char **argv)
 {

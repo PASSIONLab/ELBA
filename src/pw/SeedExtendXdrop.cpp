@@ -300,30 +300,11 @@ SeedExtendXdrop::apply_batch
 						xdrop, (int)k,
 						seqan::GappedXDrop());
 
-				// if(xscores[i] > max(length(twinseqH), length(seqan::source(seqsv[i]))))
-				// {
-				// 	std::cout << "Error:" << std::endl;
-				// 	std::cout << LocalSeedHOffset << std::endl;
-				// 	std::cout << twin << std::endl;
-				// 	std::cout << seedH << std::endl;
-				// 	std::cout << length(twinseqH) << std::endl;
-				// 	std::cout << LocalSeedVOffset << std::endl;
-				// 	std::cout << seedV << std::endl;
-				// 	std::cout << length(seqan::source(seqsv[i])) << std::endl;
-				// 	std::cout << xscores[i] << std::endl;
-				// 	std::cout << std::endl;
-				// 	std::cout << twinRead << std::endl;
-				// 	std::cout << std::endl;
-				// 	std::cout << seqan::source(seqsv[i]) << std::endl;
-				// 	exit(0);
-				// }
-
-
 				end_time = std::chrono::system_clock::now();
 				add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
 
 			#ifdef STATS
-				assignSource(row(align, 0), infix(twinseqH, beginPositionH(seed),
+				assignSource(row(align, 0), infix(twinRead, beginPositionH(seed),
 												endPositionH(seed)));
 				assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
 												endPositionV(seed)));
