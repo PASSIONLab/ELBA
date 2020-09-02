@@ -76,10 +76,11 @@ FullAligner::apply_batch
 	uint64_t *lids,
 	uint64_t col_offset,
 	uint64_t row_offset,
-	PSpMat<dibella::CommonKmers>::Tuples &mattuples,
+    PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
+    std::ofstream &lfs,
 	ushort k,
-	std::ofstream &afs,
-	std::ofstream &lfs
+    double thr_cov,
+	int thr_ani
 )
 {
 	seqan::ExecutionPolicy<seqan::Parallel, seqan::Vectorial> exec_policy;
@@ -111,37 +112,28 @@ FullAligner::apply_batch
 	// stats
 	#pragma omp parallel
 	{
-		seqan::AlignmentStats	stats;
-		std::stringstream		ss;
+		seqan::AlignmentStats stats;
 
-		#pragma omp for schedule(static, 1000)
+		#pragma omp for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
 			computeAlignmentStats(stats, seqsh[i], seqsv[i], scoring_scheme);
-			
+
 			double alen_minus_gapopens =
 				stats.alignmentLength - stats.numGapOpens;
+			
 			int len_seqh = seqan::length(seqan::source(seqsh[i]));
 			int len_seqv = seqan::length(seqan::source(seqsv[i]));
-			ss << (col_offset + mattuples.colindex(lids[i])) << ","
-			   << (row_offset + mattuples.rowindex(lids[i]))  << ","
-			   << stats.alignmentIdentity << ","
-			   << len_seqh << ","
-			   << len_seqv << ","
-			   << (clippedEndPosition(seqsh[i]) -
-				   clippedBeginPosition(seqsh[i]) - 1) << ","
-			   << (clippedEndPosition(seqsv[i]) -
-				   clippedBeginPosition(seqsv[i]) - 1) << ","
-			   << stats.numGapOpens << ","
-			   << alen_minus_gapopens / len_seqh << ","
-			   << alen_minus_gapopens / len_seqv
-			   << "\n";
-		}
 
-		#pragma omp critical
-		{
-			afs << ss.str();
-			afs.flush();
+			// only keep alignments that meet coverage and ani criteria
+			if (std::max((alen_minus_gapopens / len_seqh),
+						 (alen_minus_gapopens / len_seqv)) >= thr_cov &&
+				stats.alignmentIdentity >= thr_ani)
+			{
+				dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
+				cks->score_aln = (float)stats.alignmentIdentity / 100.0f;
+				cks->score = 1;	// keep this
+			}
 		}
 	}
 

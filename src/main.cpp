@@ -249,7 +249,7 @@ int main(int argc, char **argv)
   uint64_t row_offset = gr_row_idx * avg_rows_in_grid;  // first row in this process
   uint64_t col_offset = gr_col_idx * avg_cols_in_grid;	// first col in this process
 
-  DistributedPairwiseRunner dpr(dfd, C.seqptr(), afreq, row_offset, col_offset, parops);
+  DistributedPairwiseRunner dpr(dfd, C.seqptr(), &C, afreq, row_offset, col_offset, parops);
 
   if (!no_align)
   {
@@ -265,25 +265,19 @@ int main(int argc, char **argv)
     if (xdrop_align)
     {
       pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
-      dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq, klength);
-      // GGGG: from Oguz
-      // dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, mosthr * klength, tu);
+      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, mosthr * klength, tu, klength);
 	    local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
     }
     else if (full_align)
     {
       pf = new FullAligner(scoring_scheme);
-	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq, klength);
-      // GGGG: from Oguz
-      // dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, mosthr * klength, tu);
+      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, mosthr * klength, tu, klength);
 	    local_alignments = static_cast<FullAligner*>(pf)->nalignments;
     }
     else if(banded_align)
     {
       pf = new BandedAligner (scoring_scheme, banded_half_width);
-	    dpr.runv2(pf, align_file.c_str(), proc_log_stream, log_freq, klength);
-      // GGGG: from Oguz
-      // dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, mosthr * klength, tu);
+      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, mosthr * klength, tu, klength);
 	    local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
     }
 

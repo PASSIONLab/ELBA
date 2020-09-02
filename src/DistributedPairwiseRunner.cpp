@@ -203,8 +203,8 @@ DistributedPairwiseRunner::run_batch
 	int					 ckthr,
 	float				 mosthr,
 	TraceUtils 			 tu,
-	bool				 score_only,
-	ushort k
+	ushort k,
+	bool				 score_only
 )
 {
 
@@ -292,7 +292,7 @@ DistributedPairwiseRunner::run_batch
 				uint64_t			 g_col_idx = l_col_idx + col_offset;
 				uint64_t			 g_row_idx = l_row_idx + row_offset;
 
-				pastis::CommonKmers *cks = std::get<2>(mattuples[i]);
+				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
 				
 				if ((cks->count > ckthr) &&
 					(cks->score > mosthr) &&
@@ -379,7 +379,7 @@ DistributedPairwiseRunner::run_batch
 			<< " overall " << nalignments
 			<< std::endl;
 
-		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, k, lfs);
+		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, k);
 		
 		delete [] lids;
 
@@ -419,10 +419,10 @@ DistributedPairwiseRunner::run_batch
 
 	// prune pairs that do not meet coverage criteria
 	std::string outfile = aln_file + std::string("-pruned-C.mtx");
-	auto elim_cov = [] (pastis::CommonKmers &ck)
+	auto elim_cov = [] (dibella::CommonKmers &ck)
 		{return ck.score == 0;};
 	gmat->Prune(elim_cov);
-	gmat->ParallelWriteMM(outfile, false, pastis::CkOutputHandler());
+	gmat->ParallelWriteMM(outfile, false, dibella::CkOutputHandler());
 	tu.print_str("nnzs in the pruned matrix " +
 				 std::to_string(gmat->getnnz()) + "\n");
 	
