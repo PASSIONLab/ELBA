@@ -26,7 +26,7 @@ public:
   void run(PairwiseFunction *pf, const char* file, std::ofstream& lfs, int log_freq, ushort k);
   void run_batch(PairwiseFunction *pf, const std::string &aln_file,
                     std::ofstream& lfs,
-                    int log_freq, int ckthr, float mosthr, TraceUtils tu,
+                    int log_freq, int ckthr, bool aln_score_thr, TraceUtils tu,
                     ushort k,
                     bool score_only = false);
 

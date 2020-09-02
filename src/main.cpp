@@ -92,10 +92,10 @@ std::ofstream proc_log_stream;
 int log_freq;
 
 /*! Common k-mer threshold */
-int ckthr = 0;
+int ckthr = 1;
 
 /*! Score threshold */
-float mosthr = -1.0;
+bool aln_score_thr = false;
 
 int main(int argc, char **argv)
 {
@@ -265,19 +265,19 @@ int main(int argc, char **argv)
     if (xdrop_align)
     {
       pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
-      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, mosthr * klength, tu, klength);
+      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, klength);
 	    local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
     }
     else if (full_align)
     {
       pf = new FullAligner(scoring_scheme);
-      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, mosthr * klength, tu, klength);
+      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, klength);
 	    local_alignments = static_cast<FullAligner*>(pf)->nalignments;
     }
     else if(banded_align)
     {
       pf = new BandedAligner (scoring_scheme, banded_half_width);
-      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, mosthr * klength, tu, klength);
+      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, klength);
 	    local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
     }
 

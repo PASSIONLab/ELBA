@@ -296,9 +296,29 @@ SeedExtendXdrop::apply_batch
 
 				/* Perform match extension */
 				start_time = std::chrono::system_clock::now();
-				xscores[i] = extendSeed(seed, twinseqH, seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
+				xscores[i] = extendSeed(seed, twinRead, seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
 						xdrop, (int)k,
 						seqan::GappedXDrop());
+
+				// if(xscores[i] > max(length(twinseqH), length(seqan::source(seqsv[i]))))
+				// {
+				// 	std::cout << "Error:" << std::endl;
+				// 	std::cout << LocalSeedHOffset << std::endl;
+				// 	std::cout << twin << std::endl;
+				// 	std::cout << seedH << std::endl;
+				// 	std::cout << length(twinseqH) << std::endl;
+				// 	std::cout << LocalSeedVOffset << std::endl;
+				// 	std::cout << seedV << std::endl;
+				// 	std::cout << length(seqan::source(seqsv[i])) << std::endl;
+				// 	std::cout << xscores[i] << std::endl;
+				// 	std::cout << std::endl;
+				// 	std::cout << twinRead << std::endl;
+				// 	std::cout << std::endl;
+				// 	std::cout << seqan::source(seqsv[i]) << std::endl;
+				// 	exit(0);
+				// }
+
+
 				end_time = std::chrono::system_clock::now();
 				add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
 
@@ -435,11 +455,6 @@ SeedExtendXdrop::apply_batch
 	    #pragma omp for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
-		#ifdef STATS
-			seqan::AlignmentStats &stats = ai[i].stats;		
-			double alen_minus_gapopens = stats.alignmentLength - stats.numGapOpens;
-		#endif	
-		
 			// Only keep alignments that meet BELLA criteria
 			bool passed = false;
 			PostAlignDecision(ai[i], passed, ratioScoreOverlap);
@@ -448,7 +463,7 @@ SeedExtendXdrop::apply_batch
 			{
 				dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 				cks->score_aln = ai[i].xscore;
-				cks->score = 1;	// keep this
+				cks->aln_passed = passed;	// keep this
 			}
 		}
 	}
