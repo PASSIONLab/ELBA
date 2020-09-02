@@ -38,8 +38,8 @@ public:
 			   PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
          std::ofstream &lfs,
          ushort k,
-         double thr_cov = 0.7,
-			   int thr_ani = 30) = 0;
+         float ratioScoreOverlap = 0.445,  // GGGG: Precomputed for error rate = 15% and default scoring matrix (1,-1,-1)
+			   int debugThr = 50) = 0;            // GGGG: Fixed threshold, this is convenient only for debugging
 
 
   void add_time(std::string type, double duration);
@@ -49,8 +49,8 @@ public:
   
 private:
   std::unordered_map<std::string, size_t>	types[MAX_THD];
-  std::vector<uint64_t>						counts[MAX_THD];
-  std::vector<double>						times[MAX_THD];
+  std::vector<uint64_t>	counts[MAX_THD];
+  std::vector<double>		times[MAX_THD];
 };
 
 #endif //DIBELLA_PAIRWISEFUNCTION_HPP

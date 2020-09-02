@@ -26,8 +26,8 @@ public:
               PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
               std::ofstream &lfs,
               ushort k,
-              double thr_cov = 0.7,
-	            int thr_ani = 30) override;
+              float ratioScoreOverlap = 0.445,  // GGGG: Precomputed for error rate = 15% and default scoring matrix (1,-1,-1)
+              int debugThr = 50) override;      // GGGG: Fixed threshold, this is convenient only for debugging
 
 private:
   ScoringScheme scoring_scheme;
