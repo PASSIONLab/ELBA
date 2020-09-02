@@ -29,10 +29,11 @@ public:
 			        uint64_t *lids,
 			        uint64_t col_offset,
 			        uint64_t row_offset,
-			        PSpMat<dibella::CommonKmers>::Tuples &mattuples,
+              PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
+              std::ofstream &lfs,
               ushort k,
-			        std::ofstream &afs,
-			        std::ofstream &lfs) override;
+              double thr_cov = 0.7,
+			        int thr_ani = 30) override;
 
 private:
   ScoringScheme scoring_scheme;

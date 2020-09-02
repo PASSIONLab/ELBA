@@ -29,15 +29,17 @@ public:
 
   virtual
   void
-  apply_batch (seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsh,
+  apply_batch (
+         seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsh,
 			   seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsv,
 			   uint64_t *lids,
 			   uint64_t col_offset,
 			   uint64_t row_offset,
-			   PSpMat<dibella::CommonKmers>::Tuples &mattuples,
+			   PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
+         std::ofstream &lfs,
          ushort k,
-			   std::ofstream &afs,
-			   std::ofstream &lfs) = 0;
+         double thr_cov = 0.7,
+			   int thr_ani = 30) = 0;
 
 
   void add_time(std::string type, double duration);

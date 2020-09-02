@@ -15,6 +15,9 @@ namespace dibella {
      * we can represent the count as unsigned short as well.
      */
     ushort count;
+
+	int32_t   score;
+	float score_aln; /* Used for storing alignment score */
 	ushort overhang; /*! GGGG: this is either the suffix or prefix entry need for the transitive reduction */
 
     /*! The position within the sequence, which is
@@ -30,11 +33,18 @@ namespace dibella {
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
 #endif
 
-    CommonKmers() : count(1), overhang(0) {
+    CommonKmers() : count(1), overhang(0), score(-1) {
     }
 
-    explicit CommonKmers(ushort count) : count(count), overhang(0) {
+    explicit
+	CommonKmers(ushort count) : 
+		count(count), overhang(0) {
     }
+
+	CommonKmers (int32_t score, float score_aln) :
+		score(score),
+		score_aln(score_aln) {
+	}
 
     friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m)
 	{
@@ -52,6 +62,7 @@ namespace dibella {
       return os;
     }
 
+	// GGGG: dont need this w/o substitute kmers
 	// used in the symmetricization of the output matrix
 	CommonKmers
 	operator+(const CommonKmers &arg)
@@ -94,6 +105,18 @@ namespace dibella {
 		}
 	#endif
 		return tmp;
+	}
+  };
+
+  struct CkOutputHandler
+  {
+    template <typename c, typename t>
+	void save(std::basic_ostream<c,t> &os,
+			  const dibella::CommonKmers &v,
+			  uint64_t row,
+			  uint64_t col)
+	{
+		os << v.score_aln;
 	}
   };
 }

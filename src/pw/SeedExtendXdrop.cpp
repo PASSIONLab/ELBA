@@ -206,10 +206,11 @@ SeedExtendXdrop::apply_batch
 	uint64_t *lids,
 	uint64_t col_offset,
 	uint64_t row_offset,
-	PSpMat<dibella::CommonKmers>::Tuples &mattuples,
+    PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
+    std::ofstream &lfs,
 	ushort k,
-	std::ofstream &afs,
-	std::ofstream &lfs
+    double thr_cov, // GGGG: this is my ratiophi variable change name later
+    int thr_ani
 )
 {
 	seqan::ExecutionPolicy<seqan::Parallel, seqan::Vectorial> exec_policy;
@@ -249,15 +250,15 @@ SeedExtendXdrop::apply_batch
 	#pragma omp parallel for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
-			dibella::CommonKmers &cks = mattuples.numvalue(lids[i]);
+			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 
 		#ifdef TWOSEED
 			ushort LocalSeedVOffset =
-				(count == 0) ? cks.first.first : cks.second.first;
+				(count == 0) ? cks->first.first : cks->second.first;
 			ushort LocalSeedHOffset =
-				(count == 0) ? cks.first.second : cks.second.second;
+				(count == 0) ? cks->first.second : cks->second.second;
 		#else
-		// GGGG: TODO check reverse complement
+			// GGGG: TODO check reverse complement
 			ushort LocalSeedVOffset = cks.pos[0].first;
 			ushort LocalSeedHOffset = cks.pos[0].second;
 		#endif
@@ -384,8 +385,8 @@ SeedExtendXdrop::apply_batch
 				cks.overhang = 
 				*/
 
-				ai[i].seq_h_g_idx = col_offset + mattuples.colindex(lids[i]);
-    			ai[i].seq_v_g_idx = row_offset + mattuples.rowindex(lids[i]);
+				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
+    			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
 		}
 		else
@@ -429,40 +430,25 @@ SeedExtendXdrop::apply_batch
 	// Dump alignment info
 	#pragma omp parallel
 	{
-		std::stringstream ss;
-
 	    #pragma omp for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
 		#ifdef STATS
 			seqan::AlignmentStats &stats = ai[i].stats;		
-			double alen_minus_gapopens =
-				stats.alignmentLength - stats.numGapOpens;
+			double alen_minus_gapopens = stats.alignmentLength - stats.numGapOpens;
 		#endif	
-			ss << ai[i].seq_h_g_idx  << ","
-			   << ai[i].seq_v_g_idx  << ","
-			   << ai[i].xscore       << ","
-			   << ai[i].strand       << ","
-			//    << ai[i].count        << "," // GGGG: TODO add this
-		#ifdef STATS
-			   << stats.alignmentIdentity << ","
-		#endif	
-			   << ai[i].seq_h_length << ","
-			   << ai[i].seq_v_length << ","
-			   << ai[i].seq_h_seed_length << ","
-			   << ai[i].seq_v_seed_length 
-		#ifdef STATS
-			   << stats.numGapOpens << ","
-			   << (alen_minus_gapopens / ai[i].seq_h_length) << ","
-			   << (alen_minus_gapopens / ai[i].seq_v_length)
-		#endif
-			   << "\n";
-		}
-
-		#pragma omp critical
-		{
-			afs << ss.str();
-			afs.flush();
+		
+			// GGGG: TODO modify for diBELLA
+			// Only keep alignments that meet coverage and ani criteria
+	
+			// if (std::max((alen_minus_gapopens / ai[i].seq_h_length),
+			// 			 (alen_minus_gapopens / ai[i].seq_v_length)) >= thr_cov &&
+			// 	stats.alignmentIdentity >= thr_ani)
+			// {
+			// 	dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
+			// 	cks->score_aln = (float)stats.alignmentIdentity / 100.0f;
+			// 	cks->score = 1;	// keep this
+			// }
 		}
 	}
 
