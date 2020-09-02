@@ -1,4 +1,4 @@
-// Created by Saliya Ekanayake on 2019-07-05.
+// Created by Saliya Ekanayake on 2019-07-05 and modified by Giulia Guidi on 09/01/2020.
 
 #include "../../include/pw/SeedExtendXdrop.hpp"
 
@@ -23,8 +23,8 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	unsigned short int minRight = min(read2len - endpV, read1len - endpH);
 	unsigned short int ov       = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
 
-	unsigned short int normLen  = max(overlapLenV, overlapLenH);
-	unsigned short int minLen   = min(overlapLenV, overlapLenH);
+	// unsigned short int normLen  = max(overlapLenV, overlapLenH);
+	// unsigned short int minLen   = min(overlapLenV, overlapLenH);
 
 	/* GGGG: TODO implement this at the beginning so we don't have to compute it over and over again; 
 	 *       for now this is hardcoded in the function definition
@@ -42,7 +42,6 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 #ifndef FIXEDTHR
 	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)ov);
 
-	// std::cout << "ai.xscore " << ai.xscore << std::endl;
 	if((float)ai.xscore >= myThr)
 		passed = true;
 #else
@@ -234,6 +233,7 @@ SeedExtendXdrop::apply_batch
 
 	std::string *strands = new std::string[npairs];
 	int *xscores = new int[npairs];
+	TSeed *seeds = new TSeed[npairs];
 
 	/* GGGG: seed_count is hardcoded here (2) */
 	for(int count = 0; count < seed_count; ++count)
@@ -338,6 +338,7 @@ SeedExtendXdrop::apply_batch
 						 infix(seqan::source(seqsv[i]),
 							   beginPositionV(seed), endPositionV(seed)));
 		#endif
+			seeds[i] = seed;
 			seedlens[i].first  = static_cast<ushort>(seed._endPositionH -
 													 seed._beginPositionH);
 			seedlens[i].second = static_cast<ushort>(seed._endPositionV -
@@ -369,6 +370,7 @@ SeedExtendXdrop::apply_batch
 			#endif
 				ai[i].xscore = xscores[i];
 				ai[i].strand = strands[i];
+				ai[i].seed   =   seeds[i];
 
 				ai[i].seq_h_length = seqan::length(seqan::source(seqsh[i]));
 				ai[i].seq_v_length = seqan::length(seqan::source(seqsv[i]));
@@ -405,10 +407,11 @@ SeedExtendXdrop::apply_batch
 					ai[i].seq_v_seed_length = seedlens[i].second;
 				}
 			#else
-				if (xscores[i] > ai[i].xscore) // GGGG: TODO double check this logic with fresh neurons!
+				if (xscores[i] > ai[i].xscore) // GGGG: TODO double check this logic with fresh neurons
 				{
 					ai[i].xscore = xscores[i];
 					ai[i].strand = strands[i];
+					ai[i].seed   =   seeds[i];
 					ai[i].seq_h_seed_length = seedlens[i].first;
 					ai[i].seq_v_seed_length = seedlens[i].second;
 				}
