@@ -42,6 +42,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 #ifndef FIXEDTHR
 	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)ov);
 
+	// std::cout << "ai.xscore " << ai.xscore << std::endl;
 	if((float)ai.xscore >= myThr)
 		passed = true;
 #else

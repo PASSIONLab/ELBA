@@ -19,8 +19,8 @@ DistributedPairwiseRunner::DistributedPairwiseRunner(
 			col_offset(coloffset), afreq(afreq), parops(parops) {
 }
 
-void DistributedPairwiseRunner::write_overlaps(const char *file) {
-
+void DistributedPairwiseRunner::write_overlaps(const char *file)
+{
 	uint64_t local_nnz_count = 0;
 	uint64_t local_top_triangle_count = 0;
 	std::stringstream ss;
@@ -30,46 +30,48 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
 
 	if (parops->world_proc_rank == 0)
 	{
-		ss << "g_col_idx,g_row_idx,common_kmer_count" << std::endl;
+	  ss << "g_col_idx,g_row_idx,common_kmer_count" << std::endl;
 	}
 
 	ushort l_max_common_kmers = 0;
 	for (auto colit = spSeq->begcol(); colit != spSeq->endcol(); ++colit)
 	{
-		// iterate over columns
-		auto l_col_idx = colit.colid(); // local numbering
-		uint64_t g_col_idx = l_col_idx + col_offset;
+	  // iterate over columns
+	  auto l_col_idx = colit.colid(); // local numbering
+	  uint64_t g_col_idx = l_col_idx + col_offset;
 
-		for (auto nzit = spSeq->begnz(colit); nzit < spSeq->endnz(colit); ++nzit)
-			{
-			auto l_row_idx = nzit.rowid();
-			uint64_t g_row_idx = l_row_idx + row_offset;
+	  for (auto nzit = spSeq->begnz(colit); nzit < spSeq->endnz(colit); ++nzit)
+		{
+	    auto l_row_idx = nzit.rowid();
+	    uint64_t g_row_idx = l_row_idx + row_offset;
 
-			++local_nnz_count;
+	    ++local_nnz_count;
 
-			/*!
-			 * Note. the cells means the process grid cells.
-			 * We only wantå to compute the top triangles of any grid cell.
-			 * Further, we want cell diagonals only for cells that are on the
-			 * top half of the grid excluding the grid's main diagonal cells
-			 */
-			if (l_col_idx < l_row_idx){
-			  continue;
-			}
+	    /*!
+	     * Note. the cells means the process grid cells.
+	     * We only want to compute the top triangles of any grid cell.
+	     * Further, we want cell diagonals only for cells that are on the
+	     * top half of the grid excluding the grid's main diagonal cells
+	     */
+	    if (l_col_idx < l_row_idx)
+		  {
+	      continue;
+	    }
 
-			if (l_col_idx == l_row_idx && g_col_idx <= g_row_idx){
-			  continue;
-			}
+	    if (l_col_idx == l_row_idx && g_col_idx <= g_row_idx)
+		  {
+	      continue;
+	    }
 
-			dibella::CommonKmers cks = nzit.value();
-			if (cks.count > l_max_common_kmers)
-				{
-			  l_max_common_kmers = cks.count;
-			}
+	    dibella::CommonKmers cks = nzit.value();
+	    if (cks.count > l_max_common_kmers)
+		{
+	      l_max_common_kmers = cks.count;
+	    }
 
-			++local_top_triangle_count;
-			afs << g_row_idx << " " << g_col_idx << "\n";
-		}
+	    ++local_top_triangle_count;
+		  afs << g_row_idx << " " << g_col_idx << "\n";
+	  }
 	}
 
 	afs.close();
@@ -77,9 +79,10 @@ void DistributedPairwiseRunner::write_overlaps(const char *file) {
 	ushort g_max_common_kmers = 0;
 	MPI_Reduce(&l_max_common_kmers, &g_max_common_kmers, 1,
 	           MPI_UINT16_T, MPI_MAX, 0, MPI_COMM_WORLD);
+
 	if (parops->world_proc_rank == 0)
 	{
-		std::printf("  -> max common kmers %d\n", g_max_common_kmers);
+	  std::printf("  max common kmers %d\n", g_max_common_kmers);
 	}
 }
 
@@ -247,13 +250,6 @@ DistributedPairwiseRunner::run_batch
 
 	uint64_t *algn_cnts   = new uint64_t[numThreads + 1];
 	uint64_t nelims_ckthr = 0, nelims_mosthr = 0, nelims_both = 0;
-
-	// std::vector<std::stringstream> ss(numThreads);
-	// if(parops->world_proc_rank == 0)
-	// 	af_stream << "g_col_idx,g_row_idx,pid,col_seq_len,row_seq_len,"
-	// 		"col_seq_align_len,row_seq_align_len, num_gap_opens,"
-	// 		"col_seq_len_coverage,row_seq_len_coverage,common_count"
-	// 			  << std::endl;
 	
 	while (batch_idx < batch_cnt)
 	{
@@ -271,7 +267,6 @@ DistributedPairwiseRunner::run_batch
 		uint64_t nelims_ckthr_cur = 0, nelims_mosthr_cur = 0,
 			nelims_both_cur = 0;
 		
-		// count number of alignments in this batch
 		// count number of alignments in this batch
 		#pragma omp parallel reduction(+:nelims_ckthr_cur,\
 									   nelims_mosthr_cur,nelims_both_cur)
@@ -417,7 +412,7 @@ DistributedPairwiseRunner::run_batch
 				 std::to_string(nelims_ckthr_tot+nelims_mosthr_tot-
 								nelims_both_tot) + "\n");
 
-	// prune pairs that do not meet coverage criteria
+	// Prune pairs that do not meet coverage criteria
 	std::string outfile = aln_file + std::string("-pruned-C.mtx");
 	auto elim_cov = [] (dibella::CommonKmers &ck)
 		{return ck.score == 0;};
