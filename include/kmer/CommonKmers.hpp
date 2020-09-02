@@ -16,7 +16,7 @@ namespace dibella {
      */
     ushort count;
 
-	int32_t   score;
+	bool aln_passed;
 	float score_aln; /* Used for storing alignment score */
 	ushort overhang; /*! GGGG: this is either the suffix or prefix entry need for the transitive reduction */
 
@@ -33,16 +33,16 @@ namespace dibella {
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
 #endif
 
-    CommonKmers() : count(1), overhang(0), score(-1) {
+    CommonKmers() : count(1), overhang(0), aln_passed(false) {
     }
 
     explicit
 	CommonKmers(ushort count) : 
-		count(count), overhang(0) {
+		count(count), overhang(0), aln_passed(false) {
     }
 
-	CommonKmers (int32_t score, float score_aln) :
-		score(score),
+	CommonKmers (bool aln_passed, float score_aln) :
+		aln_passed(aln_passed),
 		score_aln(score_aln) {
 	}
 

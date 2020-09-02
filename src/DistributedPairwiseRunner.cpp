@@ -204,7 +204,7 @@ DistributedPairwiseRunner::run_batch
 	std::ofstream&		 lfs,
 	int					 log_freq,
 	int					 ckthr,
-	float				 mosthr,
+	bool				 aln_score_thr,
 	TraceUtils 			 tu,
 	ushort k,
 	bool				 score_only
@@ -249,13 +249,12 @@ DistributedPairwiseRunner::run_batch
 	#endif
 
 	uint64_t *algn_cnts   = new uint64_t[numThreads + 1];
-	uint64_t nelims_ckthr = 0, nelims_mosthr = 0, nelims_both = 0;
+	uint64_t nelims_ckthr = 0, nelims_alnthr = 0, nelims_both = 0;
 	
 	while (batch_idx < batch_cnt)
 	{
 		uint64_t beg = batch_idx * batch_size;
-		uint64_t end = ((batch_idx + 1) * batch_size > local_nnz_count) ?
-			local_nnz_count : ((batch_idx + 1) * batch_size);
+		uint64_t end = ((batch_idx + 1) * batch_size > local_nnz_count) ? local_nnz_count : ((batch_idx + 1) * batch_size);
 
 		tu.print_str("batch idx " + std::to_string(batch_idx) + "/" +
 					 std::to_string(batch_cnt) + " [" +
@@ -264,12 +263,10 @@ DistributedPairwiseRunner::run_batch
 
 		memset(algn_cnts, 0, sizeof(*algn_cnts) * (numThreads + 1));
 
-		uint64_t nelims_ckthr_cur = 0, nelims_mosthr_cur = 0,
-			nelims_both_cur = 0;
+		uint64_t nelims_ckthr_cur = 0;
 		
 		// count number of alignments in this batch
-		#pragma omp parallel reduction(+:nelims_ckthr_cur,\
-									   nelims_mosthr_cur,nelims_both_cur)
+		#pragma omp parallel reduction(+:nelims_ckthr_cur)
 		{
 			int tid = 0;
 			#ifdef THREADED
@@ -282,38 +279,35 @@ DistributedPairwiseRunner::run_batch
 			for (uint64_t i = beg; i < end; ++i)
 			{
 				// GGGG: check read indexes
-				auto				 l_row_idx = std::get<0>(mattuples[i]);
-				auto				 l_col_idx = std::get<1>(mattuples[i]);
+				auto				 l_row_idx = std::get<0>(mattuples[i]) - 1; 	// GGGG: -1 bc dibella kmer counter uses 1-based indexing; double check to make sure this doesn't create inconsistencies
+				auto				 l_col_idx = std::get<1>(mattuples[i]) - 1; 	// GGGG: -1 bc dibella kmer counter uses 1-based indexing; double check to make sure this doesn't create inconsistencies
 				uint64_t			 g_col_idx = l_col_idx + col_offset;
 				uint64_t			 g_row_idx = l_row_idx + row_offset;
 
-				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
-				
-				if ((cks->count > ckthr) &&
-					(cks->score > mosthr) &&
-					(l_col_idx >= l_row_idx) &&
-					(l_col_idx != l_row_idx || g_col_idx > g_row_idx))
-					++algn_cnt;
+				assert(l_row_idx >= 0 && l_col_idx >= 0 && g_col_idx >= 0 && g_row_idx >= 0);
 
+				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
+
+				if ((cks->count >= ckthr) 	 	&& 	// GGGG: to be a valid alignment it needs to have at least ckthr common kmers
+					(l_col_idx >= l_row_idx) 	&&
+					(l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
+				{
+					++algn_cnt;
+				}
+				
 				// Compute statistics 
 				if ((l_col_idx >= l_row_idx) &&
 					(l_col_idx != l_row_idx || g_col_idx > g_row_idx))
 				{
-					if (cks->count <= ckthr)
+					if (cks->count < ckthr)
 						++nelims_ckthr_cur;
-					if (cks->score <= mosthr)
-						++nelims_mosthr_cur;
-					if (cks->count <= ckthr && cks->score <= mosthr)
-						++nelims_both_cur;
 				}
 			}
 
 			algn_cnts[tid + 1] = algn_cnt;
 		}
 
-		nelims_ckthr  += nelims_ckthr_cur;
-		nelims_mosthr += nelims_mosthr_cur;
-		nelims_both	  += nelims_both_cur;		
+		nelims_ckthr  += nelims_ckthr_cur;	
 
 		for (int i = 1; i < numThreads + 1; ++i)
 			algn_cnts[i] += algn_cnts[i - 1];
@@ -350,10 +344,11 @@ DistributedPairwiseRunner::run_batch
 				uint64_t	g_col_idx = l_col_idx + col_offset; 
 				uint64_t	g_row_idx = l_row_idx + row_offset; 
 
+				assert(l_row_idx >= 0 && l_col_idx >= 0 && g_col_idx >= 0 && g_row_idx >= 0);
+
 				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
 
-				if ((cks->count > ckthr)     &&
-					(cks->score > mosthr)    &&
+				if ((cks->count >= ckthr)    && 	// GGGG: perform alignment only if at least <ckthr> common kmers
 					(l_col_idx >= l_row_idx) &&
 					(l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
@@ -364,7 +359,8 @@ DistributedPairwiseRunner::run_batch
 					++algn_idx;
 				}
 
-				cks->score = 0; // Will use it for pruning purposes
+				// Don't need this here, it's false by construction
+				// cks->aln_passed = false; // This is gonna be use it for pruning purposes
 			}
 		}	
 
@@ -387,35 +383,26 @@ DistributedPairwiseRunner::run_batch
 	lfs << "#alignments run " << nalignments << std::endl;
 
 	// Stats
-	uint64_t nelims_ckthr_tot = 0, nelims_mosthr_tot = 0, nelims_both_tot = 0,
-		nalignments_tot = 0;
+	uint64_t nelims_ckthr_tot = 0, nalignments_tot = 0;
+
 	MPI_Reduce(&nelims_ckthr, &nelims_ckthr_tot, 1, MPI_UINT64_T,
 			   MPI_SUM, 0, MPI_COMM_WORLD);
-	MPI_Reduce(&nelims_mosthr, &nelims_mosthr_tot, 1, MPI_UINT64_T,
-			   MPI_SUM, 0, MPI_COMM_WORLD);
-	MPI_Reduce(&nelims_both, &nelims_both_tot, 1, MPI_UINT64_T,
-			   MPI_SUM, 0, MPI_COMM_WORLD);
+
 	MPI_Reduce(&nalignments, &nalignments_tot, 1, MPI_UINT64_T,
 			   MPI_SUM, 0, MPI_COMM_WORLD);
+
 	tu.print_str("total nnzs in the output matrix " +
 				 std::to_string(gmat->getnnz()) +
 				 "\ntotal nnzs in strictly lower (or upper) mat " +
 				 std::to_string((gmat->getnnz()-gmat->getncol())/2) + 
 				 "\n  total alignments run " + std::to_string(nalignments_tot) +
 				 "\n  eliminated due to common k-mer threshold " +
-				 std::to_string(nelims_ckthr_tot) +
-				 "\n  eliminated due to max overlap score threshold " +
-				 std::to_string(nelims_mosthr_tot) +
-				 "\n  eliminated due to both (intersection) " +
-				 std::to_string(nelims_both_tot) +
-				 "\n  eliminated overall with both (union) " +
-				 std::to_string(nelims_ckthr_tot+nelims_mosthr_tot-
-								nelims_both_tot) + "\n");
+				 std::to_string(nelims_ckthr_tot) + "\n");
 
 	// Prune pairs that do not meet coverage criteria
 	std::string outfile = aln_file + std::string("-pruned-C.mtx");
 	auto elim_cov = [] (dibella::CommonKmers &ck)
-		{return ck.score == 0;};
+		{return ck.aln_passed == false;};
 	gmat->Prune(elim_cov);
 	gmat->ParallelWriteMM(outfile, false, dibella::CkOutputHandler());
 	tu.print_str("nnzs in the pruned matrix " +
