@@ -28,9 +28,9 @@ double cblas_localspmvtime;
  *      1st and 2nd bit in M == 1st and 2nd bit in B during I = M >= B.
 */
 
-// GGGG: TODO add fields to dibella:CommonKmers
-PSpMat<dibella::dibella:CommonKmers>::MPI_DCCols
-PerformTransitiveReduction(PSpMat<dibella::dibella:CommonKmers>::MPI_DCCols& A)
+// GGGG: TODO add fields to dibella::CommonKmers
+PSpMat<dibella::CommonKmers>::MPI_DCCols
+PerformTransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& A)
 {
 	int nprocs, myrank;
 	int cblas_splits = 1;	
@@ -43,97 +43,80 @@ PerformTransitiveReduction(PSpMat<dibella::dibella:CommonKmers>::MPI_DCCols& A)
 	        cout << "Hey, transitive reduction is starting"   << endl;
 	}
 
-        typedef MinPlusBiSRing <dibella:CommonKmers, dibella:CommonKmers, dibella:CommonKmers> MinPlusSR;
-        typedef Bind2ndBiSRing <dibella:CommonKmers, dibella:CommonKmers, dibella:CommonKmers> Bind2ndSR;
-        typedef ReduceMBiSRing <dibella:CommonKmers, dibella:CommonKmers, dibella:CommonKmers> ReduceMSR;
+        typedef MinPlusBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> MinPlusSR;
+        typedef Bind2ndBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> Bind2ndSR;
+        typedef ReduceMBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> ReduceMSR;
+        
+        dibella::CommonKmers id;
 
 	// shared_ptr<CommGrid> fullWorld;
 	// fullWorld.reset(new CommGrid(MPI_COMM_WORLD, 0, 0));
-        // PSpMat<dibella:CommonKmers>::MPI_DCCols A(fullWorld);
-
-        /* I/O */
-
-        // double t01, t02;
-        // ostringstream tinfo;   
-        // string filename(argv[1]);
-        // tinfo.str("");
-        // tinfo << "**** Reading input matrix: " << filename << " ******* " << endl;
-        // SpParHelper::Print(tinfo.str());
-        // t01 = MPI_Wtime();
-        // A.ReadDistribute(filename, 0);
-        // t02 = MPI_Wtime(); 
-        // tinfo.str("");
-        // tinfo << "Reader took " << t02-t01 << " seconds" << endl;
-        // SpParHelper::Print(tinfo.str());
+        // PSpMat<dibella::CommonKmers>::MPI_DCCols A(fullWorld);
 
 #ifdef DEBUG
         A.PrintInfo();
 #endif
 
         /* Randomly permute for load balance */
-        int perm = false; // GGGG: TODO make this input parameter
-        if(perm == 1)
-        {
-            SpParHelper::Print("Performing random permutation of matrix\n");
+        // int perm = false; // GGGG: TODO make this input parameter
+        // if(perm == 1)
+        // {
+        //     SpParHelper::Print("Performing random permutation of matrix\n");
 
-            FullyDistVec<int64_t, dibella:CommonKmers> prow(A.getcommgrid());
-            FullyDistVec<int64_t, dibella:CommonKmers> pcol(A.getcommgrid());
-            prow.iota(A.getnrow(), 0);
-            pcol.iota(A.getncol(), 0);
-            prow.RandPerm();
-            pcol.RandPerm();
-            (A)(prow, pcol, true);
+        //     FullyDistVec<int64_t, dibella::CommonKmers> prow(A.getcommgrid());
+        //     FullyDistVec<int64_t, dibella::CommonKmers> pcol(A.getcommgrid());
 
-            SpParHelper::Print("Performed random permutation of matrix\n");
-        }
+        //         // GGGG: from line 931 of FullyDistVect.cpp:
+        //         // ABAB: In its current form, unless LengthUntil returns NT
+        //         // this won't work reliably for anything other than integers
+        //         // GGGG: TODO look into this
+        //
+        //     prow.iota(A.getnrow(), id);
+        //     pcol.iota(A.getncol(), id);
 
-// GGGG: this are going to be encoded in the matrix A already
-// #ifdef DEBUG
-//         uint number    = stoi(argv[3]);
-//         uint direction = stoi(argv[4]);
-//         // GGGG: this is going to be encoded directly by bella/dibella
-//         dibella:CommonKmers me = compose(number, direction);
-//         std::cout << "entry     "       << me      << std::endl;
-//         std::cout << "val(me)   "       << val(me) << std::endl;
-//         std::cout << "dir(me)   "       << dir(me) << std::endl;
-//         std::cout << "2nd-LSB bit   "   << (bool)(dir(me) & (1 << 1)) << std::endl; // 2nd-LSB
-//         std::cout << "LSB bit   "       << (dir(me) & 1)              << std::endl; // LSB
-// #endif  
+        //     prow.RandPerm();
+        //     pcol.RandPerm();
+        //     (A)(prow, pcol, true);
+
+        //     SpParHelper::Print("Performed random permutation of matrix\n");
+        // }
 
         // GGGG: B = A^2
-        PSpMat<dibella:CommonKmers>::MPI_DCCols M = A;
-        PSpMat<dibella:CommonKmers>::MPI_DCCols B = Mult_AnXBn_DoubleBuff<MinPlusSR, dibella:CommonKmers, PSpMat<dibella:CommonKmers>::DCCols>(A, M);
+        PSpMat<dibella::CommonKmers>::MPI_DCCols M = A;
+        PSpMat<dibella::CommonKmers>::MPI_DCCols B = Mult_AnXBn_DoubleBuff<MinPlusSR, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, M);
 #ifdef DEBUG
         B.PrintInfo();
 #endif
 
-        FullyDistVec<int64_t, dibella:CommonKmers> vA(M.getcommgrid());
-        vA = M.Reduce(Row, ReduceMSR(), 0);
-        vA.Apply(PlusFBiSRing<dibella:CommonKmers, dibella:CommonKmers>());
-#ifdef DEBUG
-        vA.DebugPrint();
-#endif
+//         FullyDistVec<int64_t, dibella::CommonKmers> vA(M.getcommgrid());
+        
+//         // GGGG: give meaning to dibella::CommonKmers());
+//         vA = M.Reduce(Row, ReduceMSR(), id);
+//         vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
+// #ifdef DEBUG
+//         vA.DebugPrint();
+// #endif
 
-        M.DimApply(Row, vA, Bind2ndSR());
-#ifdef DEBUG
-        M.PrintInfo();
-#endif
+//         M.DimApply(Row, vA, Bind2ndSR());
+// #ifdef DEBUG
+//         M.PrintInfo();
+// #endif
 
-        // GGGG: I = M >= B 
-        bool isLogicalNot = false;
-        PSpMat<dibella:CommonKmers>::MPI_DCCols I = EWiseApply<dibella:CommonKmers, PSpMat<dibella:CommonKmers>::DCCols>(M, B, GreaterBinaryOp<dibella:CommonKmers, dibella:CommonKmers>(), isLogicalNot, (dibella:CommonKmers)0);
+//         // GGGG: I = M >= B 
+//         bool isLogicalNot = false;
+//         PSpMat<bool>::MPI_DCCols I = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(M, B, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
 
-        // GGGG: prune potential zero-valued nonzeros
-        I.Prune(ZeroUnaryOp<dibella:CommonKmers>(), true);
-#ifdef DEBUG
-        I.PrintInfo();
-#endif
+//         // GGGG: prune potential zero-valued nonzeros
+//         I.Prune(ZeroUnaryOp<dibella::CommonKmers>(), true);
+// #ifdef DEBUG
+//         I.PrintInfo();
+// #endif
 
-        // GGGG: A = A .* not(I)
-        isLogicalNot = true;
-        PSpMat<dibella:CommonKmers>::MPI_DCCols C = EWiseMult(A, I, isLogicalNot);
-#ifdef DEBUG
-        C.PrintInfo();
-#endif
-	return C;
+//         // GGGG: A = A .* not(I)
+//         isLogicalNot = true;
+//         PSpMat<dibella::CommonKmers>::MPI_DCCols C = EWiseMult(A, I, isLogicalNot);
+// #ifdef DEBUG
+//         C.PrintInfo();
+// #endif
+// 	return C;
 }
