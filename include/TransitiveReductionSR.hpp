@@ -3,21 +3,7 @@
 #ifndef __TER_DEFS_H__
 #define __TER_DEFS_H__
 
-#include "../include/Constants.hpp"
-#include "../include/ParallelOps.hpp"
-#include "../include/ParallelFastaReader.hpp"
-#include "../include/Alphabet.hpp"
-#include "../include/Utils.hpp"
-#include "../include/DistributedPairwiseRunner.hpp"
-#include "CombBLAS/CombBLAS.h"
-#include "../include/cxxopts.hpp"
-#include "../include/pw/SeedExtendXdrop.hpp"
-#include "seqan/score/score_matrix_data.h"
-#include "../include/pw/OverlapFinder.hpp"
-#include "../include/pw/FullAligner.hpp"
-#include "../include/pw/BandedAligner.hpp"
-#include "../include/kmer/KmerOps.hpp"
-#include "../include/kmer/KmerIntersectSR.hpp"
+#include "../include/kmer/CommonKmers.hpp"
 
 #include <sys/time.h> 
 #include <iostream>
@@ -29,34 +15,44 @@
 #include <sstream>
 
 using namespace std;
-using namespace combblas;
 
 #define FUZZ (10)
 #define DEBUG
 
-/*! GGGG: make these definitions consistent with the main code
+/** Given a biridrected graph, an edge v ?-? x can only be considered transitive given a pair of edges v ?-? w ?-? x if:
+ * (1) The two heads adjacent to w have opposite orientation: 
+ *      2nd bit != 1st bit in MinPlus semiring B = A^2 such as 01 and 01 or 10 and 10;
+ * (2) The heads adjacent to v in v ?-? w and v ?-? x have the same orientation, and
+ * (3) The heads adjacent to x in v ?-? x and w ?-? x have the same orientation:
+ *      1st and 2nd bit in M == 1st and 2nd bit in B during I = M >= B.
+*/
 
-typedef uint32_t dibella::CommonKmers;
+dibella::CommonKmers compose(dibella::CommonKmers& me, const uint& suffix, const ushort& dir) { 
+    me.overhang = suffix << 2 | dir;
+    return me; }
 
-// encoded int 
-dibella::CommonKmers compose(const dibella::CommonKmers& suffix, const dibella::CommonKmers& dir) { return suffix << 2 | dir; }
-// extract edge value 
-dibella::CommonKmers val(const dibella::CommonKmers& me) { return me >> 2; }
-// extract edge direction 
-dibella::CommonKmers dir(const dibella::CommonKmers& me) { return me  & 3; }
+uint   length(const dibella::CommonKmers& me) { return me.overhang >> 2; }
+ushort dir(const dibella::CommonKmers& me)    { return me.overhang  & 3; }
 
-dibella::CommonKmers min(const dibella::CommonKmers& arg1, const dibella::CommonKmers& arg2)
-{
-    if(val(arg2) < val(arg1)) return arg2;
+dibella::CommonKmers min(const dibella::CommonKmers& arg1, const dibella::CommonKmers& arg2) {
+    if(length(arg2) < length(arg1)) return arg2;
     else return arg1;
 }
 
-dibella::CommonKmers max(const dibella::CommonKmers& arg1, const dibella::CommonKmers& arg2)
-{
-    if(val(arg2) > val(arg1)) return arg2;
+dibella::CommonKmers max(const dibella::CommonKmers& arg1, const dibella::CommonKmers& arg2) {
+    if(length(arg2) > length(arg1)) return arg2;
     else return arg1;
 }
 
+const uint inf_plus(const dibella::CommonKmers& a, const dibella::CommonKmers& b) {
+	uint inf = std::numeric_limits<uint>::max();
+    if (length(a) == inf || length(b) == inf) {
+    	return inf;
+    }
+    return length(a) + length(b);
+}
+
+/*
 template <class NT>
 class PSpMat
 { 
@@ -80,7 +76,7 @@ struct ReduceMBiSRing : binary_function <T1, T2, OUT>
 {
     OUT operator() (const T1& x, const T2& y) const
     {
-        if(val(y) > val(x)) return static_cast<OUT>(y);
+        if(length(y) > length(x)) return static_cast<OUT>(y);
         else return static_cast<OUT>(x);
     }
 };
@@ -88,9 +84,9 @@ struct ReduceMBiSRing : binary_function <T1, T2, OUT>
 template <class T, class OUT>
 struct PlusFBiSRing : unary_function <T, OUT>
 {
-    OUT operator() (const T& x) const
+    OUT operator() (T& x) const
     {
-        return static_cast<OUT>(compose(val(x) + FUZZ, dir(x)));
+        return static_cast<OUT>(compose(x, length(x) + FUZZ, dir(x)));
     }
 };
 
@@ -105,13 +101,13 @@ struct MinPlusBiSRing
 	{
 		return min(arg1, arg2);
 	}
-	static OUT multiply(const T1& arg1, const T2& arg2)
+	static OUT multiply(const T1 & arg1, const T2 & arg2)
 	{
         OUT res;
         if((dir(arg1) & 1) != (dir(arg2) & (1 << 1)))
         {
-            OUT res = inf_plus<dibella::CommonKmers>(static_cast<dibella::CommonKmers>(val(arg1)), static_cast<dibella::CommonKmers>(val(arg2)));
-            return compose(res, dir(arg2));
+            uint len = inf_plus(length(arg1), length(arg2));
+            return compose(res, len, dir(arg2));
         } 
         else return id();
 	}
@@ -126,7 +122,7 @@ struct GreaterBinaryOp : binary_function <T1, T2, bool>
 {
     bool operator() (const T1& x, const T2& y) const
     {
-        if(val(x) >= val(y) && dir(y) == dir(x)) return true;
+        if(length(x) >= length(y) && dir(y) == dir(x)) return true;
         else return false;
     }
 };
@@ -134,7 +130,7 @@ struct GreaterBinaryOp : binary_function <T1, T2, bool>
 template <class T1, class T2, class OUT>
 struct MultiplyBinaryOp : binary_function <T1, T2, OUT>
 {
-    OUT operator() (const T1& x, const T2& y) const { return static_cast<OUT>(compose(val(x) * val(y), dir(x))); }
+    OUT operator() (const T1& x, const T2& y) const { return static_cast<OUT>(compose(length(x) * length(y), dir(x))); }
 };
 
 template <class T>

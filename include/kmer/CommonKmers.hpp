@@ -16,9 +16,12 @@ namespace dibella {
      */
     ushort count;
 
-	bool aln_passed;
-	float score_aln; /* Used for storing alignment score */
-	ushort overhang; /*! GGGG: this is either the suffix or prefix entry need for the transitive reduction */
+	bool passed;
+	uint32_t score; /* Used for storing alignment score */
+	
+	/*! GGGG: this is either the suffix or prefix entry need for the transitive reduction 
+	 *	StringMatrixEntry econdes both direction and overhang length*/
+	uint32_t overhang; 
 
     /*! The position within the sequence, which is
      * much less than 2^16 - 1 for proteins
@@ -33,91 +36,49 @@ namespace dibella {
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
 #endif
 
-    CommonKmers() : count(1), overhang(0), aln_passed(false) {
+    CommonKmers() : count(1), passed(false), overhang(0) {
     }
 
     explicit
 	CommonKmers(ushort count) : 
-		count(count), overhang(0), aln_passed(false) {
+		count(count), passed(false), overhang(0) {
     }
 
-	CommonKmers (bool aln_passed, float score_aln) :
-		aln_passed(aln_passed),
-		score_aln(score_aln) {
+	CommonKmers (bool passed, uint32_t score) :
+		passed(passed),
+		score(score) {
 	}
 
     friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m)
 	{
-#ifdef TWOSEED
-      os << "|" << m.count << "(" << m.first.first << "," << m.first.second
-         << ")(" <<
-         m.second.first << "," << m.second.second << ")| ";
-#else
-      os << "|" << m.count << "(";
-	  for(int i = 0; i < m.pos.size(); i++)
-	  {
-	  	os << m.pos[i].first << "," << m.pos[i].second << ")| ";  
-	  }
-#endif
-      return os;
-    }
-
-	// GGGG: dont need this w/o substitute kmers
-	// used in the symmetricization of the output matrix
-	CommonKmers
-	operator+(const CommonKmers &arg)
-	{
-		CommonKmers tmp(0);
 	#ifdef TWOSEED
-		if (this->count >= 2)
-		{
-			tmp.count  = this->count + arg.count;
-			tmp.first  = this->first;
-			tmp.second = this->second;
-		}
-		else if (arg.count >= 2)
-		{
-			tmp.count  = this->count + arg.count;
-			tmp.first  = arg.first;
-			tmp.second = arg.second;
-		}
-		else // both should have count = 1
-		{
-			tmp.count  = 2;
-			tmp.first  = this->first;
-			tmp.second = arg.first;
-		}
+		os << "|" << m.count << "(" << m.first.first << "," << m.first.second
+			<< ")(" <<
+			m.second.first << "," << m.second.second << ")| ";
 	#else
-		if (this->count >= 2)
+		os << "|" << m.count << "(";
+		for(int i = 0; i < m.pos.size(); i++)
 		{
-			tmp.count = this->count + arg.count;
-			tmp.pos   = this->pos;
-		}
-		else if (arg.count >= 2)
-		{
-			tmp.count = this->count + arg.count;
-			tmp.pos   = arg.pos;
-		}
-		else // both should have count = 1
-		{
-			tmp.count = 2;
-			tmp.pos   = this->pos;
+			os << m.pos[i].first << "," << m.pos[i].second << ")| ";  
 		}
 	#endif
-		return tmp;
-	}
-  };
+		return os;
+    }
 
-  struct CkOutputHandler
-  {
-    template <typename c, typename t>
-	void save(std::basic_ostream<c,t> &os,
-			  const dibella::CommonKmers &v,
-			  uint64_t row,
-			  uint64_t col)
+	};
+
+	/* GGGG: matrix symmetrication removed */
+
+	struct CkOutputHandler
 	{
-		os << v.score_aln;
-	}
-  };
+		template <typename c, typename t>
+		void save(std::basic_ostream<c,t> &os,
+				const dibella::CommonKmers &v,
+				uint64_t row,
+				uint64_t col)
+		{
+			os << v.score;
+		}
+	};
 }
 #endif //DIBELLA_COMMONKMERS_HPP

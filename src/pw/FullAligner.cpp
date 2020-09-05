@@ -131,8 +131,8 @@ FullAligner::apply_batch
 				stats.alignmentIdentity >= debugThr)
 			{
 				dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-				cks->score_aln = (float)stats.alignmentIdentity / 100.0f;
-				cks->aln_passed = true;	// keep this
+				cks->score = (float)stats.alignmentIdentity / 100.0f;
+				cks->passed = true;	// keep this
 			}
 		}
 	}

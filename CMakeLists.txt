@@ -85,7 +85,6 @@ add_executable(dibella
         src/kmer/Kmer.cpp
         include/kmer/Kmer.hpp
         include/TransitiveReductionSR.hpp
-        src/TransitiveReduction.cpp
 	)
 
 target_link_libraries(dibella PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC)
