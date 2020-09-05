@@ -1,8 +1,5 @@
 #include <iostream>
 #include <cmath>
-// #include <boost/uuid/uuid.hpp>
-// #include <boost/uuid/uuid_generators.hpp>
-// #include <boost/uuid/uuid_io.hpp>
 #include "../include/Constants.hpp"
 #include "../include/ParallelOps.hpp"
 #include "../include/ParallelFastaReader.hpp"
@@ -18,6 +15,7 @@
 #include "../include/pw/BandedAligner.hpp"
 #include "../include/kmer/KmerOps.hpp"
 #include "../include/kmer/KmerIntersectSR.hpp"
+#include "../src/TransitiveReduction.cpp"
 #include <map>
 #include <fstream>
 
@@ -229,7 +227,6 @@ int main(int argc, char **argv)
   tu.print_str("Matrix B, i.e AAt: ");
   C.PrintInfo();
 
-  // MPI_Barrier(MPI_COMM_WORLD);
   /*! Wait until data distribution is complete */
   tp->times["StartMain:DfdWait()"] = std::chrono::system_clock::now();
   if (!dfd->is_ready())
@@ -288,17 +285,29 @@ int main(int argc, char **argv)
     MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
                MPI_COMM_WORLD);
 
-    if (is_print_rank) {
+    if (is_print_rank)
+    {
       std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments
                 << std::endl;
     }
   }
 
   tp->times["StartMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
-  if (write_overlaps){
+  if (write_overlaps)
+  {
     dpr.write_overlaps(overlap_file.c_str());
   }
   tp->times["EndMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
+
+  tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
+  bool transitive_reduction = true;
+  if (transitive_reduction)
+  {
+    // GGGG: make sure C includes now overhang lengths and directionality
+    // GGGG: call to transitive reduction function
+    C = PerformTransitiveReduction(C);
+  }
+  tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
   tp->times["EndMain"] = std::chrono::system_clock::now();
 

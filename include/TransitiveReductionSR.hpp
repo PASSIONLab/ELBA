@@ -1,12 +1,29 @@
-#ifndef __DEFS_H__
-#define __DEFS_H__
+// Created by Giulia Guidi on 09/04/20.
+
+#ifndef __TER_DEFS_H__
+#define __TER_DEFS_H__
+
+#include "../include/Constants.hpp"
+#include "../include/ParallelOps.hpp"
+#include "../include/ParallelFastaReader.hpp"
+#include "../include/Alphabet.hpp"
+#include "../include/Utils.hpp"
+#include "../include/DistributedPairwiseRunner.hpp"
+#include "CombBLAS/CombBLAS.h"
+#include "../include/cxxopts.hpp"
+#include "../include/pw/SeedExtendXdrop.hpp"
+#include "seqan/score/score_matrix_data.h"
+#include "../include/pw/OverlapFinder.hpp"
+#include "../include/pw/FullAligner.hpp"
+#include "../include/pw/BandedAligner.hpp"
+#include "../include/kmer/KmerOps.hpp"
+#include "../include/kmer/KmerIntersectSR.hpp"
 
 #include <sys/time.h> 
 #include <iostream>
 #include <functional>
 #include <algorithm>
 #include <vector>
-// Created by Giulia Guidi on 09/04/20.
 
 #include <string>
 #include <sstream>
@@ -19,22 +36,22 @@ using namespace combblas;
 
 /*! GGGG: make these definitions consistent with the main code
 
-typedef uint32_t MatrixEntry;
+typedef uint32_t dibella::CommonKmers;
 
 // encoded int 
-MatrixEntry compose(const MatrixEntry& suffix, const MatrixEntry& dir) { return suffix << 2 | dir; }
+dibella::CommonKmers compose(const dibella::CommonKmers& suffix, const dibella::CommonKmers& dir) { return suffix << 2 | dir; }
 // extract edge value 
-MatrixEntry val(const MatrixEntry& me) { return me >> 2; }
+dibella::CommonKmers val(const dibella::CommonKmers& me) { return me >> 2; }
 // extract edge direction 
-MatrixEntry dir(const MatrixEntry& me) { return me  & 3; }
+dibella::CommonKmers dir(const dibella::CommonKmers& me) { return me  & 3; }
 
-MatrixEntry min(const MatrixEntry& arg1, const MatrixEntry& arg2)
+dibella::CommonKmers min(const dibella::CommonKmers& arg1, const dibella::CommonKmers& arg2)
 {
     if(val(arg2) < val(arg1)) return arg2;
     else return arg1;
 }
 
-MatrixEntry max(const MatrixEntry& arg1, const MatrixEntry& arg2)
+dibella::CommonKmers max(const dibella::CommonKmers& arg1, const dibella::CommonKmers& arg2)
 {
     if(val(arg2) > val(arg1)) return arg2;
     else return arg1;
@@ -93,7 +110,7 @@ struct MinPlusBiSRing
         OUT res;
         if((dir(arg1) & 1) != (dir(arg2) & (1 << 1)))
         {
-            OUT res = inf_plus<MatrixEntry>(static_cast<MatrixEntry>(val(arg1)), static_cast<MatrixEntry>(val(arg2)));
+            OUT res = inf_plus<dibella::CommonKmers>(static_cast<dibella::CommonKmers>(val(arg1)), static_cast<dibella::CommonKmers>(val(arg2)));
             return compose(res, dir(arg2));
         } 
         else return id();
