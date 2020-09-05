@@ -360,7 +360,7 @@ DistributedPairwiseRunner::run_batch
 				}
 
 				// Don't need this here, it's false by construction
-				// cks->aln_passed = false; // This is gonna be use it for pruning purposes
+				// cks->passed = false; // This is gonna be use it for pruning purposes
 			}
 		}	
 
@@ -402,7 +402,7 @@ DistributedPairwiseRunner::run_batch
 	// Prune pairs that do not meet coverage criteria
 	std::string outfile = aln_file + std::string("-pruned-C.mtx");
 	auto elim_cov = [] (dibella::CommonKmers &ck)
-		{return ck.aln_passed == false;};
+		{return ck.passed == false;};
 	gmat->Prune(elim_cov);
 	gmat->ParallelWriteMM(outfile, false, dibella::CkOutputHandler());
 	tu.print_str("nnzs in the pruned matrix " +

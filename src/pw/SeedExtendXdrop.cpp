@@ -443,8 +443,8 @@ SeedExtendXdrop::apply_batch
 			if (passed)
 			{
 				dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-				cks->score_aln = ai[i].xscore;
-				cks->aln_passed = passed;	// keep this
+				cks->score = ai[i].xscore;
+				cks->passed = passed;	// keep this
 			}
 		}
 	}

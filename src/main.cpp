@@ -4,18 +4,19 @@
 #include "../include/ParallelOps.hpp"
 #include "../include/ParallelFastaReader.hpp"
 #include "../include/Alphabet.hpp"
-#include "../include/Utils.hpp"
 #include "../include/DistributedPairwiseRunner.hpp"
-#include "CombBLAS/CombBLAS.h"
 #include "../include/cxxopts.hpp"
 #include "../include/pw/SeedExtendXdrop.hpp"
-#include "seqan/score/score_matrix_data.h"
 #include "../include/pw/OverlapFinder.hpp"
 #include "../include/pw/FullAligner.hpp"
 #include "../include/pw/BandedAligner.hpp"
 #include "../include/kmer/KmerOps.hpp"
 #include "../include/kmer/KmerIntersectSR.hpp"
-#include "../src/TransitiveReduction.cpp"
+#include "../include/TransitiveReductionSR.hpp"
+#include "../include/Utils.hpp"
+
+#include "seqan/score/score_matrix_data.h"
+
 #include <map>
 #include <fstream>
 
@@ -26,6 +27,9 @@ using namespace combblas;
 
 /*! Type definitions */
 typedef dibella::KmerIntersect<PosInRead, dibella::CommonKmers> KmerIntersectSR_t;
+typedef MinPlusBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> MinPlusSR_t;
+typedef ReduceMBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> ReduceMSR_t;
+typedef Bind2ndBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> Bind2ndSR_t;
 
 /*! Function signatures */
 int parse_args(int argc, char **argv);
@@ -209,23 +213,21 @@ int main(int argc, char **argv)
   At.PrintInfo();
   tp->times["EndMain:At()"] = std::chrono::system_clock::now();
 
-  /*! GGGG: there's no S matrix in diBELLA */
-
   tp->times["StartMain:AAt()"] = std::chrono::system_clock::now();
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
 
   // GGGG: there's some bug in the vector version (new one stack error)
-  PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);  
+  PSpMat<dibella::CommonKmers>::MPI_DCCols B = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);  
 
   proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
   tu.print_str(
       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
-      + std::to_string(C.getnnz() - seq_count)
-      + "\nLoad imbalance: " + std::to_string(C.LoadImbalance()) + "\n");
+      + std::to_string(B.getnnz() - seq_count)
+      + "\nLoad imbalance: " + std::to_string(B.LoadImbalance()) + "\n");
   tp->times["EndMain:AAt()"] = std::chrono::system_clock::now();
 
   tu.print_str("Matrix B, i.e AAt: ");
-  C.PrintInfo();
+  B.PrintInfo();
 
   /*! Wait until data distribution is complete */
   tp->times["StartMain:DfdWait()"] = std::chrono::system_clock::now();
@@ -246,7 +248,7 @@ int main(int argc, char **argv)
   uint64_t row_offset = gr_row_idx * avg_rows_in_grid;  // first row in this process
   uint64_t col_offset = gr_col_idx * avg_cols_in_grid;	// first col in this process
 
-  DistributedPairwiseRunner dpr(dfd, C.seqptr(), &C, afreq, row_offset, col_offset, parops);
+  DistributedPairwiseRunner dpr(dfd, B.seqptr(), &B, afreq, row_offset, col_offset, parops);
 
   if (!no_align)
   {
@@ -299,13 +301,71 @@ int main(int argc, char **argv)
   }
   tp->times["EndMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
 
+  // GGGG: TODO populate overhang field in CommonKmers (before and after alignment)
+
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
   bool transitive_reduction = true;
   if (transitive_reduction)
   {
-    // GGGG: make sure C includes now overhang lengths and directionality
-    // GGGG: call to transitive reduction function
-    C = PerformTransitiveReduction(C);
+    /* Randomly permute for load balance */
+    // int perm = false; // GGGG: TODO make this input parameter
+    // if(perm == 1)
+    // {
+    //     SpParHelper::Print("Performing random permutation of matrix\n");
+
+    //     FullyDistVec<int64_t, dibella::CommonKmers> prow(A.getcommgrid());
+    //     FullyDistVec<int64_t, dibella::CommonKmers> pcol(A.getcommgrid());
+
+    //     // GGGG: from line 931 of FullyDistVect.cpp:
+    //     // ABAB: In its current form, unless LengthUntil returns NT
+    //     // this won't work reliably for anything other than integers
+    //     // GGGG: TODO look into this
+    //
+    //     prow.iota(A.getnrow(), id);
+    //     pcol.iota(A.getncol(), id);
+
+    //     prow.RandPerm();
+    //     pcol.RandPerm();
+    //     (A)(prow, pcol, true);
+
+    //     SpParHelper::Print("Performed random permutation of matrix\n");
+    // }
+
+    // GGGG: B = A^2
+    PSpMat<dibella::CommonKmers>::MPI_DCCols F = B;
+    PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F);
+
+    tu.print_str("Matrix C, i.e B^2: ");
+    C.PrintInfo();
+  
+    FullyDistVec<int64_t, dibella::CommonKmers> vA(B.getcommgrid());
+
+    // GGGG: Double check id() here
+    dibella::CommonKmers id;
+    vA = B.Reduce(Row, ReduceMSR_t(), id);
+    vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
+
+
+    F.DimApply(Row, vA, Bind2ndSR_t());
+    tu.print_str("Matrix F, i.e B + FUZZ: ");
+    F.PrintInfo();
+
+//     // GGGG: I = M >= B 
+//     bool isLogicalNot = false;
+//     PSpMat<bool>::MPI_DCCols I = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(F, C, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
+
+//     // GGGG: prune potential zero-valued nonzeros
+//     I.Prune(ZeroUnaryOp<dibella::CommonKmers>(), true);
+// #ifdef DEBUG
+//     I.PrintInfo();
+// #endif
+
+//     // GGGG: A = A .* not(I)
+//     isLogicalNot = true;
+//     B = EWiseMult(C, I, isLogicalNot);
+// #ifdef DEBUG
+//     B.PrintInfo();
+// #endif
   }
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
