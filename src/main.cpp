@@ -331,7 +331,7 @@ int main(int argc, char **argv)
     //     SpParHelper::Print("Performed random permutation of matrix\n");
     // }
 
-    // GGGG: B = A^2
+    // GGGG: C = B^2
     PSpMat<dibella::CommonKmers>::MPI_DCCols F = B;
     PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F);
 
@@ -350,22 +350,21 @@ int main(int argc, char **argv)
     tu.print_str("Matrix F, i.e B + FUZZ: ");
     F.PrintInfo();
 
-//     // GGGG: I = M >= B 
-//     bool isLogicalNot = false;
-//     PSpMat<bool>::MPI_DCCols I = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(F, C, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
+    // GGGG: I = F >= C 
+    bool isLogicalNot = false;
+    PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, PSpMat<bool>::DCCols>(F, C, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
 
-//     // GGGG: prune potential zero-valued nonzeros
-//     I.Prune(ZeroUnaryOp<dibella::CommonKmers>(), true);
-// #ifdef DEBUG
-//     I.PrintInfo();
-// #endif
+    // GGGG: prune potential zero-valued nonzeros
+    I.Prune(ZeroUnaryOp<bool>(), true);
+    tu.print_str("Matrix I, i.e transitive edges: ");
+    I.PrintInfo();
 
-//     // GGGG: A = A .* not(I)
-//     isLogicalNot = true;
-//     B = EWiseMult(C, I, isLogicalNot);
-// #ifdef DEBUG
-//     B.PrintInfo();
-// #endif
+    // GGGG: B = B .* not(I)
+    // GGGG: this is gonna be a custom typo so I need to rewrite it as EWiseApply I think
+    isLogicalNot = true;
+    // B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, EWiseMulOp<dibella::CommonKmers, bool>(), isLogicalNot, id);
+    // B = EWiseMult(B, I, isLogicalNot);
+    // B.PrintInfo();
   }
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
