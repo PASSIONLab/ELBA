@@ -45,8 +45,8 @@ struct TimePod {
 
 class TraceUtils {
 public:
-//  static void print_fasta_data(const std::unique_ptr<FastaData> &Dfd,
-//    const std::shared_ptr<ParallelOps> &parops);
+  //  static void print_fasta_data(const std::unique_ptr<FastaData> &Dfd,
+  //  const std::shared_ptr<ParallelOps> &parops);
   static void print_msg(const std::string &title, const std::string &msg,
                         const std::shared_ptr<ParallelOps> &parops);
 
