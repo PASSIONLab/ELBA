@@ -2,7 +2,7 @@
 
 #include "../../include/pw/SeedExtendXdrop.hpp"
 
-void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap)
+void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, uint32_t& overhang)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -42,26 +42,43 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 #ifndef FIXEDTHR
 	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)ov);
 
-	if((float)ai.xscore >= myThr)
+	/* Contained overlaps removed for now, reintroduce them later */
+	bool contained = false;
+
+	if(begpV >= begpH)
+	{   /* horizonatal read is contained */
+		if(endpV >= read1len) contained = true;
+	}
+	
+	if(begpH >= begpV)
+	{   /* vertical read is contained */
+		if(endpH >= read2len) contained = true;
+	}
+
+	/* If not contained check score and compute overhang */
+	if((float)ai.xscore >= myThr && !contained)
+	{
+		/*  GGGG: big quesition is how do I ensure constency? I could just encode both */
+		/*  GGGG: TODO add information about direction */
 		passed = true;
+
+		if(begpH > begpV)
+			if(endpH < endpV)
+			{
+				overhang = read2len - endpV;
+			}
+
+		if(begpV > begpH)
+			if(endpV < endpH)
+			{
+				overhang = read1len - endpH;
+			}		
+	}
+		
 #else
 	if(ai.xscore >= FIXEDTHR)
 		passed = true;
 #endif
-
-	/* Contained overlaps removed for now, reintroduce them later */
-	if(begpV >= begpH)
-	{	
-		/* horizonatal read is contained */
-		if(endpV >= read1len) passed = false;
-	}
-	
-	/* Contained overlaps removed for now, reintroduce them later */
-	if(begpH >= begpV)
-	{
-		/* vertical read is contained */
-		if(endpH >= read2len) passed = false;
-	}
 }
 
 SeedExtendXdrop::SeedExtendXdrop(
@@ -393,14 +410,6 @@ SeedExtendXdrop::apply_batch
 				ai[i].seq_h_seed_length = seedlens[i].first;
 				ai[i].seq_v_seed_length = seedlens[i].second;
 
-				/*  GGGG: big quesition is how do I ensure constency? 
-					Create option for directed and bidirected.
-				*/
-
-				/* GGGG: update the overhang length and make sure strands are consistent across pairs
-				cks.overhang = 
-				*/
-
 				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
     			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
@@ -452,11 +461,12 @@ SeedExtendXdrop::apply_batch
 		{
 			// Only keep alignments that meet BELLA criteria
 			bool passed = false;
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap);
+
+			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang);
 	
 			if (passed)
 			{
-				dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 				cks->score = ai[i].xscore;
 				cks->passed = passed;	// keep this
 			}
