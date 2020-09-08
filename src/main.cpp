@@ -345,7 +345,6 @@ int main(int argc, char **argv)
     vA = B.Reduce(Row, ReduceMSR_t(), id);
     vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
 
-
     F.DimApply(Row, vA, Bind2ndSR_t());
     tu.print_str("Matrix F = B + FUZZ: ");
     F.PrintInfo();
@@ -355,6 +354,7 @@ int main(int argc, char **argv)
     PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, PSpMat<bool>::DCCols>(F, C, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
 
     // GGGG: prune potential zero-valued nonzeros
+    // GGGG: there's currently some nondeterminism happening here
     I.Prune(ZeroUnaryOp<bool>(), true);
     tu.print_str("Matrix I = F >= B: ");
     I.PrintInfo();

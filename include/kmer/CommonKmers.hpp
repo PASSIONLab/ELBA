@@ -38,7 +38,6 @@ namespace dibella {
 
     CommonKmers() : count(1), passed(false), overhang(0) {
     }
-
     explicit
 	CommonKmers(ushort count) : 
 		count(count), passed(false), overhang(0) {

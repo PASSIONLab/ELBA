@@ -48,6 +48,20 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	if(ai.xscore >= FIXEDTHR)
 		passed = true;
 #endif
+
+	/* Contained overlaps removed for now, reintroduce them later */
+	if(begpV >= begpH)
+	{	
+		/* horizonatal read is contained */
+		if(endpV >= read1len) passed = false;
+	}
+	
+	/* Contained overlaps removed for now, reintroduce them later */
+	if(begpH >= begpV)
+	{
+		/* vertical read is contained */
+		if(endpH >= read2len) passed = false;
+	}
 }
 
 SeedExtendXdrop::SeedExtendXdrop(
