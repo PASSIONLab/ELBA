@@ -361,7 +361,7 @@ int main(int argc, char **argv)
 
     // GGGG: B = B .* not(I)
     isLogicalNot = true;
-    B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, EWiseMulOp<dibella::CommonKmers, bool>(), isLogicalNot, false);
+    B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, EWiseMulOp<dibella::CommonKmers, bool>(), isLogicalNot, true);
 
     // GGGG: prune zero-valued overhang
     B.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
