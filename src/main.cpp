@@ -335,7 +335,7 @@ int main(int argc, char **argv)
     PSpMat<dibella::CommonKmers>::MPI_DCCols F = B;
     PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F);
 
-    tu.print_str("Matrix C, i.e B^2: ");
+    tu.print_str("Matrix C = B^2: ");
     C.PrintInfo();
   
     FullyDistVec<int64_t, dibella::CommonKmers> vA(B.getcommgrid());
@@ -347,7 +347,7 @@ int main(int argc, char **argv)
 
 
     F.DimApply(Row, vA, Bind2ndSR_t());
-    tu.print_str("Matrix F, i.e B + FUZZ: ");
+    tu.print_str("Matrix F = B + FUZZ: ");
     F.PrintInfo();
 
     // GGGG: I = F >= C 
@@ -356,15 +356,17 @@ int main(int argc, char **argv)
 
     // GGGG: prune potential zero-valued nonzeros
     I.Prune(ZeroUnaryOp<bool>(), true);
-    tu.print_str("Matrix I, i.e transitive edges: ");
+    tu.print_str("Matrix I = F >= B: ");
     I.PrintInfo();
 
     // GGGG: B = B .* not(I)
-    // GGGG: this is gonna be a custom typo so I need to rewrite it as EWiseApply I think
     isLogicalNot = true;
-    // B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, EWiseMulOp<dibella::CommonKmers, bool>(), isLogicalNot, id);
-    // B = EWiseMult(B, I, isLogicalNot);
-    // B.PrintInfo();
+    B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, EWiseMulOp<dibella::CommonKmers, bool>(), isLogicalNot, false);
+
+    // GGGG: prune zero-valued overhang
+    B.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
+    tu.print_str("Matrix B = B .* not(I): ");
+    B.PrintInfo();
   }
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 

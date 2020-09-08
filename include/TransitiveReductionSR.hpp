@@ -139,4 +139,20 @@ struct ZeroUnaryOp : unary_function <T, bool>
     bool operator() (const T& x) const { if(x == 0) return true; else return false; }
 };
 
+template <class T, class T2>
+struct EWiseMulOp : binary_function <T, T2, T>
+{
+    T operator() (T& x, const T2& y) const
+    {
+        if(!y) x.overhang = 0;
+        return x;
+    }
+};
+
+template <class T>
+struct ZeroOverhangSR : unary_function <T, bool>
+{
+    bool operator() (const T& x) const { if(x.overhang == 0) return true; else return false; }
+};
+
 #endif
