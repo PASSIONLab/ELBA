@@ -14,7 +14,8 @@ struct AlignmentInfo
 
 	int xscore;
 	TSeed seed;
-  std::string  strand;
+  
+  bool rc;
 
   ushort seq_h_length;
   ushort seq_v_length;

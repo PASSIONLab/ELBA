@@ -80,4 +80,5 @@ namespace dibella {
 		}
 	};
 }
+
 #endif //DIBELLA_COMMONKMERS_HPP
