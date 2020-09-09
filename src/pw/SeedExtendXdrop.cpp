@@ -16,11 +16,11 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	unsigned short int overlapLenH = ai.seq_h_seed_length;
 	unsigned short int overlapLenV = ai.seq_v_seed_length;
 
-	unsigned short int read1len = ai.seq_h_length;
-	unsigned short int read2len = ai.seq_v_length;
+	unsigned short int rlenH = ai.seq_h_length;
+	unsigned short int rlenV = ai.seq_v_length;
 
 	unsigned short int minLeft  = min(begpV, begpH);
-	unsigned short int minRight = min(read2len - endpV, read1len - endpH);
+	unsigned short int minRight = min(rlenV - endpV, rlenH - endpH);
 	unsigned short int ov       = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
 
 	// unsigned short int normLen  = max(overlapLenV, overlapLenH);
@@ -47,32 +47,69 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 	if(begpV >= begpH)
 	{   /* horizonatal read is contained */
-		if(endpV >= read1len) contained = true;
+		if(endpV >= rlenH) contained = true;
 	}
 	
 	if(begpH >= begpV)
 	{   /* vertical read is contained */
-		if(endpH >= read2len) contained = true;
+		if(endpH >= rlenV) contained = true;
 	}
 
 	/* If not contained check score and compute overhang */
 	if((float)ai.xscore >= myThr && !contained)
 	{
-		/*  GGGG: big quesition is how do I ensure constency? I could just encode both */
-		/*  GGGG: TODO add information about direction */
+		/* Consistency rules using ReadV as reference read (During alignment I always <temporary> reverse ReadH)
+			* If ReadV is entering into ReadH and not reverse complement, we assign directionality “01” 
+			* If ReadV is entering into ReadH and reverse complement, we assign directionality “00”
+			* If ReadV is exiting from ReadH and not reverse complement, we assign directionality “10” 
+			* If ReadV is exiting from ReadH and reverse complement, we assign directionality “11” 
+		*/
 		passed = true;
+		uint32_t direction;
+		uint32_t suffix;
 
-		if(begpH > begpV)
-			if(endpH < endpV)
+		/* NOT reverse complement */
+		if(!ai.rc)
+		{
+			/* ReadV is entering into ReadH */
+			/* Use only starting position should be enough because we already discard contained overlaps */
+			if(begpV > begpH) 
 			{
-				overhang = read2len - endpV;
+				suffix = rlenH - endpH;
+				direction = 1;
+
+				overhang = suffix << 2 | direction;
 			}
-
-		if(begpV > begpH)
-			if(endpV < endpH)
+			/* ReadV is exiting from ReadH  */
+			else 
 			{
-				overhang = read1len - endpH;
-			}		
+				suffix = rlenV - endpV;
+				direction = 1;
+
+				overhang = suffix << 2 | direction;
+			}	
+		}
+		/* reverse complement */
+		else
+		{
+			/* ReadV is entering into ReadH */
+			/* Use only starting position should be enough because we already discard contained overlaps */
+			if(begpV > begpH) 
+			{
+				suffix = rlenH - endpH;
+				direction = 0;
+
+				overhang = suffix << 2 | direction;
+			}
+			/* ReadV is exiting from ReadH  */
+			else 
+			{
+				suffix = rlenV - endpV;
+				direction = 3;
+
+				overhang = suffix << 2 | direction;
+			}	
+		}	
 	}
 		
 #else
@@ -135,7 +172,7 @@ void SeedExtendXdrop::apply(
 
 	if(twin == seedV)
 	{
-		ai.strand = 'c';
+		ai.rc = true;
 		seqan::Dna5String twinseqH = *seqH;
 		seqan::Dna5StringReverseComplement twinRead(twinseqH);
 		LocalSeedHOffset = length(twinseqH) - LocalSeedHOffset - seed_length;
@@ -161,7 +198,7 @@ void SeedExtendXdrop::apply(
 	}
 	else
 	{
-		ai.strand = 'n';
+		ai.rc = false;
 		start_time = std::chrono::system_clock::now();
 		ai.xscore = extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, (int)k, seqan::GappedXDrop());
 		end_time = std::chrono::system_clock::now();
@@ -262,9 +299,9 @@ SeedExtendXdrop::apply_batch
 	AlignmentInfo *ai = new AlignmentInfo[npairs];
 	std::pair<ushort, ushort> *seedlens = new std::pair<ushort, ushort>[npairs];
 
-	std::string *strands = new std::string[npairs];
-	int *xscores = new int[npairs];
-	TSeed *seeds = new TSeed[npairs];
+	bool *strands = new bool[npairs];
+	int  *xscores = new int[npairs];
+	TSeed  *seeds = new TSeed[npairs];
 
 	/* GGGG: seed_count is hardcoded here (2) */
 	for(int count = 0; count < seed_count; ++count)
@@ -315,7 +352,7 @@ SeedExtendXdrop::apply_batch
 
 			if(twin == seedV)
 			{
-				strands[i] = 'c';
+				strands[i] = true;
 				seqan::Dna5String twinseqH = seqan::source(seqsh[i]);
 				seqan::Dna5StringReverseComplement twinRead(twinseqH);
 				LocalSeedHOffset = length(twinseqH) - LocalSeedHOffset - seed_length;
@@ -343,7 +380,7 @@ SeedExtendXdrop::apply_batch
 			}
 			else
 			{
-				strands[i] = 'n';
+				strands[i] = false;
 				start_time = std::chrono::system_clock::now();
 				xscores[i] = extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
 						xdrop, (int)k, 
@@ -401,7 +438,7 @@ SeedExtendXdrop::apply_batch
 									  scoring_scheme);
 			#endif
 				ai[i].xscore = xscores[i];
-				ai[i].strand = strands[i];
+				ai[i].rc = strands[i];
 				ai[i].seed   =   seeds[i];
 
 				ai[i].seq_h_length = seqan::length(seqan::source(seqsh[i]));
@@ -434,7 +471,7 @@ SeedExtendXdrop::apply_batch
 				if (xscores[i] > ai[i].xscore) // GGGG: TODO double check this logic with fresh neurons
 				{
 					ai[i].xscore = xscores[i];
-					ai[i].strand = strands[i];
+					ai[i].rc = strands[i];
 					ai[i].seed   =   seeds[i];
 					ai[i].seq_h_seed_length = seedlens[i].first;
 					ai[i].seq_v_seed_length = seedlens[i].second;

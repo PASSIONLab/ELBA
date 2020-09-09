@@ -52,16 +52,6 @@ const uint inf_plus(const dibella::CommonKmers& a, const dibella::CommonKmers& b
     return length(a) + length(b);
 }
 
-/*
-template <class NT>
-class PSpMat
-{ 
-public: 
-	typedef SpDCCols <int64_t, NT> DCCols;
-	typedef SpParMat <int64_t, NT, DCCols> MPI_DCCols;
-};
-*/
-
 template <class T1, class T2, class OUT>
 struct Bind2ndBiSRing : binary_function <T1, T2, OUT>
 {
