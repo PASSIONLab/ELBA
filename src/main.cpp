@@ -233,9 +233,11 @@ int main(int argc, char **argv)
   tp->times["StartMain:DfdWait()"] = std::chrono::system_clock::now();
   if (!dfd->is_ready())
   {
-    dfd->wait(myrank);
+    dfd->wait();
   }
   tp->times["EndMain:DfdWait()"] = std::chrono::system_clock::now();
+
+  std::cout << "local seqs " << dfd->l_seq_count << std::endl;
 
   uint64_t n_rows, n_cols;
   n_rows = n_cols = dfd->global_count();
@@ -344,8 +346,8 @@ int main(int argc, char **argv)
       PSpMat<dibella::CommonKmers>::MPI_DCCols F = B;
       PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F);
 
-      tu.print_str("Matrix C = B^2: ");
-      C.PrintInfo();
+      // tu.print_str("Matrix C = B^2: ");
+      // C.PrintInfo();
     
       FullyDistVec<int64_t, dibella::CommonKmers> vA(B.getcommgrid());
 
@@ -355,8 +357,8 @@ int main(int argc, char **argv)
       vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
 
       F.DimApply(Row, vA, Bind2ndSR_t());
-      tu.print_str("Matrix F = B + FUZZ: ");
-      F.PrintInfo();
+      // tu.print_str("Matrix F = B + FUZZ: ");
+      // F.PrintInfo();
 
       /* Find transitive edges that can be removed
        * I = F >= C 
@@ -366,8 +368,8 @@ int main(int argc, char **argv)
 
       /* Prune potential zero-valued nonzeros */
       I.Prune(ZeroUnaryOp<bool>(), true);
-      tu.print_str("Matrix I = F >= B: ");
-      I.PrintInfo();
+      // tu.print_str("Matrix I = F >= B: ");
+      // I.PrintInfo();
 
       /* Remove transitive edges
        * B = B .* not(I)
