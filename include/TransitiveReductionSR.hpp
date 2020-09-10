@@ -44,7 +44,7 @@ dibella::CommonKmers max(const dibella::CommonKmers& arg1, const dibella::Common
     else return arg1;
 }
 
-const uint inf_plus(const dibella::CommonKmers& a, const dibella::CommonKmers& b) {
+const uint infplus(const dibella::CommonKmers& a, const dibella::CommonKmers& b) {
 	uint inf = std::numeric_limits<uint>::max();
     if (length(a) == inf || length(b) == inf) {
     	return inf;
@@ -96,7 +96,7 @@ struct MinPlusBiSRing
         OUT res;
         if((dir(arg1) & 1) != (dir(arg2) & (1 << 1)))
         {
-            uint len = inf_plus(length(arg1), length(arg2));
+            uint len = infplus(arg1, arg2);
             return compose(res, len, dir(arg2));
         } 
         else return id();
