@@ -36,11 +36,11 @@ namespace dibella {
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
 #endif
 
-    CommonKmers() : count(1), passed(false), overhang(10) {
+    CommonKmers() : count(1), passed(false), overhang(0) {
     }
     explicit
 	CommonKmers(ushort count) : 
-		count(count), passed(false), overhang(10) {
+		count(count), passed(false), overhang(0) {
     }
 
 	CommonKmers (bool passed, uint32_t score) :

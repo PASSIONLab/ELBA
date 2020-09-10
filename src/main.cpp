@@ -331,42 +331,58 @@ int main(int argc, char **argv)
     //     SpParHelper::Print("Performed random permutation of matrix\n");
     // }
 
-    // GGGG: C = B^2
-    PSpMat<dibella::CommonKmers>::MPI_DCCols F = B;
-    PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F);
+    uint nnz, prev;
 
-    tu.print_str("Matrix C = B^2: ");
-    C.PrintInfo();
-  
-    FullyDistVec<int64_t, dibella::CommonKmers> vA(B.getcommgrid());
+    /* Gonna iterate on B until there are no more transitive edges to remove */
+    do
+    {
+      prev = B.getnnz();
 
-    // GGGG: Double check id() here
-    dibella::CommonKmers id;
-    vA = B.Reduce(Row, ReduceMSR_t(), id);
-    vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
+      /* Find two-hops neighbors
+       * C = B^2
+       */
+      PSpMat<dibella::CommonKmers>::MPI_DCCols F = B;
+      PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F);
 
-    F.DimApply(Row, vA, Bind2ndSR_t());
-    tu.print_str("Matrix F = B + FUZZ: ");
-    F.PrintInfo();
+      tu.print_str("Matrix C = B^2: ");
+      C.PrintInfo();
+    
+      FullyDistVec<int64_t, dibella::CommonKmers> vA(B.getcommgrid());
 
-    // GGGG: I = F >= C 
-    bool isLogicalNot = false;
-    PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, PSpMat<bool>::DCCols>(F, C, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
+      // GGGG: double check id() here
+      dibella::CommonKmers id;
+      vA = B.Reduce(Row, ReduceMSR_t(), id);
+      vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
 
-    // GGGG: prune potential zero-valued nonzeros
-    // GGGG: there's currently some nondeterminism happening here
-    I.Prune(ZeroUnaryOp<bool>(), true);
-    tu.print_str("Matrix I = F >= B: ");
-    I.PrintInfo();
+      F.DimApply(Row, vA, Bind2ndSR_t());
+      tu.print_str("Matrix F = B + FUZZ: ");
+      F.PrintInfo();
 
-    // GGGG: B = B .* not(I)
-    isLogicalNot = true;
-    B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, EWiseMulOp<dibella::CommonKmers, bool>(), isLogicalNot, true);
+      /* Find transitive edges that can be removed
+       * I = F >= C 
+       */
+      bool isLogicalNot = false;
+      PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, PSpMat<bool>::DCCols>(F, C, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
 
-    // GGGG: prune zero-valued overhang
-    B.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
-    tu.print_str("Matrix B = B .* not(I): ");
-    B.PrintInfo();
+      /* Prune potential zero-valued nonzeros */
+      I.Prune(ZeroUnaryOp<bool>(), true);
+      tu.print_str("Matrix I = F >= B: ");
+      I.PrintInfo();
+
+      /* Remove transitive edges
+       * B = B .* not(I)
+       */ 
+      isLogicalNot = true;
+      B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, EWiseMulOp<dibella::CommonKmers, bool>(), isLogicalNot, true);
+
+      /* Prune zero-valued overhang */
+      B.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
+      tu.print_str("Matrix B = B .* not(I): ");
+      B.PrintInfo();
+
+      nnz = B.getnnz();
+       
+    } while (nnz != prev);
   }
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
