@@ -210,7 +210,6 @@ DistributedPairwiseRunner::run_batch
 	bool				 score_only
 )
 {
-
 	uint64_t	local_nnz_count = spSeq->getnnz();
 	int			batch_size		= 1e9;
 	int			batch_cnt		= (local_nnz_count / batch_size) + 1;
@@ -249,8 +248,9 @@ DistributedPairwiseRunner::run_batch
 	#endif
 
 	uint64_t *algn_cnts   = new uint64_t[numThreads + 1];
-	uint64_t nelims_ckthr = 0, nelims_alnthr = 0, nelims_both = 0;
-	
+	uint64_t nelims_ckthr = 0; // nelims_alnthr = 0, nelims_both = 0;
+
+
 	while (batch_idx < batch_cnt)
 	{
 		uint64_t beg = batch_idx * batch_size;
@@ -279,8 +279,8 @@ DistributedPairwiseRunner::run_batch
 			for (uint64_t i = beg; i < end; ++i)
 			{
 				// GGGG: check read indexes
-				auto				 l_row_idx = std::get<0>(mattuples[i]) - 1; 	// GGGG: -1 bc dibella kmer counter uses 1-based indexing; double check to make sure this doesn't create inconsistencies
-				auto				 l_col_idx = std::get<1>(mattuples[i]) - 1; 	// GGGG: -1 bc dibella kmer counter uses 1-based indexing; double check to make sure this doesn't create inconsistencies
+				auto				 l_row_idx = std::get<0>(mattuples[i]);
+				auto				 l_col_idx = std::get<1>(mattuples[i]);
 				uint64_t			 g_col_idx = l_col_idx + col_offset;
 				uint64_t			 g_row_idx = l_row_idx + row_offset;
 
@@ -294,7 +294,7 @@ DistributedPairwiseRunner::run_batch
 				{
 					++algn_cnt;
 				}
-				
+
 				// Compute statistics 
 				if ((l_col_idx >= l_row_idx) &&
 					(l_col_idx != l_row_idx || g_col_idx > g_row_idx))
@@ -307,7 +307,7 @@ DistributedPairwiseRunner::run_batch
 			algn_cnts[tid + 1] = algn_cnt;
 		}
 
-		nelims_ckthr  += nelims_ckthr_cur;	
+		nelims_ckthr += nelims_ckthr_cur;	
 
 		for (int i = 1; i < numThreads + 1; ++i)
 			algn_cnts[i] += algn_cnts[i - 1];
@@ -324,6 +324,7 @@ DistributedPairwiseRunner::run_batch
 		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsv;
 		resize(seqsh, algn_cnts[numThreads], seqan::Exact{});
 		resize(seqsv, algn_cnts[numThreads], seqan::Exact{});
+
 		uint64_t *lids = new uint64_t[algn_cnts[numThreads]];
 		
 		// fill StringSet
@@ -336,12 +337,12 @@ DistributedPairwiseRunner::run_batch
 
 			uint64_t algn_idx = algn_cnts[tid];
 
-		#pragma omp for schedule(static, 1000)
+			#pragma omp for schedule(static, 1000)
 			for (uint64_t i = beg; i < end; ++i)
 			{
-				auto		l_row_idx = std::get<0>(mattuples[i]) - 1; 	// GGGG: -1 bc dibella kmer counter uses 1-based indexing; double check to make sure this doesn't create inconsistencies
-				auto		l_col_idx = std::get<1>(mattuples[i]) - 1; 	// GGGG: -1 bc dibella kmer counter uses 1-based indexing; double check to make sure this doesn't create inconsistencies
-				uint64_t	g_col_idx = l_col_idx + col_offset; 
+				auto		l_row_idx = std::get<0>(mattuples[i]);
+				auto		l_col_idx = std::get<1>(mattuples[i]);
+				uint64_t	g_col_idx = l_col_idx + col_offset;
 				uint64_t	g_row_idx = l_row_idx + row_offset; 
 
 				assert(l_row_idx >= 0 && l_col_idx >= 0 && g_col_idx >= 0 && g_row_idx >= 0);
@@ -352,8 +353,13 @@ DistributedPairwiseRunner::run_batch
 					(l_col_idx >= l_row_idx) &&
 					(l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
+					
+					std::cout << "l_col_idx " << l_col_idx << std::endl;
 					seqsh[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));
-					seqsv[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
+					// seqsv[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
+
+					std::cout << seqsv[algn_idx] << std::endl;
+					std::cout << std::endl;
 
 					lids[algn_idx] = i;
 					++algn_idx;
@@ -362,7 +368,10 @@ DistributedPairwiseRunner::run_batch
 				// Don't need this here, it's false by construction
 				// cks->passed = false; // This is gonna be use it for pruning purposes
 			}
-		}	
+		}
+
+		MPI_Finalize();
+		exit(0);
 
 		// call aligner
 		lfs << "calling aligner for batch idx " << batch_idx
