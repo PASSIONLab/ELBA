@@ -387,6 +387,9 @@ DistributedPairwiseRunner::run_batch
 	// Stats
 	uint64_t nelims_ckthr_tot = 0, nalignments_tot = 0;
 
+	// MPI_Finalize();
+	// exit(0);
+
 	MPI_Reduce(&nelims_ckthr, &nelims_ckthr_tot, 1, MPI_UINT64_T,
 			   MPI_SUM, 0, MPI_COMM_WORLD);
 
@@ -403,10 +406,14 @@ DistributedPairwiseRunner::run_batch
 
 	// Prune pairs that do not meet coverage criteria
 	std::string outfile = aln_file + std::string("-pruned-C.mtx");
-	auto elim_cov = [] (dibella::CommonKmers &ck)
-		{return ck.passed == false;};
+	auto elim_cov = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
 	gmat->Prune(elim_cov);
-	gmat->ParallelWriteMM(outfile, false, dibella::CkOutputHandler());
+	// gmat->ParallelWriteMM(outfile, false, dibella::CkOutputHandler());
+
+	// MPI_Barrier(MPI_COMM_WORLD);
+	// MPI_Finalize();
+	// exit(0);
+
 	tu.print_str("nnzs in the pruned matrix " +
 				 std::to_string(gmat->getnnz()) + "\n");
 	

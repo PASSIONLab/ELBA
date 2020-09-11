@@ -343,21 +343,22 @@ int main(int argc, char **argv)
        */
       PSpMat<dibella::CommonKmers>::MPI_DCCols F = B;
       PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F);
-
-      // tu.print_str("Matrix C = B^2: ");
-      // C.PrintInfo();
+  #ifdef DIBELLA_DEBUG
+      tu.print_str("Matrix C = B^2: ");
+      C.PrintInfo();
+  #endif
     
       FullyDistVec<int64_t, dibella::CommonKmers> vA(B.getcommgrid());
 
-      // GGGG: double check id() here
-      dibella::CommonKmers id;
+      dibella::CommonKmers id; // Double check id() here
       vA = B.Reduce(Row, ReduceMSR_t(), id);
       vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
 
       F.DimApply(Row, vA, Bind2ndSR_t());
-      // tu.print_str("Matrix F = B + FUZZ: ");
-      // F.PrintInfo();
-
+  #ifdef DIBELLA_DEBUG
+      tu.print_str("Matrix F = B + FUZZ: ");
+      F.PrintInfo();
+  #endif
       /* Find transitive edges that can be removed
        * I = F >= C 
        */
@@ -366,8 +367,10 @@ int main(int argc, char **argv)
 
       /* Prune potential zero-valued nonzeros */
       I.Prune(ZeroUnaryOp<bool>(), true);
-      // tu.print_str("Matrix I = F >= B: ");
-      // I.PrintInfo();
+  #ifdef DIBELLA_DEBUG
+      tu.print_str("Matrix I = F >= B: ");
+      I.PrintInfo();
+  #endif
 
       /* Remove transitive edges
        * B = B .* not(I)
@@ -377,13 +380,16 @@ int main(int argc, char **argv)
 
       /* Prune zero-valued overhang */
       B.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
+  #ifdef DIBELLA_DEBUG
       tu.print_str("Matrix B = B .* not(I): ");
       B.PrintInfo();
-
+  #endif
       nnz = B.getnnz();
        
     } while (nnz != prev);
   }
+  tu.print_str("Matrix B, i.e AAt after transitive reduction: ");
+  B.PrintInfo();
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
   tp->times["EndMain"] = std::chrono::system_clock::now();
