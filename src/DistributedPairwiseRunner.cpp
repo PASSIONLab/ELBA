@@ -11,7 +11,7 @@
 DistributedPairwiseRunner::DistributedPairwiseRunner(
     const std::shared_ptr<DistributedFastaData> dfd,
     PSpMat<dibella::CommonKmers>::DCCols * localmat,
-	PSpMat<dibella::CommonKmers>::MPI_DCCols *glmat,
+	PSpMat<dibella::CommonKmers>::MPI_DCCols * glmat,
     int afreq,
     uint64_t rowoffset, uint64_t coloffset,
     const std::shared_ptr<ParallelOps> &parops)
@@ -211,7 +211,11 @@ DistributedPairwiseRunner::run_batch
 )
 {
 	uint64_t	local_nnz_count = spSeq->getnnz();
-	int			batch_size		= 1e9;
+
+	int myrank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+
+	int			batch_size		= 1e8;
 	int			batch_cnt		= (local_nnz_count / batch_size) + 1;
 	int			batch_idx		= 0;
 	uint64_t	nalignments		= 0;
@@ -278,7 +282,6 @@ DistributedPairwiseRunner::run_batch
 			#pragma omp for schedule(static, 1000)
 			for (uint64_t i = beg; i < end; ++i)
 			{
-				// GGGG: check read indexes
 				auto				 l_row_idx = std::get<0>(mattuples[i]);
 				auto				 l_col_idx = std::get<1>(mattuples[i]);
 				uint64_t			 g_col_idx = l_col_idx + col_offset;
@@ -353,25 +356,15 @@ DistributedPairwiseRunner::run_batch
 					(l_col_idx >= l_row_idx) &&
 					(l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
-					
-					std::cout << "l_col_idx " << l_col_idx << std::endl;
-					seqsh[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));
-					// seqsv[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
 
-					std::cout << seqsv[algn_idx] << std::endl;
-					std::cout << std::endl;
+					seqsh[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));
+					seqsv[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
 
 					lids[algn_idx] = i;
 					++algn_idx;
 				}
-
-				// Don't need this here, it's false by construction
-				// cks->passed = false; // This is gonna be use it for pruning purposes
 			}
 		}
-
-		MPI_Finalize();
-		exit(0);
 
 		// call aligner
 		lfs << "calling aligner for batch idx " << batch_idx

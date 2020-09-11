@@ -529,16 +529,11 @@ DistributedFastaData::push_seqs(int rc_flag, FastaData *fd, uint64_t seqs_count,
   }
 }
 
-void DistributedFastaData::wait(int myrank) {
+void DistributedFastaData::wait() {
   tp->times["StartDfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
-  
-  // double StartWaitAll = MPI_Wtime();
 
   MPI_Waitall(recv_nbrs_count, recv_nbrs_buffs_reqs, recv_nbrs_buffs_stats);
   MPI_Waitall(to_nbrs_count, to_nbrs_buffs_reqs, to_nbrs_buffs_stat);
-
-  // double WaitAll = MPI_Wtime() - StartWaitAll;
-  // std::cout << "WaitAll on rank " << myrank << " took " << WaitAll << std::endl;
 
   tp->times["EndDfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
 

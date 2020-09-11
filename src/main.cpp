@@ -196,7 +196,7 @@ int main(int argc, char **argv)
   tp->times["StartMain:GenerateA()"] = std::chrono::system_clock::now();
   PSpMat<PosInRead>::MPI_DCCols A =
       dibella::KmerOps::GenerateA(
-          seq_count,dfd, klength, kstride,
+          seq_count, dfd, klength, kstride,
           alph, parops, tp);
 
   tu.print_str("Matrix A: ");
@@ -237,14 +237,14 @@ int main(int argc, char **argv)
   }
   tp->times["EndMain:DfdWait()"] = std::chrono::system_clock::now();
 
-  std::cout << "local seqs " << dfd->l_seq_count << std::endl;
-
   uint64_t n_rows, n_cols;
   n_rows = n_cols = dfd->global_count();
   int gr_rows = parops->grid->GetGridRows();
   int gr_cols = parops->grid->GetGridCols();
+
   int gr_col_idx = parops->grid->GetRankInProcRow();
   int gr_row_idx = parops->grid->GetRankInProcCol();
+
   uint64_t avg_rows_in_grid = n_rows / gr_rows;
   uint64_t avg_cols_in_grid = n_cols / gr_cols;
   uint64_t row_offset = gr_row_idx * avg_rows_in_grid;  // first row in this process
@@ -302,8 +302,6 @@ int main(int argc, char **argv)
     dpr.write_overlaps(overlap_file.c_str());
   }
   tp->times["EndMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
-
-  // GGGG: TODO populate overhang field in CommonKmers (before and after alignment)
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
   bool transitive_reduction = true;

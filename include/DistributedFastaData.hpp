@@ -74,7 +74,7 @@ public:
   uint64_t  g_seq_count;
   uint64_t* g_seq_offsets = nullptr;
 
-  void wait(int myrank);
+  void wait();
 
 private:
   std::shared_ptr<TimePod> tp;
@@ -87,13 +87,13 @@ private:
 
   std::vector<NbrData> my_nbrs;
 
+  std::vector<seqan::Dna5String *> row_seqs;
+  std::vector<seqan::Dna5String *> col_seqs;
+
   uint64_t row_seq_start_idx;
   uint64_t row_seq_end_idx;
   uint64_t col_seq_start_idx;
   uint64_t col_seq_end_idx;
-
-  std::vector<seqan::Dna5String *> row_seqs;
-  std::vector<seqan::Dna5String *> col_seqs;
 
   /*! recv counts and buffers */
   int recv_nbrs_count;
