@@ -99,3 +99,10 @@ The parameters and options of diBELLA are as follows:
 - ```--af <string>```: Output file to write alignment information. 
 - ```--idxmap <string>```: Output file for input sequences to ids used in diBELLA.
 - ```--alph <dna|protein>```: Alphabet.
+
+## Run test program
+-----
+You can run the test dataset ```ecsample-sub1.fa``` as follows on one node (it's too small to run on multiple nodes), this command runs diBELLA using x-drop alignment and ```x = 5```:
+```
+    mpirun -np 1 ./dibella -i ../ecsample-sub1.fa -k 17 --idxmap dibella-test -c 135 --alph dna --of overlap-test --af alignment-test -s 1 -O 100000 --afreq 100000 --xa 5
+```
