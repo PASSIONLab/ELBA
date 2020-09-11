@@ -1213,7 +1213,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
             if(readids[j] != 0)
             {
                 lcol_ids.push_back(kmerid);
-                lrow_ids.push_back(readids[j]);
+                lrow_ids.push_back(readids[j] - 1); // -1 bc kmer counter counts from 1
                 lvals.push_back(values[j]);
             }
         }
