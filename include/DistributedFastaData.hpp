@@ -127,7 +127,7 @@ private:
                  std::vector<NbrData> &my_nbrs);
 
   void push_seqs(int rc_flag, FastaData *fd, uint64_t seqs_count,
-                 uint64_t seq_start_idx);
+                 uint64_t seq_start_idx, uint64_t rseq_beg, uint64_t cseq_beg);
 
 };
 

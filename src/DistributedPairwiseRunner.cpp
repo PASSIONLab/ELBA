@@ -405,14 +405,9 @@ DistributedPairwiseRunner::run_batch
 				 std::to_string(nelims_ckthr_tot) + "\n");
 
 	// Prune pairs that do not meet coverage criteria
-	std::string outfile = aln_file + std::string("-pruned-C.mtx");
 	auto elim_cov = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
 	gmat->Prune(elim_cov);
-	// gmat->ParallelWriteMM(outfile, false, dibella::CkOutputHandler());
-
-	// MPI_Barrier(MPI_COMM_WORLD);
-	// MPI_Finalize();
-	// exit(0);
+	// gmat->ParallelWriteMM(aln_file, true, dibella::CkOutputHandler());
 
 	tu.print_str("nnzs in the pruned matrix " +
 				 std::to_string(gmat->getnnz()) + "\n");
