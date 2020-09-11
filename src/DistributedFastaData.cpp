@@ -96,7 +96,8 @@ DistributedFastaData::DistributedFastaData(
   MPI_Exscan(&orig_l_seq_count, &orig_g_seq_offset, 1,
           MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
 
-  write_idx_map(idx_map_file);
+  // @OGUZ-TODO make this optional disabled for now
+  // write_idx_map(idx_map_file);
 
 #ifndef NDEBUG
   std::printf("Rank: %d orig_l_seq_count: %lld\n",
@@ -511,31 +512,43 @@ bool DistributedFastaData::is_diagonal() {
 }
 
 void
-DistributedFastaData::push_seqs(int rc_flag, FastaData *fd, uint64_t seqs_count,
-                                uint64_t seq_start_idx) {
-  ushort len;
-  uint64_t start_offset, end_offset_inclusive;
-  for (uint64_t i = 0; i < seqs_count; ++i) {
-    char *buff = fd->get_sequence(seq_start_idx + i, len, start_offset,
-                                  end_offset_inclusive);
-    seqan::Dna5String *seq = new seqan::Dna5String(buff + start_offset, len);
-    if (rc_flag == 1) {
-      /*! grid row sequence */
-      row_seqs.push_back(seq);
-    } else {
-      /*! grid col sequence */
-      col_seqs.push_back(seq);
-    }
+DistributedFastaData::push_seqs
+(
+  int rc_flag,
+	FastaData *fd,
+	uint64_t seqs_count,
+	uint64_t seq_start_idx,
+	uint64_t rseq_beg,
+	uint64_t cseq_beg
+)
+{
+	std::vector<seqan::Dna5String *> &cur_seqs =
+		(rc_flag == 1 ? row_seqs : col_seqs);
+	uint64_t seq_beg = (rc_flag == 1 ? rseq_beg : cseq_beg);
+
+	#pragma omp parallel
+	{
+		ushort len;
+		uint64_t start_offset, end_offset_inclusive;
+
+		#pragma omp for
+		for (uint64_t i = 0; i < seqs_count; ++i)
+		{
+			char *buff = fd->get_sequence(seq_start_idx + i, len, start_offset,
+										  end_offset_inclusive);
+			seqan::Dna5String *seq = new seqan::Dna5String(buff + start_offset, len);
+			cur_seqs[seq_beg + i] = seq;
+		}
   }
 }
 
-void DistributedFastaData::wait() {
-  tp->times["StartDfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
-
-  MPI_Waitall(recv_nbrs_count, recv_nbrs_buffs_reqs, recv_nbrs_buffs_stats);
-  MPI_Waitall(to_nbrs_count, to_nbrs_buffs_reqs, to_nbrs_buffs_stat);
-
-  tp->times["EndDfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
+void
+DistributedFastaData::wait()
+{
+  	tp->times["StartDfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
+	MPI_Waitall(recv_nbrs_count, recv_nbrs_buffs_reqs, recv_nbrs_buffs_stats);
+	MPI_Waitall(to_nbrs_count, to_nbrs_buffs_reqs, to_nbrs_buffs_stat);
+	tp->times["EndDfd:MPI_Waitall(seqs)"] = std::chrono::system_clock::now();
 
 #ifndef NDEBUG
   {
@@ -548,58 +561,95 @@ void DistributedFastaData::wait() {
   }
 #endif
 
-#ifndef NDEBUG
-  std::string title = "Received neighbor data";
-  std::string msg;
-#endif
+	#ifndef NDEBUG
+  	std::string title = "Received neighbor data";
+  	std::string msg;
+	#endif
 
-  // tp->times["StartDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
+  // Count row and col sequences
+	uint64_t rseq_cnt = 0, cseq_cnt = 0;
+  for (auto &nbr : my_nbrs)
+	{
+		uint64_t nbr_seqs_count = (nbr.nbr_seq_end_idx -
+								   nbr.nbr_seq_start_idx) + 1;
+		if (nbr.rc_flag == 1)
+			rseq_cnt += nbr_seqs_count;
+		else
+			cseq_cnt += nbr_seqs_count;
+	}
+
+	row_seqs.resize(rseq_cnt);
+	col_seqs.resize(cseq_cnt);
+	  
+  tp->times["StartDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
+	
   int recv_nbr_idx = 0;
-  for (auto &nbr : my_nbrs) {
-    uint64_t nbr_seqs_count = (nbr.nbr_seq_end_idx - nbr.nbr_seq_start_idx) + 1;
-    if (nbr.nbr_rank == parops->world_proc_rank) {
+	uint64_t cur_rseq = 0, cur_cseq = 0;
+  for (auto &nbr : my_nbrs)
+	{
+		uint64_t nbr_seqs_count = (nbr.nbr_seq_end_idx -
+								   nbr.nbr_seq_start_idx) + 1;
+		
+    if (nbr.nbr_rank == parops->world_proc_rank)
+		{
       /*! Local data, so create SeqAn sequences from <tt>fd</tt> */
-      push_seqs(nbr.rc_flag, fd, nbr_seqs_count, nbr.nbr_seq_start_idx);
-    } else {
-      /*! Foreign data in a received buffer, so create a FastaData instance
-       * and create SeqAn sequences from it. For foreign data, char buffers
-       * only contain the required sequences, so sequence start index is 0.
-       */
-      uint64_t recv_nbr_l_end = recv_nbrs_buff_lengths[recv_nbr_idx] - 1;
+      push_seqs(nbr.rc_flag, fd, nbr_seqs_count, nbr.nbr_seq_start_idx,
+			  cur_rseq, cur_cseq);
+    }
+		else
+		{
+			/*! Foreign data in a received buffer, so create a FastaData
+			 * instance and create SeqAn sequences from it. For foreign data,
+			 * char buffers only contain the required sequences, so sequence
+			 * start index is 0.
+			 */
+
+			uint64_t recv_nbr_l_end = recv_nbrs_buff_lengths[recv_nbr_idx] - 1;
+
 #ifndef NDEBUG
       {
-        for (int i = 0; i <= recv_nbr_l_end; ++i) {
+        for (int i = 0; i <= recv_nbr_l_end; ++i)
+        {
           msg += recv_nbrs_buffs[recv_nbr_idx][i];
         }
         msg += "\n";
-
       }
 #endif
-      FastaData *recv_fd = new FastaData(recv_nbrs_buffs[recv_nbr_idx], k, 0,
-                                         recv_nbr_l_end, tp, tu);
+	  			
+      FastaData *recv_fd =
+			new FastaData(recv_nbrs_buffs[recv_nbr_idx], k, 0,
+			recv_nbr_l_end, tp, tu);	  		
+		
+      push_seqs(nbr.rc_flag, recv_fd, nbr_seqs_count, 0,
+				  cur_rseq, cur_cseq);
 
-      push_seqs(nbr.rc_flag, recv_fd, nbr_seqs_count, 0);
-      ++recv_nbr_idx;
-    }
-  }
+			++recv_nbr_idx;
+		}
+
+		if (nbr.rc_flag == 1)
+			cur_rseq += nbr_seqs_count;
+		else
+			cur_cseq += nbr_seqs_count;
+	}
 
 #ifndef NDEBUG
   TraceUtils::print_msg(title, msg, parops);
 #endif
 
-  if (is_diagonal_cell) {
-    /*! Diagonal cell, so col_seqs should point to the same sequences
-     * as row_seqs. Also, it should not have received any col sequences
-     * at this point */
-    assert(col_seqs.empty());
-    col_seqs.assign(row_seqs.begin(), row_seqs.end());
-  }
+	if (is_diagonal_cell)
+	{
+		/*! Diagonal cell, so col_seqs should point to the same sequences
+		 * as row_seqs. Also, it should not have received any col sequences
+		 * at this point */
+		assert(col_seqs.empty());
+		col_seqs.assign(row_seqs.begin(), row_seqs.end());
+	}
 
-  assert(row_seqs.size() == (row_seq_end_idx - row_seq_start_idx) + 1 &&
-         col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
+	assert(row_seqs.size() == (row_seq_end_idx - row_seq_start_idx) + 1 &&
+		   col_seqs.size() == (col_seq_end_idx - col_seq_start_idx) + 1);
 
-  ready = true;
-  // tp->times["EndDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
+	ready = true;
+	tp->times["EndDfd:ExtractRecvSeqs"] = std::chrono::system_clock::now();
 }
 
 seqan::Dna5String *DistributedFastaData::row_seq(uint64_t l_row_idx) {
