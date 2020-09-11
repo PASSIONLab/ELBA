@@ -104,5 +104,5 @@ The parameters and options of diBELLA are as follows:
 -----
 You can run the test dataset ```ecsample-sub1.fa``` as follows on one node (it's too small to run on multiple nodes), this command runs diBELLA using x-drop alignment and ```x = 5```:
 ```
-mpirun -np 1 ./dibella -i ../ecsample-sub1.fa -k 17 --idxmap dibella-test -c 135 --alph dna --of overlap-test --af alignment-test -s 1 -O 100000 --afreq 100000 --xa 5
+mpirun -np 1 ./dibella -i /path/to/ecsample-sub1.fa -k 17 --idxmap dibella-test -c 135 --alph dna --of overlap-test --af alignment-test -s 1 -O 100000 --afreq 100000 --xa 5
 ```
