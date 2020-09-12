@@ -291,7 +291,7 @@ SeedExtendXdrop::apply_batch
 
 	uint64_t npairs = seqan::length(seqsh);
 	setNumThreads(exec_policy, numThreads);
-
+	
 	lfs << "processing batch of size " << npairs << " with "
 		<< numThreads << " threads " << std::endl;
 

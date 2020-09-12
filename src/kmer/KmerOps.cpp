@@ -6,6 +6,7 @@
 
 #include "../../include/kmer/KmerOps.hpp"
 #include "../../include/HyperLogLog.hpp"
+#include "../../include/Deleter.h"
 
 extern "C" {
 #ifdef HIPMER_BLOOM64
@@ -331,7 +332,6 @@ double ExchangePass(VectorVectorKmer& outgoing, VectorVectorReadId& readids, Vec
               VectorKmer& mykmers, VectorReadId& myreadids, VectorPos& mypositions, int pass, Buffer scratch1, Buffer scratch2)
 {
     double totexch = MPI_Wtime();
-    double perftime = 0.0;
 
     /*
      * Count and exchange number of bytes being sent
@@ -370,7 +370,7 @@ double ExchangePass(VectorVectorKmer& outgoing, VectorVectorReadId& readids, Vec
     sdispls[0] = 0;
     rdispls[0] = 0;
 
-    for(int i=0; i<nprocs-1; ++i)
+    for(int i = 0; i< nprocs-1; ++i)
     {
         if (sendcnt[i] < 0 || recvcnt[i] < 0)
         {
@@ -437,39 +437,6 @@ double ExchangePass(VectorVectorKmer& outgoing, VectorVectorReadId& readids, Vec
     CHECK_MPI(MPI_Alltoallv(sendbuf, sendcnt, sdispls, MPI_BYTE, recvbuf, recvcnt, rdispls, MPI_BYTE, MPI_COMM_WORLD));
     texch += MPI_Wtime();
 
-    /******* Performance report *******/
-    perftime = MPI_Wtime();
-
-    const int SND = 0;
-    const int RCV = 1;
-
-    int64_t local_counts[2];
-
-    local_counts[SND] = totsend;
-    local_counts[RCV] = totrecv;
-
-    int64_t global_mins[2] = {0,0};
-    CHECK_MPI(MPI_Reduce(&local_counts, &global_mins, 2, MPI_LONG_LONG, MPI_MIN, 0, MPI_COMM_WORLD));
-
-    int64_t global_maxs[2] = {0,0};
-    CHECK_MPI(MPI_Reduce(&local_counts, &global_maxs, 2, MPI_LONG_LONG, MPI_MAX, 0, MPI_COMM_WORLD));
-
-    double global_min_time = 0.0;
-    CHECK_MPI(MPI_Reduce(&texch, &global_min_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD));
-
-    double global_max_time = 0.0;
-    CHECK_MPI(MPI_Reduce(&texch, &global_max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD));
-
-    // for(int i = 0; i < nprocs; i++)
-    // {
-    //     if(myrank == i)
-    //         printf("KmerMatch: %s exchange_iter %d pass %d: sent min %lld bytes, sent max %lld bytes, recv min %lld bytes, recv max %lld bytes, in min %.3f s, max %.3f s\n",
-	// 	__FUNCTION__, exchange_iter, pass, global_mins[SND], global_maxs[SND], global_mins[RCV], global_maxs[RCV], global_min_time, global_max_time);
-    // }
-
-    perftime = MPI_Wtime()-perftime;
-    /*************************************/
-
     uint64_t nkmersrecvd = totrecv / bytesperentry;
 
     for(uint64_t i = 0; i < nkmersrecvd; ++i) 
@@ -491,7 +458,11 @@ double ExchangePass(VectorVectorKmer& outgoing, VectorVectorReadId& readids, Vec
     DeleteAll(rdispls, sdispls, recvcnt, sendcnt);
     exchange_iter++;
 
-    totexch = MPI_Wtime() - totexch - perftime;
+    totexch = MPI_Wtime() - totexch;
+
+    // GGGG: every rank made it here
+    // std::cout << "I'm rank " << myrank << " and I'm here!" << std::endl;
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     return totexch;
 }
@@ -583,13 +554,13 @@ size_t PackEndsKmer(string& seq, int j, Kmer& kmerreal, ReadId readid, PosInRead
 /* Kmer is of length k */
 /* HyperLogLog counting, bloom filtering, and std::maps use Kmer as their key */
 size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId& readids, VectorVectorPos& positions, 
-    ReadId& startReadIndex, VectorVectorChar& extreads, std::unordered_map<ReadId, std::string>& readNameMap, int pass, size_t offset, int nreads, ushort k)
+    ReadId& startReadIndex, VectorVectorChar& extreads, std::unordered_map<ReadId, std::string>& readNameMap, int pass, size_t offset, ushort k)
 {
     uint64_t start_offset, end_offset_inclusive;
     ushort len;
 
     /* offset left over from orginal piece of codes */
-    // size_t nreads     = lfd->local_count();
+    size_t nreads     = lfd->local_count();
     size_t maxsending = 0, kmersthisbatch = 0, nskipped = 0;
     size_t bytesperkmer  = Kmer::numBytes();
     size_t bytesperentry = bytesperkmer + 4;
@@ -600,7 +571,7 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
     char* buff;
 
     /*! GGGG: make sure name are consistent with ids */
-    for (uint64_t lreadidx = offset; lreadidx < (nreads + offset); ++lreadidx)
+    for (uint64_t lreadidx = offset; lreadidx < nreads; ++lreadidx)
     {
         // GGGG: the next few lines might be responsable for some runtime overhead in packing time wrt diBELLA v1
         /*******************************************************************************************/
@@ -675,7 +646,7 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
         startReadIndex = readIndex;
     }
 
-  return offset + nreads;
+  return nreads;
 }
 
 /////////////////////////////////////////////
@@ -728,15 +699,12 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     size_t offset = 0;
     size_t nreads = lfd->local_count();
 
-    int batch = 500, i = 0;
-    int iters = nreads / batch;
-
-    for (; i < iters; i++) 
-    {
+    /* Extract kmers and counts from read sequences (seqs) */
+    do {
         double texchstart = MPI_Wtime();
 
         /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
-        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, batch, k);
+        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, k);
 
         double tpack = MPI_Wtime() - texchstart;
         totpack += tpack;
@@ -759,6 +727,7 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
 
         /* we might still receive data even if we didn't send any */
         DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
+        moreToExchange = offset < nreads;
 
         double proctime = MPI_Wtime() - texchstart - tpack - texch;
         totproctime += proctime;
@@ -766,45 +735,8 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         mykmers.clear();
         mypositions.clear();
         myreadids.clear();
-    }
 
-    int lastbatch = nreads - (iters*batch);
-    if (lastbatch % batch)
-    {
-        double texchstart = MPI_Wtime();
-
-        /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
-        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, lastbatch, k);
-
-        double tpack = MPI_Wtime() - texchstart;
-        totpack += tpack;
-
-        /* Outgoing arrays will be all empty, shouldn't crush */
-        double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
-
-        totexch += texch;
-
-        if (exchangeAndCountPass == 2)
-        {
-            ASSERT(mykmers.size() == myreadids.size(), "");
-            ASSERT(mykmers.size() == mypositions.size(), "");
-        }
-        else
-        {
-            ASSERT(myreadids.size() == 0, "");
-            ASSERT(mypositions.size() == 0, "");
-        }
-
-        /* we might still receive data even if we didn't send any */
-        DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
-
-        double proctime = MPI_Wtime() - texchstart - tpack - texch;
-        totproctime += proctime;
-
-        mykmers.clear();
-        mypositions.clear();
-        myreadids.clear();
-    }
+    } while (moreToExchange);
 
     double t02 = MPI_Wtime();
 
