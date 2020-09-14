@@ -21,7 +21,7 @@
 #include <fstream>
 
 #define TWOSEED
-#define DIBELLA_DEBUG
+//#define DIBELLA_DEBUG
 
 /*! Namespace declarations */
 using namespace combblas;

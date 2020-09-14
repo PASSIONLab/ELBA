@@ -694,49 +694,43 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     double t01 = MPI_Wtime();
     double totproctime = 0, totpack = 0, totexch = 0;
 
-    int moreToExchange = 0;
-
     size_t offset = 0;
     size_t nreads = lfd->local_count();
 
     /* Extract kmers and counts from read sequences (seqs) */
-    do {
-        double texchstart = MPI_Wtime();
+    double texchstart = MPI_Wtime();
 
-        /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
-        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, k);
+    /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
+    offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, k);
 
-        double tpack = MPI_Wtime() - texchstart;
-        totpack += tpack;
+    double tpack = MPI_Wtime() - texchstart;
+    totpack += tpack;
 
-        /* Outgoing arrays will be all empty, shouldn't crush */
-        double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
+    /* Outgoing arrays will be all empty, shouldn't crush */
+    double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
 
-        totexch += texch;
+    totexch += texch;
 
-        if (exchangeAndCountPass == 2)
-        {
-            ASSERT(mykmers.size() == myreadids.size(), "");
-            ASSERT(mykmers.size() == mypositions.size(), "");
-        }
-        else
-        {
-            ASSERT(myreadids.size() == 0, "");
-            ASSERT(mypositions.size() == 0, "");
-        }
+    if (exchangeAndCountPass == 2)
+    {
+        ASSERT(mykmers.size() == myreadids.size(), "");
+        ASSERT(mykmers.size() == mypositions.size(), "");
+    }
+    else
+    {
+        ASSERT(myreadids.size() == 0, "");
+        ASSERT(mypositions.size() == 0, "");
+    }
 
-        /* we might still receive data even if we didn't send any */
-        DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
-        moreToExchange = offset < nreads;
+    /* we might still receive data even if we didn't send any */
+    DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
 
-        double proctime = MPI_Wtime() - texchstart - tpack - texch;
-        totproctime += proctime;
+    double proctime = MPI_Wtime() - texchstart - tpack - texch;
+    totproctime += proctime;
 
-        mykmers.clear();
-        mypositions.clear();
-        myreadids.clear();
-
-    } while (moreToExchange);
+    mykmers.clear();
+    mypositions.clear();
+    myreadids.clear();
 
     double t02 = MPI_Wtime();
 
@@ -781,6 +775,7 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         countTotalKmersAndCleanHash(); 
     }
 
+    assert(offset == nreads);
     return nreads;
 }
 
