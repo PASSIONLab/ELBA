@@ -404,10 +404,13 @@ DistributedPairwiseRunner::run_batch
 	// Prune pairs that do not meet coverage criteria
 	auto elim_cov = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
 	gmat->Prune(elim_cov);
-	// gmat->ParallelWriteMM(aln_file, true, dibella::CkOutputHandler());
+	
+	double start = MPI_Wtime();
+	gmat->ParallelWriteMM(aln_file, true, dibella::CkOutputHandler());
+	double ppend = MPI_Wtime() - start;
 
-	tu.print_str("nnzs in the pruned matrix " +
-				 std::to_string(gmat->getnnz()) + "\n");
+	tu.print_str("ParallelWriteMM " + std::to_string(ppend) + "\n");
+	tu.print_str("nnzs in the pruned matrix " + std::to_string(gmat->getnnz()) + "\n");
 	
 	delete [] algn_cnts;
 	delete [] mattuples;

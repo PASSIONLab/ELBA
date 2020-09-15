@@ -259,7 +259,7 @@ int main(int argc, char **argv)
     tp->times["StartMain:DprAlign()"] = std::chrono::system_clock::now();
     ScoringScheme scoring_scheme(match, mismatch_sc, gap_ext);
 
-    align_file += "_rank_" + std::to_string(parops->world_proc_rank) + ".txt";
+    align_file += ".mm";
 
     PairwiseFunction* pf = nullptr;
     uint64_t local_alignments = 1;
@@ -297,16 +297,17 @@ int main(int argc, char **argv)
     }
   }
 
-  tp->times["StartMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
-  if (write_overlaps)
-  {
-    dpr.write_overlaps(overlap_file.c_str());
-  }
-  tp->times["EndMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
+  // @GGGG-TODO: modify batch
+  // tp->times["StartMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
+  // if (write_overlaps)
+  // {
+  //   dpr.write_overlaps(overlap_file.c_str());
+  // }
+  // tp->times["EndMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
-  bool transitive_reduction = true;
 
+  bool transitive_reduction = true;
   if (transitive_reduction)
   {
     /* Randomly permute for load balance */
