@@ -76,7 +76,8 @@ namespace dibella {
 				uint64_t row,
 				uint64_t col)
 		{
-			os << v.score;
+			/* GGGG: we need the overhand value to create input in graph dot for comparison */
+			os << v.overhang; 
 		}
 	};
 }
