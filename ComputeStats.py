@@ -25,9 +25,6 @@ for ThisFile in ListOfFiles:
 sums = sums / len(ListOfFiles)
 
 # Print results and write them to file
-for i in xrange(0, len(sums)):
-    print sums[i]
-
 with open(ExportFile, "w+") as file:
     file.write(LogFileName + "\n")  # First line is gonna be a header
     for i in xrange(0, len(sums)):
