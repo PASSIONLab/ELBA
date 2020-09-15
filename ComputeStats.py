@@ -9,7 +9,7 @@ import numpy as np
  
 LogFileName = str(sys.argv[1])
 ExportFile  = "/global/cscratch1/sd/gguidi/IPDPS2021/performance/"
-ExportFile  = ExportFile + "ComputeStats" + LogFileName + ".txt"
+ExportFile  = ExportFile + "ComputeStats" + LogFileName + ".txt" 
 
 sums = np.zeros(12)
 
@@ -27,3 +27,10 @@ sums = sums / len(ListOfFiles)
 # Print results and write them to file
 for i in xrange(0, len(sums)):
     print sums[i]
+
+with open(ExportFile, "w+") as file:
+    file.write(LogFileName + "\n")  # First line is gonna be a header
+    for i in xrange(0, len(sums)):
+        print sums[i]
+        file.write(sums[i] + "\n")
+file.close()
