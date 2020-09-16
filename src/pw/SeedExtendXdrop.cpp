@@ -55,6 +55,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 		if(endpH >= rlenV) contained = true;
 	}
 
+	// @GGGG-TODO: this should happen even without pairwise alignment
 	/* If not contained check score and compute overhang */
 	if((float)ai.xscore >= myThr && !contained)
 	{
