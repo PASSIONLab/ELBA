@@ -350,8 +350,8 @@ double ExchangePass(VectorVectorKmer& outgoing, VectorVectorReadId& readids, Vec
 
         if (pass == 2)
         {
-            ASSERT( outgoing[i].size() == readids[i].size(), "" );
-            ASSERT( outgoing[i].size() == positions[i].size(), "" );
+            ASSERT(outgoing[i].size() == readids[i].size(), "");
+            ASSERT(outgoing[i].size() == positions[i].size(), "");
         }
         else
         {
@@ -459,11 +459,7 @@ double ExchangePass(VectorVectorKmer& outgoing, VectorVectorReadId& readids, Vec
     exchange_iter++;
 
     totexch = MPI_Wtime() - totexch;
-
-    // GGGG: every rank made it here
-    // std::cout << "I'm rank " << myrank << " and I'm here!" << std::endl;
-    // MPI_Barrier(MPI_COMM_WORLD);
-
+    
     return totexch;
 }
 
@@ -694,43 +690,47 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     double t01 = MPI_Wtime();
     double totproctime = 0, totpack = 0, totexch = 0;
 
-    size_t offset = 0;
+    size_t offset = 0, moreToGo = 0;
     size_t nreads = lfd->local_count();
 
-    /* Extract kmers and counts from read sequences (seqs) */
-    double texchstart = MPI_Wtime();
+    do {
+        /* Extract kmers and counts from read sequences (seqs) */
+        double texchstart = MPI_Wtime();
 
-    /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
-    offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, k);
+        /*! GGGG: Parse'n'pack, no-op if nreads == 0 */
+        offset = ParseNPack(lfd, outgoing, readids, positions, readIndex, extreads, readNameMap, exchangeAndCountPass, offset, k);
 
-    double tpack = MPI_Wtime() - texchstart;
-    totpack += tpack;
+        double tpack = MPI_Wtime() - texchstart;
+        totpack += tpack;
 
-    /* Outgoing arrays will be all empty, shouldn't crush */
-    double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
+        /* Outgoing arrays will be all empty, shouldn't crush */
+        double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
 
-    totexch += texch;
+        totexch += texch;
 
-    if (exchangeAndCountPass == 2)
-    {
-        ASSERT(mykmers.size() == myreadids.size(), "");
-        ASSERT(mykmers.size() == mypositions.size(), "");
-    }
-    else
-    {
-        ASSERT(myreadids.size() == 0, "");
-        ASSERT(mypositions.size() == 0, "");
-    }
+        if (exchangeAndCountPass == 2)
+        {
+            ASSERT(mykmers.size() == myreadids.size(), "");
+            ASSERT(mykmers.size() == mypositions.size(), "");
+        }
+        else
+        {
+            ASSERT(myreadids.size() == 0, "");
+            ASSERT(mypositions.size() == 0, "");
+        }
 
-    /* we might still receive data even if we didn't send any */
-    DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
+        /* we might still receive data even if we didn't send any */
+        DealWithInMemoryData(mykmers, exchangeAndCountPass, bm, myreadids, mypositions);
+        moreToGo = offset < nreads;
 
-    double proctime = MPI_Wtime() - texchstart - tpack - texch;
-    totproctime += proctime;
+        double proctime = MPI_Wtime() - texchstart - tpack - texch;
+        totproctime += proctime;
 
-    mykmers.clear();
-    mypositions.clear();
-    myreadids.clear();
+        mykmers.clear();
+        mypositions.clear();
+        myreadids.clear();
+
+    } while(moreToGo);
 
     double t02 = MPI_Wtime();
 
