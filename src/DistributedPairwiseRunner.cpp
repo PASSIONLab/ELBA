@@ -409,8 +409,9 @@ DistributedPairwiseRunner::run_batch
 	gmat->ParallelWriteMM(aln_file, true, dibella::CkOutputHandler());
 	double ppend = MPI_Wtime() - start;
 
-	tu.print_str("ParallelWriteMM " + std::to_string(ppend) + "\n");
-	tu.print_str("nnzs in the pruned matrix " + std::to_string(gmat->getnnz()) + "\n");
+	tu.print_str("ParallelWriteMM " + std::to_string(ppend)+ "\n");
+	tu.print_str("nnzs in the pruned matrix " +
+				 std::to_string(gmat->getnnz()) + "\n");
 	
 	delete [] algn_cnts;
 	delete [] mattuples;
