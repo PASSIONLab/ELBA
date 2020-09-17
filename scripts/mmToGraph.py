@@ -35,11 +35,54 @@ from graphviz import Digraph
 # ...
 
 # Read diBELLA input
-InputFileName = open(sys.argv[1], 'r')
+InputFileName  = open(sys.argv[1], 'r')
+OutputFileName = str(sys.argv[1])
 lines = InputFileName.readlines()
 
 del lines[0] # Remove mmx header
 del lines[0] # Remove line with summary nodes/edges
+
+# @GGGG: create edge list format
+
+# 0	4	3,F,32,0,0,3,34,0,31
+# 2	4	3,F,33,0,0,2,34,0,32
+# 0	2	3,F,34,0,0,1,34,0,33
+
+edgeslist = open(OutputFileName + "_edge_list.txt", "w")
+for line in lines:
+    items = line.split("\t")
+
+    vertex1 = items[0]
+    vertex2 = items[1]
+    
+    direction = items[2]
+
+    if(direction == '0'): 
+        direction = '2'         # <-->
+    elif(direction == '1'):
+        direction = '3'         # >-->
+    elif(direction == '2'):
+        direction = '0'         # <--<
+    elif(direction == '3'):
+        direction = '1'         # <-->
+
+    rc        = items[3]
+
+    if(rc == '1'):
+        rc = "FRC"
+    else:
+        rc = "F"
+
+    begV = items[4]
+    endV = items[5]
+    begH = items[6]
+    endH = items[7]
+    overlap   = 0 #items[8]
+
+    newentry = str(vertex1) + '\t' + str(vertex2) + '\t' + str(direction) + ',' + rc + ',' + str(overlap) + ',' + str(0) + ',' + str(0) + ',' + str(begV) + ',' + str(endV) + ',' + str(begH) + ',' + str(endH) + '\n'
+    edgeslist.write(newentry)
+
+edgeslist.close()
 
 # Create a digraph with possible parallel edges and self-loops use
 dot = Digraph('G')
@@ -71,4 +114,3 @@ for line in lines:
     dot.edge(vertex1, vertex2, label=currlabel)  # Create an edge between the first and second node and populate the label with the overlap information
 
 InputFileName.close()
-print(dot.source)  
