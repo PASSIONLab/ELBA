@@ -80,6 +80,7 @@ namespace dibella {
 		{
 			/* GGGG: we need the overhand value to create input in graph dot for comparison */
 			int dir = v.overhang & 3;
+			// @GGGG-TODO: include overlap here (need overlap length that i don't have in python)
 			// direction, rc, overhang, begV, endV, begH, endH (OverlapLen and others computed in python script during translation)
 			os << dir << "\t" << v.rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t" << v.second.first << "\t" << v.second.second; 
 		}
