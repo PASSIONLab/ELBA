@@ -505,7 +505,14 @@ SeedExtendXdrop::apply_batch
 	
 			if (passed)
 			{
-				cks->score = ai[i].xscore;
+				// GGGG: store updated seed start/end position in the CommonKmers pairs (the semantics of these pairs change wrt the original semantics but that's okay)
+				cks->first.first   = beginPositionV(ai[i].seed); 	// start on vertical sequence
+				cks->first.second  = endPositionV(ai[i].seed); 		// end on vertical sequence
+				cks->second.first  = beginPositionH(ai[i].seed);	// start on horizonal sequence
+				cks->second.second = endPositionH(ai[i].seed);		// end on horizonal sequence
+
+				cks->rc     = ai[i].rc;
+				cks->score  = ai[i].xscore;
 				cks->passed = passed;	// keep this
 			}
 		}
