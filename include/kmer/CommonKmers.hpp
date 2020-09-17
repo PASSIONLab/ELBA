@@ -17,11 +17,13 @@ namespace dibella {
     ushort count;
 
 	bool passed;
+
 	uint32_t score; /* Used for storing alignment score */
 	
 	/*! GGGG: this is either the suffix or prefix entry need for the transitive reduction 
 	 *	StringMatrixEntry econdes both direction and overhang length*/
 	uint32_t overhang; 
+	bool rc;
 
     /*! The position within the sequence, which is
      * much less than 2^16 - 1 for proteins
@@ -36,11 +38,11 @@ namespace dibella {
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
 #endif
 
-    CommonKmers() : count(1), passed(false), overhang(0) {
+    CommonKmers() : count(1), passed(false), overhang(0), rc(false) {
     }
     explicit
 	CommonKmers(ushort count) : 
-		count(count), passed(false), overhang(0) {
+		count(count), passed(false), overhang(0), rc(false) {
     }
 
 	CommonKmers (bool passed, uint32_t score) :
@@ -77,7 +79,9 @@ namespace dibella {
 				uint64_t col)
 		{
 			/* GGGG: we need the overhand value to create input in graph dot for comparison */
-			os << v.overhang; 
+			int dir = v.overhang & 3;
+			// direction, rc, overhang, begV, endV, begH, endH (OverlapLen and others computed in python script during translation)
+			os << dir << "\t" << v.rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t" << v.second.first << "\t" << v.second.second; 
 		}
 	};
 }
