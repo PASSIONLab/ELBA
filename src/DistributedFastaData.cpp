@@ -484,7 +484,10 @@ void DistributedFastaData::find_nbrs(const int grid_rc_procs_count,
 
     my_nbrs.emplace_back(rc_flag, parops->world_proc_rank, nbr_rank,
                          nbr_seq_start_idx, nbr_seq_end_idx);
-    ++start_rank;
+    
+    if(start_rank != parops->world_procs_count - 1)
+    	++start_rank;
+    
     seq_start_idx = g_seq_offsets[start_rank];
   }
 
