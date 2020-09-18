@@ -6,6 +6,9 @@
 #include "../Types.hpp"
 #include "../Defines.hpp"
 
+// GGGG: needed for benchmarking
+#define EXTRA
+
 namespace dibella {
   struct CommonKmers {
     /*! The number of common kmers between two sequences.
@@ -22,8 +25,13 @@ namespace dibella {
 	
 	/*! GGGG: this is either the suffix or prefix entry need for the transitive reduction 
 	 *	StringMatrixEntry econdes both direction and overhang length*/
-	uint32_t overhang; 
-	bool rc;
+	uint32_t overhang;
+	
+#ifdef EXTRA
+	uint32_t lenv;
+	uint32_t lenh;
+	uint32_t overlap;
+#endif
 
     /*! The position within the sequence, which is
      * much less than 2^16 - 1 for proteins
@@ -38,11 +46,11 @@ namespace dibella {
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
 #endif
 
-    CommonKmers() : count(1), passed(false), overhang(0), rc(false) {
+    CommonKmers() : count(1), passed(false), overhang(0) {
     }
     explicit
 	CommonKmers(ushort count) : 
-		count(count), passed(false), overhang(0), rc(false) {
+		count(count), passed(false), overhang(0) {
     }
 
 	CommonKmers (bool passed, uint32_t score) :
@@ -80,9 +88,17 @@ namespace dibella {
 		{
 			/* GGGG: we need the overhand value to create input in graph dot for comparison */
 			int dir = v.overhang & 3;
+			int rc  = 0;
+			if(dir == 0 || dir == 3) rc = 1;
 			// @GGGG-TODO: include overlap here (need overlap length that i don't have in python)
 			// direction, rc, overhang, begV, endV, begH, endH (OverlapLen and others computed in python script during translation)
-			os << dir << "\t" << v.rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t" << v.second.first << "\t" << v.second.second; 
+			os << dir << "\t" << rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t" 
+				<< v.second.first << "\t" << 
+				#ifdef EXTRA
+				v.second.second  << "\t"  << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
+				#else
+				v.second.second;
+				#endif
 		}
 	};
 }
