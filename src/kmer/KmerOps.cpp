@@ -23,6 +23,9 @@ extern "C" {
 #define HIGH_BIN 100
 #define HIGH_NUM_BINS ((COUNT_THRESHOLD_HIGH-COUNT_THRESHOLD)/HIGH_BIN)
 
+/* If this flag set, it writes readname to disk through independent I/O */
+#define READNAME
+
 KmerCountsType *kmercounts = NULL;
 
 int nprocs;
@@ -36,8 +39,44 @@ int maxKmerFreq = MAX_NUM_READS;
 
 using namespace std;
 
+/////////////////////////////////////////////
+// WriteReadNameMap                        //
+///////////////////////////////////////////// 
+
 namespace dibella
 {
+
+/*
+ * readNameMap written to file through independent I/O (this is need for benchmarking only mostly)
+ */
+void
+WriteReadNameMap(const char* outfilename, unordered_map<ReadId,string>& readNameMap)
+{
+    if(myrank == 0)
+	    std::cout << "writing readNameMap to " << outfilename << " in parallel" << std::endl;
+
+	ofstream myoutputfile;
+	myoutputfile.open(outfilename, std::ofstream::out | std::ofstream::trunc);
+
+	if (!myoutputfile.is_open())
+    {
+		std::cout << "Could not open " << outfilename << std::endl;
+		return -1;
+	}
+
+	for(auto map_itr = readNameMap.begin(); map_itr != readNameMap.end(); map_itr++)
+    {
+		ReadId readId = map_itr->first;          // key
+		std::string readName = map_itr->second;  // value
+
+		assert(readNameMap.count(readId) > 0);
+
+		myoutputfile << readId << '\t' << readName << std::endl;
+	}
+
+	myoutputfile << flush;
+	myoutputfile.close();
+}
 
 /////////////////////////////////////////////
 // KmerInfo Class                          //
@@ -76,25 +115,6 @@ public:
     const Kmer& getKmer() const {
         return kmer;
     }
-
-//     int write(GZIP_FILE f) {
-//         int count = GZIP_FWRITE(this, sizeof(*this), 1, f);
-// #ifndef NO_GZIP
-//         if (count != sizeof(*this)*1) { DIE("There was a problem writing the kmerInfo file! %s\n", strerror(errno)); }
-// #else
-//         if (count != 1) { DIE("There was a problem writing the kmerInfo file! %s\n", strerror(errno)); }
-// #endif
-//         return count;
-//     }
-//     int read(GZIP_FILE f) {
-//         int count = GZIP_FREAD(this, sizeof(*this), 1, f);
-// #ifndef NO_GZIP
-//         if (count != sizeof(*this)*1 && !GZIP_EOF(f)) { DIE("There was a problem reading the kmerInfo file! %s\n", strerror(errno)); }
-// #else
-//         if (count != 1 && ! feof(f)) { DIE("There was a problem reading the kmerInfo file! %s\n", strerror(errno)); }
-// #endif
-//         return count;
-//     }
 
     /* Returns true if in bloom, does not modify */
     bool checkBloom(struct bloom *bm)
@@ -705,9 +725,6 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
 
         /* Outgoing arrays will be all empty, shouldn't crush */
         double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
-	
-	std::cout << "Rank " << myrank << std::endl;
-	MPI_Barrier(MPI_COMM_WORLD);
 
         totexch += texch;
 
@@ -776,6 +793,12 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     if (exchangeAndCountPass == 2)
     {
         countTotalKmersAndCleanHash(); 
+
+    #ifdef READNAME
+        /* GGGG: write read names to file needed for miniasm and benchmarking */
+        std::string outputfilename = "readNameMap_" + std::to_string(myrank);
+        WriteReadNameMap(outputfilename.c_str(), readNameMap);
+    #endif
     }
 
     assert(offset == nreads);
