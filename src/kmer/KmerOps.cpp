@@ -705,6 +705,9 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
 
         /* Outgoing arrays will be all empty, shouldn't crush */
         double texch = ExchangePass(outgoing, readids, positions, /* extquals,*/ extreads, mykmers, myreadids, mypositions, /*myquals, myreads,*/ exchangeAndCountPass, scratch1, scratch2); 
+	
+	std::cout << "Rank " << myrank << std::endl;
+	MPI_Barrier(MPI_COMM_WORLD);
 
         totexch += texch;
 
@@ -1173,7 +1176,8 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
     tp->times["StartKmerOp:GenerateA:SpMatA()"] = std::chrono::system_clock::now();
     PSpMat<PosInRead>::MPI_DCCols A(nrows, ncols, drows, dcols, dvals, false);
     tp->times["EndKmerOp:GenerateA:SpMatA()"]   = std::chrono::system_clock::now();
-    
+   
+//delete totkmers;
     return A;
   }
 }
