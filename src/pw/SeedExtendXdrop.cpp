@@ -2,7 +2,7 @@
 
 #include "../../include/pw/SeedExtendXdrop.hpp"
 
-void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, uint32_t& overhang)
+void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, uint32_t& overhang, uint32_t& overlap)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -21,7 +21,8 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 	unsigned short int minLeft  = min(begpV, begpH);
 	unsigned short int minRight = min(rlenV - endpV, rlenH - endpH);
-	unsigned short int ov       = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
+
+	overlap = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
 
 	// unsigned short int normLen  = max(overlapLenV, overlapLenH);
 	// unsigned short int minLen   = min(overlapLenV, overlapLenH);
@@ -40,7 +41,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	 */
 
 #ifndef FIXEDTHR
-	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)ov);
+	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)overlap);
 
 	/* Contained overlaps removed for now, reintroduce them later */
 	bool contained = false;
@@ -501,7 +502,7 @@ SeedExtendXdrop::apply_batch
 			bool passed = false;
 
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overlap);
 	
 			if (passed)
 			{
@@ -511,7 +512,8 @@ SeedExtendXdrop::apply_batch
 				cks->second.first  = beginPositionH(ai[i].seed);	// start on horizonal sequence
 				cks->second.second = endPositionH(ai[i].seed);		// end on horizonal sequence
 
-				cks->rc     = ai[i].rc;
+				cks->lenv 	= ai[i].seq_v_length;
+				cks->lenh 	= ai[i].seq_h_length;
 				cks->score  = ai[i].xscore;
 				cks->passed = passed;	// keep this
 			}
