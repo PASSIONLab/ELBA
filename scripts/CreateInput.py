@@ -117,7 +117,7 @@ for name in names:
     idx   = items[0]
     name  = items[1]
     name  = name[1:]
-    readnamemap[idx] = name 
+    readnamemap[int(idx)] = name 
 
 def ReadName(idx):
     return readnamemap[idx]
@@ -144,15 +144,15 @@ for line in lines:
 
     if(rc == '1'):
         rc = "-"
-        begH, endH = toOriginalCoordinates(begH, endH, lenH)
+        begH, endH = toOriginalCoordinates(int(begH), int(endH), int(lenH))
     else:
         rc = "+"
 
     alnlen     = items[10]
-    resmatches = math.floor(0.8*alnlen)
+    resmatches = math.floor(0.8*float(alnlen))
     mapping    = '255'
 
-    entry = nameV + '\t' + str(lenV) + '\t' + str(begV) + '\t' + str(endV) + '\t' + rc + '\t' + nameH + '\t' + str(lenH) + str(begH) + '\t' + str(endH) + '\t' + str(resmatches) + '\t' + str(alnlen) + '\t' + mapping + '\n'
+    entry = nameV + '\t' + str(lenV) + '\t' + str(begV) + '\t' + str(endV) + '\t' + rc + '\t' + nameH + '\t' + str(lenH) + '\t' + str(begH) + '\t' + str(endH) + '\t' + str(resmatches) + '\t' + str(alnlen) + '\t' + mapping + '\n'
     pafformat.write(entry)
 
 pafformat.close()
