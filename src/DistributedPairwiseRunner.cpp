@@ -215,7 +215,7 @@ DistributedPairwiseRunner::run_batch
 	int myrank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
-	int			batch_size		= 1e8;
+	int			batch_size		= 5e5; // @GGGG: play with this value if program goes OOM (it could be an input parameter)
 	int			batch_cnt		= (local_nnz_count / batch_size) + 1;
 	int			batch_idx		= 0;
 	uint64_t	nalignments		= 0;
@@ -375,7 +375,6 @@ DistributedPairwiseRunner::run_batch
 		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, k);
 		
 		delete [] lids;
-
 		++batch_idx;
 	}
 
