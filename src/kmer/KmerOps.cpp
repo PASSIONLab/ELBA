@@ -710,10 +710,10 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     double t01 = MPI_Wtime();
     double totproctime = 0, totpack = 0, totexch = 0;
 
-    size_t offset = 0, moreToGo = 0;
+    size_t offset = 0, moreToGo = 0, totmoreToGo = 0;
     size_t nreads = lfd->local_count();
 
-    do {
+   do {
         /* Extract kmers and counts from read sequences (seqs) */
         double texchstart = MPI_Wtime();
 
@@ -750,7 +750,9 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         mypositions.clear();
         myreadids.clear();
 
-    } while(moreToGo);
+        CHECK_MPI(MPI_Allreduce(&moreToGo, & totmoreToGo, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD));
+
+   } while(totmoreToGo);
 
     double t02 = MPI_Wtime();
 
