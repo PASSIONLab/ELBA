@@ -72,18 +72,19 @@ for line in lines:
     elif(direction == '3'):
         direction = '1'         # <-->
 
-    rc        = items[3]
+    rc = items[3]
 
     if(rc == '1'):
         rc = "FRC"
     else:
         rc = "F"
 
-    begV = items[4]
-    endV = items[5]
-    begH = items[6]
-    endH = items[7]
-    overlap = items[10]
+    begV = items[5]
+    endV = items[6]
+    begH = items[7]
+    endH = items[8]
+
+    overlap = items[11]
 
     entry = str(vertex1) + '\t' + str(vertex2) + '\t' + str(direction) + ',' + rc + ',' + str(overlap) + ',' + str(0) + ',' + str(0) + ',' + str(begV) + ',' + str(endV) + ',' + str(begH) + ',' + str(endH) + '\n'
     edgeslist.write(entry)
@@ -117,7 +118,7 @@ for name in names:
     idx   = items[0]
     name  = items[1]
     name  = name[1:]
-    readnamemap[idx] = name 
+    readnamemap[int(idx)] = name 
 
 def ReadName(idx):
     return readnamemap[idx]
@@ -132,27 +133,30 @@ for line in lines:
     nameV = ReadName(int(vertex1))
     nameH = ReadName(int(vertex2))
 
+    nameV = nameV.rstrip("\n")
+    nameH = nameH.rstrip("\n")
+
     rc = items[3]
 
-    begV = items[4]
-    endV = items[5]
-    begH = items[6]
-    endH = items[7]
+    begV = items[5]
+    endV = items[6]
+    begH = items[7]
+    endH = items[8]
 
-    lenV = items[8]
-    lenH = items[9]
+    lenV = items[9]
+    lenH = items[10]
 
     if(rc == '1'):
         rc = "-"
-        begH, endH = toOriginalCoordinates(begH, endH, lenH)
+        begH, endH = toOriginalCoordinates(int(begH), int(endH), int(lenH))
     else:
         rc = "+"
 
-    alnlen     = items[10]
-    resmatches = math.floor(0.8*alnlen)
-    mapping    = '255'
+    alnlen     = items[11]
+    resmatches = math.floor(0.8*float(alnlen))
+    mapping    = '0'
 
-    entry = nameV + '\t' + str(lenV) + '\t' + str(begV) + '\t' + str(endV) + '\t' + rc + '\t' + nameH + '\t' + str(lenH) + str(begH) + '\t' + str(endH) + '\t' + str(resmatches) + '\t' + str(alnlen) + '\t' + mapping + '\n'
+    entry = nameV + '\t' + str(lenV) + '\t' + str(begV) + '\t' + str(endV) + '\t' + rc + '\t' + nameH + '\t' + str(lenH) + '\t' + str(begH) + '\t' + str(endH) + '\t' + str(resmatches) + '\t' + alnlen + '\t' + mapping + '\n'
     pafformat.write(entry)
 
 pafformat.close()
