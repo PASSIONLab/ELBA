@@ -525,8 +525,7 @@ DistributedFastaData::push_seqs
 	uint64_t cseq_beg
 )
 {
-	std::vector<seqan::Dna5String *> &cur_seqs =
-		(rc_flag == 1 ? row_seqs : col_seqs);
+	std::vector<seqan::Dna5String*> &cur_seqs = (rc_flag == 1 ? row_seqs : col_seqs);
 	uint64_t seq_beg = (rc_flag == 1 ? rseq_beg : cseq_beg);
 
 	#pragma omp parallel
@@ -539,7 +538,12 @@ DistributedFastaData::push_seqs
 		{
 			char *buff = fd->get_sequence(seq_start_idx + i, len, start_offset,
 										  end_offset_inclusive);
-			seqan::Dna5String *seq = new seqan::Dna5String(buff + start_offset, len);
+      
+      std::string myseq{buff + start_offset, buff + end_offset_inclusive + 1};
+      len = myseq.size();
+
+			seqan::Dna5String *seq = new seqan::Dna5String(myseq);
+
 			cur_seqs[seq_beg + i] = seq;
 		}
   }
