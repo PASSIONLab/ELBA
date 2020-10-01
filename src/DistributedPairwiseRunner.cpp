@@ -254,8 +254,10 @@ DistributedPairwiseRunner::run_batch
 	uint64_t *algn_cnts   = new uint64_t[numThreads + 1];
 	uint64_t nelims_ckthr = 0; // nelims_alnthr = 0, nelims_both = 0;
 
+	int tot_batch_cnt = 0, tot_batch_idx = 0;
+	CHECK_MPI(MPI_Allreduce(&batch_cnt, &tot_batch_cnt, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD));	
 
-	while (batch_idx < batch_cnt)
+	while (tot_batch_idx < tot_batch_cnt)
 	{
 		uint64_t beg = batch_idx * batch_size;
 		uint64_t end = ((batch_idx + 1) * batch_size > local_nnz_count) ? local_nnz_count : ((batch_idx + 1) * batch_size);
@@ -377,6 +379,7 @@ DistributedPairwiseRunner::run_batch
 		delete [] lids;
 
 		++batch_idx;
+		CHECK_MPI(MPI_Allreduce(&batch_idx, &tot_batch_idx, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD));
 	}
 
 	pf->nalignments = nalignments;
