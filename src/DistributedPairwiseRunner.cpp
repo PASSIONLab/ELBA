@@ -215,7 +215,7 @@ DistributedPairwiseRunner::run_batch
 	int myrank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
-	int			batch_size		= 1e8;
+	int			batch_size		= 1e5;
 	int			batch_cnt		= (local_nnz_count / batch_size) + 1;
 	int			batch_idx		= 0;
 	uint64_t	nalignments		= 0;
@@ -378,7 +378,10 @@ DistributedPairwiseRunner::run_batch
 		
 		delete [] lids;
 
-		++batch_idx;
+		if(batch_idx < batch_cnt)
+			++batch_idx;
+		
+		tot_batch_idx = 0;
 		CHECK_MPI(MPI_Allreduce(&batch_idx, &tot_batch_idx, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD));
 	}
 
