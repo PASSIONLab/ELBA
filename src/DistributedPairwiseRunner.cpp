@@ -215,7 +215,7 @@ DistributedPairwiseRunner::run_batch
 	int myrank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
-	int			batch_size		= 1e4;
+	int			batch_size		= 1e5;
 	int			batch_cnt		= (local_nnz_count / batch_size) + 1;
 	int			batch_idx		= 0;
 	uint64_t		nalignments		= 0;
@@ -254,11 +254,10 @@ DistributedPairwiseRunner::run_batch
 	uint64_t *algn_cnts   = new uint64_t[numThreads + 1];
 	uint64_t nelims_ckthr = 0; // nelims_alnthr = 0, nelims_both = 0;
 
-	size_t moreToGo = 0, totmoreToGo = 0;
-	do
+//	size_t moreToGo = 0, totmoreToGo = 0;
+	
+	while (batch_idx < batch_cnt) 
 	{
-	//	if(moreToGo == 0) goto please;
-
 		uint64_t beg = batch_idx * batch_size;
 		uint64_t end = ((batch_idx + 1) * batch_size > local_nnz_count) ? local_nnz_count : ((batch_idx + 1) * batch_size);
 
@@ -379,13 +378,14 @@ DistributedPairwiseRunner::run_batch
 		delete [] lids;
 
 		batch_idx++;
+	//		moreToGo = batch_idx < batch_cnt;
 
-		moreToGo = batch_idx < batch_cnt;
-	
-		CHECK_MPI(MPI_Allreduce(&moreToGo, &totmoreToGo, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD));	
-		//std::cout << "Rank " << myrank << " moreToGo " << moreToGo << " totmoreToGo " << totmoreToGo << std::endl;
+	//	CHECK_MPI(MPI_Allreduce(&moreToGo, &totmoreToGo, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD));	
+		
+	//	if(myrank == 0) std::cout << totmoreToGo << std::endl;
+	//	MPI_Barrier(MPI_COMM_WORLD);
 
-	} while(totmoreToGo);
+	}// while(totmoreToGo);
 
 	pf->nalignments = nalignments;
 	pf->print_avg_times(parops, lfs);
