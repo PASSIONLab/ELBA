@@ -1,0 +1,50 @@
+NERSCLOG(verbose): key=mods-test
+NERSCLOG(verbose): adding stdout streamhandler
+NERSCLOG(verbose): missing <prio> prefix in stream output will be present in message for syslog
+1 2020-10-08T19:10:58.952795-07:00 nid00604 mods-test - p0-20201008t035433 [nerscjson@42] {"category": "mods-test", "service": "spark", "duration_seconds": 0, "event_timestamp": "2020-10-08T19:10:58.931029-07:00", "is_compute": true, "is_staff": false, "job_id": "34886160", "num_nodes": "32", "repo": "m2865", "subservice": null, "subsystem": "Haswell", "system": "Cori", "username": "gguidi", "version": "2.3.0"}
+data sent to mods
+SPARK_WORKER_DIR=/global/cscratch1/sd/gguidi/spark/34886160
+SPARK_VERSION=2.3.0
+SPARK_SLAVES=/global/cscratch1/sd/gguidi/spark/34886160/slaves
+SPARK_LOCAL_DIRS=/tmp
+SPARK_HOME=/usr/local/bin/spark-2.3.0
+SPARKURL=spark://nid00604:7077
+SPARK_NO_DAEMONIZE=no
+SPARK_MASTER_HOST=nid00604
+SPARK_CONF_DIR=/global/cscratch1/sd/gguidi/spark/34886160/conf
+SPARK_HELPER=/usr/local/bin/spark-2.3.0/helpers/
+calling srun -N 31 -n 31 -x nid00604 env -u SHIFTER_VOLUME shifter /usr/local/bin/spark-2.3.0/sbin/start-slave.sh spark://nid00604:7077
+**Starting Time is Thu Oct 8 19:10:59 PDT 2020
+calling /usr/local/bin/spark-2.3.0/sbin/spark-config.sh
+calling shifter /usr/local/bin/spark-2.3.0/sbin/start-master.sh
+starting org.apache.spark.deploy.master.Master, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.master.Master-1-nid00604.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00621.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00631.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00613.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00626.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00608.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00618.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00605.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00634.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00610.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00623.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00607.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00633.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00620.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00612.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00615.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00622.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00628.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00609.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00616.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00629.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00619.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00611.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00614.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00632.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00617.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00627.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00625.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00606.out
+starting org.apache.spark.deploy.worker.Worker, logging to /global/cscratch1/sd/gguidi/spark/34886160/spark-gguidi-org.apache.spark.deploy.worker.Worker-1-nid00624.out
+**Finished TER Thu Oct 8 19:11:32 PDT 2020
