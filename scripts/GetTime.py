@@ -7,10 +7,9 @@ import sys
 from time import strftime
  
 LogFileName = open(sys.argv[1], 'r')
-ExportFile = "/global/cscratch1/sd/gguidi/IPDPS2021/performance/"
 
 # @GGGG: run the program from build folder (temporary)
-ExportFile = ExportFile + "GetTime-" + str(sys.argv[1]) + ".txt"
+ExportFile = "GetTime-" + str(sys.argv[1]) + ".txt"
 
 regex1st = '(Main|\(\):[0-9]).*' # Only care about the last lines of the log
 regex2nd = '[0-9].*[0-9]'        # Extract only numeric values 
