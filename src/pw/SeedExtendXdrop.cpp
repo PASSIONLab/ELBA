@@ -86,7 +86,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			else 
 			{
 				suffix = rlenV - endpV;
-				direction = 1;
+				direction = 2;
 
 				overhang = suffix << 2 | direction;
 			}	

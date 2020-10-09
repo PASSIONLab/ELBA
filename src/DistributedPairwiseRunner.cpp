@@ -215,10 +215,10 @@ DistributedPairwiseRunner::run_batch
 	int myrank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
-	int			batch_size		= 5e5; // @GGGG: play with this value if program goes OOM (it could be an input parameter)
+	int			batch_size		= 1e5;
 	int			batch_cnt		= (local_nnz_count / batch_size) + 1;
 	int			batch_idx		= 0;
-	uint64_t	nalignments		= 0;
+	uint64_t		nalignments		= 0;
 
 	// PSpMat<dibella::CommonKmers>::Tuples mattuples(*spSeq);
 	// @TODO threaded
@@ -254,8 +254,9 @@ DistributedPairwiseRunner::run_batch
 	uint64_t *algn_cnts   = new uint64_t[numThreads + 1];
 	uint64_t nelims_ckthr = 0; // nelims_alnthr = 0, nelims_both = 0;
 
-
-	while (batch_idx < batch_cnt)
+//	size_t moreToGo = 0, totmoreToGo = 0;
+	
+	while (batch_idx < batch_cnt) 
 	{
 		uint64_t beg = batch_idx * batch_size;
 		uint64_t end = ((batch_idx + 1) * batch_size > local_nnz_count) ? local_nnz_count : ((batch_idx + 1) * batch_size);
@@ -317,7 +318,7 @@ DistributedPairwiseRunner::run_batch
 		nalignments += algn_cnts[numThreads];
 
 		if (algn_cnts[numThreads] == 0)
-		{
+		{	
 			++batch_idx;
 			continue;
 		}
@@ -368,8 +369,8 @@ DistributedPairwiseRunner::run_batch
 
 		// call aligner
 		lfs << "calling aligner for batch idx " << batch_idx
-			<< " cur #algnments " << algn_cnts[numThreads]
-			<< " overall " << nalignments
+			<< " cur #algnments " 		<< algn_cnts[numThreads]
+			<< " overall " 			<< nalignments
 			<< std::endl;
 
 		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, k);
