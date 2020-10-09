@@ -376,16 +376,8 @@ DistributedPairwiseRunner::run_batch
 		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, k);
 		
 		delete [] lids;
-
-		batch_idx++;
-	//		moreToGo = batch_idx < batch_cnt;
-
-	//	CHECK_MPI(MPI_Allreduce(&moreToGo, &totmoreToGo, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD));	
-		
-	//	if(myrank == 0) std::cout << totmoreToGo << std::endl;
-	//	MPI_Barrier(MPI_COMM_WORLD);
-
-	}// while(totmoreToGo);
+		++batch_idx;
+	}
 
 	pf->nalignments = nalignments;
 	pf->print_avg_times(parops, lfs);

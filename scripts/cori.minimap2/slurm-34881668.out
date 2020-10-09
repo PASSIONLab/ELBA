@@ -1,0 +1,35 @@
+[M::mm_idx_gen::246.776*2.02] collected minimizers
+[M::mm_idx_gen::253.285*2.92] sorted minimizers
+[M::main::253.285*2.92] loaded/built the index for 353582 target sequence(s)
+[M::mm_mapopt_update::264.505*2.84] mid_occ = 211
+[M::mm_idx_stat] kmer size: 19; skip: 5; is_hpc: 1; #seq: 353582
+[M::mm_idx_stat::272.568*2.79] distinct minimizers: 220837555 (46.78% are singletons); average occurrences: 3.975; average spacing: 4.557; total length: 4000661847
+[M::worker_pipeline::431.186*11.11] mapped 44419 sequences
+[M::worker_pipeline::532.168*12.15] mapped 43589 sequences
+[M::worker_pipeline::613.974*13.08] mapped 43873 sequences
+[M::worker_pipeline::685.835*13.61] mapped 43898 sequences
+[M::worker_pipeline::734.901*14.40] mapped 43650 sequences
+[M::worker_pipeline::782.604*14.71] mapped 44065 sequences
+[M::worker_pipeline::802.004*15.41] mapped 44724 sequences
+[M::worker_pipeline::816.470*15.69] mapped 45314 sequences
+[M::worker_pipeline::821.522*15.95] mapped 46517 sequences
+[M::worker_pipeline::824.431*16.12] mapped 20696 sequences
+[M::mm_idx_gen::874.776*15.29] collected minimizers
+[M::mm_idx_gen::875.355*15.32] sorted minimizers
+[M::main::875.355*15.32] loaded/built the index for 67163 target sequence(s)
+[M::mm_mapopt_update::875.355*15.32] mid_occ = 211
+[M::mm_idx_stat] kmer size: 19; skip: 5; is_hpc: 1; #seq: 67163
+[M::mm_idx_stat::877.480*15.28] distinct minimizers: 85855788 (67.14% are singletons); average occurrences: 1.859; average spacing: 4.568; total length: 728950658
+[M::worker_pipeline::970.014*16.18] mapped 44419 sequences
+[M::worker_pipeline::1038.721*16.21] mapped 43589 sequences
+[M::worker_pipeline::1105.339*16.30] mapped 43873 sequences
+[M::worker_pipeline::1173.640*16.36] mapped 43898 sequences
+[M::worker_pipeline::1240.676*16.42] mapped 43650 sequences
+[M::worker_pipeline::1308.605*16.44] mapped 44065 sequences
+[M::worker_pipeline::1375.271*16.41] mapped 44724 sequences
+[M::worker_pipeline::1435.968*16.29] mapped 45314 sequences
+[M::worker_pipeline::1472.893*16.10] mapped 46517 sequences
+[M::worker_pipeline::1484.077*15.98] mapped 20696 sequences
+[M::main] Version: 2.17-r974-dirty
+[M::main] CMD: /global/cscratch1/sd/gguidi/IPDPS2021/minimap2/./minimap2 -x ava-pb -t64 ../inputs/celegans40x.fq ../inputs/celegans40x.fq
+[M::main] Real time: 1484.937 sec; CPU: 23718.779 sec; Peak RSS: 32.442 GB
