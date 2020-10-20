@@ -1,4 +1,5 @@
-# diBELLA 2D: Parallel String Graph Construction and Transitive Reduction for De Novo Genome Assembly
+# diBELLA 2D
+## Parallel String Graph Construction and Transitive Reduction for De Novo Genome Assembly
 =====
 
 ## Prerequisites
