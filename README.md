@@ -1,4 +1,5 @@
-# diBELLA: Distributed Long Read to Long Read Alignment Using Sparse Matrices
+# diBELLA 2D
+## Parallel String Graph Construction and Transitive Reduction for De Novo Genome Assembly
 =====
 
 ## Prerequisites
