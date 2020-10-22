@@ -99,7 +99,7 @@ mpirun -np 1 ./dibella -i /path/to/ecsample-sub1.fa -k 17 --idxmap dibella-test 
 To run on multiple nodes, for example on 4 nodes using 4 MPI rank/node, please download ```ecsample30x.fa``` from [here](https://portal.nersc.gov/project/m1982/dibella.2d/inputs/) and run as follows:
 ```
 export OMP_NUM_THREADS=1
-mpirun -np 16 ./dibella -i /path/to/ecsample-sub1.fa -k 17 --idxmap dibella-ecsample -c 16890 --alph dna --of overlap-ecsample --af alignment-ecsample -s 1 -O 100000 --afreq 100000 --xa 5
+mpirun -np 16 ./dibella -i /path/to/ecsample30x.fa -k 17 --idxmap dibella-ecsample -c 16890 --alph dna --of overlap-ecsample --af alignment-ecsample -s 1 -O 100000 --afreq 100000 --xa 5
 ```
 You need to use a perfect square number of processes to match our 2D decomposition. Recall ```-c``` should match the number of sequences in the input FASTA.
 
