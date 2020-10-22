@@ -269,6 +269,8 @@ int main(int argc, char **argv)
   if (!no_align)
   {
 
+    double mytime = MPI_Wtime();
+
     tp->times["StartMain:DprAlign()"] = std::chrono::system_clock::now();
     ScoringScheme scoring_scheme(match, mismatch_sc, gap_ext);
 
@@ -296,17 +298,25 @@ int main(int argc, char **argv)
 	    local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
     }
 
+    mytime = MPI_Wtime() - mytime;
+
     tp->times["EndMain:DprAlign()"] = std::chrono::system_clock::now();
     delete pf;
+
+    /* Compute max, min, and average timing statistics to investigate load imbalance */
+    double maxtime, mintime, avgtime;
+    MPI_Reduce(&mytime, &maxtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&mytime, &mintime, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&mytime, &avgtime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	
     uint64_t total_alignments = 0;
-    MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
-               MPI_COMM_WORLD);
+    MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    if (is_print_rank)
+    if(is_print_rank)
     {
-      std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments
-                << std::endl;
+      avgtime /= parops->world_procs_count;
+      std::cout << "LoadBalance:\n\tDprAlign() min time " << mintime << " max time " << maxtime << " avg time " << avgtime << std::endl;
+      std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments << std::endl;
     }
   }
 
