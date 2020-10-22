@@ -174,8 +174,7 @@ cmake_install.cmake
 *.dSYM/
 comb_blas
 lbl_dal
-Makefile
-scripts/
+Makefilescripts/
 outputs/
 notebooks/
 docs/
