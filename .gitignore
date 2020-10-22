@@ -175,3 +175,7 @@ cmake_install.cmake
 comb_blas
 lbl_dal
 Makefile
+scripts/
+outputs/
+notebooks/
+docs/

@@ -1,3 +1,16 @@
+/*
+PASTIS Copyright (c) 2020, The Regents of the University of California, through Lawrence Berkeley National Laboratory 
+(subject to receipt of any required approvals from the U.S. Dept. of Energy). All rights reserved.
+
+If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Intellectual 
+Property Office at IPO@lbl.gov.
+
+NOTICE. This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently 
+retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, 
+nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare 
+derivative works, and perform publicly and display publicly, and to permit others to do so.
+*/
+
 #include <iostream>
 #include <cmath>
 #include "../include/Constants.hpp"
@@ -165,12 +178,25 @@ int main(int argc, char **argv)
 
   /*! Read and distribute fasta data */
   tp->times["StartMain:newDFD()"] = std::chrono::system_clock::now();
-
+  double myreadwait = MPI_Wtime();
   std::shared_ptr<DistributedFastaData> dfd = std::make_shared<DistributedFastaData>(
       input_file.c_str(), idx_map_file.c_str(), input_overlap,
       klength, parops, tp, tu);
-      
+  
+  myreadwait = MPI_Wtime() - myreadwait;
   tp->times["EndMain:newDFD()"] = std::chrono::system_clock::now();
+
+  /* Compute max, min, and average timing statistics to investigate load imbalance */
+  double maxreadtime, minreadtime, avgreadtime;
+  MPI_Reduce(&myreadwait, &maxreadtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&myreadwait, &minreadtime, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&myreadwait, &avgreadtime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+  if(is_print_rank)
+  {
+    avgreadtime /= parops->world_procs_count;
+    std::cout << "LoadBalance:\n\tnewDFD() min time " << minreadtime << " max time " << maxreadtime << " avg time " << avgreadtime << std::endl;
+  }
 
 #ifndef NDEBUG
   //  TraceUtils::print_fasta_data(fd, parops);
@@ -195,15 +221,30 @@ int main(int argc, char **argv)
   Alphabet alph(alph_t);
 
   tp->times["StartMain:GenerateA()"] = std::chrono::system_clock::now();
+
+  double myspmatwait = MPI_Wtime();
   PSpMat<PosInRead>::MPI_DCCols A =
       dibella::KmerOps::GenerateA(
           seq_count, dfd, klength, kstride,
           alph, parops, tp);
 
+  myspmatwait = MPI_Wtime() - myspmatwait;
   tu.print_str("Matrix A: ");
   tu.print_str("\nLoad imbalance: " + std::to_string(A.LoadImbalance()) + "\n");
 
   tp->times["EndMain:GenerateA()"] = std::chrono::system_clock::now();
+
+  /* Compute max, min, and average timing statistics to investigate load imbalance */
+  double maxspmattime, minspmattime, avgspmattime;
+  MPI_Reduce(&myspmatwait, &maxspmattime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&myspmatwait, &minspmattime, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&myspmatwait, &avgspmattime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+  if(is_print_rank)
+  {
+    avgspmattime /= parops->world_procs_count;
+    std::cout << "LoadBalance:\n\tCountKmer() min time " << minspmattime << " max time " << maxspmattime << " avg time " << avgspmattime << std::endl;
+  }
 
   A.PrintInfo();
 
@@ -215,28 +256,57 @@ int main(int argc, char **argv)
   tp->times["EndMain:At()"] = std::chrono::system_clock::now();
 
   tp->times["StartMain:AAt()"] = std::chrono::system_clock::now();
-  proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
+  double myaatwait = MPI_Wtime();
 
   // GGGG: there's some bug in the vector version (new one stack error)
   PSpMat<dibella::CommonKmers>::MPI_DCCols B = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);  
 
-  proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
+  tp->times["EndMain:AAt()"] = std::chrono::system_clock::now();
+  myaatwait = MPI_Wtime() - myaatwait;
+
+  /* Compute max, min, and average timing statistics to investigate load imbalance */
+  double maxaattime, minaattime, avgaattime;
+  MPI_Reduce(&myaatwait, &maxaattime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&myaatwait, &minaattime, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&myaatwait, &avgaattime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+  if(is_print_rank)
+  {
+    avgaattime /= parops->world_procs_count;
+    std::cout << "LoadBalance:\n\tAAt() min time " << minaattime << " max time " << maxaattime << " avg time " << avgaattime << std::endl;
+  }
+
+  /* GGGG: @TODO remove proc_log_stream */
   tu.print_str(
       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
       + std::to_string(B.getnnz() - seq_count)
       + "\nLoad imbalance: " + std::to_string(B.LoadImbalance()) + "\n");
-  tp->times["EndMain:AAt()"] = std::chrono::system_clock::now();
 
   tu.print_str("Matrix B, i.e AAt: ");
   B.PrintInfo();
 
   /*! Wait until data distribution is complete */
+  double mydfdwait = MPI_Wtime();
   tp->times["StartMain:DfdWait()"] = std::chrono::system_clock::now();
   if (!dfd->is_ready())
   {
     dfd->wait();
   }
   tp->times["EndMain:DfdWait()"] = std::chrono::system_clock::now();
+
+  mydfdwait = MPI_Wtime() - mydfdwait;
+
+  /* Compute max, min, and average timing statistics to investigate load imbalance */
+  double maxdfdtime, mindfdtime, avgdfdtime;
+  MPI_Reduce(&mydfdwait, &maxdfdtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&mydfdwait, &mindfdtime, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&mydfdwait, &avgdfdtime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+  if(is_print_rank)
+  {
+    avgdfdtime /= parops->world_procs_count;
+    std::cout << "LoadBalance:\n\tDfdWait() min time " << mindfdtime << " max time " << maxdfdtime << " avg time " << avgdfdtime << std::endl;
+  }
 
   uint64_t n_rows, n_cols;
   n_rows = n_cols = dfd->global_count();
@@ -255,7 +325,7 @@ int main(int argc, char **argv)
 
   if (!no_align)
   {
-
+    double mytime = MPI_Wtime();
     tp->times["StartMain:DprAlign()"] = std::chrono::system_clock::now();
     ScoringScheme scoring_scheme(match, mismatch_sc, gap_ext);
 
@@ -283,27 +353,27 @@ int main(int argc, char **argv)
 	    local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
     }
 
+    mytime = MPI_Wtime() - mytime;
+
     tp->times["EndMain:DprAlign()"] = std::chrono::system_clock::now();
     delete pf;
+
+    /* Compute max, min, and average timing statistics to investigate load imbalance */
+    double maxtime, mintime, avgtime;
+    MPI_Reduce(&mytime, &maxtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&mytime, &mintime, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&mytime, &avgtime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	
     uint64_t total_alignments = 0;
-    MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
-               MPI_COMM_WORLD);
+    MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    if (is_print_rank)
+    if(is_print_rank)
     {
-      std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments
-                << std::endl;
+      avgtime /= parops->world_procs_count;
+      std::cout << "LoadBalance:\n\tDprAlign() min time " << mintime << " max time " << maxtime << " avg time " << avgtime << std::endl;
+      std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments << std::endl;
     }
   }
-
-  // @GGGG-TODO: modify batch
-  // tp->times["StartMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
-  // if (write_overlaps)
-  // {
-  //   dpr.write_overlaps(overlap_file.c_str());
-  // }
-  // tp->times["EndMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
@@ -333,6 +403,8 @@ int main(int argc, char **argv)
 
     //     SpParHelper::Print("Performed random permutation of matrix\n");
     // }
+
+    double mytime = MPI_Wtime();
 
     uint nnz, prev;
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
@@ -401,9 +473,24 @@ int main(int argc, char **argv)
        
     } while (nnz != prev);
 
+    mytime = MPI_Wtime() - mytime;
+    tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
+
     tu.print_str("Matrix B, i.e AAt after transitive reduction: ");
     B.PrintInfo();
-    tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
+
+    /* Compute max, min, and average timing statistics to investigate load imbalance */
+    double maxtime, mintime, avgtime;
+    MPI_Reduce(&mytime, &maxtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&mytime, &mintime, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&mytime, &avgtime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if(is_print_rank)
+    {
+      avgtime /= parops->world_procs_count;
+      std::cout << "LoadBalance:\n\tTransitiveReduction() min time " << mintime << " max time " << maxtime << " avg time " << avgtime << std::endl;
+    }
+
  #ifdef DIBELLA_DEBUG
     double maxtimeA2, maxtimeC, maxtimeI, maxtimeA;
     
