@@ -63,20 +63,16 @@ Based on the dataset, one might want to change the above definitions. **MAX_NUM_
 
 You can run diBELLA in parallel by specifying the number of processes to the mpirun or mpiexec command. The number of processes must be perfect square value.
 
-## Copy input data from m1982 (internal)
+## Input data samples
 -----
-  ```
-    mkdir inputs
-    lfs setstripe -c 72 -S 8M inputs/
-    cd inputs/
-    cp -r /project/projectdirs/m1982/bella-data/* .      
-  ```
-## From FASTQ to FASTA
------
+A few input data sets can be downloaded [here](https://portal.nersc.gov/project/m1982/dibella.2d/inputs/). If you have your own FASTQs, you can convert them into FASTAs using [seqtk](https://github.com/lh3/seqtk):
+
   ```
     cd ../seqtk
     ./seqtk seq -a <name>.fastq/fq > <name>.fa
   ```
+A tiny example `ecsample-sub1.fa` can be found in this repository.
+
 ## Ready to run
 -----
 
