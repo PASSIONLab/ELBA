@@ -108,3 +108,7 @@ You need to use a perfect square number of processes to match our 2D decompositi
 To cite our work or to know more about our methods, please refer to:
 
 > Giulia Guidi, Oguz Selvitopi, Marquita Ellis, Leonid Oliker, Katherine Yelick, Aydın Buluç. [Parallel String Graph Construction and Transitive Reduction for De Novo Genome Assembly](https://arxiv.org/pdf/2010.10055.pdf). arXiv:2010.10055 [cs.DC]. 2020 Oct 20.
+
+Further design choices and results in terms of accuracy can be found here:
+
+> Giulia Guidi, Marquita Ellis, Daniel Rokhsar, Katherine Yelick, Aydın Buluç. [BELLA: Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper](https://www.biorxiv.org/content/10.1101/464420v5.full.pdf). bioRxiv 464420; doi: https://doi.org/10.1101/464420.
