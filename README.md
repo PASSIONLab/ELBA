@@ -1,7 +1,5 @@
 # diBELLA 2D
 ## Parallel String Graph Construction and Transitive Reduction for De Novo Genome Assembly
-=====
-
 ## Prerequisites
 
 1. Operating System.
@@ -41,7 +39,6 @@
   * This is a header only library, so there's no need to build it.
 
 # Build diBELLA
------
 
 To build diBELLA, you can use the following commands:
   ```
@@ -59,12 +56,10 @@ Default macro definition in CMakeFiles.txt:
 Based on the dataset, one might want to change the above definitions. **MAX_NUM_READS**: reliable k-mer upper bound (8 works for E. coli (Sample) 30X and 4 for Human CCS), **ERR_THRESHOLD**: reliable k-mer lower bound.
 
 # Run diBELLA
------
 
 You can run diBELLA in parallel by specifying the number of processes to the mpirun or mpiexec command. The number of processes must be perfect square value.
 
 ## Input data samples
------
 A few input data sets can be downloaded [here](https://portal.nersc.gov/project/m1982/dibella.2d/inputs/). If you have your own FASTQs, you can convert them into FASTAs using [seqtk](https://github.com/lh3/seqtk):
 
   ```
@@ -74,8 +69,6 @@ A few input data sets can be downloaded [here](https://portal.nersc.gov/project/
 A tiny example `ecsample-sub1.fa` can be found in this repository.
 
 ## Ready to run
------
-
 The parameters and options of diBELLA are as follows:
 - ```-i <string>```: Input FASTA file.
 - ```-c <integer>```: Number of sequences in the FASTA file.
@@ -98,8 +91,19 @@ The parameters and options of diBELLA are as follows:
 - ```--alph <dna|protein>```: Alphabet.
 
 ## Run test program
------
 You can run the test dataset ```ecsample-sub1.fa``` as follows on one node (it's too small to run on multiple nodes), this command runs diBELLA using x-drop alignment and ```x = 5```:
 ```
+export OMP_NUM_THREADS=1
 mpirun -np 1 ./dibella -i /path/to/ecsample-sub1.fa -k 17 --idxmap dibella-test -c 135 --alph dna --of overlap-test --af alignment-test -s 1 -O 100000 --afreq 100000 --xa 5
 ```
+To run on multiple nodes, for example on 4 nodes using 4 MPI rank/node, please download ```ecsample30x.fa``` from [here](https://portal.nersc.gov/project/m1982/dibella.2d/inputs/) and run as follows:
+```
+export OMP_NUM_THREADS=1
+mpirun -np 16 ./dibella -i /path/to/ecsample-sub1.fa -k 17 --idxmap dibella-ecsample -c 16890 --alph dna --of overlap-ecsample --af alignment-ecsample -s 1 -O 100000 --afreq 100000 --xa 5
+```
+You need to use a perfect square number of processes to match our 2D decomposition. Recall ```-c``` should match the number of sequences in the input FASTA.
+
+# Citation
+To cite our work or to know more about our methods, please refer to:
+
+> Giulia Guidi, Oguz Selvitopi, Marquita Ellis, Leonid Oliker, Katherine Yelick, Aydın Buluç. [Parallel String Graph Construction and Transitive Reduction for De Novo Genome Assembly](https://arxiv.org/pdf/2010.10055.pdf). arXiv:2010.10055 [cs.DC]. 2020 Oct 20.
