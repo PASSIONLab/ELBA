@@ -188,7 +188,7 @@ void SeedExtendXdrop::apply(
 		start_time = std::chrono::system_clock::now();
 		ai.xscore  = extendSeed(seed, twinseqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, (int)k, seqan::GappedXDrop());
 		end_time   = std::chrono::system_clock::now();
-		add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
+		add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
 
 	#ifdef STATS
 		assignSource(row(align, 0), infix(twinseqH, beginPositionH(seed),
@@ -204,7 +204,7 @@ void SeedExtendXdrop::apply(
 		start_time = std::chrono::system_clock::now();
 		ai.xscore = extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, (int)k, seqan::GappedXDrop());
 		end_time = std::chrono::system_clock::now();
-		add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
+		add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
 
 	#ifdef STATS
 		assignSource(row(align, 0), infix(*seqH, beginPositionH(seed),
@@ -232,7 +232,7 @@ void SeedExtendXdrop::apply(
     start_time = std::chrono::system_clock::now();
     computeAlignmentStats(ai[count].stats, align, scoring_scheme);
     end_time = std::chrono::system_clock::now();
-    add_time("XA:compute_stats", (ms_t(end_time - start_time)).count());
+    add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());
 #endif
 
     ai.seq_h_length = length(*seqH);
@@ -371,7 +371,7 @@ SeedExtendXdrop::apply_batch
 						seqan::GappedXDrop());
 
 				end_time = std::chrono::system_clock::now();
-				add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
+				add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
 
 			#ifdef STATS
 				assignSource(row(align, 0), infix(twinRead, beginPositionH(seed),
@@ -388,7 +388,7 @@ SeedExtendXdrop::apply_batch
 						xdrop, (int)k, 
 						seqan::GappedXDrop());
 				end_time = std::chrono::system_clock::now();
-				add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
+				add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
 
 			#ifdef STATS
 				assignSource(row(align, 0), infix(*seqH, beginPositionH(seed),
@@ -417,7 +417,7 @@ SeedExtendXdrop::apply_batch
 		}
 
 		auto end_time = std::chrono::system_clock::now();
-    	add_time("XA:extend_seed", (ms_t(end_time - start_time)).count());
+    	add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
 
 	#ifdef STATS
 		start_time = std::chrono::system_clock::now();
@@ -483,7 +483,7 @@ SeedExtendXdrop::apply_batch
 		}
 
 		end_time = std::chrono::system_clock::now();
-    	add_time("XA:compute_stats", (ms_t(end_time - start_time)).count());
+    	add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());
 	}
 
 	delete [] seedlens;

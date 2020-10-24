@@ -47,7 +47,7 @@ void BandedAligner::apply(
   start_time = std::chrono::system_clock::now();
   computeAlignmentStats(ai.stats, align, scoring_scheme);
   end_time = std::chrono::system_clock::now();
-  add_time("BA:compute_stats", (ms_t(end_time - start_time)).count());
+  add_time("BA:ComputeStats", (ms_t(end_time - start_time)).count());
 
   ai.seq_h_length = length(*seq_h);
   ai.seq_v_length = length(*seq_v);
@@ -164,7 +164,7 @@ BandedAligner::apply_batch
 	// }
 
 	// end_time = std::chrono::system_clock::now();
-  	// add_time("BA:compute_stats + string_op",
+  	// add_time("BA:ComputeStats + string_op",
 	// 		 (ms_t(end_time - start_time)).count());
 
 	// return;
