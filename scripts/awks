@@ -1,2 +1,0 @@
-awk '/^>/{a++;} {if (a <= 100000){ print $0;} else {exit 1;}}' huge.fasta > $SCRATCH/archaea_100K.fasta
-awk '/^>/{a++}END{print a}' $SCRATCH/archaea_100K.fasta

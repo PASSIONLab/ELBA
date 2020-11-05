@@ -261,7 +261,7 @@ DistributedPairwiseRunner::run_batch
 		uint64_t beg = batch_idx * batch_size;
 		uint64_t end = ((batch_idx + 1) * batch_size > local_nnz_count) ? local_nnz_count : ((batch_idx + 1) * batch_size);
 
-		tu.print_str("batch idx " + std::to_string(batch_idx) + "/" +
+		tu.print_str("Batch idx " + std::to_string(batch_idx) + "/" +
 					 std::to_string(batch_cnt) + " [" +
 					 std::to_string(beg) + ", " +
 					 std::to_string(end) + ")\n");
@@ -385,7 +385,7 @@ DistributedPairwiseRunner::run_batch
 	lfs << "#alignments run " << nalignments << std::endl;
 
 	// Stats
-	uint64_t nelims_ckthr_tot = 0, nalignments_tot = 0;
+	uint64_t nelims_ckthr_tot = 0, nalignments_tot = 0, maxalignments = 0, minalignments = 0;
 
 	MPI_Reduce(&nelims_ckthr, &nelims_ckthr_tot, 1, MPI_UINT64_T,
 			   MPI_SUM, 0, MPI_COMM_WORLD);
@@ -393,12 +393,23 @@ DistributedPairwiseRunner::run_batch
 	MPI_Reduce(&nalignments, &nalignments_tot, 1, MPI_UINT64_T,
 			   MPI_SUM, 0, MPI_COMM_WORLD);
 
-	tu.print_str("total nnzs in the output matrix " +
+
+	uint64_t avgalignments = nalignments_tot / parops->world_procs_count;
+
+	// min, max num alignments per proc
+  	MPI_Reduce(&nalignments, &maxalignments, 1, MPI_UINT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
+ 	MPI_Reduce(&nalignments, &minalignments, 1, MPI_UINT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
+
+	tu.print_str("  PWF:XA:ExtendSeed avg per proc: " + std::to_string(avgalignments) + " alignments\n" +
+				 "  PWF:XA:ExtendSeed max per proc: " + std::to_string(maxalignments) + " alignments\n" +
+				 "  PWF:XA:ExtendSeed min per proc: " + std::to_string(minalignments) + " alignments\n" +
+
+				 "Total nnzs in the output matrix " +
 				 std::to_string(gmat->getnnz()) +
-				 "\ntotal nnzs in strictly lower (or upper) mat " +
+				 "\nTotal nnzs in strictly lower (or upper) mat " +
 				 std::to_string((gmat->getnnz()-gmat->getncol())/2) + 
-				 "\n  total alignments run " + std::to_string(nalignments_tot) +
-				 "\n  eliminated due to common k-mer threshold " +
+				 "\n  Total alignments run " + std::to_string(nalignments_tot) +
+				 "\n  Eliminated due to common k-mer threshold " +
 				 std::to_string(nelims_ckthr_tot) + "\n");
 
 	// Prune pairs that do not meet coverage criteria

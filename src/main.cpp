@@ -178,11 +178,10 @@ int main(int argc, char **argv)
 
   /*! Read and distribute fasta data */
   tp->times["StartMain:newDFD()"] = std::chrono::system_clock::now();
-
   std::shared_ptr<DistributedFastaData> dfd = std::make_shared<DistributedFastaData>(
       input_file.c_str(), idx_map_file.c_str(), input_overlap,
       klength, parops, tp, tu);
-      
+  
   tp->times["EndMain:newDFD()"] = std::chrono::system_clock::now();
 
 #ifndef NDEBUG
@@ -228,17 +227,17 @@ int main(int argc, char **argv)
   tp->times["EndMain:At()"] = std::chrono::system_clock::now();
 
   tp->times["StartMain:AAt()"] = std::chrono::system_clock::now();
-  proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " starting AAt" << std::endl;
 
   // GGGG: there's some bug in the vector version (new one stack error)
   PSpMat<dibella::CommonKmers>::MPI_DCCols B = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);  
 
-  proc_log_stream << "INFO: Rank: " << parops->world_proc_rank << " done AAt" << std::endl;
+  tp->times["EndMain:AAt()"] = std::chrono::system_clock::now();
+
+  /* GGGG: @TODO remove proc_log_stream */
   tu.print_str(
       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
       + std::to_string(B.getnnz() - seq_count)
       + "\nLoad imbalance: " + std::to_string(B.LoadImbalance()) + "\n");
-  tp->times["EndMain:AAt()"] = std::chrono::system_clock::now();
 
   tu.print_str("Matrix B, i.e AAt: ");
   B.PrintInfo();
@@ -268,7 +267,7 @@ int main(int argc, char **argv)
 
   if (!no_align)
   {
-
+    double mytime = MPI_Wtime();
     tp->times["StartMain:DprAlign()"] = std::chrono::system_clock::now();
     ScoringScheme scoring_scheme(match, mismatch_sc, gap_ext);
 
@@ -298,25 +297,15 @@ int main(int argc, char **argv)
 
     tp->times["EndMain:DprAlign()"] = std::chrono::system_clock::now();
     delete pf;
-	
-    uint64_t total_alignments = 0;
-    MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0,
-               MPI_COMM_WORLD);
 
-    if (is_print_rank)
+    uint64_t total_alignments = 0;
+    MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if(is_print_rank)
     {
-      std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments
-                << std::endl;
+      std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments << std::endl;
     }
   }
-
-  // @GGGG-TODO: modify batch
-  // tp->times["StartMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
-  // if (write_overlaps)
-  // {
-  //   dpr.write_overlaps(overlap_file.c_str());
-  // }
-  // tp->times["EndMain:DprWriteOverlaps()"] = std::chrono::system_clock::now();
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
@@ -414,9 +403,11 @@ int main(int argc, char **argv)
        
     } while (nnz != prev);
 
+    tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
+
     tu.print_str("Matrix B, i.e AAt after transitive reduction: ");
     B.PrintInfo();
-    tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
+
  #ifdef DIBELLA_DEBUG
     double maxtimeA2, maxtimeC, maxtimeI, maxtimeA;
     

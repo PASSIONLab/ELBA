@@ -30,7 +30,7 @@ void FullAligner::apply(
   start_time = std::chrono::system_clock::now();
   computeAlignmentStats(ai.stats, align, scoring_scheme);
   end_time = std::chrono::system_clock::now();
-  add_time("FA:compute_stats", (ms_t(end_time - start_time)).count());
+  add_time("FA:ComputeStats", (ms_t(end_time - start_time)).count());
 
   ai.seq_h_length = length(*seq_h);
   ai.seq_v_length = length(*seq_v);
@@ -138,7 +138,7 @@ FullAligner::apply_batch
 	}
 
 	end_time = std::chrono::system_clock::now();
-  	add_time("FA:compute_stats + string_op",
+  	add_time("FA:ComputeStats + string_op",
 			 (ms_t(end_time - start_time)).count());
 
 	return;

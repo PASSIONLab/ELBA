@@ -53,7 +53,7 @@ Default macro definition in CMakeFiles.txt:
     #define ERR_THRESHOLD 2
     #define MAX_NUM_READS 8
   ```
-Based on the dataset, one might want to change the above definitions. **MAX_NUM_READS**: reliable k-mer upper bound (8 works for E. coli (Sample) 30X and 4 for Human CCS), **ERR_THRESHOLD**: reliable k-mer lower bound.
+Based on the dataset, one might want to change the above definitions. **MAX_NUM_READS**: reliable k-mer upper bound (8 works for E. coli (Sample) 30X and 4 for Human 10X and C. elegans 40X that you can find [here](https://portal.nersc.gov/project/m1982/dibella.2d/inputs/)), **ERR_THRESHOLD**: reliable k-mer lower bound.
 
 # Run diBELLA
 
@@ -69,7 +69,6 @@ A few input data sets can be downloaded [here](https://portal.nersc.gov/project/
 A tiny example `ecsample-sub1.fa` can be found in this repository.
 
 ## Ready to run
-
 The parameters and options of diBELLA are as follows:
 - ```-i <string>```: Input FASTA file.
 - ```-c <integer>```: Number of sequences in the FASTA file.
@@ -92,7 +91,6 @@ The parameters and options of diBELLA are as follows:
 - ```--alph <dna|protein>```: Alphabet.
 
 ## Run test program
-
 You can run the test dataset ```ecsample-sub1.fa``` as follows on one node (it's too small to run on multiple nodes), this command runs diBELLA using x-drop alignment and ```x = 5```:
 ```
 export OMP_NUM_THREADS=1
@@ -109,3 +107,8 @@ You need to use a perfect square number of processes to match our 2D decompositi
 To cite our work or to know more about our methods, please refer to:
 
 > Giulia Guidi, Oguz Selvitopi, Marquita Ellis, Leonid Oliker, Katherine Yelick, Aydın Buluç. [Parallel String Graph Construction and Transitive Reduction for De Novo Genome Assembly](https://arxiv.org/pdf/2010.10055.pdf). arXiv:2010.10055 [cs.DC]. 2020 Oct 20.
+
+Further design choices and results in terms of accuracy can be found here:
+
+> Giulia Guidi, Marquita Ellis, Daniel Rokhsar, Katherine Yelick, Aydın Buluç. [BELLA: Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper](https://www.biorxiv.org/content/10.1101/464420v5.full.pdf). bioRxiv 464420; doi: https://doi.org/10.1101/464420.
+

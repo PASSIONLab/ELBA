@@ -31,12 +31,13 @@ void PairwiseFunction::add_time(std::string type, double duration) {
   }
 }
 
-void PairwiseFunction::print_avg_times(std::shared_ptr<ParallelOps> parops, std::ofstream &lfs) {
+void PairwiseFunction::print_avg_times(std::shared_ptr<ParallelOps> parops, std::ofstream &lfs)
+{
   // counts and times can be empty if there were non non-zeros in that
   // process grid cell. Therefore, we need to fix the collective call as follows.
   int counts_size = 0;
   for (auto el : counts)
-	counts_size = std::max(counts_size, static_cast<int>(el.size()));
+	  counts_size = std::max(counts_size, static_cast<int>(el.size()));
 
   MPI_Allreduce(MPI_IN_PLACE, &counts_size, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
@@ -60,12 +61,12 @@ void PairwiseFunction::print_avg_times(std::shared_ptr<ParallelOps> parops, std:
   std::vector<uint64_t> counts_tmp(counts_size, 0);  
   for (auto &el : counts)
     for (int i = 0; i < el.size(); ++i)
-	  counts_tmp[i] = std::max(counts_tmp[i], el[i]);
+	    counts_tmp[i] = std::max(counts_tmp[i], el[i]);
   
   std::vector<double> times_tmp(counts_size, 0);
   for (auto &el : times)
     for (int i = 0; i < el.size(); ++i)
-	  times_tmp[i] = std::max(times_tmp[i], el[i]);
+	    times_tmp[i] = std::max(times_tmp[i], el[i]);
   
   std::unordered_map<std::string, size_t> *types_tmp = NULL;
   for (auto &el : types)
@@ -77,16 +78,39 @@ void PairwiseFunction::print_avg_times(std::shared_ptr<ParallelOps> parops, std:
 	  }
   }
 
+  std::vector<double> maxtime(counts_size, 0);
+  std::vector<double> mintime(counts_size, 0);
+  std::vector<uint64_t> maxcount(counts_size, 0);
+  std::vector<uint64_t> mincount(counts_size, 0);
+
+  // min, max time
+  MPI_Reduce(&(times_tmp[0]), &(maxtime[0]), times_tmp.size(), MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&(times_tmp[0]), &(mintime[0]), times_tmp.size(), MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+
+  // min, max count
+  // MPI_Reduce(&(counts_tmp[0]), &(maxcount[0]), counts_tmp.size(), MPI_UINT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
+  // MPI_Reduce(&(counts_tmp[0]), &(mincount[0]), counts_tmp.size(), MPI_UINT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
+
+  // avg count, time
   MPI_Allreduce(MPI_IN_PLACE, &(counts_tmp[0]), counts_tmp.size(),
       MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(times_tmp[0]), times_tmp.size(),
                 MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
   if (parops->world_proc_rank == 0 && types_tmp != NULL)
   {
     for (auto &type : *types_tmp)
-	{
-      std::cout << "  PWF:" << type.first << " avg per proc:"
+	  {
+      std::cout << "  PWF:" << type.first << " avg per proc: "
                 << (times_tmp[type.second] / parops->world_procs_count)
+				<< " ms" << std::endl;
+
+      std::cout << "  PWF:" << type.first << " max per proc: "
+                << maxtime[type.second]
+				<< " ms" << std::endl;
+
+      std::cout << "  PWF:" << type.first << " min per proc: "
+                << mintime[type.second]
 				<< " ms" << std::endl;
     }
   }
