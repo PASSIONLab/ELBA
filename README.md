@@ -36,6 +36,7 @@
   * Create an environment variable, `SEQAN_HOME`, pointing to it:
   ```
     export SEQAN_HOME=/path/to/seqan
+    export BLOOM_HOME=src/libbloom/
   ```
   * This is a header only library, so there's no need to build it.
 
