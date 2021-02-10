@@ -113,7 +113,7 @@ Further design choices and results in terms of accuracy can be found here:
 
 > Giulia Guidi, Marquita Ellis, Daniel Rokhsar, Katherine Yelick, Aydın Buluç. [BELLA: Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper](https://www.biorxiv.org/content/10.1101/464420v5.full.pdf). bioRxiv 464420; doi: https://doi.org/10.1101/464420.
 
-# Copytright
+# Copyright
 
 diBELLA 2D: Parallel String Graph Construction and Transitive Reduction for De Novo Assembly (diBELLA 2D) Copyright (c) 2021, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
 
