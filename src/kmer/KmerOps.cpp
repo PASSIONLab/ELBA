@@ -48,8 +48,8 @@ int64_t nonerrorkmers;
 int64_t kmersprocessed;
 int64_t readsprocessed;
 
-int minKmerFreq = ERR_THRESHOLD;
-int maxKmerFreq = MAX_NUM_READS;
+int minKmerFreq = LOWER_KMER_FREQ;
+int maxKmerFreq = UPPER_KMER_FREQ;
 
 using namespace std;
 
@@ -99,14 +99,14 @@ WriteReadNameMap(const char* outfilename, unordered_map<ReadId,string>& readName
 READIDS newReadIdList() {
 	READIDS toreturn = *(new READIDS);
 	ASSERT(nullReadId == 0, "Read ID lists are being initialized to 0, despite the reserved null read ID being non-zero"); // TODO
-	std::memset(&toreturn, 0, MAX_NUM_READS*sizeof(ReadId));
+	std::memset(&toreturn, 0, UPPER_KMER_FREQ*sizeof(ReadId));
 	return toreturn;
 }
 
 POSITIONS newPositionsList() {
 	POSITIONS toreturn = *(new POSITIONS);
 	ASSERT(initPos == 0, "Position lists are being initialized to 0, despite the reserved null position being non-zero..."); // TODO
-	std::memset(&toreturn, 0, MAX_NUM_READS*sizeof(PosInRead));
+	std::memset(&toreturn, 0, UPPER_KMER_FREQ*sizeof(PosInRead));
 	return toreturn;
 }
 
@@ -283,7 +283,7 @@ void countTotalKmersAndCleanHash()
     while(itr != kmercounts->end())
     {
         int allcount =  get<2>(itr->second);
-        if(allcount < ERR_THRESHOLD || (maxKmerFreq > 0 && allcount > maxKmerFreq))
+        if(allcount < LOWER_KMER_FREQ || (maxKmerFreq > 0 && allcount > maxKmerFreq))
         {
             --hashsize;
             itr = kmercounts->erase(itr);
@@ -306,7 +306,7 @@ void countTotalKmersAndCleanHash()
 
     if(myrank == 0)
     {
-        cout << __FUNCTION__ << ": Erroneous count < " << ERR_THRESHOLD << " and high frequency > " << maxKmerFreq << " cases removed " << endl;
+        cout << __FUNCTION__ << ": Erroneous count < " << LOWER_KMER_FREQ << " and high frequency > " << maxKmerFreq << " cases removed " << endl;
         cout << __FUNCTION__ << ": Kmerscount hash includes " << distinctnonerror << " distinct elements" << endl;
         cout << __FUNCTION__ << ": Kmerscount non error kmers count is " << totalnonerror << endl;
     }

@@ -165,8 +165,8 @@ inline std::ostream& operator<<(std::ostream& out, const Kmer& k){
 
 // GGGG: MAX_KMER_SIZE is defined in CMakeFile.txt
 /*! Currently records 1 position per (k-mer, read) pair */
-typedef std::array<PosInRead, MAX_NUM_READS> POSITIONS;
-typedef std::array<ReadId,    MAX_NUM_READS> READIDS;
+typedef std::array<PosInRead, UPPER_KMER_FREQ> POSITIONS;
+typedef std::array<ReadId,    UPPER_KMER_FREQ> READIDS;
 
 typedef tuple<READIDS, POSITIONS, int> KmerCountType;
 typedef pair<Kmer::MERARR, KmerCountType>  KmerValue;
@@ -293,8 +293,8 @@ typedef VectorMap<Kmer::MERARR, KmerCountType, std::hash<Kmer::MERARR>, std::les
 
     // // GGGG: MAX_KMER_SIZE is defined in CMakeFile.txt
     // /*! Currently records 1 position per (k-mer, read) pair */
-    // typedef std::array<PosInRead, MAX_NUM_READS> POSITIONS;
-    // typedef std::array<ReadId,    MAX_NUM_READS> READIDS;
+    // typedef std::array<PosInRead, UPPER_KMER_FREQ> POSITIONS;
+    // typedef std::array<ReadId,    UPPER_KMER_FREQ> READIDS;
 
     // typedef tuple<READIDS, POSITIONS, int> KmerCountType;
     // typedef pair<Kmer, KmerCountType>  KmerValue;

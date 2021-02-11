@@ -30,9 +30,15 @@ find_package(OpenMP REQUIRED)
 find_package(ZLIB)
 
 add_definitions(-DMAX_KMER_SIZE=32)
-add_definitions(-DERR_THRESHOLD=2)
-add_definitions(-DMAX_NUM_READS=8)
 add_definitions(-DDELTACHERNOFF=0.1)
+
+set(LOWER_KMER_FREQ 2
+    CACHE STRING "Lower bound for the k-mer frequency")
+add_definitions(-DLOWER_KMER_FREQ=${LOWER_KMER_FREQ})
+
+set(UPPER_KMER_FREQ 8
+    CACHE STRING "Upper bound for the k-mer frequency")
+add_definitions(-DUPPER_KMER_FREQ=${UPPER_KMER_FREQ})
 
 add_executable(dibella
         src/Alphabet.cpp

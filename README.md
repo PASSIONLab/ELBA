@@ -51,10 +51,10 @@ To build diBELLA, you can use the following commands:
 Default macro definition in CMakeFiles.txt:
   ```
     #define MAX_KMER_SIZE 32
-    #define ERR_THRESHOLD 2
-    #define MAX_NUM_READS 8
+    #define LOWER_KMER_FREQ 2
+    #define UPPER_KMER_FREQ 8
   ```
-Based on the dataset, one might want to change the above definitions. **MAX_NUM_READS**: reliable k-mer upper bound (8 works for E. coli (Sample) 30X and 4 for Human 10X and C. elegans 40X that you can find [here](https://portal.nersc.gov/project/m1982/dibella.2d/inputs/)), **ERR_THRESHOLD**: reliable k-mer lower bound.
+Based on the dataset, one might want to change the above definitions. **UPPER_KMER_FREQ**: reliable k-mer upper bound (8 works for E. coli (Sample) 30X and 4 for Human 10X and C. elegans 40X that you can find [here](https://portal.nersc.gov/project/m1982/dibella.2d/inputs/)), **LOWER_KMER_FREQ**: reliable k-mer lower bound.
 
 # Run diBELLA
 

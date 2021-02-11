@@ -19,8 +19,8 @@
 
 /* Defined in CMakeFiles.txt */ 
 // #define MAX_KMER_SIZE
-// #define MAX_NUM_READS
-// #define ERR_THRESHOLD
+// #define UPPER_KMER_FREQ
+// #define LOWER_KMER_FREQ
 
 #ifndef MAX_ALLTOALL_MEM
 #define MAX_ALLTOALL_MEM (128*1024*1024)  /* 128 MB */
