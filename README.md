@@ -56,6 +56,11 @@ Default macro definition in CMakeFiles.txt:
   ```
 Based on the dataset, one might want to change the above definitions. **UPPER_KMER_FREQ**: reliable k-mer upper bound (8 works for E. coli (Sample) 30X and 4 for Human 10X and C. elegans 40X that you can find [here](https://portal.nersc.gov/project/m1982/dibella.2d/inputs/)), **LOWER_KMER_FREQ**: reliable k-mer lower bound.
 
+You can change the defaul setting at compile time when building using the following command instead of ```cmake ..```:
+```
+cmake -DLOWER_KMER_FREQ=<new-lower-bound> -DUPPER_KMER_FREQ=<new-upper-bound> .. 
+```
+
 # Run diBELLA
 
 You can run diBELLA in parallel by specifying the number of processes to the mpirun or mpiexec command. The number of processes must be perfect square value.
