@@ -50,7 +50,7 @@ To build diBELLA, you can use the following commands:
   ```
 Default macro definition in CMakeFiles.txt:
   ```
-    #define MAX_KMER_SIZE 32
+    #define MAX_KMER_SIZE  32
     #define LOWER_KMER_FREQ 2
     #define UPPER_KMER_FREQ 8
   ```
