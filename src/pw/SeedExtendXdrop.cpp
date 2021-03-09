@@ -2,7 +2,9 @@
 
 #include "../../include/pw/SeedExtendXdrop.hpp"
 
-void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, uint32_t& overhang, uint32_t& overlap)
+uint min_overlap_len = 10000;
+
+void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, uint32_t& overhang, uint32_t& overlap, bool no_align)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -46,73 +48,93 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	/* Contained overlaps removed for now, reintroduce them later */
 	bool contained = false;
 
+	// @GGGG-TODO: identify chimeric sequences
+	bool chimeric  = false; 
+
 	if(begpV >= begpH)
 	{   /* horizonatal read is contained */
-		if(endpV >= rlenH) contained = true;
+		if(endpV-begpV >= endpH-begpH || rlenH-endpH == 0) contained = true;
 	}
 	
 	if(begpH >= begpV)
 	{   /* vertical read is contained */
-		if(endpH >= rlenV) contained = true;
+		if(endpH-begpH >= endpV-begpV || rlenV-endpV == 0) contained = true;
 	}
 
-	// @GGGG-TODO: this should happen even without pairwise alignment
-	/* If not contained check score and compute overhang */
-	if((float)ai.xscore >= myThr && !contained)
+	// @GGGG: reserve length/position if rc [x]
+	if(ai.rc)
 	{
-		/* Consistency rules using ReadV as reference read (During alignment I always <temporary> reverse ReadH)
+		uint tmp = begpV;
+		endpV = rlenV - begpV;
+		endpV = rlenV - tmp;
+	}
+	
+	if(!contained)
+	{
+		/* @GGGG: If no_align is false, set passed to false if the score isn't good enough */
+		if(!no_align)
+		{
+			if((float)ai.xscore < myThr || overlap < min_overlap_len) passed = false;
+		}
+
+		if(passed)
+		{
+			/* Consistency rules using ReadV as reference read (During alignment I always <temporary> reverse ReadH)
 			* If ReadV is entering into ReadH and not reverse complement, we assign directionality “01” 
 			* If ReadV is entering into ReadH and reverse complement, we assign directionality “00”
 			* If ReadV is exiting from ReadH and not reverse complement, we assign directionality “10” 
 			* If ReadV is exiting from ReadH and reverse complement, we assign directionality “11” 
-		*/
-		passed = true;
-		uint32_t direction;
-		uint32_t suffix;
+			*/
 
-		/* NOT reverse complement */
-		if(!ai.rc)
-		{
-			/* ReadV is entering into ReadH */
-			/* Use only starting position should be enough because we already discard contained overlaps */
-			if(begpV > begpH) 
+			uint32_t direction;
+			uint32_t suffix;
+
+			/* NOT reverse complement */
+			if(!ai.rc)
 			{
-				suffix = rlenH - endpH;
-				direction = 1;
+				/* ReadV is entering into ReadH */
+				/* Use only starting position should be enough because we already discard contained overlaps */
+				if(begpH > begpV) 
+				{
+					suffix = rlenV - endpV;
 
-				overhang = suffix << 2 | direction;
+					// if(suffix < 100)
+					// 	std::cout << begpH << " " << endpH << " " << rlenH << " " << begpV << " " << endpV << " " << rlenV << std::endl;
+
+					direction = 1;
+					overhang = suffix << 2 | direction;
+				}
+				/* ReadV is exiting from ReadH  */
+				else 
+				{
+					suffix = rlenH - endpH;
+					direction = 2;
+
+					overhang = suffix << 2 | direction;
+				}	
 			}
-			/* ReadV is exiting from ReadH  */
-			else 
+			/* reverse complement */
+			else
 			{
-				suffix = rlenV - endpV;
-				direction = 2;
+				/* ReadH is entering into ReadV */
+				if(begpH > (rlenV - endpV)) 
+				{
+					suffix = begpV;
+					direction = 0;
 
-				overhang = suffix << 2 | direction;
-			}	
-		}
-		/* reverse complement */
-		else
-		{
-			/* ReadV is entering into ReadH */
-			/* Use only starting position should be enough because we already discard contained overlaps */
-			if(begpV > begpH) 
-			{
-				suffix = rlenH - endpH;
-				direction = 0;
+					overhang = suffix << 2 | direction;
+				}
+				/* ReadH is exiting from ReadV  */
+				else if(begpH < endpV) 
+				{
+					suffix = rlenV - endpV;
+					direction = 3;
 
-				overhang = suffix << 2 | direction;
+					overhang = suffix << 2 | direction;
+				}	
 			}
-			/* ReadV is exiting from ReadH  */
-			else 
-			{
-				suffix = rlenV - endpV;
-				direction = 3;
-
-				overhang = suffix << 2 | direction;
-			}	
-		}	
-	}
+		} // if(passed)
+	} // if(!contained)
 		
 #else
 	if(ai.xscore >= FIXEDTHR)
@@ -276,6 +298,7 @@ SeedExtendXdrop::apply_batch
 	uint64_t row_offset,
     PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
     std::ofstream &lfs,
+	bool no_align,
 	ushort k,
     float ratioScoreOverlap, // GGGG: this is my ratioScoreOverlap variable change name later
     int debugThr
@@ -364,14 +387,21 @@ SeedExtendXdrop::apply_batch
 				setEndPositionH(seed, LocalSeedHOffset + seed_length);
 				setEndPositionV(seed, LocalSeedVOffset + seed_length);
 
-				/* Perform match extension */
-				start_time = std::chrono::system_clock::now();
-				xscores[i] = extendSeed(seed, twinRead, seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
-						xdrop, (int)k,
-						seqan::GappedXDrop());
+				if(!no_align) 
+				{
+					/* Perform match extension */
+					start_time = std::chrono::system_clock::now();
+					xscores[i] = extendSeed(seed, twinRead, seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
+							xdrop, (int)k,
+							seqan::GappedXDrop());
 
-				end_time = std::chrono::system_clock::now();
-				add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
+					end_time = std::chrono::system_clock::now();
+					add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
+				}
+				else
+				{
+					xscores[i] = 0;
+				}
 
 			#ifdef STATS
 				assignSource(row(align, 0), infix(twinRead, beginPositionH(seed),
@@ -383,19 +413,26 @@ SeedExtendXdrop::apply_batch
 			else
 			{
 				strands[i] = false;
-				start_time = std::chrono::system_clock::now();
-				xscores[i] = extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
-						xdrop, (int)k, 
-						seqan::GappedXDrop());
-				end_time = std::chrono::system_clock::now();
-				add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
+				if(!no_align) 
+				{
+					start_time = std::chrono::system_clock::now();
+					xscores[i] = extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
+							xdrop, (int)k, 
+							seqan::GappedXDrop());
+					end_time = std::chrono::system_clock::now();
+					add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
 
-			#ifdef STATS
-				assignSource(row(align, 0), infix(*seqH, beginPositionH(seed),
-												endPositionH(seed)));
-				assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
-												endPositionV(seed)));
-			#endif
+				#ifdef STATS
+					assignSource(row(align, 0), infix(*seqH, beginPositionH(seed),
+													endPositionH(seed)));
+					assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
+													endPositionV(seed)));
+				#endif
+				}
+				else
+				{
+					xscores[i] = 0;
+				}
 			}
 
 		#ifdef STATS
@@ -500,9 +537,10 @@ SeedExtendXdrop::apply_batch
 		{
 			// Only keep alignments that meet BELLA criteria
 			bool passed = false;
+			if(no_align) passed = true;
 
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overlap);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overlap, no_align);
 	
 			if (passed)
 			{

@@ -22,7 +22,6 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "../include/pw/SeedExtendXdrop.hpp"
 #include "../include/pw/OverlapFinder.hpp"
 #include "../include/pw/FullAligner.hpp"
-#include "../include/pw/BandedAligner.hpp"
 #include "../include/kmer/KmerOps.hpp"
 #include "../include/kmer/KmerIntersectSR.hpp"
 #include "../include/TransitiveReductionSR.hpp"
@@ -83,10 +82,6 @@ bool full_align = false;
 
 /*! Perform xdrop alignment */
 bool xdrop_align = false;
-
-/*! Perform banded alignment */
-bool banded_align = false;
-int  banded_half_width = 5;
 
 /*! File path to output global sequence index to original global sequence
  * index mapping */
@@ -279,20 +274,14 @@ int main(int argc, char **argv)
     if (xdrop_align)
     {
       pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
-      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, klength);
+      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, no_align, klength);
 	    local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
     }
     else if (full_align)
     {
       pf = new FullAligner(scoring_scheme);
-      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, klength);
+      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, no_align, klength);
 	    local_alignments = static_cast<FullAligner*>(pf)->nalignments;
-    }
-    else if(banded_align)
-    {
-      pf = new BandedAligner (scoring_scheme, banded_half_width);
-      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, klength);
-	    local_alignments = static_cast<BandedAligner*>(pf)->nalignments;
     }
 
     tp->times["EndMain:DprAlign()"] = std::chrono::system_clock::now();
@@ -301,6 +290,7 @@ int main(int argc, char **argv)
     uint64_t total_alignments = 0;
     MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
 
+    /* GGGG: total_alignments should be zero if "no_align" is true */
     if(is_print_rank)
     {
       std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments << std::endl;
@@ -308,6 +298,10 @@ int main(int argc, char **argv)
   }
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
+
+  // @GGGG: this must be symmetric
+  std::string align_file2 = "dibella.debug.before.transitive.reduction.result.mm";
+  B.ParallelWriteMM(align_file2, true, dibella::CkOutputMMHandler()); 
 
   bool transitive_reduction = true;
   if (transitive_reduction)
@@ -475,8 +469,6 @@ int parse_args(int argc, char **argv) {
     (CMD_OPTION_FULL_ALIGN, CMD_OPTION_DESCRIPTION_FULL_ALIGN)
     (CMD_OPTION_XDROP_ALIGN, CMD_OPTION_DESCRIPTION_XDROP_ALIGN,
      cxxopts::value<int>())
-    (CMD_OPTION_BANDED_ALIGN, CMD_OPTION_DESCRIPTION_BANDED_ALIGN,
-     cxxopts::value<int>())
     (CMD_OPTION_IDX_MAP, CMD_OPTION_DESCRIPTION_IDX_MAP,
      cxxopts::value<std::string>())
     (CMD_OPTION_ALPH, CMD_OPTION_DESCRIPTION_ALPH,
@@ -585,15 +577,12 @@ int parse_args(int argc, char **argv) {
 
   if (result.count(CMD_OPTION_NO_ALIGN)) {
     no_align = true;
+    /* GGGG: You need to call the outer function anyway to calculate overhangs but the xdrop case value doesn't matter, because the actual pw alignment function is not executed */
+    xdrop_align = true; 
   }
 
   if (result.count(CMD_OPTION_FULL_ALIGN)) {
     full_align = true;
-  }
-
-  if (result.count(CMD_OPTION_BANDED_ALIGN)) {
-    banded_align = true;
-    banded_half_width = result[CMD_OPTION_BANDED_ALIGN].as<int>();
   }
 
   if (result.count(CMD_OPTION_XDROP_ALIGN)) {
@@ -648,7 +637,6 @@ void pretty_print_config(std::string &append_to) {
     "No align (--na)",
     "Full align (--fa)",
     "Xdrop align (--xa)",
-    "Banded align (--ba)",
     "Index map (--idxmap)",
     "Alphabet (--alph)"
   };
@@ -670,7 +658,6 @@ void pretty_print_config(std::string &append_to) {
     bool_to_str(no_align),
     bool_to_str(full_align),
     bool_to_str(xdrop_align)  + (xdrop_align  ? " | xdrop: " + std::to_string(xdrop) : ""),
-    bool_to_str(banded_align) + (banded_align ? " | half band: " + std::to_string(banded_half_width) : ""),
     !idx_map_file.empty() ? idx_map_file : "None",
     std::to_string(alph_t)
   };

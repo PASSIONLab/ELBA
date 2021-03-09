@@ -52,9 +52,6 @@ extern const char *CMD_OPTION_DESCRIPTION_FULL_ALIGN;
 extern const char *CMD_OPTION_XDROP_ALIGN;
 extern const char *CMD_OPTION_DESCRIPTION_XDROP_ALIGN;
 
-extern const char *CMD_OPTION_BANDED_ALIGN;
-extern const char *CMD_OPTION_DESCRIPTION_BANDED_ALIGN;
-
 extern const char *CMD_OPTION_IDX_MAP;
 extern const char *CMD_OPTION_DESCRIPTION_IDX_MAP;
 

@@ -101,6 +101,21 @@ namespace dibella {
 				#endif
 		}
 	};
+
+    struct CkOutputMMHandler
+    {
+        template <typename c, typename t>
+        void save(std::basic_ostream<c,t> &os,
+                        const dibella::CommonKmers &v,
+                        uint64_t row,
+                        uint64_t col)
+        {
+                int dir = v.overhang  & 3;
+                int len = v.overhang >> 2;
+                os << dir << "\t" << len;
+        }
+    };
+
 }
 
 #endif //DIBELLA_COMMONKMERS_HPP

@@ -28,6 +28,7 @@ public:
                     std::ofstream& lfs,
                     int log_freq, int ckthr, bool aln_score_thr, TraceUtils tu,
                     ushort k,
+                    bool no_align,
                     bool score_only = false);
 
 private:
