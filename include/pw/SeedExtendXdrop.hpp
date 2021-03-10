@@ -14,7 +14,7 @@ public:
                   ushort seed_length, int xdrop, int seed_count);
 
   void
-  PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOveralap, uint32_t& overhang, uint32_t& overlap, bool no_align);
+  PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOveralap, uint32_t& overhang, uint32_t& overlap, const bool no_align);
 
   void
   apply(uint64_t l_col_idx, uint64_t g_col_idx,
@@ -31,9 +31,9 @@ public:
 			        uint64_t row_offset,
               PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
               std::ofstream &lfs,
-              bool no_align,
+              const bool no_align,
               ushort k,
-              float ratioScoreOverlap = 0.445,  // GGGG: Precomputed for error rate = 15% and default scoring matrix (1,-1,-1)
+              float ratioScoreOverlap = 0.99,   // GGGG: Precomputed for error rate = 15% and default scoring matrix (1,-1,-1) (0.445 for CLR, 0.99 for CCS)
               int debugThr = 50) override;      // GGGG: Fixed threshold, this is convenient only for debugging
 
 private:

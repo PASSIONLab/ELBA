@@ -205,8 +205,8 @@ DistributedPairwiseRunner::run_batch
 	int					 ckthr,
 	bool				 aln_score_thr,
 	TraceUtils 			 tu,
+	const bool no_align,
 	ushort 				 k,
-	bool 				 no_align,
 	bool				 score_only
 )
 {

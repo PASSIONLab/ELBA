@@ -4,7 +4,7 @@
 
 uint min_overlap_len = 10000;
 
-void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, uint32_t& overhang, uint32_t& overlap, bool no_align)
+void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, uint32_t& overhang, uint32_t& overlap, const bool no_align)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -298,7 +298,7 @@ SeedExtendXdrop::apply_batch
 	uint64_t row_offset,
     PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
     std::ofstream &lfs,
-	bool no_align,
+	const bool no_align,
 	ushort k,
     float ratioScoreOverlap, // GGGG: this is my ratioScoreOverlap variable change name later
     int debugThr

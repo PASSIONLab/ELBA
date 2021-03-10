@@ -260,41 +260,38 @@ int main(int argc, char **argv)
 
   DistributedPairwiseRunner dpr(dfd, B.seqptr(), &B, afreq, row_offset, col_offset, parops);
 
-  if (!no_align)
+  double mytime = MPI_Wtime();
+  tp->times["StartMain:DprAlign()"] = std::chrono::system_clock::now();
+  ScoringScheme scoring_scheme(match, mismatch_sc, gap_ext);
+
+  align_file += ".mm";
+
+  PairwiseFunction* pf = nullptr;
+  uint64_t local_alignments = 1;
+
+  if (xdrop_align)
   {
-    double mytime = MPI_Wtime();
-    tp->times["StartMain:DprAlign()"] = std::chrono::system_clock::now();
-    ScoringScheme scoring_scheme(match, mismatch_sc, gap_ext);
+    pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
+    dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, no_align, klength);
+	  local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
+  }
+  else if (full_align)
+  {
+    pf = new FullAligner(scoring_scheme);
+    dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, no_align, klength);
+	  local_alignments = static_cast<FullAligner*>(pf)->nalignments;
+  }
 
-    align_file += ".mm";
+  tp->times["EndMain:DprAlign()"] = std::chrono::system_clock::now();
+  delete pf;
 
-    PairwiseFunction* pf = nullptr;
-    uint64_t local_alignments = 1;
+  uint64_t total_alignments = 0;
+  MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    if (xdrop_align)
-    {
-      pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
-      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, no_align, klength);
-	    local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
-    }
-    else if (full_align)
-    {
-      pf = new FullAligner(scoring_scheme);
-      dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, no_align, klength);
-	    local_alignments = static_cast<FullAligner*>(pf)->nalignments;
-    }
-
-    tp->times["EndMain:DprAlign()"] = std::chrono::system_clock::now();
-    delete pf;
-
-    uint64_t total_alignments = 0;
-    MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
-
-    /* GGGG: total_alignments should be zero if "no_align" is true */
-    if(is_print_rank)
-    {
-      std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments << std::endl;
-    }
+  /* GGGG: total_alignments should be zero if "no_align" is true */
+  if(is_print_rank)
+  {
+    std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments << std::endl;
   }
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
@@ -576,17 +573,19 @@ int parse_args(int argc, char **argv) {
   }
 
   if (result.count(CMD_OPTION_NO_ALIGN)) {
-    no_align = true;
     /* GGGG: You need to call the outer function anyway to calculate overhangs but the xdrop case value doesn't matter, because the actual pw alignment function is not executed */
     xdrop_align = true; 
+    no_align    = true;
   }
 
   if (result.count(CMD_OPTION_FULL_ALIGN)) {
     full_align = true;
+    no_align  = false;
   }
 
   if (result.count(CMD_OPTION_XDROP_ALIGN)) {
     xdrop_align = true;
+    no_align   = false;
     xdrop = result[CMD_OPTION_XDROP_ALIGN].as<int>();
   }
 
