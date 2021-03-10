@@ -65,7 +65,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	if(ai.rc)
 	{
 		uint tmp = begpV;
-		endpV = rlenV - begpV;
+		begpV = rlenV - endpV;
 		endpV = rlenV - tmp;
 	}
 	
@@ -82,7 +82,8 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 		{
 			/* Consistency rules using ReadV as reference read (During alignment I always <temporary> reverse ReadH)
 			* If ReadV is entering into ReadH and not reverse complement, we assign directionality “01” 
-			* If ReadV is entering into ReadH and reverse complement, we assign directionality “00”
+			* If ReadV is entering into Re642848
+			adH and reverse complement, we assign directionality “00”
 			* If ReadV is exiting from ReadH and not reverse complement, we assign directionality “10” 
 			* If ReadV is exiting from ReadH and reverse complement, we assign directionality “11” 
 			*/
@@ -121,6 +122,8 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 				{
 					suffix = begpV;
 					direction = 0;
+
+
 
 					overhang = suffix << 2 | direction;
 				}

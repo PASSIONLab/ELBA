@@ -451,12 +451,12 @@ DistributedPairwiseRunner::run_batch
 	auto elim_cov = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
 	gmat->Prune(elim_cov);
 	
-	double start = MPI_Wtime();
-	// GGGG: don't need this right now
+	// @GGGGL print after transitive redution
+	// double start = MPI_Wtime();
 	// gmat->ParallelWriteMM(aln_file, true, dibella::CkOutputMMHandler());
-	double ppend = MPI_Wtime() - start;
+	// double ppend = MPI_Wtime() - start;
 
-	tu.print_str("ParallelWriteMM " + std::to_string(ppend)+ "\n");
+	// tu.print_str("ParallelWriteMM " + std::to_string(ppend)+ "\n");
 
 	// GGGG: if no_align == true, we remove only the contained overlaps as they are not useful for transitive reduction
 	tu.print_str("nnzs in the pruned matrix " +
