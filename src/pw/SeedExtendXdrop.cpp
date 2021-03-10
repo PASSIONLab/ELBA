@@ -47,20 +47,8 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 	/* Contained overlaps removed for now, reintroduce them later */
 	bool contained = false;
-
-	// @GGGG-TODO: identify chimeric sequences
-	bool chimeric  = false; 
-
-	if(begpV >= begpH)
-	{   /* horizonatal read is contained */
-		if(endpV-begpV >= endpH-begpH || rlenH-endpH == 0) contained = true;
-	}
+	bool chimeric  = false; // @GGGG-TODO: identify chimeric sequences
 	
-	if(begpH >= begpV)
-	{   /* vertical read is contained */
-		if(endpH-begpH >= endpV-begpV || rlenV-endpV == 0) contained = true;
-	}
-
 	// @GGGG: reserve length/position if rc [x]
 	if(ai.rc)
 	{
@@ -68,6 +56,9 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 		begpV = rlenV - endpV;
 		endpV = rlenV - tmp;
 	}
+
+	if((begpH == 0 & rlenH-endpH == 0) || (begpV == 0 & rlenV-endpV == 0))
+		contained = true;
 	
 	if(!contained)
 	{
@@ -97,10 +88,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 				/* Use only starting position should be enough because we already discard contained overlaps */
 				if(begpH > begpV) 
 				{
-					suffix = rlenV - endpV;
-
-					// if(suffix < 100)
-					// 	std::cout << begpH << " " << endpH << " " << rlenH << " " << begpV << " " << endpV << " " << rlenV << std::endl;
+					suffix = rlenV - endpV; // 1 should be symmetric edges but with opposite direction (2) and same suffix length
 
 					direction = 1;
 					overhang = suffix << 2 | direction;
@@ -108,7 +96,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 				/* ReadV is exiting from ReadH  */
 				else 
 				{
-					suffix = rlenH - endpH;
+					suffix = rlenH - endpH; // 2 should be symmetric edges but with opposite direction (1) and same suffix length
 					direction = 2;
 
 					overhang = suffix << 2 | direction;
@@ -117,20 +105,18 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			/* reverse complement */
 			else
 			{
-				/* ReadH is entering into ReadV */
-				if(begpH > (rlenV - endpV)) 
+				/* ReadH/V is entering into ReadV/H */
+				if((begpH > 0) & (begpV > 0) & (rlenH-endpH == 0) & (rlenV-endpV == 0)) // this might be too strict we could be a bit more flexible
 				{
-					suffix = begpV;
+					suffix = begpV; 		// this should be correct, 0 should be symmetric edges but with same direction and different suffix length
 					direction = 0;
-
-
 
 					overhang = suffix << 2 | direction;
 				}
-				/* ReadH is exiting from ReadV  */
-				else if(begpH < endpV) 
+				/* ReadH/V is exiting from ReadV/H  */
+				if((begpH == 0) & (begpV == 0) & (rlenH-endpH > 0) & (rlenV-endpV > 0)) // this might be too strict we could be a bit more flexible
 				{
-					suffix = rlenV - endpV;
+					suffix = rlenV - endpV; // this should be correct, 3 should be symmetric edges but with same direction and different suffix length
 					direction = 3;
 
 					overhang = suffix << 2 | direction;

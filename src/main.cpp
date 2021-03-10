@@ -300,6 +300,8 @@ int main(int argc, char **argv)
   std::string align_file2 = "dibella.debug.before.transitive.reduction.result.mm";
   B.ParallelWriteMM(align_file2, true, dibella::CkOutputMMHandler()); 
 
+  // GGGG: if B isn't symmetric at this point something is wrong
+
   bool transitive_reduction = true;
   if (transitive_reduction)
   {
