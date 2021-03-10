@@ -75,6 +75,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 		if(!no_align)
 		{
 			if((float)ai.xscore < myThr || overlap < min_overlap_len) passed = false;
+			else passed = true;
 		}
 
 		if(passed)
@@ -85,7 +86,6 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			* If ReadV is exiting from ReadH and not reverse complement, we assign directionality “10” 
 			* If ReadV is exiting from ReadH and reverse complement, we assign directionality “11” 
 			*/
-
 			uint32_t direction;
 			uint32_t suffix;
 
@@ -477,7 +477,7 @@ SeedExtendXdrop::apply_batch
 									  scoring_scheme);
 			#endif
 				ai[i].xscore = xscores[i];
-				ai[i].rc = strands[i];
+				ai[i].rc     = strands[i];
 				ai[i].seed   =   seeds[i];
 
 				ai[i].seq_h_length = seqan::length(seqan::source(seqsh[i]));
@@ -495,6 +495,7 @@ SeedExtendXdrop::apply_batch
 		#pragma omp parallel for
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
+
 			#ifdef STATS
 				seqan::AlignmentStats stats;
 				computeAlignmentStats(stats, seqsh_ex[i], seqsv_ex[i],
@@ -510,7 +511,7 @@ SeedExtendXdrop::apply_batch
 				if (xscores[i] > ai[i].xscore) // GGGG: TODO double check this logic with fresh neurons
 				{
 					ai[i].xscore = xscores[i];
-					ai[i].rc = strands[i];
+					ai[i].rc     = strands[i];
 					ai[i].seed   =   seeds[i];
 					ai[i].seq_h_seed_length = seedlens[i].first;
 					ai[i].seq_v_seed_length = seedlens[i].second;
@@ -537,11 +538,10 @@ SeedExtendXdrop::apply_batch
 		{
 			// Only keep alignments that meet BELLA criteria
 			bool passed = false;
-			if(no_align) passed = true;
 
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overlap, no_align);
-	
+
 			if (passed)
 			{
 				// GGGG: store updated seed start/end position in the CommonKmers pairs (the semantics of these pairs change wrt the original semantics but that's okay)

@@ -205,13 +205,13 @@ DistributedPairwiseRunner::run_batch
 	int					 ckthr,
 	bool				 aln_score_thr,
 	TraceUtils 			 tu,
-	const bool no_align,
+	const bool 			 no_align,
 	ushort 				 k,
 	bool				 score_only
 )
 {
 	uint64_t	local_nnz_count = spSeq->getnnz();
-
+	
 	int myrank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
