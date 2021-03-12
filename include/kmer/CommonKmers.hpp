@@ -24,8 +24,8 @@ namespace dibella {
 	uint32_t score; /* Used for storing alignment score */
 	
 	/*! GGGG: this is either the suffix or prefix entry need for the transitive reduction 
-	 *	StringMatrixEntry econdes both direction and overhang length*/
-	uint32_t overhang;
+	 *	StringMatrixEntry econdes both direction and overhang length for both strands */
+	std::vector<uint32_t> overhang(2, 0);
 	
 #ifdef EXTRA
 	uint32_t lenv;
@@ -46,11 +46,11 @@ namespace dibella {
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
 #endif
 
-    CommonKmers() : count(1), passed(false), overhang(0) {
+    CommonKmers() : count(1), passed(false) {
     }
     explicit
 	CommonKmers(ushort count) : 
-		count(count), passed(false), overhang(0) {
+		count(count), passed(false) {
     }
 
 	CommonKmers (bool passed, uint32_t score) :
@@ -86,13 +86,17 @@ namespace dibella {
 				uint64_t row,
 				uint64_t col)
 		{
+
+			// @GGGG-TODO: Come back here and fix the output format properly
+			// GGGG: it doesn't matter which we pick here it's just to know if thery are on the same strand or not (well, it does but it's not a priority right now)
+
 			/* GGGG: we need the overhand value to create input in graph dot for comparison */
-			int dir = v.overhang & 3;
+			int dir = v.overhang[0] & 3; 
 			int rc  = 0;
 			if(dir == 0 || dir == 3) rc = 1;
 			// @GGGG-TODO: include overlap here (need overlap length that i don't have in python)
 			// direction, rc, overhang, begV, endV, begH, endH (OverlapLen and others computed in python script during translation)
-			os << dir << "\t" << rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t" 
+			os << dir << "\t" << rc << "\t" << v.overhang[0] << "\t" << v.first.first << "\t" << v.first.second << "\t" 
 				<< v.second.first << "\t" << 
 				#ifdef EXTRA
 				v.second.second  << "\t"  << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
@@ -110,9 +114,11 @@ namespace dibella {
                         uint64_t row,
                         uint64_t col)
         {
-                int dir = v.overhang  & 3;
-                int len = v.overhang >> 2;
-                os << dir << "\t" << len;
+                int dir1 = v.overhang[0]  & 3;
+                int len1 = v.overhang[0] >> 2;
+                int dir2 = v.overhang[1]  & 3;
+                int len2 = v.overhang[1] >> 2;
+                os << dir1 << "\t" << len1 << "\t" << dir2 << "\t" << len2;
         }
     };
 
