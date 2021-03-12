@@ -135,8 +135,8 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 				// !reverse complement
 				if(!ai.rc)
 				{
-					// if bepg(j) > begp(i)
-					if(begpV > bepgH)
+					// if begp(j) > begp(i)
+					if(begpV > begpH)
 					{
 						// seqH exit from seqV 
 						direction = 2;
@@ -182,8 +182,8 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 				// !reverse complement
 				if(!ai.rc)
 				{
-					// if bepg(j) > begp(i)
-					if(begpV > bepgH)
+					// if begp(j) > begp(i)
+					if(begpV > begpH)
 					{
 						// seqH exit from seqV 
 						direction = 2;

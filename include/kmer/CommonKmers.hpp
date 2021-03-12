@@ -111,11 +111,9 @@ namespace dibella {
                         uint64_t row,
                         uint64_t col)
         {
-                int dir1 = v.overhang[0]  & 3;
-                int len1 = v.overhang[0] >> 2;
-                int dir2 = v.overhang[1]  & 3;
-                int len2 = v.overhang[1] >> 2;
-                os << dir1 << "\t" << len1 << "\t" << dir2 << "\t" << len2;
+                int dir = v.overhang  & 3;
+                int len = v.overhang >> 2;
+                os << dir << "\t" << len;
         }
     };
 
