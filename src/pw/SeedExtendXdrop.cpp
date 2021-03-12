@@ -50,6 +50,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	bool chimeric  = false; // @GGGG-TODO: identify chimeric sequences
 	
 	// @GGGG: reserve length/position if rc [x]
+	// we assume seqH on the fwd strand initially
 	if(ai.rc)
 	{
 		uint tmp = begpH;
@@ -71,101 +72,52 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 		if(passed)
 		{
+			// GGGG: seqH is column entry and seqV is row entry, for each column, we iterate over the row entries
+			int i = ai.seq_v_g_idx, j = ai.seq_h_g_idx;
+
+			printf("seqV %d bepV %d endV %d lenV %d seqH %d bepH %d endH %d lenH %d\n", i, begpV, endpV, rlenV, j, begpH, endpH, rlenH);
+
 			uint32_t direction;
 			uint32_t suffix;
 
-			/*
-			 * If(i < j) FWD(); else RVD(); // Lower triangular is FWD() and upper triangul is RVD() convention;
-			 * Def: FWD() {
-			 * 		if(!rc)
-			 * 		{
-			 * 			direction = 1;
-			 * 
-			 * 			if(begpV > begpH) suffix = rlenH - endpH;
-			 * 			else suffix = rlenV - endpV;
-			 * 		}
-			 * 		else // Case (A) & (C) where seqV is on the fwd strand and seqH is on the reverse strand
-			 * 		{
-			 * 			if((begpH > 0) & (begpV > 0) & (rlenH-endpH == 0) & (rlenV-endpV == 0)) // this might be too strict we could be a bit more flexible
-			 * 			{
-			 * 				direction = 0;
-			 *				suffix = begpH;
-			 * 			}
-			 * 			else
-			 * 			{
-			 * 				direction = 3;
-			 * 				suffix = rlenV - endpV;
-			 * 			}
-			 * 		}
-			 * }
-			 * Def: RVD() {
-			 * 		if(!rc)
-			 * 		{
-			 * 			// need to reverse both seqH and seqV pos to make sense
-			 * 
-			 * 			direction = 2;
-			 * 
-			 * 			if(begpV > begpH) suffix = rlenH - endpH;
-			 * 			else suffix = rlenV - endpV;
-			 * 		}
-			 * 		else // Case (B) & (D) where seqH is on the fwd strand and seqV is on the reverse strand
-			 * 		{
-			 * 			if((begpH > 0) & (begpV > 0) & (rlenH-endpH == 0) & (rlenV-endpV == 0)) // this might be too strict we could be a bit more flexible
-			 * 			{
-			 * 				direction = 0;
-			 * 				suffix = begpV;
-			 * 			}
-			 * 			else
-			 * 			{
-			 * 				direction = 3;
-			 *  			suffix = rlenH - endpV;
-			 * 			}	
-			 * 		}
-			 * }
-			 * 
-			 * overhang = suffix << 2 | direction;
-			*/
-
-			// GGGG: seqV is column entry and seqH is row entry, for each column, we iterate over the row entries
-			int i = ai.seq_h_g_idx, j = ai.seq_v_g_idx;
-
-			// FWD()
-			if(i < j)
+			// FWD(): upper triangular matrix
+			if(i > j) 
 			{
 				// !reverse complement
 				if(!ai.rc)
 				{
 					// if begp(j) > begp(i)
-					if(begpV > begpH)
+					if(begpH > begpV)
 					{
-						// seqH exit from seqV 
-						direction = 2;
-						suffix = rlenH - endpH;
+						// seqV exit from seqH
+						direction = 1;
+						suffix = rlenV - endpV;
 					}
 					else
 					{
-						// seqH enter into seqV 
-						direction = 1;
-						suffix = rlenV - endpV;
+						// seqV enter into seqH
+						direction = 2;
+						suffix = rlenH - endpH;
 					}
 				}
 				else
 				{
 					// @GGGG-TODO: this might be wrong still to double check print positions 
-					if((begpH == 0) & (begpV == 0) & (rlenH-endpH > 0) & (rlenV-endpV > 0))
+					if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
 					{
-						// seqH exit from seqV and rc == true
-						direction = 3;
-						suffix = rlenH - endpH;						
+						// seqV enter into seqH and rc == true
+						direction = 0;
+						suffix = begpV;						
 					}
 					else
 					{
-						// seqH enter into seqV and rc == true
-						direction = 0;
-						suffix = rlenH - endpH;	
+						// seqV exit from seqH and rc == true
+						direction = 3;
+						suffix = rlenH - endpH;
 					}
 				}
 			}
+			// RVD()
 			else
 			{
 				// need to reverse both seqH and seqV
@@ -183,38 +135,37 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 				if(!ai.rc)
 				{
 					// if begp(j) > begp(i)
-					if(begpV > begpH)
+					if(begpH > begpV)
 					{
-						// seqH exit from seqV 
+						// seqV exit from seqH
 						direction = 2;
-						suffix = rlenH - endpH;
+						suffix = rlenV - endpV;
 					}
 					else
 					{
-						// seqH enter into seqV 
+						// seqV enter into seqH
 						direction = 1;
+						suffix = rlenH - endpH;
+					}
+				}
+				else
+				{
+					// @GGGG-TODO: this might be wrong still to double check print positions 
+					if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
+					{
+						// seqV enter into seqH and rc == true
+						direction = 0;
+						suffix = begpH;						
+					}
+					else
+					{
+						// seqV exit from seqH and rc == true
+						direction = 3;
 						suffix = rlenV - endpV;
 					}
 				}
-				// if (i >= j)
-				else 
-				{
-					// @GGGG-TODO: this might be wrong still to double check print positions 
-					if((begpH == 0) & (begpV == 0) & (rlenH-endpH > 0) & (rlenV-endpV > 0))
-					{
-						// seqH exit from seqV and rc == true
-						direction = 3;
-						suffix = rlenH - endpH;						
-					}
-					else
-					{
-						// seqH enter into seqV and rc == true
-						direction = 0;
-						suffix = rlenH - endpH;	
-					}
-				}
-				overhang = suffix << 2 | direction;
 			}
+			overhang = suffix << 2 | direction;
 		} // if(passed)
 	} // if(!contained)
 		
