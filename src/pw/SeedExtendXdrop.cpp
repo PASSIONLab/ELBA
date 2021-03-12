@@ -52,9 +52,9 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	// @GGGG: reserve length/position if rc [x]
 	if(ai.rc)
 	{
-		uint tmp = begpV;
-		begpV = rlenV - endpV;
-		endpV = rlenV - tmp;
+		uint tmp = begpH;
+		begpV = rlenH - endpH;
+		endpV = rlenH - tmp;
 	}
 
 	if((begpH == 0 & rlenH-endpH == 0) || (begpV == 0 & rlenV-endpV == 0))
@@ -71,56 +71,142 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 		if(passed)
 		{
-			/* Consistency rules using ReadV as reference read (During alignment I always <temporary> reverse ReadH)
-			* If ReadV is entering into ReadH and not reverse complement, we assign directionality “01” 
-			* If ReadV is entering into ReadH and reverse complement, we assign directionality “00”
-			* If ReadV is exiting from ReadH and not reverse complement, we assign directionality “10” 
-			* If ReadV is exiting from ReadH and reverse complement, we assign directionality “11” 
-			*/
 			uint32_t direction;
 			uint32_t suffix;
 
-			/* NOT reverse complement */
-			if(!ai.rc)
-			{
-				/* ReadV is entering into ReadH */
-				/* Use only starting position should be enough because we already discard contained overlaps */
-				if(begpH > begpV) 
-				{
-					suffix = rlenV - endpV; // 1 should be symmetric edges but with opposite direction (2) and same suffix length
+			// @GGGG-TODO: I need read id i,j to make test it
 
+			/*
+			 * If(i < j) FWD(); else RVD(); // Lower triangular is FWD() and upper triangul is RVD() convention;
+			 * Def: FWD() {
+			 * 		if(!rc)
+			 * 		{
+			 * 			direction = 1;
+			 * 
+			 * 			if(begpV > begpH) suffix = rlenH - endpH;
+			 * 			else suffix = rlenV - endpV;
+			 * 		}
+			 * 		else // Case (A) & (C) where seqV is on the fwd strand and seqH is on the reverse strand
+			 * 		{
+			 * 			if((begpH > 0) & (begpV > 0) & (rlenH-endpH == 0) & (rlenV-endpV == 0)) // this might be too strict we could be a bit more flexible
+			 * 			{
+			 * 				direction = 0;
+			 *				suffix = begpH;
+			 * 			}
+			 * 			else
+			 * 			{
+			 * 				direction = 3;
+			 * 				suffix = rlenV - endpV;
+			 * 			}
+			 * 		}
+			 * }
+			 * Def: RVD() {
+			 * 		if(!rc)
+			 * 		{
+			 * 			// need to reverse both seqH and seqV pos to make sense
+			 * 
+			 * 			direction = 2;
+			 * 
+			 * 			if(begpV > begpH) suffix = rlenH - endpH;
+			 * 			else suffix = rlenV - endpV;
+			 * 		}
+			 * 		else // Case (B) & (D) where seqH is on the fwd strand and seqV is on the reverse strand
+			 * 		{
+			 * 			if((begpH > 0) & (begpV > 0) & (rlenH-endpH == 0) & (rlenV-endpV == 0)) // this might be too strict we could be a bit more flexible
+			 * 			{
+			 * 				direction = 0;
+			 * 				suffix = begpV;
+			 * 			}
+			 * 			else
+			 * 			{
+			 * 				direction = 3;
+			 *  			suffix = rlenH - endpV;
+			 * 			}	
+			 * 		}
+			 * }
+			 * 
+			 * overhang = suffix << 2 | direction;
+			*/
+
+			int i = ai.seq_v_g_idx, j = ai.seq_h_g_idx;
+
+			// seqV assumed to be fwd in the lower triangular matrix
+			if(i < j) 	
+			{
+				// not reverse complement
+				if(!ai.rc) 
+				{
 					direction = 1;
-					overhang = suffix << 2 | direction;
+					// if(begpV > begpH) 
+					// {
+					// 	direction = 1;
+					// 	suffix = rlenH - endpH;
+					// }
+					// else 
+					// {
+					// 	direction = 2;
+					// 	suffix = rlenV - endpV;
+					// }
+					if(begpV > begpH) suffix = rlenH - endpH;
+					else suffix = rlenV - endpV;
 				}
-				/* ReadV is exiting from ReadH  */
-				else 
+				// reverse complement and seqV is on the fwd strand and seqH is on the reverse strand
+				else 	
 				{
-					suffix = rlenH - endpH; // 2 should be symmetric edges but with opposite direction (1) and same suffix length
-					direction = 2;
-
-					overhang = suffix << 2 | direction;
-				}	
+					// this might be too strict we could be a bit more flexible
+					if((begpH > 0) & (begpV > 0) & (rlenH-endpH == 0) & (rlenV-endpV == 0)) 
+					{
+						direction = 0;
+						suffix = begpH;
+					}
+					else
+					{
+						direction = 3;
+						suffix = rlenV - endpV;
+					}
+				}
 			}
-			/* reverse complement */
-			else
+			// seqH assumed to be fwd in the upper triangul matrix
+			else 		
 			{
-				/* ReadH/V is entering into ReadV/H */
-				if((begpH > 0) & (begpV > 0) & (rlenH-endpH == 0) & (rlenV-endpV == 0)) // this might be too strict we could be a bit more flexible
-				{
-					suffix = begpV; 		// this should be correct, 0 should be symmetric edges but with same direction and different suffix length
-					direction = 0;
+				// need to reverse both seqH and seqV pos to make sense
+				uint tmp;
+				
+				tmp   = begpV;
+				begpV = rlenV - endpV;
+				endpV = rlenV - tmp;
 
-					overhang = suffix << 2 | direction;
+				tmp   = begpH;
+				begpH = rlenH - endpH;
+				endpH = rlenH - tmp;
+
+				// not reverse complement
+				if(!ai.rc) 
+				{
+					direction = 2;
+			
+					if(begpV > begpH) suffix = rlenH - endpH;
+					else suffix = rlenV - endpV;
 				}
-				/* ReadH/V is exiting from ReadV/H  */
-				if((begpH == 0) & (begpV == 0) & (rlenH-endpH > 0) & (rlenV-endpV > 0)) // this might be too strict we could be a bit more flexible
+				// reverse complement and seqH is on the fwd strand and seqV is on the reverse strand
+				else 	
 				{
-					suffix = rlenV - endpV; // this should be correct, 3 should be symmetric edges but with same direction and different suffix length
-					direction = 3;
+					// this might be too strict we could be a bit more flexible
+					if((begpH > 0) & (begpV > 0) & (rlenH-endpH == 0) & (rlenV-endpV == 0)) 
+					{
+						direction = 0;
+						suffix = begpV;
+					}
+					else
+					{
+						direction = 3;
+			 			suffix = rlenH - endpH;
+					}	
+				}
+			} // if(i > j)	
 
-					overhang = suffix << 2 | direction;
-				}	
-			}
+			overhang = suffix << 2 | direction;
+
 		} // if(passed)
 	} // if(!contained)
 		
