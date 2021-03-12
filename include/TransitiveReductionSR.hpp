@@ -27,40 +27,21 @@ using namespace std;
  *      1st and 2nd bit in M == 1st and 2nd bit in B during I = M >= B.
 */
 
-dibella::CommonKmers compose(dibella::CommonKmers& me, const uint& suffix1, const ushort& dir1, 
-                                                    const uint& suffix2, const ushort& dir2)
+dibella::CommonKmers compose(dibella::CommonKmers& me, const uint& suffix, const ushort& dir)
 { 
-    me.overhang[0] = suffix1 << 2 | dir1;
-    me.overhang[1] = suffix2 << 2 | dir2;
-    
+    me.overhang = suffix << 2 | dir;
+
     return me; 
 }
 
-uint length1(const dibella::CommonKmers& me) { return me.overhang[0] >> 2; }
-uint length2(const dibella::CommonKmers& me) { return me.overhang[1] >> 2; }
+// uint length1(const dibella::CommonKmers& me) { return me.overhang[0] >> 2; }
+// uint length2(const dibella::CommonKmers& me) { return me.overhang[1] >> 2; }
 
-ushort  dir1(const dibella::CommonKmers& me) { return me.overhang[0]  & 3; }
-ushort  dir2(const dibella::CommonKmers& me) { return me.overhang[1]  & 3; }
+// ushort  dir1(const dibella::CommonKmers& me) { return me.overhang[0]  & 3; }
+// ushort  dir2(const dibella::CommonKmers& me) { return me.overhang[1]  & 3; }
 
-std::vector<uint> length(const dibella::CommonKmers& me)
-{ 
-    std::vector<uint> res(2);
-
-    res[0] = me.overhang[0] >> 2;
-    res[1] = me.overhang[1] >> 2;
-
-    return res; 
-}
-
-std::vector<ushort>  dir(const dibella::CommonKmers& me)
-{ 
-    std::vector<ushort> res(2);
-
-    res[0] = me.overhang[0] & 3;
-    res[1] = me.overhang[1] & 3;
-
-    return res;
-}
+uint length(const dibella::CommonKmers& me) { return me.overhang >> 2; }
+ushort  dir(const dibella::CommonKmers& me) { return me.overhang  & 3; }
 
 dibella::CommonKmers min(const dibella::CommonKmers& arg1, const dibella::CommonKmers& arg2) {
     if(length(arg2) < length(arg1)) return arg2;
@@ -122,8 +103,7 @@ struct MinPlusBiSRing
 	static OUT multiply(const T1 & arg1, const T2 & arg2)
 	{
         OUT res;
-        // @GGGG-TODO: fix this with fresh brain: what I should check? the whole set of combinations?
-        if((dir1(arg1) & 1) != (dir1(arg2) & (1 << 1)))
+        if((dir(arg1) & 1) != (dir(arg2) & (1 << 1)))
         {
             uint len = infplus(arg1, arg2);
             return compose(res, len, dir(arg2));

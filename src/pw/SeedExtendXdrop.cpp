@@ -4,7 +4,7 @@
 
 uint min_overlap_len = 10000;
 
-void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, std::vector<uint32_t>& overhang, uint32_t& overlap, const bool no_align)
+void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, uint32_t& overhang, uint32_t& overlap, const bool no_align)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -126,70 +126,49 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			 * overhang = suffix << 2 | direction;
 			*/
 
-			// GGGG: V are columns, H are rows, for each column, we look at the nonzeros in the column (rows)
+			// GGGG: seqV is column entry and seqH is row entry, for each column, we iterate over the row entries
+			int i = ai.seq_h_g_idx, j = ai.seq_v_g_idx;
 
-			// fwd overlap
-			if(!ai.rc) 
+			// FWD()
+			if(i < j)
 			{
-				if(begpV > begpH) 
+				// !reverse complement
+				if(!ai.rc)
 				{
-					direction = 1;
-					suffix = rlenH - endpH;
+					// if bepg(j) > begp(i)
+					if(begpV > bepgH)
+					{
+						// seqH exit from seqV 
+						direction = 2;
+						suffix = rlenH - endpH;
+					}
+					else
+					{
+						// seqH enter into seqV 
+						direction = 1;
+						suffix = rlenV - endpV;
+					}
 				}
-				else 
+				else
 				{
-					direction = 2;
-					suffix = rlenV - endpV;
+					// @GGGG-TODO: this might be wrong still to double check print positions 
+					if((begpH == 0) & (begpV == 0) & (rlenH-endpH > 0) & (rlenV-endpV > 0))
+					{
+						// seqH exit from seqV and rc == true
+						direction = 3;
+						suffix = rlenH - endpH;						
+					}
+					else
+					{
+						// seqH enter into seqV and rc == true
+						direction = 0;
+						suffix = rlenH - endpH;	
+					}
 				}
-
-				// @GGGG-TODO: change data struct
-				overhang[0] = suffix << 2 | direction; // one direction
-
-				// need to reverse both seqH and seqV
-				// can be leaner but let's first see it works
-				uint tmp;
-				
-				tmp   = begpV;
-				begpV = rlenV - endpV;
-				endpV = rlenV - tmp;
-
-				tmp   = begpH;
-				begpH = rlenH - endpH;
-				endpH = rlenH - tmp;
-
-				if(begpV > begpH) 
-				{
-					direction = 1;
-					suffix = rlenH - endpH;
-				}
-				else 
-				{
-					direction = 2;
-					suffix = rlenV - endpV;
-				}
-
-				overhang[1] = suffix << 2 | direction; // the other direction
 			}
-			// reverse complement strand
-			else 	
+			else
 			{
-				// this might be too strict we could be a bit more flexible
-				if((begpH > 0) & (begpV > 0) & (rlenH-endpH == 0) & (rlenV-endpV == 0)) 
-				{
-					direction = 0;
-					suffix = begpH;
-				}
-				else
-				{
-					direction = 3;
-					suffix = rlenV - endpV;
-				}
-
-				// @GGGG-TODO: change data struct
-				overhang[0] = suffix << 2 | direction; // one direction
-
 				// need to reverse both seqH and seqV
-				// can be leaner but let's first see it works
 				uint tmp;
 				
 				tmp   = begpV;
@@ -200,19 +179,41 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 				begpH = rlenH - endpH;
 				endpH = rlenH - tmp;
 
-				// this might be too strict we could be a bit more flexible
-				if((begpH > 0) & (begpV > 0) & (rlenH-endpH == 0) & (rlenV-endpV == 0)) 
+				// !reverse complement
+				if(!ai.rc)
 				{
-					direction = 0;
-					suffix = begpH;
+					// if bepg(j) > begp(i)
+					if(begpV > bepgH)
+					{
+						// seqH exit from seqV 
+						direction = 2;
+						suffix = rlenH - endpH;
+					}
+					else
+					{
+						// seqH enter into seqV 
+						direction = 1;
+						suffix = rlenV - endpV;
+					}
 				}
-				else
+				// if (i >= j)
+				else 
 				{
-					direction = 3;
-					suffix = rlenV - endpV;
+					// @GGGG-TODO: this might be wrong still to double check print positions 
+					if((begpH == 0) & (begpV == 0) & (rlenH-endpH > 0) & (rlenV-endpV > 0))
+					{
+						// seqH exit from seqV and rc == true
+						direction = 3;
+						suffix = rlenH - endpH;						
+					}
+					else
+					{
+						// seqH enter into seqV and rc == true
+						direction = 0;
+						suffix = rlenH - endpH;	
+					}
 				}
-				
-				overhang[1] = suffix << 2 | direction; // the other direction
+				overhang = suffix << 2 | direction;
 			}
 		} // if(passed)
 	} // if(!contained)

@@ -14,7 +14,7 @@ public:
                   ushort seed_length, int xdrop, int seed_count);
 
   void
-  PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOveralap, std::vector<uint32_t>& overhang, uint32_t& overlap, const bool no_align);
+  PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOveralap, uint32_t& overhang, uint32_t& overlap, const bool no_align);
 
   void
   apply(uint64_t l_col_idx, uint64_t g_col_idx,
