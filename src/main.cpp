@@ -388,6 +388,7 @@ int main(int argc, char **argv)
       /* Prune zero-valued overhang */
       B.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
       timeA += MPI_Wtime() - start;
+
   #ifdef DIBELLA_DEBUG
       tu.print_str("Matrix B = B .* not(I): ");
       B.PrintInfo();

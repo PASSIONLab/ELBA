@@ -16,7 +16,7 @@
 
 using namespace std;
 
-#define FUZZ (10)
+#define FUZZ (1000)
 #define DEBUG
 
 /** Given a biridrected graph, an edge v ?-? x can only be considered transitive given a pair of edges v ?-? w ?-? x if:
@@ -30,8 +30,34 @@ using namespace std;
 dibella::CommonKmers compose(dibella::CommonKmers& me, const uint& suffix, const ushort& dir)
 { 
     me.overhang = suffix << 2 | dir;
-
     return me; 
+}
+
+void tobinary(ushort n, int* arr) 
+{ 
+    int nbit = 2;
+    for(int i = 0; i < nbit; i++)
+    { 
+        arr[i] = n % 2; 
+        n = n / 2; 
+    }
+} 
+
+bool testdir(ushort dir1, ushort dir2)
+{
+    ushort rbit, lbit;
+
+    int mybin1[2] = {0, 0};
+    int mybin2[2] = {0, 0};
+    
+    if(dir1 != 0) tobinary(dir1, mybin1);
+    if(dir2 != 0) tobinary(dir2, mybin2);
+
+    rbit = mybin1[0];
+    lbit = mybin2[1];
+
+    if(rbit != lbit) return true;
+    else return false;
 }
 
 // uint length1(const dibella::CommonKmers& me) { return me.overhang[0] >> 2; }
@@ -100,15 +126,22 @@ struct MinPlusBiSRing
 	{
 		return min(arg1, arg2);
 	}
-	static OUT multiply(const T1 & arg1, const T2 & arg2)
+	static OUT multiply(const T1& arg1, const T2& arg2)
 	{
         OUT res;
-        if((dir(arg1) & 1) != (dir(arg2) & (1 << 1)))
+        printf("dir1 %d dir2 %d\n", dir(arg1), dir(arg2));
+        printf("len1 %d len2 %d\n", length(arg1), length(arg2));
+        if(testdir(dir(arg1), dir(arg2)))
         {
+
+
             uint len = infplus(arg1, arg2);
             return compose(res, len, dir(arg2));
         } 
-        else return id();
+        else 
+        {
+            return id();
+        }
 	}
 	static void axpy(T1 a, const T2 & x, OUT & y)
 	{
