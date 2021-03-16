@@ -87,6 +87,29 @@ const uint infplus(const dibella::CommonKmers& a, const dibella::CommonKmers& b)
     return length(a) + length(b);
 }
 
+// GGGG: best (minimum overhang) overlap semiring on vector
+template <class T1, class T2, class OUT>
+struct BestOverlapVSRing : binary_function <T1, T2, OUT>
+{
+    OUT operator() (const T1& x, const T2& y) const
+    {
+        if(length(y) < length(x)) return static_cast<OUT>(y);
+        else return static_cast<OUT>(x);
+    }
+};
+
+// GGGG: best (minimum overhang) overlap semiring on matrix
+template <class T1, class T2, class OUT>
+struct BestOverlapMSRing : binary_function <T1, T2, OUT>
+{
+    OUT operator() (T1& x, const T2& y) const
+    {
+        /* I want to only keep entry corresponding to the best overlap for that column */
+        if(length(x) != length(y)) x.overhang = 0;
+        return static_cast<OUT>(x);
+    }
+};
+
 template <class T1, class T2, class OUT>
 struct Bind2ndBiSRing : binary_function <T1, T2, OUT>
 {
@@ -129,12 +152,10 @@ struct MinPlusBiSRing
 	static OUT multiply(const T1& arg1, const T2& arg2)
 	{
         OUT res;
-        printf("dir1 %d dir2 %d\n", dir(arg1), dir(arg2));
-        printf("len1 %d len2 %d\n", length(arg1), length(arg2));
+        // printf("dir1 %d dir2 %d\n", dir(arg1), dir(arg2));
+        // printf("len1 %d len2 %d\n", length(arg1), length(arg2));
         if(testdir(dir(arg1), dir(arg2)))
         {
-
-
             uint len = infplus(arg1, arg2);
             return compose(res, len, dir(arg2));
         } 
