@@ -43,6 +43,8 @@ typedef dibella::KmerIntersect<PosInRead, dibella::CommonKmers> KmerIntersectSR_
 typedef MinPlusBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> MinPlusSR_t;
 typedef ReduceMBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> ReduceMSR_t;
 typedef Bind2ndBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> Bind2ndSR_t;
+typedef BestOverlapVSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> BestOvVSR_t;
+typedef BestOverlapMSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> BestOvMSR_t;
 
 /*! Function signatures */
 int parse_args(int argc, char **argv);
@@ -300,35 +302,11 @@ int main(int argc, char **argv)
   std::string align_file2 = "dibella.debug.before.transitive.reduction.result.mm";
   B.ParallelWriteMM(align_file2, true, dibella::CkOutputMMHandler()); 
 
-  // GGGG: if B isn't symmetric at this point something is wrong
+  // @GGGG-TODO: B symmetricize matrix using Transpose() and Apply(<functor>)
 
   bool transitive_reduction = true;
   if (transitive_reduction)
   {
-    /* Randomly permute for load balance */
-    // int perm = false; // GGGG: TODO make this input parameter
-    // if(perm == 1)
-    // {
-    //     SpParHelper::Print("Performing random permutation of matrix\n");
-
-    //     FullyDistVec<int64_t, dibella::CommonKmers> prow(A.getcommgrid());
-    //     FullyDistVec<int64_t, dibella::CommonKmers> pcol(A.getcommgrid());
-
-    //     // GGGG: from line 931 of FullyDistVect.cpp:
-    //     // ABAB: In its current form, unless LengthUntil returns NT
-    //     // this won't work reliably for anything other than integers
-    //     // GGGG: TODO look into this
-    //
-    //     prow.iota(A.getnrow(), id);
-    //     pcol.iota(A.getncol(), id);
-
-    //     prow.RandPerm();
-    //     pcol.RandPerm();
-    //     (A)(prow, pcol, true);
-
-    //     SpParHelper::Print("Performed random permutation of matrix\n");
-    // }
-
     uint nnz, prev;
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
 
@@ -418,6 +396,85 @@ int main(int argc, char **argv)
       std::cout << "TransitiveReduction:TimeA  = " <<  maxtimeA << std::endl;
     }
  #endif
+  }
+
+  tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
+
+  bool contigging  = true;
+  if(contigging)
+  {
+    // @GGGG: move everything into a function
+    CreateContig();
+
+    /* (1) find min value (best/longest overlap) per column entry and store it into a vector */
+    FullyDistVec<int64_t, dibella::CommonKmers> bestOverlapV(B.getcommgrid());
+    dibella::CommonKmers id;
+    bestOverlapV = B.Reduce(Column, BestOvVSR_t(), id);
+
+    /* Best overlap matrix (set entry to zero if != bestOverlapV entry) 
+     * (2) DimApply and remove if entry != vector entry
+     */
+    PSpMat<dibella::CommonKmers>::MPI_DCCols bestOverlapM = B;
+    bestOverlapM.DimApply(Column, bestOverlapV, BestOvMSR_t());
+
+    /* Prune zero-valued overhang entries */
+    bestOverlapM.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
+    bestOverlapM.PrintInfo();
+
+    /* (3) Connected component for contig extraction (from LACC: https://github.com/PASSIONLab/CombBLAS/blob/e6c55bd48a442b8fa95870fb5f18cd6b89cbffe9/Applications/CC.cpp)
+     * 
+     * The matrix should be already symmetric at this point.    
+     * If they need to be identical I can save both and then agree than row > col must read only [0] and col > row only [1]?
+     * 
+     
+    bestOverlapMT.Transpose();
+    if(!(bestOverlapMT == bestOverlapM))
+    {
+        SpParHelper::Print("Symmatricizing an unsymmetric input matrix.\n");
+        bestOverlapM += bestOverlapMT;
+    }
+    bestOverlapM.PrintInfo();
+
+    *
+    */
+
+    float balance = bestOverlapM.LoadImbalance();
+    int64_t nnz   = bestOverlapM.getnnz();
+
+    std::ostringstream outs;
+    outs.str("");
+    outs.clear();
+    outs << "CreateContig::LoadBalance: " << balance << endl;
+    outs << "CreateContig::nonzeros: "    << nnz     << endl;
+    SpParHelper::Print(outs.str());
+
+    int64_t nCC = 0;
+    FullyDistVec<int64_t, int64_t> myLabelCC = CC(bestOverlapM, nCC);
+
+	  std::string myccoutput = myoutput + ".cc";
+	  myLabelCC.ParallelWrite(myccoutput, 1);
+
+    int64_t nContig = myLabelCC.Reduce(maximum<int64_t>(), (int64_t)0);
+    nContig++; // because of zero based indexing for cluster
+
+    std::stringstream ncc;
+    ncc << "nContig: " << nContig << endl;
+    SpParHelper::Print(ncc.str());
+  }
+
+  tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
+
+  tu.print_str("bestOverlapM matrix: ");
+  bestOverlapM.PrintInfo();
+
+  tp->times["StartMain:ScaffoldContig()"] = std::chrono::system_clock::now();
+  
+  bool scaffolding = true;
+  if(scaffolding)
+  {
+    /* @GGGG-TODO: Contig correction and scaffolding() */
+    /* (1) Partial order alignment of excluded sequences (that passed aligment threshold) to contig to correct them (keep track haplotypes that are not errors based on the coverage) */
+    /* (2) |contig|x|contig| jaccard similarity (or some sort of similarity) to scaffold them */
   }
 
   double start = MPI_Wtime();
