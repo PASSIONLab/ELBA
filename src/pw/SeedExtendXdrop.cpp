@@ -73,98 +73,48 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 		if(passed)
 		{
 			// GGGG: seqH is column entry and seqV is row entry, for each column, we iterate over the row entries
-			int i = ai.seq_v_g_idx, j = ai.seq_h_g_idx;
+			int row = ai.seq_v_g_idx, col = ai.seq_h_g_idx;
 			
 			uint32_t direction;
 			uint32_t suffix;
 
-			// FWD(): upper triangular matrix
-			// if(i > j) 
-			// {
-			// 	// !reverse complement
-			// 	if(!ai.rc)
-			// 	{
-			// 		// if begp(j) > begp(i)
-			// 		if(begpH > begpV)
-			// 		{
-			// 			// seqV exit from seqH
-			// 			direction = 1;
-			// 			suffix = rlenV - endpV;
-			// 		}
-			// 		else
-			// 		{
-			// 			// seqV enter into seqH
-			// 			direction = 2;
-			// 			suffix = rlenH - endpH;
-			// 		}
-			// 	}
-			// 	else
-			// 	{
-			// 		// @GGGG-TODO: double check 
-			// 		if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
-			// 		{
-			// 			// seqV enter into seqH and rc == true
-			// 			direction = 0;
-			// 			suffix = begpV;						
-			// 		}
-			// 		else
-			// 		{
-			// 			// seqV exit from seqH and rc == true
-			// 			direction = 3;
-			// 			suffix = rlenH - endpH;
-			// 		}
-			// 	}
-			// }
-			// RVD()
-			// else
-			if(i < j) 
+			// !reverse complement
+			if(!ai.rc)
 			{
-				// need to reverse both seqH and seqV
-				uint tmp;
-				
-				tmp   = begpV;
-				begpV = rlenV - endpV;
-				endpV = rlenV - tmp;
-
-				tmp   = begpH;
-				begpH = rlenH - endpH;
-				endpH = rlenH - tmp;
-
-				// !reverse complement
-				if(!ai.rc)
+				// if begp(j) > begp(i)
+				if(begpH > begpV)
 				{
-					// if begp(j) > begp(i)
-					if(begpH > begpV)
-					{
-						// seqV exit from seqH
-						direction = 1;
-						suffix = rlenV - endpV;
-					}
-					else
-					{
-						// seqV enter into seqH
-						direction = 1;
-						suffix = rlenH - endpH;
-					}
+					// seqV exit from seqH
+					direction = 1;
+					suffix = rlenV - endpV;
 				}
 				else
 				{
-					// @GGGG-TODO: double check 
-					if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
-					{
-						// seqV enter into seqH and rc == true
-						direction = 0;
-						suffix = begpH;						
-					}
-					else
-					{
-						// seqV exit from seqH and rc == true
-						direction = 3;
-						suffix = rlenV - endpV;
-					}
+					// seqV enter into seqH
+					direction = 1;
+					suffix = rlenH - endpH;
 				}
 			}
-			else passed = false;
+			else
+			{
+				// @GGGG-TODO: double check 
+				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
+				{
+					printf("row %d col %d\n", row+1, col+1);
+					printf("begpV %d endpV %d lenV %d begpH %d endpH %d lenH %d\n", begpV, endpV, rlenV, begpH, endpH, rlenH);
+					
+					// seqV enter into seqH and rc == true
+					direction = 0;
+					suffix = begpH;						
+				}
+				else
+				{
+					// seqV exit from seqH and rc == true
+					direction = 3;
+					suffix = rlenV - endpV;
+				}
+			}
+
 			overhang = suffix << 2 | direction;
 		} // if(passed)
 	} // if(!contained)
