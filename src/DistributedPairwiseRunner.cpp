@@ -290,39 +290,15 @@ DistributedPairwiseRunner::run_batch
 
 				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
 
-				/* 
-				
-				This aligns only lower triangular; 
-				The transitive reduction needs a symmetric matrix but we probably want something smarter than computing twice as many alignment;
-
 				if ((cks->count >= ckthr) 	 	&& 
 					(l_col_idx >= l_row_idx) 	&&
 					(l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
 					++algn_cnt;
 				}
-				*/
-
-				if ((cks->count >= ckthr) && (l_col_idx != l_row_idx))
-				{
-					++algn_cnt;
-				}
-
-				/* 
-				
-				This aligns only lower triangular; 
-				The transitive reduction needs a symmetric matrix but we probably want something smarter than computing twice as many alignment;
-				Compute statistics;
 
 				if ((l_col_idx >= l_row_idx) &&
 					(l_col_idx != l_row_idx || g_col_idx > g_row_idx))
-				{
-					if (cks->count < ckthr) ++nelims_ckthr_cur;
-				}
-
-				*/
-				
-				if (l_col_idx != l_row_idx)
 				{
 					if (cks->count < ckthr) ++nelims_ckthr_cur;
 				}
@@ -373,27 +349,11 @@ DistributedPairwiseRunner::run_batch
 
 				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
 
-				/*
-
-				This aligns only lower triangular; 
-				The transitive reduction needs a symmetric matrix but we probably want something smarter than computing twice as many alignment;
-
 				if ((cks->count >= ckthr)    && 
 					(l_col_idx >= l_row_idx) &&
 					(l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
 
-					seqsh[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));
-					seqsv[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
-
-					lids[algn_idx] = i;
-					++algn_idx;
-				}
-
-				*/
-
-				if ((cks->count >= ckthr) && (l_col_idx != l_row_idx))
-				{
 					seqsh[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));
 					seqsv[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
 
@@ -450,13 +410,6 @@ DistributedPairwiseRunner::run_batch
 	// Prune pairs that do not meet coverage criteria
 	auto elim_cov = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
 	gmat->Prune(elim_cov);
-	
-	// @GGGGL print after transitive redution
-	// double start = MPI_Wtime();
-	// gmat->ParallelWriteMM(aln_file, true, dibella::CkOutputMMHandler());
-	// double ppend = MPI_Wtime() - start;
-
-	// tu.print_str("ParallelWriteMM " + std::to_string(ppend)+ "\n");
 
 	// GGGG: if no_align == true, we remove only the contained overlaps as they are not useful for transitive reduction
 	tu.print_str("nnzs in the pruned matrix " +
