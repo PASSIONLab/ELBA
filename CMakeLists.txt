@@ -38,6 +38,9 @@ add_executable(dibella
         include/MPIUtils.hpp
         include/Defines.hpp
         include/VectorMap.hpp
+        src/TransitiveReduction.cpp
+        src/Contig.cpp
+        src/Assembly.cpp
         src/DistributedPairwiseRunner.cpp
         include/DistributedPairwiseRunner.hpp
         src/DistributedFastaData.cpp

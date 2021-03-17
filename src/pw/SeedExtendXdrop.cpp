@@ -2,9 +2,9 @@
 
 #include "../../include/pw/SeedExtendXdrop.hpp"
 
-uint min_overlap_len = 10000;
+uint minOverlapLen = 10000;
 
-void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, uint32_t& overhang, uint32_t& overlap, const bool no_align)
+void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, uint32_t& overhang, uint32_t& overlap, const bool noAlign)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -63,10 +63,10 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	
 	if(!contained)
 	{
-		/* @GGGG: If no_align is false, set passed to false if the score isn't good enough */
-		if(!no_align)
+		/* @GGGG: If noAlign is false, set passed to false if the score isn't good enough */
+		if(!noAlign)
 		{
-			if((float)ai.xscore < myThr || overlap < min_overlap_len) passed = false;
+			if((float)ai.xscore < myThr || overlap < minOverlapLen) passed = false;
 			else passed = true;
 		}
 
@@ -85,7 +85,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 				if(begpH > begpV)
 				{
 					// seqV exit from seqH
-					direction = 1;
+					direction = 2;
 					suffix = rlenV - endpV;
 				}
 				else
@@ -94,14 +94,15 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 					direction = 1;
 					suffix = rlenH - endpH;
 				}
+				// GGGG: in the Transpose() functor we swap this for the !rc case; in the rc case only the value change; we care about direction not strand
+				// If CC requires identical entries, we can use a vector structure to save both here and modify the transitive reduction to access only the right part
 			}
 			else
 			{
-				// @GGGG-TODO: double check 
 				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
 				{
-					printf("row %d col %d\n", row+1, col+1);
-					printf("begpV %d endpV %d lenV %d begpH %d endpH %d lenH %d\n", begpV, endpV, rlenV, begpH, endpH, rlenH);
+					// printf("row %d col %d\n", row+1, col+1);
+					// printf("begpV %d endpV %d lenV %d begpH %d endpH %d lenH %d\n", begpV, endpV, rlenV, begpH, endpH, rlenH);
 					
 					// seqV enter into seqH and rc == true
 					direction = 0;
@@ -281,7 +282,7 @@ SeedExtendXdrop::apply_batch
 	uint64_t row_offset,
     PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
     std::ofstream &lfs,
-	const bool no_align,
+	const bool noAlign,
 	ushort k,
     float ratioScoreOverlap, // GGGG: this is my ratioScoreOverlap variable change name later
     int debugThr
@@ -370,7 +371,7 @@ SeedExtendXdrop::apply_batch
 				setEndPositionH(seed, LocalSeedHOffset + seed_length);
 				setEndPositionV(seed, LocalSeedVOffset + seed_length);
 
-				if(!no_align) 
+				if(!noAlign) 
 				{
 					/* Perform match extension */
 					start_time = std::chrono::system_clock::now();
@@ -396,7 +397,7 @@ SeedExtendXdrop::apply_batch
 			else
 			{
 				strands[i] = false;
-				if(!no_align) 
+				if(!noAlign) 
 				{
 					start_time = std::chrono::system_clock::now();
 					xscores[i] = extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
@@ -523,7 +524,7 @@ SeedExtendXdrop::apply_batch
 			bool passed = false;
 
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overlap, no_align);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overlap, noAlign);
 
 			if (passed)
 			{

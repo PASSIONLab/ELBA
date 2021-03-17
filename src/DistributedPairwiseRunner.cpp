@@ -199,13 +199,12 @@ void
 DistributedPairwiseRunner::run_batch
 (
     PairwiseFunction	*pf,
-	const std::string	&aln_file,
 	std::ofstream&		 lfs,
 	int					 log_freq,
 	int					 ckthr,
 	bool				 aln_score_thr,
 	TraceUtils 			 tu,
-	const bool 			 no_align,
+	const bool 			 noAlign,
 	ushort 				 k,
 	bool				 score_only
 )
@@ -369,13 +368,13 @@ DistributedPairwiseRunner::run_batch
 			<< " overall " 						<< nalignments
 			<< std::endl;
 
-		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, no_align, k);
+		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, noAlign, k);
 		
 		delete [] lids;
 		++batch_idx;
 	}
 
-	if(no_align) nalignments = 0;
+	if(noAlign) nalignments = 0;
 
 	pf->nalignments = nalignments;
 	pf->print_avg_times(parops, lfs);
@@ -411,7 +410,7 @@ DistributedPairwiseRunner::run_batch
 	auto elim_cov = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
 	gmat->Prune(elim_cov);
 
-	// GGGG: if no_align == true, we remove only the contained overlaps as they are not useful for transitive reduction
+	// GGGG: if noAlign == true, we remove only the contained overlaps as they are not useful for transitive reduction
 	tu.print_str("nnzs in the pruned matrix " +
 				 std::to_string(gmat->getnnz()) + "\n");
 	

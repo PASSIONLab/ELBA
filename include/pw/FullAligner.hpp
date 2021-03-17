@@ -25,7 +25,7 @@ public:
 			        uint64_t row_offset,
               PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
               std::ofstream &lfs,
-              const bool no_align,
+              const bool noAlign,
               ushort k,
               float ratioScoreOverlap = 0.99,   // GGGG: Precomputed for error rate = 15% and default scoring matrix (1,-1,-1) (0.445 for CLR, 0.99 for CCS)
               int debugThr = 50) override;      // GGGG: Fixed threshold, this is convenient only for debugging
