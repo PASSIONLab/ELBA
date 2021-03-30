@@ -73,7 +73,7 @@ bool add_substitue_kmers = false;
 int subk_count = 0;
 
 /*! Parameters related to outputting alignment info */
-std::string align_file;
+std::string myoutput;
 int afreq;
 
 /*! Don't perform alignments if this flag is set */
@@ -266,21 +266,19 @@ int main(int argc, char **argv)
   tp->times["StartMain:DprAlign()"] = std::chrono::system_clock::now();
   ScoringScheme scoring_scheme(match, mismatch_sc, gap_ext);
 
-  align_file += ".mm";
-
   PairwiseFunction* pf = nullptr;
   uint64_t local_alignments = 1;
 
   if (xdrop_align)
   {
     pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
-    dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, no_align, klength);
+    dpr.run_batch(pf, myoutput, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, no_align, klength);
 	  local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
   }
   else if (full_align)
   {
     pf = new FullAligner(scoring_scheme);
-    dpr.run_batch(pf, align_file, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, no_align, klength);
+    dpr.run_batch(pf, myoutput, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, no_align, klength);
 	  local_alignments = static_cast<FullAligner*>(pf)->nalignments;
   }
 
@@ -299,10 +297,20 @@ int main(int argc, char **argv)
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
   // @GGGG: this must be symmetric
-  std::string align_file2 = "dibella.debug.before.transitive.reduction.result.mm";
-  B.ParallelWriteMM(align_file2, true, dibella::CkOutputMMHandler()); 
+  std::string myoutput2 = myoutput + "post.alignment.mm";
 
-  // @GGGG-TODO: B symmetricize matrix using Transpose() and Apply(<functor>)
+  B.ParallelWriteMM(myoutput2, true, dibella::CkOutputMMHandler()); 
+
+  SpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
+  BT.Transpose();
+  if(!(BT == B))
+  {
+      B += BT;
+
+      // @GGGG-TODO: B symmetricize matrix using Transpose() and Apply(<functor>)
+      B.Apply();
+  }
+  B.PrintInfo();
 
   bool transitive_reduction = true;
   if (transitive_reduction)
@@ -404,7 +412,7 @@ int main(int argc, char **argv)
   if(contigging)
   {
     // @GGGG: move everything into a function
-    CreateContig();
+    // CreateContig();
 
     /* (1) find min value (best/longest overlap) per column entry and store it into a vector */
     FullyDistVec<int64_t, dibella::CommonKmers> bestOverlapV(B.getcommgrid());
@@ -422,10 +430,11 @@ int main(int argc, char **argv)
     bestOverlapM.PrintInfo();
 
     /* (3) Connected component for contig extraction (from LACC: https://github.com/PASSIONLab/CombBLAS/blob/e6c55bd48a442b8fa95870fb5f18cd6b89cbffe9/Applications/CC.cpp)
-     * 
+    
+    SpMat<dibella::CommonKmers>::MPI_DCCols bestOverlapMT = bestOverlapM;
+
      * The matrix should be already symmetric at this point.    
-     * If they need to be identical I can save both and then agree than row > col must read only [0] and col > row only [1]?
-     * 
+     * If they need to be identical I can save both and then agree than row > col must read only [0] and col > row only [1]? 
      
     bestOverlapMT.Transpose();
     if(!(bestOverlapMT == bestOverlapM))
@@ -477,8 +486,11 @@ int main(int argc, char **argv)
     /* (2) |contig|x|contig| jaccard similarity (or some sort of similarity) to scaffold them */
   }
 
+  tp->times["EndMain:ScaffoldContig()"] = std::chrono::system_clock::now();
+
   double start = MPI_Wtime();
-	B.ParallelWriteMM(align_file, true, dibella::CkOutputMMHandler());
+  myoutput += ".mm";
+	B.ParallelWriteMM(myoutput, true, dibella::CkOutputMMHandler());
 	double ppend = MPI_Wtime() - start;
 
 	tu.print_str("ParallelWriteMM " + std::to_string(ppend)+ "\n");
@@ -635,7 +647,7 @@ int parse_args(int argc, char **argv) {
   }
 
   if (result.count(CMD_OPTION_ALIGN_FILE)) {
-    align_file = result[CMD_OPTION_ALIGN_FILE].as<std::string>();
+    myoutput = result[CMD_OPTION_ALIGN_FILE].as<std::string>();
   }
 
   if (result.count(CMD_OPTION_NO_ALIGN)) {
@@ -718,8 +730,8 @@ void pretty_print_config(std::string &append_to) {
     std::to_string(gap_open),
     std::to_string(gap_ext),
     !overlap_file.empty() ? overlap_file  : "None",
-    !align_file.empty()   ? align_file    : "None",
-    !align_file.empty()   ? std::to_string(afreq) : "None",
+    !myoutput.empty()   ? myoutput    : "None",
+    !myoutput.empty()   ? std::to_string(afreq) : "None",
     bool_to_str(no_align),
     bool_to_str(full_align),
     bool_to_str(xdrop_align)  + (xdrop_align  ? " | xdrop: " + std::to_string(xdrop) : ""),
