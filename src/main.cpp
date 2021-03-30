@@ -24,8 +24,10 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "../include/pw/FullAligner.hpp"
 #include "../include/kmer/KmerOps.hpp"
 #include "../include/kmer/KmerIntersectSR.hpp"
-#include "../include/TransitiveReductionSR.hpp"
 #include "../include/Utils.hpp"
+#include "../include/TransitiveReductionSR.hpp"
+// #include "Contig.cpp"
+// #include "Assembly.cpp"
 
 #include "seqan/score/score_matrix_data.h"
 
@@ -323,31 +325,31 @@ int main(int argc, char **argv)
   // CONTIG EXTRACTION                                                                // 
   //////////////////////////////////////////////////////////////////////////////////////
 
-  tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
+  // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
-  std::vector<std::string> myContigSet;
-  bool contigging = false;
+  // std::vector<std::string> myContigSet;
+  // bool contigging = false;
 
-  if(contigging)
-  {
-    myContigSet = CreateContig(B, myoutput, tu);
-  }
+  // if(contigging)
+  // {
+  //   // myContigSet = CreateContig(B, myoutput, tu);
+  // }
 
-  tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
+  // tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
 
-  //////////////////////////////////////////////////////////////////////////////////////
-  // SCAFFOLDING                                                                      // 
-  //////////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////////////
+  // // SCAFFOLDING                                                                      // 
+  // //////////////////////////////////////////////////////////////////////////////////////
 
-  tp->times["StartMain:ScaffoldContig()"] = std::chrono::system_clock::now();
+  // tp->times["StartMain:ScaffoldContig()"] = std::chrono::system_clock::now();
   
-  bool scaffolding = false;
-  if(!contigging) scaffolding = false;
+  // bool scaffolding = false;
+  // if(!contigging) scaffolding = false;
 
-  if(scaffolding)
-  {
-    GetAssembly(myContigSet, tu);
-  }
+  // if(scaffolding)
+  // {
+  //   // GetAssembly(myContigSet, tu);
+  // }
 
   //////////////////////////////////////////////////////////////////////////////////////
   // OUTPUT ASSEMBLY                                                                  // 

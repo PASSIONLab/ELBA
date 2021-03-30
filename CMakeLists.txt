@@ -38,9 +38,6 @@ add_executable(dibella
         include/MPIUtils.hpp
         include/Defines.hpp
         include/VectorMap.hpp
-        src/TransitiveReduction.cpp
-        src/Contig.cpp
-        src/Assembly.cpp
         src/DistributedPairwiseRunner.cpp
         include/DistributedPairwiseRunner.hpp
         src/DistributedFastaData.cpp
@@ -81,6 +78,7 @@ add_executable(dibella
         src/kmer/Kmer.cpp
         include/kmer/Kmer.hpp
         include/TransitiveReductionSR.hpp
+        include/CC.h
 	)
 
 set(LOWER_KMER_FREQ 2

@@ -4,16 +4,31 @@
 #define __TER_DEFS_H__
 
 #include "../include/kmer/CommonKmers.hpp"
+#include "../include/Utils.hpp"
 
 #include <sys/time.h> 
 #include <iostream>
 #include <functional>
 #include <algorithm>
 #include <vector>
+#include <cmath>
+
+#include <map>
+#include <fstream>
 
 #include <string>
 #include <sstream>
 
+// #include "../include/Constants.hpp"
+// #include "../include/ParallelOps.hpp"
+// #include "../include/ParallelFastaReader.hpp"
+// #include "../include/Alphabet.hpp"
+// #include "../include/DistributedPairwiseRunner.hpp"
+// #include "../include/cxxopts.hpp"
+// #include "../include/TransitiveReductionSR.hpp"
+
+/*! Namespace declarations */
+using namespace combblas;
 using namespace std;
 
 #define FUZZ (1000)
@@ -43,9 +58,17 @@ void tobinary(ushort n, int* arr)
     }
 } 
 
-bool testdir(ushort dir1, ushort dir2)
+// if 01 || 10 test both and keep the one that passes the test
+bool fwdtest(ushort dir1, ushort dir2)
 {
+
+}
+
+bool testdir(ushort dir1, ushort dir2, ushort& dir)
+{
+    bool res;
     ushort rbit, lbit;
+    ushort start, end;
 
     int mybin1[2] = {0, 0};
     int mybin2[2] = {0, 0};
@@ -53,18 +76,41 @@ bool testdir(ushort dir1, ushort dir2)
     if(dir1 != 0) tobinary(dir1, mybin1);
     if(dir2 != 0) tobinary(dir2, mybin2);
 
-    rbit = mybin1[0];
-    lbit = mybin2[1];
+    // if 01 || 10 test both and keep the one that passes the test
+    if((dir1 == 1 || dir1 == 2) & (dir2 != 1 || dir2 != 2))
+    {
 
-    if(rbit != lbit) return true;
-    else return false;
+    }
+    else if((dir1 != 1 || dir1 != 2) & (dir2 == 1 || dir2 == 2))
+    {
+
+    }
+    else if((dir1 == 1 || dir1 == 2) & (dir2 == 1 || dir2 == 2))
+    {
+
+    }
+    else // if none of them is 1 || 2
+    {
+        rbit  = mybin1[0];
+        lbit  = mybin2[1];
+
+        if(rbit != lbit)
+        {
+            start = mybin1[1];
+            end   = mybin2[0];
+
+            res = true;
+        }
+        else 
+        {
+            res = false;
+        }
+    }
+
+    // compose new direction
+
+    return res;
 }
-
-// uint length1(const dibella::CommonKmers& me) { return me.overhang[0] >> 2; }
-// uint length2(const dibella::CommonKmers& me) { return me.overhang[1] >> 2; }
-
-// ushort  dir1(const dibella::CommonKmers& me) { return me.overhang[0]  & 3; }
-// ushort  dir2(const dibella::CommonKmers& me) { return me.overhang[1]  & 3; }
 
 uint length(const dibella::CommonKmers& me) { return me.overhang >> 2; }
 ushort  dir(const dibella::CommonKmers& me) { return me.overhang  & 3; }
@@ -152,12 +198,13 @@ struct MinPlusBiSRing
 	static OUT multiply(const T1& arg1, const T2& arg2)
 	{
         OUT res;
-        // printf("dir1 %d dir2 %d\n", dir(arg1), dir(arg2));
-        // printf("len1 %d len2 %d\n", length(arg1), length(arg2));
-        if(testdir(dir(arg1), dir(arg2)))
+
+        ushort resdir;
+        // if 01 || 10 testdir test both and keep the one that passes the test
+        if(testdir(dir(arg1), dir(arg2), resdir))
         {
             uint len = infplus(arg1, arg2);
-            return compose(res, len, dir(arg2));
+            return compose(res, len, resdir);
         } 
         else 
         {
@@ -207,5 +254,111 @@ struct ZeroOverhangSR : unary_function <T, bool>
 {
     bool operator() (const T& x) const { if(x.overhang == 0) return true; else return false; }
 };
+
+/*! Type definitions */
+typedef MinPlusBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> MinPlusSR_t;
+typedef ReduceMBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> ReduceMSR_t;
+typedef Bind2ndBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> Bind2ndSR_t;
+
+/* TR main function */
+void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils tu)
+{
+    PSpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
+    BT.Transpose();
+    // if(!(BT == B))
+    // {
+    //     B += BT;
+    //     // B.Apply();
+    // }
+    // B.PrintInfo();
+
+    uint nnz, prev;
+    double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
+
+    /* Gonna iterate on B until there are no more transitive edges to remove */
+    do
+    {
+      prev = B.getnnz();
+
+      /* Find two-hops neighbors
+       * C = B^2
+       */
+      double start = MPI_Wtime();
+      PSpMat<dibella::CommonKmers>::MPI_DCCols F = B;
+      PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F);
+      timeA2 += MPI_Wtime() - start;
+  #ifdef DIBELLA_DEBUG
+      tu.print_str("Matrix C = B^2: ");
+      C.PrintInfo();
+  #endif
+    
+      start = MPI_Wtime();
+      FullyDistVec<int64_t, dibella::CommonKmers> vA(B.getcommgrid());
+
+      dibella::CommonKmers id; 
+      vA = B.Reduce(Row, ReduceMSR_t(), id);
+      vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
+
+      F.DimApply(Row, vA, Bind2ndSR_t());
+      timeC += MPI_Wtime() - start;
+  #ifdef DIBELLA_DEBUG
+      tu.print_str("Matrix F = B + FUZZ: ");
+      F.PrintInfo();
+  #endif
+
+      /* Find transitive edges that can be removed
+       * I = F >= C 
+       */
+      start = MPI_Wtime();
+      bool isLogicalNot = false;
+      PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, PSpMat<bool>::DCCols>(F, C, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
+
+      /* Prune potential zero-valued nonzeros */
+      I.Prune(ZeroUnaryOp<bool>(), true);
+      timeI += MPI_Wtime() - start;
+  #ifdef DIBELLA_DEBUG
+      tu.print_str("Matrix I = F >= B: ");
+      I.PrintInfo();
+  #endif
+
+      /* Remove transitive edges
+       * B = B .* not(I)
+       */ 
+      start = MPI_Wtime();
+      isLogicalNot = true;
+      B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, EWiseMulOp<dibella::CommonKmers, bool>(), isLogicalNot, true);
+
+      /* Prune zero-valued overhang */
+      B.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
+      timeA += MPI_Wtime() - start;
+
+  #ifdef DIBELLA_DEBUG
+      tu.print_str("Matrix B = B .* not(I): ");
+      B.PrintInfo();
+  #endif
+      nnz = B.getnnz();
+       
+    } while (nnz != prev);
+
+    tu.print_str("Matrix B, i.e AAt after transitive reduction: ");
+    B.PrintInfo();
+
+ #ifdef DIBELLA_DEBUG
+    double maxtimeA2, maxtimeC, maxtimeI, maxtimeA;
+    
+    MPI_Reduce(&timeA2, &maxtimeA2, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&timeC,  &maxtimeC,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&timeI,  &maxtimeI,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&timeA,  &maxtimeA,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    if(myrank == 0)
+    {
+      std::cout << "TransitiveReduction:TimeA2 = " << maxtimeA2 << std::endl;
+      std::cout << "TransitiveReduction:TimeC  = " <<  maxtimeC << std::endl;
+      std::cout << "TransitiveReduction:TimeI  = " <<  maxtimeI << std::endl;
+      std::cout << "TransitiveReduction:TimeA  = " <<  maxtimeA << std::endl;
+    }
+ #endif
+}
 
 #endif
