@@ -301,14 +301,14 @@ int main(int argc, char **argv)
 
   B.ParallelWriteMM(myoutput2, true, dibella::CkOutputMMHandler()); 
 
-  SpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
+  PSpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
   BT.Transpose();
   if(!(BT == B))
   {
       B += BT;
-
+      
       // @GGGG-TODO: B symmetricize matrix using Transpose() and Apply(<functor>)
-      B.Apply();
+      // B.Apply();
   }
   B.PrintInfo();
 
@@ -431,7 +431,7 @@ int main(int argc, char **argv)
 
     /* (3) Connected component for contig extraction (from LACC: https://github.com/PASSIONLab/CombBLAS/blob/e6c55bd48a442b8fa95870fb5f18cd6b89cbffe9/Applications/CC.cpp)
     
-    SpMat<dibella::CommonKmers>::MPI_DCCols bestOverlapMT = bestOverlapM;
+    PSpMat<dibella::CommonKmers>::MPI_DCCols bestOverlapMT = bestOverlapM;
 
      * The matrix should be already symmetric at this point.    
      * If they need to be identical I can save both and then agree than row > col must read only [0] and col > row only [1]? 
@@ -469,12 +469,12 @@ int main(int argc, char **argv)
     std::stringstream ncc;
     ncc << "nContig: " << nContig << endl;
     SpParHelper::Print(ncc.str());
+
+    tu.print_str("bestOverlapM matrix: ");
+    bestOverlapM.PrintInfo();
   }
 
   tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
-
-  tu.print_str("bestOverlapM matrix: ");
-  bestOverlapM.PrintInfo();
 
   tp->times["StartMain:ScaffoldContig()"] = std::chrono::system_clock::now();
   
