@@ -226,6 +226,21 @@ struct ZeroOverhangSR : unary_function <T, bool>
     bool operator() (const T& x) const { if(x.overhang == 0) return true; else return false; }
 };
 
+// Apply functor for BT transpose
+template <class T, class OUT>
+struct OverhangTSRing : unary_function <T, OUT>
+{
+    OUT operator() (const T& x) const
+    {
+        OUT xT = static_cast<OUT>(x);
+
+        xT.overhang = x.overhangT;
+        xT.overhangT = x.overhang;
+
+        return xT;
+    }
+};
+
 /*! Type definitions */
 typedef MinPlusBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> MinPlusSR_t;
 typedef ReduceMBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> ReduceMSR_t;
@@ -236,11 +251,10 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
 {
     PSpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
     BT.Transpose();
-    // BT.Apply(); // The functor changes is mostly the overhang lenthg and direction for 10 & 01
+    BT.Apply(OverhangTSRing<dibella::CommonKmers, dibella::CommonKmers>()); 
 
     if(!(BT == B))
     {
-        // @@GGGG-TODO: write overload function for dibella::CommonKmers
         B += BT;
     }
     B.PrintInfo();

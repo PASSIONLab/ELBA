@@ -4,7 +4,8 @@
 
 uint minOverlapLen = 10000;
 
-void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, uint32_t& overhang, uint32_t& overlap, const bool noAlign)
+void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
+	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -78,6 +79,9 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			uint32_t direction;
 			uint32_t suffix;
 
+			uint32_t directionT;
+			uint32_t suffixT;
+
 			// !reverse complement
 			if(!ai.rc)
 			{
@@ -85,14 +89,20 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 				if(begpH > begpV)
 				{
 					// seqV exit from seqH
-					direction = 1;
-					suffix = rlenV - endpV;
+					direction  = 1;
+					directionT = 2;
+
+					suffix  = rlenV - endpV;	
+					suffixT = rlenH - endpH;
 				}
 				else
 				{
 					// seqV enter into seqH
-					direction = 2;
-					suffix = rlenH - endpH;
+					direction  = 2;
+					directionT = 1;
+
+					suffix  = rlenH - endpH;	
+					suffixT = rlenV - endpV;
 				}
 				// GGGG: in the Transpose() functor we swap this for the !rc case; in the rc case only the value change; we care about direction not strand
 				// If CC requires identical entries, we can use a vector structure to save both here and modify the transitive reduction to access only the right part
@@ -102,18 +112,26 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
 				{
 					// seqV enter into seqH and rc == true
-					direction = 0;
-					suffix = begpH;						
+					direction  = 0;
+					directionT = 0;
+
+					suffix  = begpV;
+					suffixT = begpH;						
 				}
 				else
 				{
 					// seqV exit from seqH and rc == true
-					direction = 3;
-					suffix = rlenV - endpV;
+					direction  = 3;
+					directionT = 3;
+
+					suffix  = rlenH - endpH;
+					suffixT = rlenV - endpV;
 				}
 			}
 
-			overhang = suffix << 2 | direction;
+			overhang  = suffix  << 2 | direction;
+			overhangT = suffixT << 2 | directionT;
+
 		} // if(passed)
 	} // if(!contained)
 		
@@ -521,7 +539,7 @@ SeedExtendXdrop::apply_batch
 			bool passed = false;
 
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overlap, noAlign);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign);
 
 			if (passed)
 			{
