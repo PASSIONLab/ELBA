@@ -299,6 +299,7 @@ SeedExtendXdrop::apply_batch
     std::ofstream &lfs,
 	const bool noAlign,
 	ushort k,
+	uint64_t nreads,
     float ratioScoreOverlap, // GGGG: this is my ratioScoreOverlap variable change name later
     int debugThr
 )
@@ -529,6 +530,31 @@ SeedExtendXdrop::apply_batch
 
 	auto start_time = std::chrono::system_clock::now();
 
+	// Create per-process consistency directionality array
+	// Get nreads (init to zero)
+	// Each processor computes the label array column-major
+	std::vector<ushort> perprocessarray(nreads, 0);
+
+	// !parallel right now
+	// for (row, col) in AlignedPairs
+	for (uint64_t i = 0; i < npairs; ++i)
+	{
+		int row = ai[i].seq_v_g_idx;
+		int col = ai[i].seq_h_g_idx;
+
+		if(perprocessarray[col] == 0) 
+			perprocessarray[col] = 1;
+
+		if(!ai[i].rc) perprocessarray[row] = perprocessarray[col]; 		// forward overlap
+		else perprocessarray[row] = perprocessarray[col] == 1 ? 2 : 1;	// reverse overlap
+	}
+
+	// Top left proc nroadcast information to its processor row
+
+	// First proc row broadcast to theirs processor columns
+
+	// Ready to encode graph directionality globally consistency
+	
 	// Dump alignment info
 	#pragma omp parallel
 	{

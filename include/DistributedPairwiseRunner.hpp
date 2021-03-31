@@ -29,6 +29,7 @@ public:
                     int log_freq, int ckthr, bool aln_score_thr, TraceUtils tu,
                     const bool noAlign,
                     ushort k,
+                    uint64_t nreads,
                     bool score_only = false);
 
 private:

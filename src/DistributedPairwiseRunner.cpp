@@ -206,6 +206,7 @@ DistributedPairwiseRunner::run_batch
 	TraceUtils 			 tu,
 	const bool 			 noAlign,
 	ushort 				 k,
+	uint64_t 			 nreads,
 	bool				 score_only
 )
 {
@@ -368,7 +369,7 @@ DistributedPairwiseRunner::run_batch
 			<< " overall " 						<< nalignments
 			<< std::endl;
 
-		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, noAlign, k);
+		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, noAlign, k, nreads);
 		
 		delete [] lids;
 		++batch_idx;
