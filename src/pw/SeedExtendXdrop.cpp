@@ -542,11 +542,12 @@ SeedExtendXdrop::apply_batch
 		int row = ai[i].seq_v_g_idx;
 		int col = ai[i].seq_h_g_idx;
 
-		if(perprocessarray[col] == 0) 
-			perprocessarray[col] = 1;
+		if(perprocessarray[col] != 0) continue;							// array so far is filled
 
-		if(!ai[i].rc) perprocessarray[row] = perprocessarray[col]; 		// forward overlap
-		else perprocessarray[row] = perprocessarray[col] == 1 ? 2 : 1;	// reverse overlap
+		if(perprocessarray[row] == 0) perprocessarray[row] = 1;			// assign direction to row
+
+		if(!ai[i].rc) perprocessarray[col] = perprocessarray[row]; 		// forward overlap assign direction to col
+		else perprocessarray[col] = perprocessarray[row] == 1 ? 2 : 1;	// reverse overlap assign direction to col
 	}
 
 	// Top left proc nroadcast information to its processor row
