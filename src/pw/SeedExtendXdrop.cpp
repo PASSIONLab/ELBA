@@ -82,6 +82,8 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			uint32_t directionT;
 			uint32_t suffixT;
 
+			printf("seqH %d seqV %d\n", col, row);
+
 			// !reverse complement
 			if(!ai.rc)
 			{
@@ -93,7 +95,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 					directionT = 2;
 
 					suffix  = rlenV - endpV;	
-					suffixT = rlenH - endpH;
+					suffixT = begpH;
 				}
 				else
 				{
@@ -102,10 +104,8 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 					directionT = 1;
 
 					suffix  = rlenH - endpH;	
-					suffixT = rlenV - endpV;
+					suffixT = begpV;
 				}
-				// GGGG: in the Transpose() functor we swap this for the !rc case; in the rc case only the value change; we care about direction not strand
-				// If CC requires identical entries, we can use a vector structure to save both here and modify the transitive reduction to access only the right part
 			}
 			else
 			{
@@ -124,8 +124,8 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 					direction  = 3;
 					directionT = 3;
 
-					suffix  = rlenH - endpH;
-					suffixT = rlenV - endpV;
+					suffix  = rlenV - endpV;
+					suffixT = rlenH - endpH;
 				}
 			}
 
