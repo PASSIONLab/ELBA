@@ -236,12 +236,12 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
 {
     PSpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
     BT.Transpose();
+    // BT.Apply(); // The functor changes is mostly the overhang lenthg and direction for 10 & 01
 
     if(!(BT == B))
     {
         // @@GGGG-TODO: write overload function for dibella::CommonKmers
         B += BT;
-        // B.Apply();
     }
     B.PrintInfo();
 

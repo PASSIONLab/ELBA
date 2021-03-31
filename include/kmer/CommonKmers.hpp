@@ -60,9 +60,9 @@ namespace dibella {
 	}
 
     // Overload + operator to add two CommonKmers objects
-	// I need to check but I think we only need an assignment here, since in the transpose the values are gonna be zeros
-	// But what if I make the Apply() operator here instead of a function later?
-	// Let's see if this works out.
+	// Used for: B += BT (TransitiveReductionSR.hpp)
+	// The +operator when creating the symmetric matrix doesn't really matter, there's gonna be zeros on the other side
+	// The +operator might be needed (meaningful) elsewhere later
     CommonKmers operator+(const CommonKmers& b)
 	{
 		CommonKmers myobj;
@@ -70,7 +70,7 @@ namespace dibella {
 		return myobj;
     }
 
-	// I need to figure out what this means when creating the sparse transpose
+	// Used for: if(!(BT == B)) (TransitiveReductionSR.hpp)
 	friend bool operator==(const CommonKmers& lhs, const CommonKmers& rhs)
 	{
 		if(lhs.overhang == rhs.overhang) return true;
