@@ -19,14 +19,6 @@
 #include <string>
 #include <sstream>
 
-// #include "../include/Constants.hpp"
-// #include "../include/ParallelOps.hpp"
-// #include "../include/ParallelFastaReader.hpp"
-// #include "../include/Alphabet.hpp"
-// #include "../include/DistributedPairwiseRunner.hpp"
-// #include "../include/cxxopts.hpp"
-// #include "../include/TransitiveReductionSR.hpp"
-
 /*! Namespace declarations */
 using namespace combblas;
 using namespace std;
@@ -58,15 +50,11 @@ void tobinary(ushort n, int* arr)
     }
 } 
 
-// if 01 || 10 test both and keep the one that passes the test
-bool fwdtest(ushort dir1, ushort dir2)
+// NEED TO GET THE UPDATED DIRECTION 
+
+ushort getdir(ushort dir1, ushort dir2)
 {
 
-}
-
-bool testdir(ushort dir1, ushort dir2, ushort& dir)
-{
-    bool res;
     ushort rbit, lbit;
     ushort start, end;
 
@@ -76,18 +64,78 @@ bool testdir(ushort dir1, ushort dir2, ushort& dir)
     if(dir1 != 0) tobinary(dir1, mybin1);
     if(dir2 != 0) tobinary(dir2, mybin2);
 
-    // if 01 || 10 test both and keep the one that passes the test
+    bool res = false;
+
+    // if 01 || 10 test both and keep the one that passes the test (flexible edge)
     if((dir1 == 1 || dir1 == 2) & (dir2 != 1 || dir2 != 2))
     {
+        rbit  = mybin1[0];
+        lbit  = mybin2[1];
 
+        if(rbit != lbit)
+        {
+            res   = true;
+            start = mybin1[1];
+            end   = mybin2[0]; 
+        }
+        else 
+        {
+            rbit  = mybin1[0] == 1? 0 : 1;
+
+            start = mybin1[1] == 1? 0 : 1;
+            end   = mybin2[0];
+
+            if(rbit != lbit) res = true;                
+        }
     }
     else if((dir1 != 1 || dir1 != 2) & (dir2 == 1 || dir2 == 2))
     {
+        rbit  = mybin1[0];
+        lbit  = mybin2[1];
 
+        if(rbit != lbit)
+        {
+            res   = true;
+            start = mybin1[1];
+            end   = mybin2[0];
+        }
+        else 
+        {      
+            lbit = mybin2[1] == 1? 0 : 1;
+
+            start = mybin1[0]; 
+            end   = mybin2[1] == 1? 0 : 1;
+
+            if(rbit != lbit) res = true;
+        }
     }
     else if((dir1 == 1 || dir1 == 2) & (dir2 == 1 || dir2 == 2))
     {
+        rbit  = mybin1[0];
+        lbit  = mybin2[1];
 
+        if(rbit != lbit)
+        {
+            res   = true;
+            start = mybin1[1];
+            end   = mybin2[0];
+        }
+
+        if(res) 
+        {
+            lbit = mybin2[1] == 1? 0 : 1;
+
+            if(rbit != lbit)
+            {
+                res = true;
+            }
+            else res = false;
+
+            start = mybin1[0]; 
+            end   = mybin2[1] == 1? 0 : 1;
+
+            }
+        }
     }
     else // if none of them is 1 || 2
     {
@@ -199,12 +247,14 @@ struct MinPlusBiSRing
 	{
         OUT res;
 
-        ushort resdir;
-        // if 01 || 10 testdir test both and keep the one that passes the test
-        if(testdir(dir(arg1), dir(arg2), resdir))
+        // if 01 and 10 are flexible then the only case we don't compute is if they are both 00 or both 11
+        if((dir(arg1) != 0 & dir(arg2) != 0) 
+            || (dir(arg1) != 3 & dir(arg2) != 3))
         {
-            uint len = infplus(arg1, arg2);
-            return compose(res, len, resdir);
+            uint   len   = infplus(arg1, arg2);
+            ushort mydir = getdir(dir(arg1), dir(arg2));
+
+            return compose(res, len, mydir);
         } 
         else 
         {
@@ -265,6 +315,8 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
 {
     PSpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
     BT.Transpose();
+
+    // @GGGG-TODO: this must be fixed somehow
     // if(!(BT == B))
     // {
     //     B += BT;

@@ -85,13 +85,13 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 				if(begpH > begpV)
 				{
 					// seqV exit from seqH
-					direction = 2;
+					direction = 1;
 					suffix = rlenV - endpV;
 				}
 				else
 				{
 					// seqV enter into seqH
-					direction = 1;
+					direction = 2;
 					suffix = rlenH - endpH;
 				}
 				// GGGG: in the Transpose() functor we swap this for the !rc case; in the rc case only the value change; we care about direction not strand
@@ -101,9 +101,6 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			{
 				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
 				{
-					// printf("row %d col %d\n", row+1, col+1);
-					// printf("begpV %d endpV %d lenV %d begpH %d endpH %d lenH %d\n", begpV, endpV, rlenV, begpH, endpH, rlenH);
-					
 					// seqV enter into seqH and rc == true
 					direction = 0;
 					suffix = begpH;						
