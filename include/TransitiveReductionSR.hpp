@@ -50,112 +50,30 @@ void tobinary(ushort n, int* arr)
     }
 } 
 
-// NEED TO GET THE UPDATED DIRECTION 
-
-ushort getdir(ushort dir1, ushort dir2)
+ushort updatedir(ushort dir1, ushort dir2)
 {
+    ushort res;
 
-    ushort rbit, lbit;
-    ushort start, end;
-
-    int mybin1[2] = {0, 0};
-    int mybin2[2] = {0, 0};
-    
-    if(dir1 != 0) tobinary(dir1, mybin1);
-    if(dir2 != 0) tobinary(dir2, mybin2);
-
-    bool res = false;
-
-    // if 01 || 10 test both and keep the one that passes the test (flexible edge)
-    if((dir1 == 1 || dir1 == 2) & (dir2 != 1 || dir2 != 2))
+    if((dir1 == 0 & (dir2 == 1 || dir2 == 2)) 
+        || ((dir1 == 1 || dir1 == 2) & dir2 == 0))
     {
-        rbit  = mybin1[0];
-        lbit  = mybin2[1];
-
-        if(rbit != lbit)
-        {
-            res   = true;
-            start = mybin1[1];
-            end   = mybin2[0]; 
-        }
-        else 
-        {
-            rbit  = mybin1[0] == 1? 0 : 1;
-
-            start = mybin1[1] == 1? 0 : 1;
-            end   = mybin2[0];
-
-            if(rbit != lbit) res = true;                
-        }
+        res = 0;
     }
-    else if((dir1 != 1 || dir1 != 2) & (dir2 == 1 || dir2 == 2))
+    else if((dir1 == 3 & (dir2 == 1 || dir2 == 2)) 
+            || ((dir1 == 1 || dir1 == 2) & dir2 == 3))
     {
-        rbit  = mybin1[0];
-        lbit  = mybin2[1];
-
-        if(rbit != lbit)
-        {
-            res   = true;
-            start = mybin1[1];
-            end   = mybin2[0];
-        }
-        else 
-        {      
-            lbit = mybin2[1] == 1? 0 : 1;
-
-            start = mybin1[0]; 
-            end   = mybin2[1] == 1? 0 : 1;
-
-            if(rbit != lbit) res = true;
-        }
+        res = 3;      
     }
-    else if((dir1 == 1 || dir1 == 2) & (dir2 == 1 || dir2 == 2))
+    else if((dir1 == 0 & dir2 == 3) 
+            || (dir1 == 1 & (dir2 == 1 || dir2 == 2)))
     {
-        rbit  = mybin1[0];
-        lbit  = mybin2[1];
-
-        if(rbit != lbit)
-        {
-            res   = true;
-            start = mybin1[1];
-            end   = mybin2[0];
-        }
-
-        if(res) 
-        {
-            lbit = mybin2[1] == 1? 0 : 1;
-
-            if(rbit != lbit)
-            {
-                res = true;
-            }
-            else res = false;
-
-            start = mybin1[0]; 
-            end   = mybin2[1] == 1? 0 : 1;
-
-            }
-        }
+        res = 1;     
     }
-    else // if none of them is 1 || 2
+    else if((dir1 == 3 & dir2 == 0) 
+            || (dir1 == 2 & (dir2 == 1 || dir2 == 2)))
     {
-        rbit  = mybin1[0];
-        lbit  = mybin2[1];
-
-        if(rbit != lbit)
-        {
-            start = mybin1[1];
-            end   = mybin2[0];
-
-            res = true;
-        }
-        else 
-        {
-            res = false;
-        }
+        res = 2;     
     }
-
-    // compose new direction
 
     return res;
 }
@@ -248,11 +166,14 @@ struct MinPlusBiSRing
         OUT res;
 
         // if 01 and 10 are flexible then the only case we don't compute is if they are both 00 or both 11
+        // the rest need to be computed and direction updated
+        // this is gonna generate extra entries but technically the invalid one shouldn't affect the output
+        // if we find out that they do, we should implement global consistency using broadcasting (see slides)
         if((dir(arg1) != 0 & dir(arg2) != 0) 
             || (dir(arg1) != 3 & dir(arg2) != 3))
         {
             uint   len   = infplus(arg1, arg2);
-            ushort mydir = getdir(dir(arg1), dir(arg2));
+            ushort mydir = updatedir(dir(arg1), dir(arg2));
 
             return compose(res, len, mydir);
         } 
