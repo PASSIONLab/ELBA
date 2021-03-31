@@ -59,6 +59,24 @@ namespace dibella {
 		score(score) {
 	}
 
+    // Overload + operator to add two CommonKmers objects
+	// I need to check but I think we only need an assignment here, since in the transpose the values are gonna be zeros
+	// But what if I make the Apply() operator here instead of a function later?
+	// Let's see if this works out.
+    CommonKmers operator+(const CommonKmers& b)
+	{
+		CommonKmers myobj;
+		myobj = b;
+		return myobj;
+    }
+
+	// I need to figure out what this means when creating the sparse transpose
+	friend bool operator==(const CommonKmers& lhs, const CommonKmers& rhs)
+	{
+		if(lhs.overhang == rhs.overhang) return true;
+		else return false;
+	}
+
     friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m)
 	{
 	#ifdef TWOSEED

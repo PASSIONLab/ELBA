@@ -237,13 +237,13 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
     PSpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
     BT.Transpose();
 
-    // @GGGG-TODO: this must be fixed somehow
-    // if(!(BT == B))
-    // {
-    //     B += BT;
-    //     // B.Apply();
-    // }
-    // B.PrintInfo();
+    if(!(BT == B))
+    {
+        // @@GGGG-TODO: write overload function for dibella::CommonKmers
+        B += BT;
+        // B.Apply();
+    }
+    B.PrintInfo();
 
     uint nnz, prev;
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
