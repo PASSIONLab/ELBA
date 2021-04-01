@@ -91,39 +91,35 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			// !reverse complement
 			if(!ai.rc)
 			{
-				if(perprocessarray[seqH] == 1)
+				if(begpH > begpV)
 				{
 					direction = 1;
-
-					if(begpH > begpV) suffix  = rlenV - endpV;	
-					else suffix  = rlenH - endpH;
-				}
-				else 
+					suffix  = rlenV - endpV;
+				}	
+				else
 				{
 					direction = 2;
-
-					if(begpH > begpV) suffix  = rlenV - endpV;	
-					else suffix  = rlenH - endpH;
-				}
+					suffix  = rlenH - endpH;
+				} 
 			}
 			else
 			{
 				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
 				{
-					direction  = 0;
+					direction = 0;
 
 					if(perprocessarray[seqH] == 1) suffix = begpV;	// seqV == 2
 					else suffix = begpH;							// seqV == 1, seqH == 2					
 				}
 				else
 				{
-					direction  = 3;
+					direction = 3;
 
 					if(perprocessarray[seqH] == 1) suffix = rlenH - endpH;	// seqV == 2
 					else suffix = rlenV - endpV;							// seqV == 1, seqH == 2		
 				}
 			}
-			overhang  = suffix  << 2 | direction;
+			overhang = suffix << 2 | direction;
 		} // if(passed)
 	} // if(!contained)
 		
