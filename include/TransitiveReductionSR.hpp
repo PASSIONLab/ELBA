@@ -84,12 +84,15 @@ struct BestOverlapMSRing : binary_function <T1, T2, OUT>
     }
 };
 
+// Bind length of 2nd but keep dir of 1st
 template <class T1, class T2, class OUT>
 struct Bind2ndBiSRing : binary_function <T1, T2, OUT>
 {
     OUT operator() (const T1& x, const T2& y) const
     {
-        return static_cast<OUT>(y);
+        OUT z;
+        // return static_cast<OUT>(y);
+        return static_cast<OUT>(compose(z, length(y) + FUZZ, dir(x)));
     }
 };
 
@@ -138,8 +141,8 @@ bool testdir(ushort dir1, ushort dir2, ushort& dir)
 
     if(rbit != lbit)
     {
-        start = mybin1[1];
-        end   = mybin2[0];
+        start = mybin1[1]; // 11
+        end   = mybin2[0]; // 00
 
         if(start == 0)
         {
@@ -151,7 +154,6 @@ bool testdir(ushort dir1, ushort dir2, ushort& dir)
             if(end == 0) dir = 2;
             else dir = 3;      
         }
-
         return true;
     }
     else return false;
@@ -176,12 +178,15 @@ struct MinPlusBiSRing
         if(testdir(dir(arg1), dir(arg2), mydir))
         {
             uint len = infplus(arg1, arg2);
-            return compose(res, len, dir(arg2));
+
+            // printf("dir1 %d len1 %d dir2 %d len2 %d mydir %d len %d\n", dir(arg1), length(arg1), dir(arg2), length(arg2), len, mydir);
+
+            return compose(res, len, mydir);
         } 
         else return id();
 	}
 	static void axpy(T1 a, const T2 & x, OUT & y)
-	{
+	{   
 		y = min(y, multiply(a, x));
 	}
 };
@@ -224,19 +229,19 @@ struct ZeroOverhangSR : unary_function <T, bool>
     bool operator() (const T& x) const { if(x.overhang == 0) return true; else return false; }
 };
 
-// template <class T, class OUT>
-// struct OverhangTSRing : unary_function <T, OUT>
-// {
-//     OUT operator() (const T& x) const
-//     {
-//         OUT xT = static_cast<OUT>(x);
+template <class T, class OUT>
+struct OverhangTSRing : unary_function <T, OUT>
+{
+    OUT operator() (const T& x) const
+    {
+        OUT xT = static_cast<OUT>(x);
 
-//         xT.overhang = x.overhangT;
-//         xT.overhangT = x.overhang;
+        xT.overhang = x.overhangT;
+        xT.overhangT = x.overhang;
 
-//         return xT;
-//     }
-// };
+        return xT;
+    }
+};
 
 /*! Type definitions */
 typedef MinPlusBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> MinPlusSR_t;
@@ -246,16 +251,19 @@ typedef Bind2ndBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::Com
 /* TR main function */
 void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils tu)
 {
-    // PSpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
-    // BT.Transpose();
-    // BT.Apply(OverhangTSRing<dibella::CommonKmers, dibella::CommonKmers>()); 
+    PSpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
+    BT.Transpose();
+    BT.Apply(OverhangTSRing<dibella::CommonKmers, dibella::CommonKmers>()); 
 
-    // if(!(BT == B))
-    // {
-    //     B += BT;
-    // }
+    if(!(BT == B))
+    {
+        B += BT;
+    }
 
-    // B.PrintInfo();
+    tu.print_str("Matrix B += BT: ");
+    B.PrintInfo();
+
+    B.ParallelWriteMM("matrixBT.mm", true, dibella::CkOutputMMHandler()); 
 
     uint nnz, prev;
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
@@ -263,70 +271,78 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
     /* Gonna iterate on B until there are no more transitive edges to remove */
     do
     {
-      prev = B.getnnz();
+        prev = B.getnnz();
 
-      /* Find two-hops neighbors
-       * C = B^2
-       */
-      double start = MPI_Wtime();
-      PSpMat<dibella::CommonKmers>::MPI_DCCols F = B;
-      PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F);
-      timeA2 += MPI_Wtime() - start;
-  #ifdef DIBELLA_DEBUG
-      tu.print_str("Matrix C = B^2: ");
-      C.PrintInfo();
-  #endif
+        /* Find two-hops neighbors
+         * C = B^2
+         */
+        double start = MPI_Wtime();
+        PSpMat<dibella::CommonKmers>::MPI_DCCols F = B;
+        PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F);
+        timeA2 += MPI_Wtime() - start;
+
+        C.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
+        C.ParallelWriteMM("matrixB2.mm", true, dibella::CkOutputMMHandler()); 
+
+    #ifdef DIBELLA_DEBUG
+        tu.print_str("Matrix C = B^2: ");
+        C.PrintInfo();
+    #endif
     
-      start = MPI_Wtime();
-      FullyDistVec<int64_t, dibella::CommonKmers> vA(B.getcommgrid());
+        start = MPI_Wtime();
+        FullyDistVec<int64_t, dibella::CommonKmers> vA(B.getcommgrid());
 
-      dibella::CommonKmers id; 
-      vA = B.Reduce(Row, ReduceMSR_t(), id);
-      vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
+        dibella::CommonKmers id; 
+        vA = B.Reduce(Row, ReduceMSR_t(), id);
+        vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
 
-      F.DimApply(Row, vA, Bind2ndSR_t());
-      timeC += MPI_Wtime() - start;
-  #ifdef DIBELLA_DEBUG
-      tu.print_str("Matrix F = B + FUZZ: ");
-      F.PrintInfo();
-  #endif
+        F.DimApply(Row, vA, Bind2ndSR_t());
+        F.ParallelWriteMM("matrixF.mm", true, dibella::CkOutputMMHandler()); 
+        
+        timeC += MPI_Wtime() - start;
+    #ifdef DIBELLA_DEBUG
+        tu.print_str("Matrix F = B + FUZZ: ");
+        F.PrintInfo();
+    #endif
 
-      /* Find transitive edges that can be removed
-       * I = F >= C 
-       */
-      start = MPI_Wtime();
-      bool isLogicalNot = false;
-      PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, PSpMat<bool>::DCCols>(F, C, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
+        /* Find transitive edges that can be removed
+        * I = F >= C 
+        */
+        start = MPI_Wtime();
+        bool isLogicalNot = false;
+        PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, PSpMat<bool>::DCCols>(F, C, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
 
-      /* Prune potential zero-valued nonzeros */
-      I.Prune(ZeroUnaryOp<bool>(), true);
-      timeI += MPI_Wtime() - start;
-  #ifdef DIBELLA_DEBUG
-      tu.print_str("Matrix I = F >= B: ");
-      I.PrintInfo();
-  #endif
+        I.Prune(ZeroUnaryOp<bool>(), true);
+        I.ParallelWriteMM("matrixI.mm", true, dibella::CkOutputMMHandlerBool());
+        
+        timeI += MPI_Wtime() - start;
+    #ifdef DIBELLA_DEBUG
+            tu.print_str("Matrix I = F >= B: ");
+        I.PrintInfo();
+    #endif
 
-      /* Remove transitive edges
-       * B = B .* not(I)
-       */ 
-      start = MPI_Wtime();
-      isLogicalNot = true;
-      B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, EWiseMulOp<dibella::CommonKmers, bool>(), isLogicalNot, true);
+        /* Remove transitive edges
+        * B = B .* not(I)
+        */ 
+        start = MPI_Wtime();
+        isLogicalNot = true;
+        B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, EWiseMulOp<dibella::CommonKmers, bool>(), isLogicalNot, true);
 
-      /* Prune zero-valued overhang */
-      B.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
-      timeA += MPI_Wtime() - start;
+        /* Prune zero-valued overhang */
+        B.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
+        timeA += MPI_Wtime() - start;
 
-  #ifdef DIBELLA_DEBUG
-      tu.print_str("Matrix B = B .* not(I): ");
-      B.PrintInfo();
-  #endif
-      nnz = B.getnnz();
-       
+    #ifdef DIBELLA_DEBUG
+        tu.print_str("Matrix B = B .* not(I): ");
+        B.PrintInfo();
+    #endif
+        nnz = B.getnnz();     
+        
     } while (nnz != prev);
 
     tu.print_str("Matrix B, i.e AAt after transitive reduction: ");
     B.PrintInfo();
+    B.ParallelWriteMM("matrixS.mm", true, dibella::CkOutputMMHandler()); 
 
  #ifdef DIBELLA_DEBUG
     double maxtimeA2, maxtimeC, maxtimeI, maxtimeA;

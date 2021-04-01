@@ -5,7 +5,7 @@
 uint minOverlapLen = 10000;
 
 void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
-	uint32_t& overhang, uint32_t& overlap, const bool noAlign, std::vector<ushort>& perprocessarray)
+	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<ushort>& perprocessarray)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -85,41 +85,66 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 		if(passed)
 		{
-			uint32_t direction;
-			uint32_t suffix;
+			uint32_t direction, directionT;
+			uint32_t suffix, suffixT;
 
 			// !reverse complement
 			if(!ai.rc)
 			{
 				if(begpH > begpV)
 				{
-					direction = 1;
+					direction  = 1;
+					directionT = 2;
+
 					suffix  = rlenV - endpV;
+					suffixT = begpH;
 				}	
 				else
 				{
-					direction = 2;
+					direction  = 2;
+					directionT = 1;
+
 					suffix  = rlenH - endpH;
+					suffixT = begpV;
 				} 
 			}
 			else
 			{
 				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
 				{
-					direction = 0;
+					direction  = 0;
+					directionT = 0;
 
-					if(perprocessarray[seqH] == 1) suffix = begpV;	// seqV == 2
-					else suffix = begpH;							// seqV == 1, seqH == 2					
+					if(perprocessarray[seqH] == 1) 
+					{
+						suffix  = begpV; 	// seqV == 2
+						suffixT = begpH; 	// seqV == 2
+					}
+					else 
+					{
+						suffix  = begpH; 	// seqV == 1, seqH == 2	
+						suffixT = begpV; 	// seqV == 1, seqH == 2	
+					}				
 				}
 				else
 				{
-					direction = 3;
+					direction  = 3;
+					directionT = 3;
 
-					if(perprocessarray[seqH] == 1) suffix = rlenH - endpH;	// seqV == 2
-					else suffix = rlenV - endpV;							// seqV == 1, seqH == 2		
+					if(perprocessarray[seqH] == 1) 
+					{
+						suffix  = rlenH - endpH;	// seqV == 2
+						suffixT = rlenV - endpV;	// seqV == 2
+					}
+					else
+					{ 
+						suffix  = rlenV - endpV;	// seqV == 1, seqH == 2	
+						suffixT = rlenH - endpH;	// seqV == 1, seqH == 2	
+					}	
 				}
 			}
-			overhang = suffix << 2 | direction;
+			overhang  = suffix  << 2 | direction;
+			overhangT = suffixT << 2 | directionT;
 		} // if(passed)
 	} // if(!contained)
 		
@@ -554,7 +579,7 @@ SeedExtendXdrop::apply_batch
 			bool passed = false;
 
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overlap, noAlign, perprocessarray);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign, perprocessarray);
 
 			if (passed)
 			{
