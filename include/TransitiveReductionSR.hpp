@@ -260,11 +260,12 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         B += BT;
     }
 
+#ifdef DIBELLA_DEBUG
     tu.print_str("Matrix B += BT: ");
     B.PrintInfo();
-
     B.ParallelWriteMM("matrixBT.mm", true, dibella::CkOutputMMHandler()); 
-
+#endif
+	
     uint nnz, prev;
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
 
@@ -282,11 +283,11 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         timeA2 += MPI_Wtime() - start;
 
         C.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
-        C.ParallelWriteMM("matrixB2.mm", true, dibella::CkOutputMMHandler()); 
 
     #ifdef DIBELLA_DEBUG
         tu.print_str("Matrix C = B^2: ");
         C.PrintInfo();
+	C.ParallelWriteMM("matrixB2.mm", true, dibella::CkOutputMMHandler()); 
     #endif
     
         start = MPI_Wtime();
@@ -297,12 +298,12 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
 
         F.DimApply(Row, vA, Bind2ndSR_t());
-        F.ParallelWriteMM("matrixF.mm", true, dibella::CkOutputMMHandler()); 
         
         timeC += MPI_Wtime() - start;
     #ifdef DIBELLA_DEBUG
         tu.print_str("Matrix F = B + FUZZ: ");
         F.PrintInfo();
+	F.ParallelWriteMM("matrixF.mm", true, dibella::CkOutputMMHandler()); 
     #endif
 
         /* Find transitive edges that can be removed
@@ -313,12 +314,12 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, PSpMat<bool>::DCCols>(F, C, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
 
         I.Prune(ZeroUnaryOp<bool>(), true);
-        I.ParallelWriteMM("matrixI.mm", true, dibella::CkOutputMMHandlerBool());
-        
+    
         timeI += MPI_Wtime() - start;
     #ifdef DIBELLA_DEBUG
-            tu.print_str("Matrix I = F >= B: ");
+        tu.print_str("Matrix I = F >= B: ");
         I.PrintInfo();
+	I.ParallelWriteMM("matrixI.mm", true, dibella::CkOutputMMHandlerBool());
     #endif
 
         /* Remove transitive edges
@@ -342,9 +343,10 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
 
     tu.print_str("Matrix B, i.e AAt after transitive reduction: ");
     B.PrintInfo();
-    B.ParallelWriteMM("matrixS.mm", true, dibella::CkOutputMMHandler()); 
 
  #ifdef DIBELLA_DEBUG
+    B.ParallelWriteMM("matrixS.mm", true, dibella::CkOutputMMHandler()); 
+	
     double maxtimeA2, maxtimeC, maxtimeI, maxtimeA;
     
     MPI_Reduce(&timeA2, &maxtimeA2, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
