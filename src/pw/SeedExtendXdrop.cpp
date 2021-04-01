@@ -27,22 +27,6 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 	overlap = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
 
-	// unsigned short int normLen  = max(overlapLenV, overlapLenH);
-	// unsigned short int minLen   = min(overlapLenV, overlapLenH);
-
-	/* GGGG: TODO implement this at the beginning so we don't have to compute it over and over again; 
-	 *       for now this is hardcoded in the function definition
-	 *	
-	 *	double slope(double error)
-	 *	{
-	 *		double p_mat = pow(1-error,2);  // match
-	 *		double p_mis = 1-p_mat;         // mismatch/gap
-	 *		double alpha = 1;               // match penalty
-	 *		double beta  = 1;               // mismatch/gap penalty
-	 *		return alpha*p_mat - beta*p_mis;
-	 *	}
-	 */
-
 #ifndef FIXEDTHR
 	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)overlap);
 
@@ -57,18 +41,18 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	// Reserve length/position if rc [x]
 	if(ai.rc)
 	{
-		if(perprocessarray[seqH] == 2) // 2 == rvs strand
-		{
-			uint tmp = begpH;
-			begpH = rlenH - endpH;
-			endpH = rlenH - tmp;
-		}
-		else
-		{
-			uint tmp = begpV;
-			begpV = rlenV - endpV;
-			endpV = rlenV - tmp;
-		}
+		// if(perprocessarray[seqH] == 2) // 2 == rvs strand
+		// {
+		// 	uint tmp = begpH;
+		// 	begpH = rlenH - endpH;
+		// 	endpH = rlenH - tmp;
+		// }
+		// else
+		// {
+		uint tmp = begpV;
+		begpV = rlenV - endpV;
+		endpV = rlenV - tmp;
+		// }
 	}
 
 	if((begpH == 0 & rlenH-endpH == 0) || (begpV == 0 & rlenV-endpV == 0))
@@ -115,32 +99,34 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 					direction  = 0;
 					directionT = 0;
 
-					if(perprocessarray[seqH] == 1) 
-					{
-						suffix  = begpV; 	// seqV == 2
-						suffixT = begpH; 	// seqV == 2
-					}
-					else 
-					{
-						suffix  = begpH; 	// seqV == 1, seqH == 2	
-						suffixT = begpV; 	// seqV == 1, seqH == 2	
-					}				
+					// if(perprocessarray[seqH] == 1) 
+					// {
+					suffix  = begpV; 	// seqV == 2
+					suffixT = begpH; 	// seqV == 2
+					// }
+					// else 
+					// {
+					// 	suffix  = begpH; 	// seqV == 1, seqH == 2	
+					// 	suffixT = begpV; 	// seqV == 1, seqH == 2	
+					// }				
 				}
 				else
 				{
 					direction  = 3;
 					directionT = 3;
 
-					if(perprocessarray[seqH] == 1) 
-					{
-						suffix  = rlenH - endpH;	// seqV == 2
-						suffixT = rlenV - endpV;	// seqV == 2
-					}
-					else
-					{ 
-						suffix  = rlenV - endpV;	// seqV == 1, seqH == 2	
-						suffixT = rlenH - endpH;	// seqV == 1, seqH == 2	
-					}	
+					// do more tests and pray
+
+					// if(perprocessarray[seqH] == 1) 
+					// {
+					// 	suffix  = rlenH - endpH;	// seqV == 2
+					// 	suffixT = rlenV - endpV;	// seqV == 2
+					// }
+					// else
+					// { 
+					suffix  = rlenV - endpV;	// seqV == 1, seqH == 2	
+					suffixT = rlenH - endpH;	// seqV == 1, seqH == 2	
+					// }	
 				}
 			}
 			overhang  = suffix  << 2 | direction;
@@ -550,18 +536,44 @@ SeedExtendXdrop::apply_batch
 
 	// !parallel right now
 	// for (row, col) in AlignedPairs
-	for (uint64_t i = 0; i < npairs; ++i)
-	{
-		int row = ai[i].seq_v_g_idx;
-		int col = ai[i].seq_h_g_idx;
+	// for (uint64_t i = 0; i < npairs; ++i)
+	// {
+	// 	// tons of redundant computation here, need to find a better way to do this, maybe aydin is right don't need this stuff
+	// 	auto maxseed = ai[i].seed;	// returns a seqan:Seed object
 
-		if(perprocessarray[col] != 0) continue;							// array so far is filled
+	// 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
+	// 	// these four return seqan:Tposition objects
+	// 	int begpV = beginPositionV(maxseed);
+	// 	int endpV = endPositionV  (maxseed);
+	// 	int begpH = beginPositionH(maxseed);
+	// 	int endpH = endPositionH  (maxseed);
 
-		if(perprocessarray[row] == 0) perprocessarray[row] = 1;			// assign direction to row
+	// 	unsigned short int overlapLenH = ai[i].seq_h_seed_length;
+	// 	unsigned short int overlapLenV = ai[i].seq_v_seed_length;
 
-		if(!ai[i].rc) perprocessarray[col] = perprocessarray[row]; 		// forward overlap assign direction to col
-		else perprocessarray[col] = perprocessarray[row] == 1 ? 2 : 1;	// reverse overlap assign direction to col
-	}
+	// 	unsigned short int rlenH = ai[i].seq_h_length;
+	// 	unsigned short int rlenV = ai[i].seq_v_length;
+
+	// 	unsigned short int minLeft  = min(begpV, begpH);
+	// 	unsigned short int minRight = min(rlenV - endpV, rlenH - endpH);
+
+	// 	overlap = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
+
+	// 	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)overlap);
+
+	// 	if((float)ai[i].xscore < myThr || overlap < minOverlapLen)
+	// 	{
+	// 		int row = ai[i].seq_v_g_idx;
+	// 		int col = ai[i].seq_h_g_idx;
+
+	// 		if(perprocessarray[col] != 0) continue;							// array so far is filled
+
+	// 		if(perprocessarray[row] == 0) perprocessarray[row] = 1;			// assign direction to row
+
+	// 		if(!ai[i].rc) perprocessarray[col] = perprocessarray[row]; 		// forward overlap assign direction to col
+	// 		else perprocessarray[col] = perprocessarray[row] == 1 ? 2 : 1;	// reverse overlap assign direction to col
+	// 	}
+	// }
 
 	// Top left proc nroadcast information to its processor row
 
