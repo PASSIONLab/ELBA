@@ -191,8 +191,7 @@ struct GreaterBinaryOp : binary_function <T1, T2, bool>
 {
     bool operator() (const T1& x, const T2& y) const
     {
-        // if(length(x) >= length(y) && dir(y) == dir(x)) return true;
-        if(length(x) >= length(y)) return true;
+        if(length(x) >= length(y) && dir(y) == dir(x)) return true;
         else return false;
     }
 };
