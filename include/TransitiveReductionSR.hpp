@@ -40,44 +40,6 @@ dibella::CommonKmers compose(dibella::CommonKmers& me, const uint& suffix, const
     return me; 
 }
 
-void tobinary(ushort n, int* arr) 
-{ 
-    int nbit = 2;
-    for(int i = 0; i < nbit; i++)
-    { 
-        arr[i] = n % 2; 
-        n = n / 2; 
-    }
-} 
-
-ushort updatedir(ushort dir1, ushort dir2)
-{
-    ushort res;
-
-    if((dir1 == 0 & (dir2 == 1 || dir2 == 2)) 
-        || ((dir1 == 1 || dir1 == 2) & dir2 == 0))
-    {
-        res = 0;
-    }
-    else if((dir1 == 3 & (dir2 == 1 || dir2 == 2)) 
-            || ((dir1 == 1 || dir1 == 2) & dir2 == 3))
-    {
-        res = 3;      
-    }
-    else if((dir1 == 0 & dir2 == 3) 
-            || (dir1 == 1 & (dir2 == 1 || dir2 == 2)))
-    {
-        res = 1;     
-    }
-    else if((dir1 == 3 & dir2 == 0) 
-            || (dir1 == 2 & (dir2 == 1 || dir2 == 2)))
-    {
-        res = 2;     
-    }
-
-    return res;
-}
-
 uint length(const dibella::CommonKmers& me) { return me.overhang >> 2; }
 ushort  dir(const dibella::CommonKmers& me) { return me.overhang  & 3; }
 
@@ -150,6 +112,51 @@ struct PlusFBiSRing : unary_function <T, OUT>
     }
 };
 
+void tobinary(ushort n, int* arr) 
+{ 
+    int nbit = 2;
+    for(int i = 0; i < nbit; i++)
+    { 
+        arr[i] = n % 2; 
+        n = n / 2; 
+    }
+}
+
+bool testdir(ushort dir1, ushort dir2, ushort& dir)
+{
+    ushort rbit, lbit;
+    ushort start, end;
+
+    int mybin1[2] = {0, 0};
+    int mybin2[2] = {0, 0};
+
+    if(dir1 != 0) tobinary(dir1, mybin1);
+    if(dir2 != 0) tobinary(dir2, mybin2);
+
+    rbit = mybin1[0];
+    lbit = mybin2[1];
+
+    if(rbit != lbit)
+    {
+        start = mybin1[1];
+        end   = mybin2[0];
+
+        if(start == 0)
+        {
+            if(end == 0) dir = 0;
+            else dir = 1;
+        }
+        else
+        {
+            if(end == 0) dir = 2;
+            else dir = 3;      
+        }
+
+        return true;
+    }
+    else return false;
+}
+
 template <class T1, class T2, class OUT>
 struct MinPlusBiSRing
 {
@@ -164,23 +171,14 @@ struct MinPlusBiSRing
 	static OUT multiply(const T1& arg1, const T2& arg2)
 	{
         OUT res;
+        ushort mydir;
 
-        // if 01 and 10 are flexible then the only case we don't compute is if they are both 00 or both 11
-        // the rest need to be computed and direction updated
-        // this is gonna generate extra entries but technically the invalid one shouldn't affect the output
-        // if we find out that they do, we should implement global consistency using broadcasting (see slides)
-        if((dir(arg1) != 0 & dir(arg2) != 0) 
-            || (dir(arg1) != 3 & dir(arg2) != 3))
+        if(testdir(dir(arg1), dir(arg2), mydir))
         {
-            uint   len   = infplus(arg1, arg2);
-            ushort mydir = updatedir(dir(arg1), dir(arg2));
-
-            return compose(res, len, mydir);
+            uint len = infplus(arg1, arg2);
+            return compose(res, len, dir(arg2));
         } 
-        else 
-        {
-            return id();
-        }
+        else return id();
 	}
 	static void axpy(T1 a, const T2 & x, OUT & y)
 	{
@@ -193,7 +191,8 @@ struct GreaterBinaryOp : binary_function <T1, T2, bool>
 {
     bool operator() (const T1& x, const T2& y) const
     {
-        if(length(x) >= length(y) && dir(y) == dir(x)) return true;
+        // if(length(x) >= length(y) && dir(y) == dir(x)) return true;
+        if(length(x) >= length(y)) return true;
         else return false;
     }
 };
@@ -226,20 +225,19 @@ struct ZeroOverhangSR : unary_function <T, bool>
     bool operator() (const T& x) const { if(x.overhang == 0) return true; else return false; }
 };
 
-// Apply functor for BT transpose
-template <class T, class OUT>
-struct OverhangTSRing : unary_function <T, OUT>
-{
-    OUT operator() (const T& x) const
-    {
-        OUT xT = static_cast<OUT>(x);
+// template <class T, class OUT>
+// struct OverhangTSRing : unary_function <T, OUT>
+// {
+//     OUT operator() (const T& x) const
+//     {
+//         OUT xT = static_cast<OUT>(x);
 
-        xT.overhang = x.overhangT;
-        xT.overhangT = x.overhang;
+//         xT.overhang = x.overhangT;
+//         xT.overhangT = x.overhang;
 
-        return xT;
-    }
-};
+//         return xT;
+//     }
+// };
 
 /*! Type definitions */
 typedef MinPlusBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> MinPlusSR_t;
@@ -249,15 +247,16 @@ typedef Bind2ndBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::Com
 /* TR main function */
 void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils tu)
 {
-    PSpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
-    BT.Transpose();
-    BT.Apply(OverhangTSRing<dibella::CommonKmers, dibella::CommonKmers>()); 
+    // PSpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
+    // BT.Transpose();
+    // BT.Apply(OverhangTSRing<dibella::CommonKmers, dibella::CommonKmers>()); 
 
-    if(!(BT == B))
-    {
-        B += BT;
-    }
-    B.PrintInfo();
+    // if(!(BT == B))
+    // {
+    //     B += BT;
+    // }
+
+    // B.PrintInfo();
 
     uint nnz, prev;
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
