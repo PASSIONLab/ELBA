@@ -5,7 +5,7 @@
 uint minOverlapLen = 10000;
 
 void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
-	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign)
+	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<ushort>& perprocessarray)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -27,36 +27,32 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 	overlap = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
 
-	// unsigned short int normLen  = max(overlapLenV, overlapLenH);
-	// unsigned short int minLen   = min(overlapLenV, overlapLenH);
-
-	/* GGGG: TODO implement this at the beginning so we don't have to compute it over and over again; 
-	 *       for now this is hardcoded in the function definition
-	 *	
-	 *	double slope(double error)
-	 *	{
-	 *		double p_mat = pow(1-error,2);  // match
-	 *		double p_mis = 1-p_mat;         // mismatch/gap
-	 *		double alpha = 1;               // match penalty
-	 *		double beta  = 1;               // mismatch/gap penalty
-	 *		return alpha*p_mat - beta*p_mis;
-	 *	}
-	 */
-
 #ifndef FIXEDTHR
 	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)overlap);
 
-	/* Contained overlaps removed for now, reintroduce them later */
+	// Contained overlaps removed for now, reintroduce them later
+	// @GGGG-TODO: identify chimeric sequences
 	bool contained = false;
-	bool chimeric  = false; // @GGGG-TODO: identify chimeric sequences
+	bool chimeric  = false; 
+
+	// seqH is column entry and seqV is row entry, for each column, we iterate over seqHs
+	int seqH = ai.seq_v_g_idx, seqV = ai.seq_h_g_idx;
 	
-	// @GGGG: reserve length/position if rc [x]
-	// we assume seqH on the fwd strand initially
+	// Reserve length/position if rc [x]
 	if(ai.rc)
 	{
-		uint tmp = begpH;
-		begpH = rlenH - endpH;
-		endpH = rlenH - tmp;
+		// if(perprocessarray[seqH] == 2) // 2 == rvs strand
+		// {
+		// 	uint tmp = begpH;
+		// 	begpH = rlenH - endpH;
+		// 	endpH = rlenH - tmp;
+		// }
+		// else
+		// {
+		uint tmp = begpV;
+		begpV = rlenV - endpV;
+		endpV = rlenV - tmp;
+		// }
 	}
 
 	if((begpH == 0 & rlenH-endpH == 0) || (begpV == 0 & rlenV-endpV == 0))
@@ -64,7 +60,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	
 	if(!contained)
 	{
-		/* @GGGG: If noAlign is false, set passed to false if the score isn't good enough */
+		// If noAlign is false, set passed to false if the score isn't good enough
 		if(!noAlign)
 		{
 			if((float)ai.xscore < myThr || overlap < minOverlapLen) passed = false;
@@ -73,65 +69,68 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 		if(passed)
 		{
-			// GGGG: seqH is column entry and seqV is row entry, for each column, we iterate over the row entries
-			int row = ai.seq_v_g_idx, col = ai.seq_h_g_idx;
-			
-			uint32_t direction;
-			uint32_t suffix;
-
-			uint32_t directionT;
-			uint32_t suffixT;
+			uint32_t direction, directionT;
+			uint32_t suffix, suffixT;
 
 			// !reverse complement
 			if(!ai.rc)
 			{
-				// if begp(j) > begp(i)
 				if(begpH > begpV)
 				{
-					// seqV exit from seqH
 					direction  = 1;
 					directionT = 2;
 
-					suffix  = rlenV - endpV;	
-					suffixT = rlenH - endpH;
-				}
+					suffix  = rlenV - endpV;
+					suffixT = begpH;
+				}	
 				else
 				{
-					// seqV enter into seqH
 					direction  = 2;
 					directionT = 1;
 
-					suffix  = rlenH - endpH;	
-					suffixT = rlenV - endpV;
-				}
-				// GGGG: in the Transpose() functor we swap this for the !rc case; in the rc case only the value change; we care about direction not strand
-				// If CC requires identical entries, we can use a vector structure to save both here and modify the transitive reduction to access only the right part
+					suffix  = rlenH - endpH;
+					suffixT = begpV;
+				} 
 			}
 			else
 			{
 				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
 				{
-					// seqV enter into seqH and rc == true
 					direction  = 0;
 					directionT = 0;
 
-					suffix  = begpV;
-					suffixT = begpH;						
+					// if(perprocessarray[seqH] == 1) 
+					// {
+					suffix  = begpV; 	// seqV == 2
+					suffixT = begpH; 	// seqV == 2
+					// }
+					// else 
+					// {
+					// 	suffix  = begpH; 	// seqV == 1, seqH == 2	
+					// 	suffixT = begpV; 	// seqV == 1, seqH == 2	
+					// }				
 				}
 				else
 				{
-					// seqV exit from seqH and rc == true
 					direction  = 3;
 					directionT = 3;
 
-					suffix  = rlenH - endpH;
-					suffixT = rlenV - endpV;
+					// do more tests and pray
+
+					// if(perprocessarray[seqH] == 1) 
+					// {
+					// 	suffix  = rlenH - endpH;	// seqV == 2
+					// 	suffixT = rlenV - endpV;	// seqV == 2
+					// }
+					// else
+					// { 
+					suffix  = rlenV - endpV;	// seqV == 1, seqH == 2	
+					suffixT = rlenH - endpH;	// seqV == 1, seqH == 2	
+					// }	
 				}
 			}
-
 			overhang  = suffix  << 2 | direction;
 			overhangT = suffixT << 2 | directionT;
-
 		} // if(passed)
 	} // if(!contained)
 		
@@ -299,6 +298,7 @@ SeedExtendXdrop::apply_batch
     std::ofstream &lfs,
 	const bool noAlign,
 	ushort k,
+	uint64_t nreads,
     float ratioScoreOverlap, // GGGG: this is my ratioScoreOverlap variable change name later
     int debugThr
 )
@@ -529,6 +529,26 @@ SeedExtendXdrop::apply_batch
 
 	auto start_time = std::chrono::system_clock::now();
 
+	// Create per-process consistency directionality array
+	// Get nreads (init to zero)
+	// Each processor computes the label array column-major
+	std::vector<ushort> perprocessarray(nreads, 0);
+
+	// !parallel right now
+	// for (row, col) in AlignedPairs
+	// for (uint64_t i = 0; i < npairs; ++i)
+	// {
+	// 		int row = ai[i].seq_v_g_idx;
+	// 		int col = ai[i].seq_h_g_idx;
+
+	// 		if(perprocessarray[col] != 0) continue;							// array so far is filled
+
+	// 		if(perprocessarray[row] == 0) perprocessarray[row] = 1;			// assign direction to row
+
+	// 		if(!ai[i].rc) perprocessarray[col] = perprocessarray[row]; 		// forward overlap assign direction to col
+	// 		else perprocessarray[col] = perprocessarray[row] == 1 ? 2 : 1;	// reverse overlap assign direction to col
+	// }
+	
 	// Dump alignment info
 	#pragma omp parallel
 	{
@@ -539,7 +559,7 @@ SeedExtendXdrop::apply_batch
 			bool passed = false;
 
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign, perprocessarray);
 
 			if (passed)
 			{

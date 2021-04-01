@@ -27,7 +27,7 @@ namespace dibella {
 	 *	StringMatrixEntry econdes both direction and overhang length for both strands */
 	// std::vector<uint32_t> overhang(2, 0);
 	uint32_t overhang;
-	uint32_t overhangT; // overhang for the transpose 
+	uint32_t overhangT;
 	
 #ifdef EXTRA
 	uint32_t lenv;
@@ -133,6 +133,18 @@ namespace dibella {
                 int dir = v.overhang  & 3;
                 int len = v.overhang >> 2;
                 os << dir << "\t" << len;
+        }
+    };
+
+    struct CkOutputMMHandlerBool
+    {
+        template <typename c, typename t>
+        void save(std::basic_ostream<c,t> &os,
+                        const bool &v,
+                        uint64_t row,
+                        uint64_t col)
+        {
+                os << v;
         }
     };
 

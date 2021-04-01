@@ -280,13 +280,13 @@ int main(int argc, char **argv)
   if(xdropAlign)
   {
     pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
-    dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength);
+    dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
 	  local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
   }
   else if(fullAlign)
   {
     pf = new FullAligner(scoring_scheme);
-    dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength);
+    dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
 	  local_alignments = static_cast<FullAligner*>(pf)->nalignments;
   }
 

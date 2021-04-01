@@ -80,6 +80,7 @@ FullAligner::apply_batch
     std::ofstream &lfs,
 	const bool noAlign,
 	ushort k,
+	uint64_t nreads,
     float ratioScoreOverlap,
 	int debugThr
 )

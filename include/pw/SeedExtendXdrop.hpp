@@ -15,7 +15,7 @@ public:
 
   void
   PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOveralap, 
-          uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign);
+          uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<ushort>& perprocessarray);
 
   void
   apply(uint64_t l_col_idx, uint64_t g_col_idx,
@@ -34,6 +34,7 @@ public:
               std::ofstream &lfs,
               const bool noAlign,
               ushort k,
+              uint64_t nreads,
               float ratioScoreOverlap = 0.99,   // GGGG: Precomputed for error rate = 15% and default scoring matrix (1,-1,-1) (0.445 for CLR, 0.99 for CCS)
               int debugThr = 50) override;      // GGGG: Fixed threshold, this is convenient only for debugging
 
