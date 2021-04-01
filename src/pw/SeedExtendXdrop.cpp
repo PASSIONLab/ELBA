@@ -538,31 +538,6 @@ SeedExtendXdrop::apply_batch
 	// for (row, col) in AlignedPairs
 	// for (uint64_t i = 0; i < npairs; ++i)
 	// {
-	// 	// tons of redundant computation here, need to find a better way to do this, maybe aydin is right don't need this stuff
-	// 	auto maxseed = ai[i].seed;	// returns a seqan:Seed object
-
-	// 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
-	// 	// these four return seqan:Tposition objects
-	// 	int begpV = beginPositionV(maxseed);
-	// 	int endpV = endPositionV  (maxseed);
-	// 	int begpH = beginPositionH(maxseed);
-	// 	int endpH = endPositionH  (maxseed);
-
-	// 	unsigned short int overlapLenH = ai[i].seq_h_seed_length;
-	// 	unsigned short int overlapLenV = ai[i].seq_v_seed_length;
-
-	// 	unsigned short int rlenH = ai[i].seq_h_length;
-	// 	unsigned short int rlenV = ai[i].seq_v_length;
-
-	// 	unsigned short int minLeft  = min(begpV, begpH);
-	// 	unsigned short int minRight = min(rlenV - endpV, rlenH - endpH);
-
-	// 	overlap = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
-
-	// 	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)overlap);
-
-	// 	if((float)ai[i].xscore < myThr || overlap < minOverlapLen)
-	// 	{
 	// 		int row = ai[i].seq_v_g_idx;
 	// 		int col = ai[i].seq_h_g_idx;
 
@@ -572,14 +547,7 @@ SeedExtendXdrop::apply_batch
 
 	// 		if(!ai[i].rc) perprocessarray[col] = perprocessarray[row]; 		// forward overlap assign direction to col
 	// 		else perprocessarray[col] = perprocessarray[row] == 1 ? 2 : 1;	// reverse overlap assign direction to col
-	// 	}
 	// }
-
-	// Top left proc nroadcast information to its processor row
-
-	// First proc row broadcast to theirs processor columns
-
-	// Ready to encode graph directionality globally consistency
 	
 	// Dump alignment info
 	#pragma omp parallel
