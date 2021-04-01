@@ -1,0 +1,6 @@
+[submodule "DEDUKT"]
+	path = DEDUKT
+	url = https://github.com/PASSIONLab/DEDUKT.git
+[submodule "LOGAN"]
+	path = LOGAN
+	url = https://github.com/albertozeni/LOGAN.git

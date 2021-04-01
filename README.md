@@ -90,7 +90,6 @@ The parameters and options of diBELLA are as follows:
 - ```--na```: Do not perform alignment.
 - ```--fa```: Full Smith-Waterman alignment.
 - ```--xa <integer>```: X-drop alignment with the indicated drop value.
-- ```--ba <integer>```: Banded alignment with the indicated band size.
 - ```--of <string>```: Overlap file.
 - ```--af <string>```: Output file to write alignment information. 
 - ```--idxmap <string>```: Output file for input sequences to ids used in diBELLA.

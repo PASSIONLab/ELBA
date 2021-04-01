@@ -68,9 +68,7 @@ add_executable(dibella
         include/MemoryChk.h
         src/Buffer.c
         include/Buffer.h
-        include/pw/BandedAligner.hpp
         include/pw/FullAligner.hpp
-        src/pw/BandedAligner.cpp
         src/pw/FullAligner.cpp
         include/kmer/CommonKmers.hpp
         include/kmer/KmerIntersectSR.hpp
@@ -80,6 +78,7 @@ add_executable(dibella
         src/kmer/Kmer.cpp
         include/kmer/Kmer.hpp
         include/TransitiveReductionSR.hpp
+        include/CC.h
 	)
 
 set(LOWER_KMER_FREQ 2

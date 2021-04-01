@@ -78,7 +78,9 @@ FullAligner::apply_batch
 	uint64_t row_offset,
     PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
     std::ofstream &lfs,
+	const bool noAlign,
 	ushort k,
+	uint64_t nreads,
     float ratioScoreOverlap,
 	int debugThr
 )

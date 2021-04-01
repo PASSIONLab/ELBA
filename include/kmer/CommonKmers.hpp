@@ -24,8 +24,10 @@ namespace dibella {
 	uint32_t score; /* Used for storing alignment score */
 	
 	/*! GGGG: this is either the suffix or prefix entry need for the transitive reduction 
-	 *	StringMatrixEntry econdes both direction and overhang length*/
+	 *	StringMatrixEntry econdes both direction and overhang length for both strands */
+	// std::vector<uint32_t> overhang(2, 0);
 	uint32_t overhang;
+	uint32_t overhangT;
 	
 #ifdef EXTRA
 	uint32_t lenv;
@@ -58,6 +60,24 @@ namespace dibella {
 		score(score) {
 	}
 
+    // Overload + operator to add two CommonKmers objects
+	// Used for: B += BT (TransitiveReductionSR.hpp)
+	// The +operator when creating the symmetric matrix doesn't really matter, there's gonna be zeros on the other side
+	// The +operator might be needed (meaningful) elsewhere later
+    CommonKmers operator+(const CommonKmers& b)
+	{
+		CommonKmers myobj;
+		myobj = b;
+		return myobj;
+    }
+
+	// Used for: if(!(BT == B)) (TransitiveReductionSR.hpp)
+	friend bool operator==(const CommonKmers& lhs, const CommonKmers& rhs)
+	{
+		if(lhs.overhang == rhs.overhang) return true;
+		else return false;
+	}
+
     friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m)
 	{
 	#ifdef TWOSEED
@@ -86,11 +106,11 @@ namespace dibella {
 				uint64_t row,
 				uint64_t col)
 		{
-			/* GGGG: we need the overhand value to create input in graph dot for comparison */
-			int dir = v.overhang & 3;
+			// GGGG: we need the overhand value to create input in graph dot for comparison
+			int dir = v.overhang & 3; 
 			int rc  = 0;
 			if(dir == 0 || dir == 3) rc = 1;
-			// @GGGG-TODO: include overlap here (need overlap length that i don't have in python)
+
 			// direction, rc, overhang, begV, endV, begH, endH (OverlapLen and others computed in python script during translation)
 			os << dir << "\t" << rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t" 
 				<< v.second.first << "\t" << 
@@ -101,6 +121,33 @@ namespace dibella {
 				#endif
 		}
 	};
+
+    struct CkOutputMMHandler
+    {
+        template <typename c, typename t>
+        void save(std::basic_ostream<c,t> &os,
+                        const dibella::CommonKmers &v,
+                        uint64_t row,
+                        uint64_t col)
+        {
+                int dir = v.overhang  & 3;
+                int len = v.overhang >> 2;
+                os << dir << "\t" << len;
+        }
+    };
+
+    struct CkOutputMMHandlerBool
+    {
+        template <typename c, typename t>
+        void save(std::basic_ostream<c,t> &os,
+                        const bool &v,
+                        uint64_t row,
+                        uint64_t col)
+        {
+                os << v;
+        }
+    };
+
 }
 
 #endif //DIBELLA_COMMONKMERS_HPP

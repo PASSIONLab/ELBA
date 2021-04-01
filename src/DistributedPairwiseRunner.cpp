@@ -1,12 +1,11 @@
 //
-// Created by Saliya Ekanayake on 2019-02-19.
+// Created by Saliya Ekanayake on 2019-02-19
 // Modified by Aydin Buluc on 2019-12-29 
+// Modified by Gilia Guidi on 2021-03-09 
 //
 
-
 #include "../include/DistributedPairwiseRunner.hpp"
-#include <atomic>         // std::atomic, std::atomic_flag, ATOMIC_FLAG_INIT
-
+#include <atomic> // std::atomic, std::atomic_flag, ATOMIC_FLAG_INIT
 
 DistributedPairwiseRunner::DistributedPairwiseRunner(
     const std::shared_ptr<DistributedFastaData> dfd,
@@ -200,25 +199,26 @@ void
 DistributedPairwiseRunner::run_batch
 (
     PairwiseFunction	*pf,
-	const std::string	&aln_file,
 	std::ofstream&		 lfs,
 	int					 log_freq,
 	int					 ckthr,
 	bool				 aln_score_thr,
 	TraceUtils 			 tu,
-	ushort k,
+	const bool 			 noAlign,
+	ushort 				 k,
+	uint64_t 			 nreads,
 	bool				 score_only
 )
 {
 	uint64_t	local_nnz_count = spSeq->getnnz();
-
+	
 	int myrank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
 	int			batch_size		= 1e5;
 	int			batch_cnt		= (local_nnz_count / batch_size) + 1;
 	int			batch_idx		= 0;
-	uint64_t		nalignments		= 0;
+	uint64_t	nalignments		= 0;
 
 	// PSpMat<dibella::CommonKmers>::Tuples mattuples(*spSeq);
 	// @TODO threaded
@@ -253,8 +253,6 @@ DistributedPairwiseRunner::run_batch
 
 	uint64_t *algn_cnts   = new uint64_t[numThreads + 1];
 	uint64_t nelims_ckthr = 0; // nelims_alnthr = 0, nelims_both = 0;
-
-//	size_t moreToGo = 0, totmoreToGo = 0;
 	
 	while (batch_idx < batch_cnt) 
 	{
@@ -270,7 +268,7 @@ DistributedPairwiseRunner::run_batch
 
 		uint64_t nelims_ckthr_cur = 0;
 		
-		// count number of alignments in this batch
+		// Count number of alignments in this batch
 		#pragma omp parallel reduction(+:nelims_ckthr_cur)
 		{
 			int tid = 0;
@@ -292,19 +290,17 @@ DistributedPairwiseRunner::run_batch
 
 				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
 
-				if ((cks->count >= ckthr) 	 	&& 	// GGGG: to be a valid alignment it needs to have at least ckthr common kmers
+				if ((cks->count >= ckthr) 	 	&& 
 					(l_col_idx >= l_row_idx) 	&&
 					(l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
 					++algn_cnt;
 				}
 
-				// Compute statistics 
 				if ((l_col_idx >= l_row_idx) &&
 					(l_col_idx != l_row_idx || g_col_idx > g_row_idx))
 				{
-					if (cks->count < ckthr)
-						++nelims_ckthr_cur;
+					if (cks->count < ckthr) ++nelims_ckthr_cur;
 				}
 			}
 
@@ -313,8 +309,8 @@ DistributedPairwiseRunner::run_batch
 
 		nelims_ckthr += nelims_ckthr_cur;	
 
-		for (int i = 1; i < numThreads + 1; ++i)
-			algn_cnts[i] += algn_cnts[i - 1];
+		for (int i = 1; i < numThreads + 1; ++i) algn_cnts[i] += algn_cnts[i - 1];
+
 		nalignments += algn_cnts[numThreads];
 
 		if (algn_cnts[numThreads] == 0)
@@ -353,7 +349,7 @@ DistributedPairwiseRunner::run_batch
 
 				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
 
-				if ((cks->count >= ckthr)    && 	// GGGG: perform alignment only if at least <ckthr> common kmers
+				if ((cks->count >= ckthr)    && 
 					(l_col_idx >= l_row_idx) &&
 					(l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
@@ -367,24 +363,26 @@ DistributedPairwiseRunner::run_batch
 			}
 		}
 
-		// call aligner
+		// Function call to the aligner
 		lfs << "calling aligner for batch idx " << batch_idx
-			<< " cur #algnments " 		<< algn_cnts[numThreads]
-			<< " overall " 			<< nalignments
+			<< " cur #algnments " 				<< algn_cnts[numThreads]
+			<< " overall " 						<< nalignments
 			<< std::endl;
 
-		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, k);
+		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, noAlign, k, nreads);
 		
 		delete [] lids;
 		++batch_idx;
 	}
+
+	if(noAlign) nalignments = 0;
 
 	pf->nalignments = nalignments;
 	pf->print_avg_times(parops, lfs);
 
 	lfs << "#alignments run " << nalignments << std::endl;
 
-	// Stats
+	// Compute statistics
 	uint64_t nelims_ckthr_tot = 0, nalignments_tot = 0, maxalignments = 0, minalignments = 0;
 
 	MPI_Reduce(&nelims_ckthr, &nelims_ckthr_tot, 1, MPI_UINT64_T,
@@ -400,10 +398,7 @@ DistributedPairwiseRunner::run_batch
   	MPI_Reduce(&nalignments, &maxalignments, 1, MPI_UINT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
  	MPI_Reduce(&nalignments, &minalignments, 1, MPI_UINT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
 
-	tu.print_str("  PWF:XA:ExtendSeed avg per proc: " + std::to_string(avgalignments) + " alignments\n" +
-				 "  PWF:XA:ExtendSeed max per proc: " + std::to_string(maxalignments) + " alignments\n" +
-				 "  PWF:XA:ExtendSeed min per proc: " + std::to_string(minalignments) + " alignments\n" +
-
+	tu.print_str(
 				 "Total nnzs in the output matrix " +
 				 std::to_string(gmat->getnnz()) +
 				 "\nTotal nnzs in strictly lower (or upper) mat " +
@@ -415,12 +410,8 @@ DistributedPairwiseRunner::run_batch
 	// Prune pairs that do not meet coverage criteria
 	auto elim_cov = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
 	gmat->Prune(elim_cov);
-	
-	double start = MPI_Wtime();
-	gmat->ParallelWriteMM(aln_file, true, dibella::CkOutputHandler());
-	double ppend = MPI_Wtime() - start;
 
-	tu.print_str("ParallelWriteMM " + std::to_string(ppend)+ "\n");
+	// GGGG: if noAlign == true, we remove only the contained overlaps as they are not useful for transitive reduction
 	tu.print_str("nnzs in the pruned matrix " +
 				 std::to_string(gmat->getnnz()) + "\n");
 	

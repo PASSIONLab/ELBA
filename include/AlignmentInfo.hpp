@@ -9,7 +9,7 @@
 struct AlignmentInfo
 {
 
-  // For banded and others, not x-drop
+  // For others, not x-drop
   seqan::AlignmentStats stats;
 
 	int xscore;

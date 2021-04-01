@@ -46,9 +46,6 @@ const char *CMD_OPTION_DESCRIPTION_FULL_ALIGN = "Flag to indicate full alignment
 const char *CMD_OPTION_XDROP_ALIGN = "xa";
 const char *CMD_OPTION_DESCRIPTION_XDROP_ALIGN = "Flag to indicate seed-and-extend using xdrop alignment";
 
-const char *CMD_OPTION_BANDED_ALIGN = "ba";
-const char *CMD_OPTION_DESCRIPTION_BANDED_ALIGN = "Flag to indicate banded alignment";
-
 const char *CMD_OPTION_IDX_MAP = "idxmap";
 const char *CMD_OPTION_DESCRIPTION_IDX_MAP = "The file path to write the global sequence indices to original global sequence indices mapping. ";
 
