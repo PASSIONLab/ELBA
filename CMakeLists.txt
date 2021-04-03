@@ -77,8 +77,10 @@ add_executable(dibella
         src/kmer/KmerOps.cpp
         src/kmer/Kmer.cpp
         include/kmer/Kmer.hpp
+        include/SR.hpp
         include/TransitiveReductionSR.hpp
         include/CC.h
+        include/Contig.hpp
 	)
 
 set(LOWER_KMER_FREQ 2

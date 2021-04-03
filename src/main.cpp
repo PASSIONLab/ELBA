@@ -26,7 +26,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "../include/kmer/KmerIntersectSR.hpp"
 #include "../include/Utils.hpp"
 #include "../include/TransitiveReductionSR.hpp"
-// #include "Contig.cpp"
+#include "../include/Contig.hpp"
 // #include "Assembly.cpp"
 
 #include "seqan/score/score_matrix_data.h"
@@ -325,17 +325,17 @@ int main(int argc, char **argv)
   // CONTIG EXTRACTION                                                                // 
   //////////////////////////////////////////////////////////////////////////////////////
 
-  // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
+  tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
-  // std::vector<std::string> myContigSet;
-  // bool contigging = false;
+  std::vector<std::string> myContigSet;
+  bool contigging = false;
 
-  // if(contigging)
-  // {
-  //   // myContigSet = CreateContig(B, myoutput, tu);
-  // }
+  if(contigging)
+  {
+    myContigSet = CreateContig(B, myoutput, tu);
+  }
 
-  // tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
+  tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
 
   // //////////////////////////////////////////////////////////////////////////////////////
   // // SCAFFOLDING                                                                      // 

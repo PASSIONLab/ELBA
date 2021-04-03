@@ -132,7 +132,7 @@ namespace dibella {
         {
                 int dir = v.overhang  & 3;
                 int len = v.overhang >> 2;
-                os << dir << "\t" << len;
+                os  << len << "\t" << dir;
         }
     };
 
