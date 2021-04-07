@@ -41,18 +41,9 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	// Reserve length/position if rc [x]
 	if(ai.rc)
 	{
-		// if(perprocessarray[seqH] == 2) // 2 == rvs strand
-		// {
-		// 	uint tmp = begpH;
-		// 	begpH = rlenH - endpH;
-		// 	endpH = rlenH - tmp;
-		// }
-		// else
-		// {
 		uint tmp = begpV;
 		begpV = rlenV - endpV;
 		endpV = rlenV - tmp;
-		// }
 	}
 
 	if((begpH == 0 & rlenH-endpH == 0) || (begpV == 0 & rlenV-endpV == 0))
@@ -99,34 +90,16 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 					direction  = 0;
 					directionT = 0;
 
-					// if(perprocessarray[seqH] == 1) 
-					// {
 					suffix  = begpV; 	// seqV == 2
-					suffixT = begpH; 	// seqV == 2
-					// }
-					// else 
-					// {
-					// 	suffix  = begpH; 	// seqV == 1, seqH == 2	
-					// 	suffixT = begpV; 	// seqV == 1, seqH == 2	
-					// }				
+					suffixT = begpH; 	// seqV == 2				
 				}
 				else
 				{
 					direction  = 3;
 					directionT = 3;
 
-					// do more tests and pray
-
-					// if(perprocessarray[seqH] == 1) 
-					// {
-					// 	suffix  = rlenH - endpH;	// seqV == 2
-					// 	suffixT = rlenV - endpV;	// seqV == 2
-					// }
-					// else
-					// { 
 					suffix  = rlenV - endpV;	// seqV == 1, seqH == 2	
 					suffixT = rlenH - endpH;	// seqV == 1, seqH == 2	
-					// }	
 				}
 			}
 			overhang  = suffix  << 2 | direction;

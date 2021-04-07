@@ -6,9 +6,6 @@
 #include "../Types.hpp"
 #include "../Defines.hpp"
 
-// GGGG: needed for benchmarking
-#define EXTRA
-
 namespace dibella {
   struct CommonKmers {
     /*! The number of common kmers between two sequences.
@@ -29,11 +26,9 @@ namespace dibella {
 	uint32_t overhang;
 	uint32_t overhangT;
 	
-#ifdef EXTRA
 	uint32_t lenv;
 	uint32_t lenh;
 	uint32_t overlap;
-#endif
 
     /*! The position within the sequence, which is
      * much less than 2^16 - 1 for proteins
@@ -78,6 +73,16 @@ namespace dibella {
 		else return false;
 	}
 
+	// Used in SR.hpp fo MinPlus
+	friend bool operator<(const CommonKmers& lhs, const CommonKmers& rhs)
+	{
+		ushort len1 = lhs.overhang >> 2;
+		ushort len2 = rhs.overhang >> 2;
+
+		if(len1 < len2) return true;
+		else return false;
+	}
+
     friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m)
 	{
 	#ifdef TWOSEED
@@ -113,12 +118,7 @@ namespace dibella {
 
 			// direction, rc, overhang, begV, endV, begH, endH (OverlapLen and others computed in python script during translation)
 			os << dir << "\t" << rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t" 
-				<< v.second.first << "\t" << 
-				#ifdef EXTRA
-				v.second.second  << "\t"  << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
-				#else
-				v.second.second;
-				#endif
+				<< v.second.first << "\t" << v.second.second << "\t" << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
 		}
 	};
 

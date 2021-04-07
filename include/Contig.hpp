@@ -16,10 +16,10 @@ using namespace combblas;
 std::vector<std::string> 
 CreateContig(PSpMat<dibella::CommonKmers>::MPI_DCCols& S, std::string& myoutput, TraceUtils tu)
 {
-    PSpMat<dibella::CommonKmers>::MPI_DCCols ST = S;
-    ST.Transpose();
+    // PSpMat<dibella::CommonKmers>::MPI_DCCols ST = S;
+    // ST.Transpose();
 
-    if(!(ST == S)) tu.print_str("Error: matrix S isn't symmetric");
+    // if(!(ST == S)) tu.print_str("Error: matrix S isn't symmetric"); // The == overloading might make this wrong, fix it so it reflects reality
 
     uint nnz;
     PSpMat<dibella::CommonKmers>::MPI_DCCols S1 = S;
@@ -30,21 +30,24 @@ CreateContig(PSpMat<dibella::CommonKmers>::MPI_DCCols& S, std::string& myoutput,
         /* Find two-hops neighbors and concatenate sequences
          * N = S^2
          */
-        // The semiring has to be updated here I think
+
+        // PSpMat<dibella::CommonKmers>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(S, S1);
         PSpMat<dibella::CommonKmers>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(S, S1);
 
         N.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
-        N.ParallelWriteMM("matrixN.mm", true, dibella::CkOutputMMHandler()); 
 
-    #ifdef DIBELLA_DEBUG
+        N.ParallelWriteMM("matrixN.mm", true, dibella::CkOutputMMHandler()); 
         tu.print_str("Matrix N = S*N: ");
         N.PrintInfo();
+    #ifdef DIBELLA_DEBUG
+
     #endif
 
         // Do something to concantenate sequences based on S an N;
 
         // N is now the new matrix to be multiply S with and once is empty we can stop and print contigs?
-        S1  = N;    
+        S1 = N; 
+
         nnz = N.getnnz(); 
             
     } while (nnz != 0);
@@ -54,6 +57,10 @@ CreateContig(PSpMat<dibella::CommonKmers>::MPI_DCCols& S, std::string& myoutput,
     // {
     //      ...
     // }
+
+    S.ParallelWriteMM("matrixSc.mm", true, dibella::CkOutputMMHandler()); 
+    tu.print_str("Matrix S: ");
+    S.PrintInfo();
 
     return myContigSet;
 }

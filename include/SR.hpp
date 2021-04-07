@@ -118,8 +118,8 @@ bool testdir(ushort dir1, ushort dir2, ushort& dir)
 
     if(rbit != lbit)
     {
-        start = mybin1[1]; // 11
-        end   = mybin2[0]; // 00
+        start = mybin1[1]; 
+        end   = mybin2[0]; 
 
         if(start == 0)
         {
@@ -143,9 +143,10 @@ struct MinPlusBiSRing
 	static bool returnedSAID() 	{ return false; 	}
 	static MPI_Op mpi_op() 		{ return MPI_MIN; 	};
 
-	static OUT add(const OUT & arg1, const OUT & arg2)
+	static OUT add(const OUT& arg1, const OUT& arg2)
 	{
-		return min(arg1, arg2);
+        if(arg1 < arg2) return arg1;
+        else return arg2;
 	}
 	static OUT multiply(const T1& arg1, const T2& arg2)
 	{
@@ -155,16 +156,43 @@ struct MinPlusBiSRing
         if(testdir(dir(arg1), dir(arg2), mydir))
         {
             uint len = infplus(arg1, arg2);
-
-            // printf("dir1 %d len1 %d dir2 %d len2 %d mydir %d len %d\n", dir(arg1), length(arg1), dir(arg2), length(arg2), len, mydir);
-
             return compose(res, len, mydir);
+        } 
+        else return id();
+	}
+	static void axpy(T1 a, const T2& x, OUT& y)
+	{   
+		y = add(y, multiply(a, x));
+	}
+};
+
+template <class T1, class T2, class OUT>
+struct ContigSRing
+{
+	static OUT  id() 			{ return std::numeric_limits<OUT>::max(); };
+	static bool returnedSAID() 	{ return false; 	}
+	static MPI_Op mpi_op() 		{ return MPI_MIN; 	};
+
+	static OUT add(const OUT & arg1, const OUT & arg2)
+	{
+        if(arg1.seq.length() < arg2.seq.length()) return arg1;
+        else return arg2;
+	}
+	static OUT multiply(const T1& arg1, const T2& arg2)
+	{
+        OUT res;
+        ushort mydir;
+
+        if(testdir(arg1.dir, arg1.dir, mydir))
+        {
+            // Operator oveerloading in ContigEntry.hpp takes care of everything
+            return arg1 + arg2;
         } 
         else return id();
 	}
 	static void axpy(T1 a, const T2 & x, OUT & y)
 	{   
-		y = min(y, multiply(a, x));
+		y = add(y, multiply(a, x));
 	}
 };
 

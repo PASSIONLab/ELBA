@@ -328,7 +328,7 @@ int main(int argc, char **argv)
   tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
   std::vector<std::string> myContigSet;
-  bool contigging = false;
+  bool contigging = true;
 
   if(contigging)
   {
