@@ -239,7 +239,12 @@ struct ContigEntrySR : binary_function <T, OUT, OUT>
 {
     OUT operator() (const T& x, OUT y) const
     { 
-        y.dir = dir(x);
+        y.dir    = dir(x);
+        y.suffix = length(x);
+
+        y.lenh = x.lenh;
+        y.lenv = x.lenv;
+
         return static_cast<OUT>(y); // seq is undefined here
     }
 };
