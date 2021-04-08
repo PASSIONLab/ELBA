@@ -3,8 +3,9 @@
 #ifndef DIBELLA_CONTIGENTRY_HPP
 #define DIBELLA_CONTIGENTRY_HPP
 
-#include "../Types.hpp"
-#include "../Defines.hpp"
+#include "Types.hpp"
+#include "Defines.hpp"
+#include "kmer/CommonKmers.hpp"
 
 namespace dibella {
 
@@ -24,22 +25,7 @@ namespace dibella {
         ushort dir;
         std::string seq;
 
-        // GGGG: Do I need stard/end pos, len seq and orignal seq? Let's avoid the avoidable to avoid blowing up the memory
-        ContigEntry() : dir(0) {
-        }
-
-        explicit
-        ContigEntry(ushort dir) : 
-        	dir(dir) {
-        }
-
-        explicit
-        ContigEntry(ushort dir, std::string seq) : 
-        	dir(dir), seq(seq) {
-        }
-
-        ContigEntry (std::string seq) :
-        	seq(seq) {
+        ContigEntry() : dir(4), seq("") {
         }
 
         // Overload + operator to add two ContigEntry objects
@@ -93,7 +79,7 @@ namespace dibella {
     };
 
     /* GGGG: matrix symmetrication removed */
-    struct CkOutputHandler
+    struct CeOutputHandler
     {
     	template <typename c, typename t>
     	void save(std::basic_ostream<c,t>  &os,
@@ -104,7 +90,7 @@ namespace dibella {
     		int rc  = 0;
     		if(v.dir == 0 || v.dir == 3) rc = 1;
 
-    		os << v.dir << "\t" << rc << "\t" << v.len;
+    		os << v.dir << "\t" << rc << "\t" << v.seq.length();
     	}
     };
 }

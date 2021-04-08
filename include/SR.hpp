@@ -235,6 +235,26 @@ struct ZeroOverhangSR : unary_function <T, bool>
 };
 
 template <class T, class OUT>
+struct ContigEntrySR : binary_function <T, OUT, OUT>
+{
+    OUT operator() (const T& x, OUT y) const
+    { 
+        y.dir = dir(x);
+        return static_cast<OUT>(y); // seq is undefined here
+    }
+};
+
+template <class T1, class T2>
+struct ContigEntrySRP : binary_function <T1, T2, bool>
+{
+    bool operator() (const T1& x, const T2& y) const
+    {
+        return true;
+    }
+};
+
+
+template <class T, class OUT>
 struct OverhangTSRing : unary_function <T, OUT>
 {
     OUT operator() (const T& x) const
@@ -248,32 +268,9 @@ struct OverhangTSRing : unary_function <T, OUT>
     }
 };
 
-template <class T1, class T2, class OUT>
-struct BestOverlapVSRing : binary_function <T1, T2, OUT>
-{
-    OUT operator() (const T1& x, const T2& y) const
-    {
-        if(length(y) < length(x)) return static_cast<OUT>(y);
-        else return static_cast<OUT>(x);
-    }
-};
-
-template <class T1, class T2, class OUT>
-struct BestOverlapMSRing : binary_function <T1, T2, OUT>
-{
-    OUT operator() (T1& x, const T2& y) const
-    {
-        /* I want to only keep entry corresponding to the best overlap for that column */
-        if(length(x) != length(y)) x.overhang = 0;
-        return static_cast<OUT>(x);
-    }
-};
-
 /*! Type definitions */
 typedef MinPlusBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> MinPlusSR_t;
 typedef ReduceMBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> ReduceMSR_t;
 typedef Bind2ndBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> Bind2ndSR_t;
-typedef BestOverlapVSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> BestOvVSR_t;
-typedef BestOverlapMSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> BestOvMSR_t;
 
 #endif // __DIBELLA_SR_HPP__
