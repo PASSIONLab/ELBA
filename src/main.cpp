@@ -232,6 +232,8 @@ int main(int argc, char **argv)
   // @GGGG-TODO: check vector version (new one stack error)
   PSpMat<dibella::CommonKmers>::MPI_DCCols B = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);  
 
+  printf("here?");
+
   tp->times["EndMain:AAt()"] = std::chrono::system_clock::now();
 
   // @GGGG-TODO: remove proc_log_stream

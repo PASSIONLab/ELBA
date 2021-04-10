@@ -40,7 +40,7 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
 #ifdef DIBELLA_DEBUG
     tu.print_str("Matrix B += BT: ");
     B.PrintInfo();
-    B.ParallelWriteMM("MyMatrixBT.mm", true, dibella::CkOutputMMHandler()); 
+    B.ParallelWriteMM("matrixBT.mm", true, dibella::CkOutputMMHandler()); 
 #endif
 
     uint nnz, prev;
@@ -60,9 +60,9 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         timeA2 += MPI_Wtime() - start;
 
         C.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
-        
+
     #ifdef DIBELLA_DEBUG
-        C.ParallelWriteMM("MyMatrixB2.mm", true, dibella::CkOutputMMHandler()); 
+        C.ParallelWriteMM("matrixB2.mm", true, dibella::CkOutputMMHandler()); 
         tu.print_str("Matrix C = B^2: ");
         C.PrintInfo();
     #endif
@@ -77,8 +77,9 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         F.DimApply(Row, vA, Bind2ndSR_t());
         
         timeC += MPI_Wtime() - start;
+
     #ifdef DIBELLA_DEBUG
-        F.ParallelWriteMM("MyMatrixF.mm", true, dibella::CkOutputMMHandler()); 
+        F.ParallelWriteMM("matrixF.mm", true, dibella::CkOutputMMHandler()); 
         tu.print_str("Matrix F = B + FUZZ: ");
         F.PrintInfo();
     #endif
@@ -94,7 +95,7 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         
         timeI += MPI_Wtime() - start;
     #ifdef DIBELLA_DEBUG
-        I.ParallelWriteMM("MyMatrixI.mm", true, dibella::CkOutputMMHandlerBool());
+        I.ParallelWriteMM("matrixI.mm", true, dibella::CkOutputMMHandlerBool());
         tu.print_str("Matrix I = F >= B: ");
         I.PrintInfo();
     #endif
@@ -122,7 +123,7 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
     B.PrintInfo();
 
  #ifdef DIBELLA_DEBUG
-    B.ParallelWriteMM("MyMatrixS.mm", true, dibella::CkOutputMMHandler()); 
+    B.ParallelWriteMM("matrixS.mm", true, dibella::CkOutputMMHandler()); 
     double maxtimeA2, maxtimeC, maxtimeI, maxtimeA;
     
     MPI_Reduce(&timeA2, &maxtimeA2, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);

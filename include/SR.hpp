@@ -68,7 +68,6 @@ struct Bind2ndBiSRing : binary_function <T1, T2, OUT>
     OUT operator() (const T1& x, const T2& y) const
     {
         OUT z;
-        // return static_cast<OUT>(y);
         return static_cast<OUT>(compose(z, length(y) + FUZZ, dir(x)));
     }
 };
@@ -83,12 +82,32 @@ struct ReduceMBiSRing : binary_function <T1, T2, OUT>
     }
 };
 
+template <class T1, class T2, class OUT>
+struct KeepShorterstSR : binary_function <T1, T2, OUT>
+{
+    // 
+    OUT operator() (const T1& x, const T2& y) const
+    {
+        if(length(y) < length(x)) return static_cast<OUT>(y);
+        else return static_cast<OUT>(x);
+    }
+};
+
 template <class T, class OUT>
 struct PlusFBiSRing : unary_function <T, OUT>
 {
     OUT operator() (T& x) const
     {
         return static_cast<OUT>(compose(x, length(x) + FUZZ, dir(x)));
+    }
+};
+
+template <class T, class OUT>
+struct IsEndOfContigSR : unary_function <T, OUT>
+{
+    OUT operator() (T& x) const
+    {
+        // return static_cast<OUT>(compose(x, length(x) + FUZZ, dir(x)));
     }
 };
 
@@ -136,6 +155,33 @@ bool testdir(ushort dir1, ushort dir2, ushort& dir)
     else return false;
 }
 
+dibella::CommonKmers concatenateseq(const dibella::CommonKmers& lhs, const dibella::CommonKmers& rhs, ushort& dir)
+{
+    dibella::CommonKmers res;
+
+    // Giulia keep an eye on this; esay buggy; these sequences need to be on the same strand when concatenating them
+    if(dir == 1 || dir == 0) 
+    {
+        char dest[strlen(lhs.seq)+strlen(rhs.seq)];
+
+        strcpy(dest, lhs.seq);
+        strcat(dest, rhs.seq);
+
+        res.seq = dest;
+    }
+    else
+    {
+        char dest[strlen(lhs.seq)+strlen(rhs.seq)];
+
+        strcpy(dest, rhs.seq);
+        strcat(dest, lhs.seq);
+        
+        res.seq = dest;
+    }
+
+    return compose(res, length(lhs) + length(rhs), dir);
+}
+
 template <class T1, class T2, class OUT>
 struct MinPlusBiSRing
 {
@@ -169,13 +215,16 @@ struct MinPlusBiSRing
 template <class T1, class T2, class OUT>
 struct ContigSRing
 {
-	static OUT  id() 			{ return std::numeric_limits<OUT>::max(); };
+	static OUT  id() 			{ 
+        OUT res;
+        return compose(res, 0, 0);
+    };
 	static bool returnedSAID() 	{ return false; 	}
 	static MPI_Op mpi_op() 		{ return MPI_MIN; 	};
 
 	static OUT add(const OUT & arg1, const OUT & arg2)
 	{
-        if(arg1.seq.length() < arg2.seq.length()) return arg1;
+        if(arg1 < arg2) return arg1;
         else return arg2;
 	}
 	static OUT multiply(const T1& arg1, const T2& arg2)
@@ -183,10 +232,11 @@ struct ContigSRing
         OUT res;
         ushort mydir;
 
-        if(testdir(arg1.dir, arg1.dir, mydir))
+        // printf("%d\t%d\n---\n", length(arg1), length(arg2));
+
+        if(testdir(dir(arg1), dir(arg2), mydir))
         {
-            // Operator oveerloading in ContigEntry.hpp takes care of everything
-            return arg1 + arg2;
+            return concatenateseq(arg1, arg2, mydir);
         } 
         else return id();
 	}
@@ -206,10 +256,14 @@ struct GreaterBinaryOp : binary_function <T1, T2, bool>
     }
 };
 
-template <class T1, class T2, class OUT>
-struct MultiplyBinaryOp : binary_function <T1, T2, OUT>
+template <class T1, class T2>
+struct EqualBinaryOp : binary_function <T1, T2, bool>
 {
-    OUT operator() (const T1& x, const T2& y) const { return static_cast<OUT>(compose(length(x) * length(y), dir(x))); }
+    bool operator() (const T1& x, const T2& y) const
+    {
+        if(x == y) return true;
+        else return false;
+    }
 };
 
 template <class T>
@@ -233,31 +287,6 @@ struct ZeroOverhangSR : unary_function <T, bool>
 {
     bool operator() (const T& x) const { if(x.overhang == 0) return true; else return false; }
 };
-
-template <class T, class OUT>
-struct ContigEntrySR : binary_function <T, OUT, OUT>
-{
-    OUT operator() (const T& x, OUT y) const
-    { 
-        y.dir    = dir(x);
-        y.suffix = length(x);
-
-        y.lenh = x.lenh;
-        y.lenv = x.lenv;
-
-        return static_cast<OUT>(y); // seq is undefined here
-    }
-};
-
-template <class T1, class T2>
-struct ContigEntrySRP : binary_function <T1, T2, bool>
-{
-    bool operator() (const T1& x, const T2& y) const
-    {
-        return true;
-    }
-};
-
 
 template <class T, class OUT>
 struct OverhangTSRing : unary_function <T, OUT>

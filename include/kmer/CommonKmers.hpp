@@ -7,7 +7,9 @@
 #include "../Defines.hpp"
 
 namespace dibella {
-  struct CommonKmers {
+
+  struct CommonKmers
+  {
     /*! The number of common kmers between two sequences.
      * The maximum could be floor((l-k)/s)+1, where
      * l is the sequence length, k is the kmer length, and
@@ -15,20 +17,21 @@ namespace dibella {
      * we can represent the count as unsigned short as well.
      */
     ushort count;
-
-	bool passed;
+	bool  passed;
 
 	uint32_t score; /* Used for storing alignment score */
 	
 	/*! GGGG: this is either the suffix or prefix entry need for the transitive reduction 
 	 *	StringMatrixEntry econdes both direction and overhang length for both strands */
-	// std::vector<uint32_t> overhang(2, 0);
 	uint32_t overhang;
 	uint32_t overhangT;
 	
 	uint32_t lenv;
 	uint32_t lenh;
 	uint32_t overlap;
+
+	const char* seq; // only stored it when needed (contigging)
+	bool cend; // no more extension for this contig
 
     /*! The position within the sequence, which is
      * much less than 2^16 - 1 for proteins
@@ -43,17 +46,20 @@ namespace dibella {
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
 #endif
 
-    CommonKmers() : count(1), passed(false), overhang(0) {
+    CommonKmers() : count(1), passed(false), overhang(0), seq("hello"), cend(false) {
     }
+	
     explicit
 	CommonKmers(ushort count) : 
-		count(count), passed(false), overhang(0) {
+		count(count), passed(false), overhang(0), seq("hello"), cend(false) {
     }
 
 	CommonKmers (bool passed, uint32_t score) :
 		passed(passed),
 		score(score) {
 	}
+
+	operator bool() const { return overhang; };
 
     // Overload + operator to add two CommonKmers objects
 	// Used for: B += BT (TransitiveReductionSR.hpp)
@@ -81,6 +87,61 @@ namespace dibella {
 
 		if(len1 < len2) return true;
 		else return false;
+	}
+
+	// Used in SR.hpp fo MinPlus
+	friend CommonKmers operator+(const CommonKmers& lhs, const CommonKmers& rhs)
+	{
+		CommonKmers me;
+
+		ushort dir;
+
+		int mybin1[2] = {0, 0};
+		int mybin2[2] = {0, 0};
+
+		if((lhs.overhang & 3) != 0)
+		{
+			int nbit = 2;
+			uint n = lhs.overhang & 3;
+			for(int i = 0; i < nbit; i++)
+			{ 
+				mybin1[i] = n % 2; 
+				n = n / 2; 
+			}
+		}
+
+		if((rhs.overhang & 3) != 0)
+		{
+			int nbit = 2;
+			uint n = rhs.overhang & 3;
+			for(int i = 0; i < nbit; i++)
+			{ 
+				mybin2[i] = n % 2; 
+				n = n / 2; 
+			}
+		}
+
+		ushort start = mybin1[1]; 
+		ushort end   = mybin2[0]; 
+
+		if(start == 0)
+		{
+			if(end == 0) dir = 0;
+			else dir = 1;
+		}
+		else
+		{
+			if(end == 0) dir = 2;
+			else dir = 3;      
+		}
+
+		ushort len1 = lhs.overhang >> 2;
+		ushort len2 = rhs.overhang >> 2;
+
+		len1 += len2;
+
+		me.overhang = len1 << 2 | dir;
+		return me;
 	}
 
     friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m)
@@ -133,6 +194,21 @@ namespace dibella {
                 int dir = v.overhang  & 3;
                 int len = v.overhang >> 2;
                 os  << len << "\t" << dir;
+        }
+    };
+
+    struct CkOutputMMHandlerChar
+    {
+        template <typename c, typename t>
+        void save(std::basic_ostream<c,t> &os,
+                        const dibella::CommonKmers &v,
+                        uint64_t row,
+                        uint64_t col)
+        {
+                int dir = v.overhang  & 3;
+                int len = v.overhang >> 2;
+			
+                os  << len << "\t" << dir << "\t" << v.seq;
         }
     };
 

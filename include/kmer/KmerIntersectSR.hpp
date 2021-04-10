@@ -40,6 +40,8 @@ namespace dibella {
       res.first.second  = arg1.first.second;
       res.second.second = arg2.first.second;
 
+      res.seq = arg1.seq; 
+
       return res;
   #else
       OUT res(arg1.count);

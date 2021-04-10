@@ -9,15 +9,15 @@
 
 namespace dibella {
 
-    void binary(ushort n, int* arr) 
-    { 
-        int nbit = 2;
-        for(int i = 0; i < nbit; i++)
-        { 
-            arr[i] = n % 2; 
-            n = n / 2; 
-        }
-    }
+    // void binary(ushort n, int* arr) 
+    // { 
+    //     int nbit = 2;
+    //     for(int i = 0; i < nbit; i++)
+    //     { 
+    //         arr[i] = n % 2; 
+    //         n = n / 2; 
+    //     }
+    // }
 
     struct ContigEntry {
 

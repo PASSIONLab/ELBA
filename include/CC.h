@@ -1238,7 +1238,6 @@ namespace combblas {
         return finalhooks;
     }
     
-    
     template <typename IT, typename NT, typename DER>
     FullyDistSpVec<IT, IT> UnconditionalHook2(const SpParMat<IT,NT,DER> & A, FullyDistVec<IT, IT> & parents, FullyDistVec<IT,short> stars)
     {
@@ -1312,11 +1311,8 @@ namespace combblas {
         SpParHelper::Print(outs.str());
 #endif
         
-        return finalHooks;
-        
+        return finalHooks;     
     }
-    
-    
     
     template <typename IT>
     void Shortcut(FullyDistVec<IT, IT> & parent)
@@ -1393,7 +1389,6 @@ namespace combblas {
         roots.nziota(0);
         cclabel.Set(roots);
         
-        
         FullyDistSpVec<IT,IT> labelOfParents = Extract(cclabel, pOfLeaves);
         cclabel.Set(labelOfParents);
         //cclabel = cclabel(parent);
@@ -1402,19 +1397,21 @@ namespace combblas {
     
     
     template <typename IT, typename NT, typename DER>
-    FullyDistVec<IT, IT> CC(SpParMat<IT,NT,DER> & A, IT & nCC)
+    FullyDistVec<IT, IT> CC(SpParMat<IT,NT,DER>& A, IT& nCC)
     {
         IT nrows = A.getnrow();
-        //A.AddLoops(1); // needed for isolated vertices: not needed anymore
+
         FullyDistVec<IT,IT> parent(A.getcommgrid());
-        parent.iota(nrows, 0);    // parent(i)=i initially
-        FullyDistVec<IT,short> stars(A.getcommgrid(), nrows, STAR);// initially every vertex belongs to a star
+        parent.iota(nrows, 0);  // parent(i)=i initially
+
+        FullyDistVec<IT, short> stars(A.getcommgrid(), nrows, STAR); // initially every vertex belongs to a star
         int iteration = 1;
         std::ostringstream outs;
         
         // isolated vertices are marked as converged
-        FullyDistVec<int64_t,double> degree = A.Reduce(Column, plus<double>(), 0.0, [](double val){return 1.0;});
-        stars.EWiseApply(degree, [](short isStar, double degree){return degree == 0.0? CONVERGED: isStar;});
+        NT NullBValue;
+        FullyDistVec<int64_t, NT> degree = A.Reduce(Column, plus<NT>(), NullBValue, [](NT val) { return val; }); // printf("%d\n", val.overhang); 
+        stars.EWiseApply(degree, [](short isStar, NT degree) { return degree.overhang == 0? CONVERGED: isStar; }); // printf("--%d\n", degree.overhang); 
         
         int nthreads = 1;
 #ifdef THREADED
@@ -1423,9 +1420,8 @@ namespace combblas {
             nthreads = omp_get_num_threads();
         }
 #endif
-        SpParMat<IT,bool,SpDCCols < IT, bool >>  Abool = A;
+        SpParMat<IT, bool, SpDCCols <IT, bool>> Abool = A;
         Abool.ActivateThreading(nthreads*4);
-        
         
         while (true)
         {
@@ -1452,7 +1448,7 @@ namespace combblas {
             else
             {
                 // explain
-                stars.EWiseApply(condhooks, [](short isStar, IT x){return static_cast<short>(NONSTAR);},
+                stars.EWiseApply(condhooks, [](short isStar, IT x){ return static_cast<short>(NONSTAR); },
                                  false, static_cast<IT>(NONSTAR));
                 FullyDistSpVec<IT, short> pNonStar= Assign(condhooks, NONSTAR);
                 stars.Set(pNonStar);
@@ -1512,12 +1508,6 @@ namespace combblas {
             IT nonstars = stars.Reduce(std::plus<IT>(), static_cast<IT>(0), [](short isStar){return static_cast<IT>(isStar==NONSTAR);});
             IT nstars = nrows - (nonstars + nconverged);
             
-            
-            
-            
-            
-            
-            
             double t2 = MPI_Wtime();
             outs.str("");
             outs.clear();
@@ -1529,8 +1519,7 @@ namespace combblas {
             SpParHelper::Print(outs.str());
             
             iteration++;
-            
-            
+   
         }
         
         FullyDistVec<IT, IT> cc(parent.getcommgrid());
@@ -1542,7 +1531,6 @@ namespace combblas {
         
         return cc;
     }
-    
     
     template <typename IT>
     void PrintCC(FullyDistVec<IT, IT> CC, IT nCC)
@@ -1564,14 +1552,15 @@ namespace combblas {
         FullyDistSpVec<IT, IT> cc4 = cc.Find([](IT label){return label==3;});
         
         std::ostringstream outs;
+
         outs.str("");
         outs.clear();
-        outs << "Size of the first component: " << cc1.getnnz() << std::endl;
-        outs << "Size of the second component: " << cc2.getnnz() << std::endl;
-        outs << "Size of the third component: " << cc3.getnnz() << std::endl;
-        outs << "Size of the fourth component: " << cc4.getnnz() << std::endl;
+
+        outs << "Size of the first component: "     << cc1.getnnz() << std::endl;
+        outs << "Size of the second component: "    << cc2.getnnz() << std::endl;
+        outs << "Size of the third component: "     << cc3.getnnz() << std::endl;
+        outs << "Size of the fourth component: "    << cc4.getnnz() << std::endl;
     }
-    
     
     template <typename IT>
     void HistCC(FullyDistVec<IT, IT> CC, IT nCC)
@@ -1583,8 +1572,7 @@ namespace combblas {
             ccSizes.SetElement(i, ith.getnnz());
         }
         
-        IT largestCCSise = ccSizes.Reduce(maximum<IT>(), static_cast<IT>(0));
-        
+        IT largestCCSise = ccSizes.Reduce(maximum<IT>(), static_cast<IT>(0));    
         
         const IT * locCCSizes = ccSizes.GetLocArr();
         int numBins = 200;
@@ -1598,8 +1586,7 @@ namespace combblas {
         std::vector<IT> globalHist(numBins,0);
         MPI_Comm world = CC.getcommgrid()->GetWorld();
         MPI_Reduce(localHist.data(), globalHist.data(), numBins, MPIType<IT>(), MPI_SUM, 0, world);
-        
-        
+
         int myrank;
         MPI_Comm_rank(world,&myrank);
         if(myrank==0)
@@ -1611,7 +1598,6 @@ namespace combblas {
             output << std::endl;
             output.close();
         }
-        
         
         //ccSizes.PrintToFile("histCC.txt");
     }
