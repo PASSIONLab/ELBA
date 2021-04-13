@@ -31,7 +31,7 @@ namespace dibella {
 	uint32_t overlap;
 
 	const char* seq; // only stored it when needed (contigging)
-	bool cend; // no more extension for this contig
+	bool cend; // no more extension for this contig, true by default, changed to false during transitive reduction
 
     /*! The position within the sequence, which is
      * much less than 2^16 - 1 for proteins
@@ -46,12 +46,12 @@ namespace dibella {
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
 #endif
 
-    CommonKmers() : count(1), passed(false), overhang(0), seq("hello"), cend(false) {
+    CommonKmers() : count(1), passed(false), overhang(0), seq("hello"), cend(true) {
     }
 	
     explicit
 	CommonKmers(ushort count) : 
-		count(count), passed(false), overhang(0), seq("hello"), cend(false) {
+		count(count), passed(false), overhang(0), seq("hello"), cend(true) {
     }
 
 	CommonKmers (bool passed, uint32_t score) :
@@ -216,11 +216,23 @@ namespace dibella {
     {
         template <typename c, typename t>
         void save(std::basic_ostream<c,t> &os,
-                        const bool &v,
+                        const dibella::CommonKmers &v,
                         uint64_t row,
                         uint64_t col)
         {
-                os << v;
+                os << v.cend;
+        }
+    };
+
+    struct CkOutputMMHandlerBoolBool
+    {
+        template <typename c, typename t>
+        void save(std::basic_ostream<c,t> &os,
+                        std::pair<bool, bool> &v,
+                        uint64_t row,
+                        uint64_t col)
+        {
+                os << v.first << "\t" << v.second;
         }
     };
 

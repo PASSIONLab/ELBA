@@ -68,6 +68,8 @@ struct Bind2ndBiSRing : binary_function <T1, T2, OUT>
     OUT operator() (const T1& x, const T2& y) const
     {
         OUT z;
+        z.cend = x.cend;
+
         return static_cast<OUT>(compose(z, length(y) + FUZZ, dir(x)));
     }
 };
@@ -185,28 +187,39 @@ dibella::CommonKmers concatenateseq(const dibella::CommonKmers& lhs, const dibel
 template <class T1, class T2, class OUT>
 struct MinPlusBiSRing
 {
-	static OUT id() 			{ return std::numeric_limits<OUT>::max(); };
+	static OUT id() { 
+        OUT id;
+        id.overhang = std::numeric_limits<uint32_t>::max(); 
+        return id;
+        };
 	static bool returnedSAID() 	{ return false; 	}
 	static MPI_Op mpi_op() 		{ return MPI_MIN; 	};
 
-	static OUT add(const OUT& arg1, const OUT& arg2)
+	static OUT add(OUT& arg1, OUT& arg2)
 	{
         if(arg1 < arg2) return arg1;
         else return arg2;
 	}
-	static OUT multiply(const T1& arg1, const T2& arg2)
+	static OUT multiply(T1& arg1, T2& arg2)
 	{
         OUT res;
         ushort mydir;
 
+        // if both cend == true and overhang == 0 it means it because true post-processing and we want to ignore it
+        // not even sure we would hit this care but hey
+        // if((arg1.cend && length(arg1) == 0) || (arg2.cend && length(arg2) == 0)) return id();
+        // else 
         if(testdir(dir(arg1), dir(arg2), mydir))
-        {
+        {        
+            arg1.cend = false; // if i see this it means arg1 is not end of contig (it generates a nonzero)
+            arg2.cend = false; // if i see this it means arg2 is not end of contig (it generates a nonzero)
+
             uint len = infplus(arg1, arg2);
             return compose(res, len, mydir);
         } 
         else return id();
 	}
-	static void axpy(T1 a, const T2& x, OUT& y)
+	static void axpy(T1 a, T2& x, OUT& y)
 	{   
 		y = add(y, multiply(a, x));
 	}
@@ -232,9 +245,8 @@ struct ContigSRing
         OUT res;
         ushort mydir;
 
-        // printf("%d\t%d\n---\n", length(arg1), length(arg2));
-
-        if(testdir(dir(arg1), dir(arg2), mydir))
+        if(arg1.cend || arg2.cend) return id(); // might not this if i copy over?
+        else if(testdir(dir(arg1), dir(arg2), mydir))
         {
             return concatenateseq(arg1, arg2, mydir);
         } 
@@ -246,13 +258,46 @@ struct ContigSRing
 	}
 };
 
-template <class T1, class T2>
-struct GreaterBinaryOp : binary_function <T1, T2, bool>
+// F and C
+template <class T1, class T2, class OUT>
+struct GreaterBinaryOp : binary_function <T1, T2, OUT>
 {
-    bool operator() (const T1& x, const T2& y) const
+    OUT operator() (const T1& x, const T2& y) const
     {
-        if(length(x) >= length(y) && dir(y) == dir(x)) return true;
-        else return false;
+        OUT me;
+
+        if((length(x) >= length(y) && dir(y) == dir(x))
+        {
+            me.first  =   true;
+            me.second = x.cend;
+        } 
+        else 
+        {
+            me.first  =  false;
+            me.second = x.cend;
+        }
+        
+        return me;
+    }
+};
+
+template <class T, class OUT>
+struct CheckEndContigSR : binary_function <T, T, OUT>
+{
+    OUT operator() (T& x, const T& y) const
+    {
+        if(y.cend) x.cend = true; // if S(i,j).cend == true
+        return static_cast<OUT>(x);
+    }
+};
+
+template <class T, class OUT>
+struct CopyOverContigSR : binary_function <T, T, OUT>
+{
+    OUT operator() (T& x, const T& y) const
+    {
+        if(y.cend) x = y; // if P(i,j).cend == true copy it over to ContigM(i,j)
+        return static_cast<OUT>(x);
     }
 };
 
@@ -269,7 +314,8 @@ struct EqualBinaryOp : binary_function <T1, T2, bool>
 template <class T>
 struct ZeroUnaryOp : unary_function <T, bool>
 {
-    bool operator() (const T& x) const { if(x == 0) return true; else return false; }
+    // prune if non-transitive AND non-end of contig because we want to propagate any other information
+    bool operator() (const T& x) const { if(!x.first && !x.second) return true; else return false; }
 };
 
 template <class T, class T2>
@@ -277,13 +323,40 @@ struct EWiseMulOp : binary_function <T, T2, T>
 {
     T operator() (T& x, const T2& y) const
     {
-        if(!y) x.overhang = 0;
+        x.cend = y.second;              // possibly end of contig
+        
+        if(y.first) x.overhang = 0;     // if transitive, set the overhand to 0
         return x;
     }
 };
 
 template <class T>
+struct CopyOverB : binary_function <T>
+{
+    T operator() (const T& x, T& y) const
+    {
+        if(!x.cend) y.cend; // Copy over only if false
+        return y;
+    }
+};
+
+template <class T>
 struct ZeroOverhangSR : unary_function <T, bool>
+{
+    // remove if overhang 0 and non end of contig; if end of contig i wanna keep that information
+    bool operator() (const T& x) const
+    { 
+        if(x.overhang == 0) // && x.cend == false 
+        {
+            return true; 
+        }
+        else return false; 
+    }
+};
+
+
+template <class T>
+struct ZeroOverhangContigSR : unary_function <T, bool>
 {
     bool operator() (const T& x) const { if(x.overhang == 0) return true; else return false; }
 };

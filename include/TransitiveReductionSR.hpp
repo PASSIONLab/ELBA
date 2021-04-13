@@ -47,8 +47,8 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
 
     /* Gonna iterate on B until there are no more transitive edges to remove */
-    do
-    {
+    // do
+    // {
         prev = B.getnnz();
 
         /* Find two-hops neighbors
@@ -59,10 +59,17 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F);
         timeA2 += MPI_Wtime() - start;
 
-        C.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
+        C.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true); But
+       
+        dibella::CommonKmers id;
+        // id.overhang = std::numeric_limits<uint32_t>::max(); 
+
+        // bool cend in B and F are modified and now copy cend = false values from B to F (element-wise)
+        F = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F, 
+            CopyOverB<dibella::CommonKmers>(), false, id); 
 
     #ifdef DIBELLA_DEBUG
-        C.ParallelWriteMM("matrixB2.mm", true, dibella::CkOutputMMHandler()); 
+        C.ParallelWriteMM("matrixC.mm", true, dibella::CkOutputMMHandler()); 
         tu.print_str("Matrix C = B^2: ");
         C.PrintInfo();
     #endif
@@ -70,10 +77,10 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         start = MPI_Wtime();
         FullyDistVec<int64_t, dibella::CommonKmers> vA(B.getcommgrid());
 
-        dibella::CommonKmers id; 
         vA = B.Reduce(Row, ReduceMSR_t(), id);
         vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
 
+        // bind the second but keep the first direction and cend flag
         F.DimApply(Row, vA, Bind2ndSR_t());
         
         timeC += MPI_Wtime() - start;
@@ -89,10 +96,15 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         */
         start = MPI_Wtime();
         bool isLogicalNot = false;
-        PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, PSpMat<bool>::DCCols>(F, C, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
+        PSpMat<std::pair<bool, bool>>::MPI_DCCols I = EWiseApply<std::pair<bool, bool>, PSpMat<std::pair<bool, bool>>::DCCols>(F, C, 
+            GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers, std::pair<bool, bool>>(), isLogicalNot, id);
 
-        I.Prune(ZeroUnaryOp<bool>(), true);
-        
+        I.Prune(ZeroUnaryOp<std::pair<bool, bool>>(), true);
+
+        I.ParallelWriteMM("matrixI.mm", true, dibella::CkOutputMMHandlerBoolBool());
+        tu.print_str("Matrix I = F >= B: ");
+        I.PrintInfo();
+
         timeI += MPI_Wtime() - start;
     #ifdef DIBELLA_DEBUG
         I.ParallelWriteMM("matrixI.mm", true, dibella::CkOutputMMHandlerBool());
@@ -105,11 +117,19 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         */ 
         start = MPI_Wtime();
         isLogicalNot = true;
-        B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, EWiseMulOp<dibella::CommonKmers, bool>(), isLogicalNot, true);
 
-        /* Prune zero-valued overhang */
+        // this doesn't make sense right now becase what' the logical negation? might need to change the semantics (change logical negation to false and updated semiring)
+        B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, 
+            EWiseMulOp<dibella::CommonKmers, std::pair<bool, bool>>(), false, std::make_pair(true, true));
+
+        // Prune if overhang == 0 and cend == false (if true I want to propagate that info) 
+        // --Then if it's true it might change at the next iteration so I need one more step here to remove leftover from previous iteration (TODO)
+        // --I might also take this into account in the matmul semiring since there i want to ignore this kind of pseudo-zero
         B.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
         timeA += MPI_Wtime() - start;
+
+        tu.print_str("Matrix B = B .* not(I): ");
+        B.PrintInfo();
 
     #ifdef DIBELLA_DEBUG
         tu.print_str("Matrix B = B .* not(I): ");
@@ -117,7 +137,7 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
     #endif
         nnz = B.getnnz();     
         
-    } while (nnz != prev);
+    // } while (nnz != prev);
 
     tu.print_str("Matrix B, i.e AAt after transitive reduction: ");
     B.PrintInfo();
