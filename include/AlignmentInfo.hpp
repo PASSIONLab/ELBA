@@ -9,7 +9,7 @@
 struct AlignmentInfo
 {
 
-  // For others, not x-drop
+  // @GGGG: for full smith-waterman, I might remove it
   seqan::AlignmentStats stats;
 
 	int xscore;

@@ -1,9 +1,10 @@
 /* Created by Saliya Ekanayake on 2019-07-05 and modified by Giulia Guidi on 4/14/2021. */
 
 #include "../../include/pw/GPULoganAligner.hpp"
-#include "logan.cuh"
+#include "../loganGPU/logan.cuh"
 
-// uint minOverlapLen = 10000;
+#define BATCH_SIZE 100000
+#define MIN_OV_LEN 10000
 
 char
 complementbase(char n) {
@@ -18,113 +19,159 @@ complementbase(char n) {
 	return cpyseq;
 }
 
-// void GPULoganAligner::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
-// 	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign)
-// {
-// 	auto maxseed = ai.seed;	// returns a seqan:Seed object
+void 
+RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs, vector<SeedL>& seeds, vector<loganResult>& xscores)
+{
+	ScoringSchemeL sscheme(1, -1, -1, -1);
+	std::vector<ScoringSchemeL> scoring;
+	scoring.push_back(sscheme);
 
-// 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
-// 	// these four return seqan:Tposition objects
-// 	int begpV = beginPositionV(maxseed);
-// 	int endpV = endPositionV  (maxseed);
-// 	int begpH = beginPositionH(maxseed);
-// 	int endpH = endPositionH  (maxseed);
+	int deviceCount;
+    cudaGetDeviceCount(&deviceCount);
+    omp_set_num_threads(deviceCount); // one OMP thread per GPU
 
-// 	unsigned short int overlapLenH = ai.seq_h_seed_length;
-// 	unsigned short int overlapLenV = ai.seq_v_seed_length;
+	int AlignmentsToBePerformed = seeds.size();
+	int numAlignmentsLocal = BATCH_SIZE * deviceCount; 
 
-// 	unsigned short int rlenH = ai.seq_h_length;
-// 	unsigned short int rlenV = ai.seq_v_length;
+	//	Load balancer that divides the work in batches of 100K alignments
+	for(int i = 0; i < AlignmentsToBePerformed; i += BATCH_SIZE * deviceCount)
+	{
+		if(AlignmentsToBePerformed < (i + BATCH_SIZE * deviceCount))
+			numAlignmentsLocal = AlignmentsToBePerformed % (BATCH_SIZE * deviceCount);
 
-// 	unsigned short int minLeft  = min(begpV, begpH);
-// 	unsigned short int minRight = min(rlenV - endpV, rlenH - endpH);
+		int* res = (int*)malloc(numAlignmentsLocal * sizeof(int));	
 
-// 	overlap = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
+		std::vector<string>::const_iterator first_t = seqHs.begin() + i;
+		std::vector<string>::const_iterator last_t  = seqHs.begin() + i + numAlignmentsLocal;
+		std::vector<string> bseqHs(first_t, last_t);
 
-// #ifndef FIXEDTHR
-// 	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)overlap);
+		std::vector<string>::const_iterator first_q = seqVs.begin() + i;
+		std::vector<string>::const_iterator last_q  = seqVs.begin() + i + numAlignmentsLocal;
+		std::vector<string> bseqVs(first_q, last_q);
 
-// 	// Contained overlaps removed for now, reintroduce them later
-// 	bool contained = false;
-// 	bool chimeric  = false; 
+		std::vector<SeedL>::const_iterator first_s = seeds.begin() + i;
+		std::vector<SeedL>::const_iterator last_s  = seeds.begin() + i + numAlignmentsLocal;
+		std::vector<SeedL> bseeds(first_s, last_s);
 
-// 	// seqH is column entry and seqV is row entry, for each column, we iterate over seqHs
-// 	int seqH = ai.seq_v_g_idx, seqV = ai.seq_h_g_idx;
+		extendSeedL(bseeds, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount);
+
+		for(int j = 0; j < numAlignmentsLocal; j++)
+		{
+			xscores[j+i].score = res[j];
+			xscores[j+i].seed  = bseeds[j];
+		}
+
+		free(res);
+	}
+}
+
+void GPULoganAligner::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
+	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign)
+{
+	auto maxseed = ai.seed;	// returns a seqan:Seed object
+
+	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the seqVs (vertical/horizonral direction)
+	// these four return seqan:Tposition objects
+	int begpV = beginPositionV(maxseed);
+	int endpV = endPositionV  (maxseed);
+	int begpH = beginPositionH(maxseed);
+	int endpH = endPositionH  (maxseed);
+
+	unsigned short int overlapLenH = ai.seq_h_seed_length;
+	unsigned short int overlapLenV = ai.seq_v_seed_length;
+
+	unsigned short int rlenH = ai.seq_h_length;
+	unsigned short int rlenV = ai.seq_v_length;
+
+	unsigned short int minLeft  = min(begpV, begpH);
+	unsigned short int minRight = min(rlenV - endpV, rlenH - endpH);
+
+	overlap = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
+
+#ifndef FIXEDTHR
+	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)overlap);
+
+	// Contained overlaps removed for now, reintroduce them later
+	bool contained = false;
+	bool chimeric  = false; 
+
+	// seqH is column entry and seqV is row entry, for each column, we iterate over seqHs
+	int seqH = ai.seq_v_g_idx, seqV = ai.seq_h_g_idx;
 	
-// 	// Reserve length/position if rc [x]
-// 	if(ai.rc)
-// 	{
-// 		uint tmp = begpV;
-// 		begpV = rlenV - endpV;
-// 		endpV = rlenV - tmp;
-// 	}
+	// Reserve length/position if rc [x]
+	if(ai.rc)
+	{
+		uint tmp = begpV;
+		begpV = rlenV - endpV;
+		endpV = rlenV - tmp;
+	}
 
-// 	if((begpH == 0 & rlenH-endpH == 0) || (begpV == 0 & rlenV-endpV == 0))
-// 		contained = true;
+	if((begpH == 0 & rlenH-endpH == 0) || (begpV == 0 & rlenV-endpV == 0))
+		contained = true;
 	
-// 	if(!contained)
-// 	{
-// 		// If noAlign is false, set passed to false if the score isn't good enough
-// 		if(!noAlign)
-// 		{
-// 			if((float)ai.xscore < myThr || overlap < minOverlapLen) passed = false;
-// 			else passed = true;
-// 		}
+	if(!contained)
+	{
+		// If noAlign is false, set passed to false if the score isn't good enough
+		if(!noAlign)
+		{
+			if((float)ai.xscore < myThr || overlap < MIN_OV_LEN) passed = false;
+			else passed = true;
+		}
 
-// 		if(passed)
-// 		{
-// 			uint32_t direction, directionT;
-// 			uint32_t suffix, suffixT;
+		if(passed)
+		{
+			uint32_t direction, directionT;
+			uint32_t suffix, suffixT;
 
-// 			// !reverse complement
-// 			if(!ai.rc)
-// 			{
-// 				if(begpH > begpV)
-// 				{
-// 					direction  = 1;
-// 					directionT = 2;
+			// !reverse complement
+			if(!ai.rc)
+			{
+				if(begpH > begpV)
+				{
+					direction  = 1;
+					directionT = 2;
 
-// 					suffix  = rlenV - endpV;
-// 					suffixT = begpH;
-// 				}	
-// 				else
-// 				{
-// 					direction  = 2;
-// 					directionT = 1;
+					suffix  = rlenV - endpV;
+					suffixT = begpH;
+				}	
+				else
+				{
+					direction  = 2;
+					directionT = 1;
 
-// 					suffix  = rlenH - endpH;
-// 					suffixT = begpV;
-// 				} 
-// 			}
-// 			else
-// 			{
-// 				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
-// 				{
-// 					direction  = 0;
-// 					directionT = 0;
+					suffix  = rlenH - endpH;
+					suffixT = begpV;
+				} 
+			}
+			else
+			{
+				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
+				{
+					direction  = 0;
+					directionT = 0;
 
-// 					suffix  = begpV; // seqV == 2
-// 					suffixT = begpH; // seqV == 2			
-// 				}
-// 				else
-// 				{
-// 					direction  = 3;
-// 					directionT = 3;
+					suffix  = begpV; // seqV == 2
+					suffixT = begpH; // seqV == 2			
+				}
+				else
+				{
+					direction  = 3;
+					directionT = 3;
 
-// 					suffix  = rlenV - endpV; // seqV == 1, seqH == 2	
-// 					suffixT = rlenH - endpH; // seqV == 1, seqH == 2		
-// 				}
-// 			}
-// 			overhang  = suffix  << 2 | direction;
-// 			overhangT = suffixT << 2 | directionT;
-// 		} // if(passed)
-// 	} // if(!contained)
+					suffix  = rlenV - endpV; // seqV == 1, seqH == 2	
+					suffixT = rlenH - endpH; // seqV == 1, seqH == 2		
+				}
+			}
+			overhang  = suffix  << 2 | direction;
+			overhangT = suffixT << 2 | directionT;
+		} // if(passed)
+	} // if(!contained)
 		
-// #else
-// 	if(ai.xscore >= FIXEDTHR)
-// 		passed = true;
-// #endif
-// }
+#else
+	if(ai.xscore >= FIXEDTHR)
+		passed = true;
+#endif
+}
 
 GPULoganAligner::GPULoganAligner(
     ScoringScheme scoring_scheme,
@@ -271,16 +318,15 @@ GPULoganAligner::apply_batch
 		if(!noAlign) 
 		{ 
 			// @GGGG-TODO: Check the parameter
-			RunLoganAlign(seqHs, seqVs, seeds, bpars, xscores);
+			RunLoganAlign(seqHs, seqVs, seeds, xscores);
 		}
 
 		end_time = std::chrono::system_clock::now();
     	add_time("XA:LoganAlign", (ms_t(end_time - start_time)).count());
 
-		// @TODO: fix post alignment
-
 		start_time = std::chrono::system_clock::now();
 		
+		// @GGGG-TODO: this runs everything twice right now; pretty sure I can avoid this using CCS, I can add an option also run some benchmark
 		// Compute stats
 		if (count == 0)	// overwrite in the first seed
 		{
