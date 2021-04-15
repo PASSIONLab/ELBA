@@ -266,7 +266,7 @@ struct GreaterBinaryOp : binary_function <T1, T2, OUT>
     {
         OUT me;
 
-        if((length(x) >= length(y) && dir(y) == dir(x))
+        if(length(x) >= length(y) && dir(y) == dir(x))
         {
             me.first  =   true;
             me.second = x.cend;
@@ -331,11 +331,11 @@ struct EWiseMulOp : binary_function <T, T2, T>
 };
 
 template <class T>
-struct CopyOverB : binary_function <T>
+struct CopyOverB : binary_function <T, T, T>
 {
-    T operator() (const T& x, T& y) const
+    T operator() (T& x, const T& y) const
     {
-        if(!x.cend) y.cend; // Copy over only if false
+        if(!y.cend) x.cend = y.cend; // Copy over only if false
         return y;
     }
 };
@@ -346,7 +346,10 @@ struct ZeroOverhangSR : unary_function <T, bool>
     // remove if overhang 0 and non end of contig; if end of contig i wanna keep that information
     bool operator() (const T& x) const
     { 
-        if(x.overhang == 0) // && x.cend == false 
+
+        if(x.cend) printf("%d\n", x.overhang);
+
+        if(x.overhang == 0 && !x.cend)
         {
             return true; 
         }

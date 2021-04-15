@@ -46,6 +46,8 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
     uint nnz, prev;
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
 
+    // PSpMat<dibella::CommonKmers>::MPI_DCCols LeftOver(B.getcommgrid());
+
     /* Gonna iterate on B until there are no more transitive edges to remove */
     // do
     // {
@@ -59,13 +61,13 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         PSpMat<dibella::CommonKmers>::MPI_DCCols C = Mult_AnXBn_DoubleBuff<MinPlusSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F);
         timeA2 += MPI_Wtime() - start;
 
-        C.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true); But
+        C.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true); 
        
         dibella::CommonKmers id;
-        // id.overhang = std::numeric_limits<uint32_t>::max(); 
+        id.overhang = std::numeric_limits<uint32_t>::max(); 
 
         // bool cend in B and F are modified and now copy cend = false values from B to F (element-wise)
-        F = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, F, 
+        F = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(F, B, 
             CopyOverB<dibella::CommonKmers>(), false, id); 
 
     #ifdef DIBELLA_DEBUG
@@ -124,9 +126,12 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
 
         // Prune if overhang == 0 and cend == false (if true I want to propagate that info) 
         // --Then if it's true it might change at the next iteration so I need one more step here to remove leftover from previous iteration (TODO)
-        // --I might also take this into account in the matmul semiring since there i want to ignore this kind of pseudo-zero
+        // --I might also take this into account in the matmul semiring since there I want to ignore this kind of pseudo-zero (TODO)
         B.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
         timeA += MPI_Wtime() - start;
+
+        // If (i,j).cend is true in leftover and now it's false in B then remove it from B.
+        // LeftOver = B;
 
         tu.print_str("Matrix B = B .* not(I): ");
         B.PrintInfo();
