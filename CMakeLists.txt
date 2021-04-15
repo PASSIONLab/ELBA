@@ -1,16 +1,19 @@
 cmake_minimum_required(VERSION 3.11)
-project(dibella)
+project(dibella LANGUAGES C CXX CUDA)
 set(CMAKE_CXX_STANDARD 14)
 
 add_subdirectory($ENV{BLOOM_HOME})
 
 include_directories(
 	$ENV{SEQAN_HOME}/include 
-	$ENV{COMBBLAS_HOME}/CombBLAS/install/include)
+	$ENV{COMBBLAS_HOME}/CombBLAS/install/include
+    $ENV{MYPROJDIR}/LOGAN)
 	# possibly add path to boost library (not necessary on Cori, just type 'module load boost')
 link_directories(
     $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
-    $ENV{BLOOM_HOME}/build)
+    $ENV{BLOOM_HOME}/build
+    $ENV{MYPROJDIR}/LOGAN/src/gpu/coalesced/) 
+    # I might need to fix this
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -108,6 +111,15 @@ if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
     target_link_libraries(dibella PUBLIC ${MPI_LIBRARIES})
 endif()
+
+find_library(CUDART_LIBRARY cudart ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
+if (CUDA_FOUND)
+	message(STATUS "Cuda found...")
+endif()
+message(STATUS "${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+message(STATUS "${CUDART_LIBRARY}")
+target_include_directories(dibella PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+target_link_libraries(dibella PUBLIC ${CUDART_LIBRARY})
 
 if(OPENMP_FOUND OR OpenMP_CXX_FOUND)
     # Set THREADED if OpenMP is found
