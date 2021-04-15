@@ -1,10 +1,22 @@
 /* Created by Saliya Ekanayake on 2019-07-05 and modified by Giulia Guidi on 4/14/2021. */
 
-// @TODO: import load balancer from BELLA
-
 #include "../../include/pw/GPULoganAligner.hpp"
+#include "logan.cuh"
 
 // uint minOverlapLen = 10000;
+
+char
+complementbase(char n) {
+	switch(n)
+	{
+	case 'A':
+		return 'T';
+		std::end  (cpyseq),
+		std::begin(cpyseq),
+	complementbase);
+
+	return cpyseq;
+}
 
 // void GPULoganAligner::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
 // 	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign)
@@ -149,7 +161,7 @@ GPULoganAligner::apply_batch
     int debugThr
 )
 {
-	seqan::ExecutionPolicy<seqan::Parallel, seqan::Vectorial> exec_policy;
+	// seqan::ExecutionPolicy<seqan::Parallel, seqan::Vectorial> exec_policy;
 
 	int numThreads = 1;
 	#ifdef THREADED
@@ -160,10 +172,9 @@ GPULoganAligner::apply_batch
 	#endif
 
 	uint64_t npairs = seqan::length(seqsh);
-	setNumThreads(exec_policy, numThreads);
+	// setNumThreads(exec_policy, numThreads);
 	
-	lfs << "processing batch of size " << npairs << " with "
-		<< numThreads << " threads " << std::endl;
+	lfs << "processing batch of size " << npairs << " with " << numThreads << " threads " << std::endl;
 
 	// for multiple seeds we store the seed with the highest identity
 	AlignmentInfo *ai = new AlignmentInfo[npairs];
@@ -182,17 +193,16 @@ GPULoganAligner::apply_batch
 	for(int count = 0; count < seed_count; ++count)
 	{
 		auto start_time = std::chrono::system_clock::now();
-
-		// seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsh_ex;
-		// seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsv_ex;
-		// resize(seqsh_ex, npairs, seqan::Exact{});
-		// resize(seqsv_ex, npairs, seqan::Exact{});
 	
-		// @GGGG: keep the order for the post alignment evaluation (this might not be feasible in this case? measure slowdown)
+		// @GGGG: keep the order for the post alignment evaluation (measure slowdown)
 		// #pragma omp parallel for 
 		for(IT j = start; j < end; ++j) // I acculate sequences for GPU batch alignment
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
+				// Init result
+				logan::loganResult localRes; 
+
+				// Get seed location
 				dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 
 			#ifdef TWOSEED
@@ -206,157 +216,88 @@ GPULoganAligner::apply_batch
 				ushort LocalSeedHOffset = cks.pos[0].second;
 			#endif
 
-				seqan::Dna5String seedH;
-				seqan::Dna5String seedV;
-
-				auto start_time = std::chrono::system_clock::now();
-				auto end_time   = std::chrono::system_clock::now();
-
-				// @GGGG-TODO: remove this stuff and only use string
-				seedH = infix(seqan::source(seqsh[i]), beginPositionH(seed), endPositionH(seed));
-				seedV = infix(seqan::source(seqsv[i]), beginPositionV(seed), endPositionV(seed)); 
-
-				seqan::Dna5StringReverseComplement twin(seedH);
-
-			#ifdef STATS
-				seqan::Align<seqan::Dna5String> align;
-				resize(rows(align), 2);
-			#endif
-
-				std::string seqV = seqsv[i];
+				// Get sequences
 				std::string seqH = seqsh[i];
+				std::string seqV = seqsv[i];
 
-				logan::loganResult localRes; // not sure we need logan::
+				uint lenH = seqH.length();
+				uint lenV = seqV.length();
 
-				if(twin == seedV)
+				// Get seed string
+				std::string seedH = seqH.substr(LocalSeedVOffsetH, seed_length);
+				std::string seedV = seqV.substr(LocalSeedVOffsetV, seed_length);
+
+				std::string twinseedH = reversecomplement(seedH);
+
+				if(twinseedH == seedV)
 				{
-					localRes.strand = true;
-
 					std::string twinseqH(seqH);
 
-					// @GGGG-TODO: remove this stuff and only use string
-					seqan::Dna5String twinseqH = seqan::source(seqsh[i]);
-					seqan::Dna5StringReverseComplement twinRead(twinseqH);
+					std::reverse(std::begin(twinseqH), std::end(twinseqH));
+					std::transform(std::begin(twinseqH), std::end(twinseqH), std::begin(twinseqH), complementbase);
+
 					LocalSeedHOffset = length(twinseqH) - LocalSeedHOffset - seed_length;
 
 					logan::SeedL seed(LocalSeedHOffset, LocalSeedVOffset, LocalSeedHOffset + seed_length, LocalSeedVOffset + seed_length);
 
-					if(!noAlign) 
-					{
-						// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
-						seeds.push_back(seed);
-						seqVs.push_back(seqV);
-						seqHs.push_back(twinseqH);
+					// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
+					seeds.push_back(seed);
+					seqVs.push_back(seqV);
+					seqHs.push_back(twinseqH);
 
-						xscores.push_back(localRes);
-
-					#ifdef STATS
-						assignSource(row(align, 0), infix(twinRead, beginPositionH(seed),
-														endPositionH(seed)));
-						assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
-														endPositionV(seed)));
-					#endif
-					}
-					else // @GGGG-TODO: the logic is a bit different than BELLA -- double check and clean unused code
-					{
-						localRes.xscore = 0;
-
-						seeds.push_back(seed);
-						seqVs.push_back(seqV);
-						seqHs.push_back(twinseqH);
-
-						xscores.push_back(localRes);
-					}
+					localRes.strand = true;
+					xscores.push_back(localRes);
 				}
 				else
 				{
-					localRes.strand = false;
-
-					// @GGGG-TODO: remove this stuff and only use string
-					seqan::Dna5String twinseqH = seqan::source(seqsh[i]);
-					seqan::Dna5StringReverseComplement twinRead(twinseqH);
-					LocalSeedHOffset = length(twinseqH) - LocalSeedHOffset - seed_length;
-
 					logan::SeedL seed(LocalSeedHOffset, LocalSeedVOffset, LocalSeedHOffset + seed_length, LocalSeedVOffset + seed_length);
 
-					if(!noAlign) 
-					{
-						// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
-						seeds.push_back(seed);
-						seqVs.push_back(seqV);
-						seqHs.push_back(twinseqH);
+					// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
+					seeds.push_back(seed);
+					seqVs.push_back(seqV);
+					seqHs.push_back(seqH);
 
-						xscores.push_back(localRes);
-						
-					#ifdef STATS
-						assignSource(row(align, 0), infix(twinRead, beginPositionH(seed),
-														endPositionH(seed)));
-						assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
-														endPositionV(seed)));
-					#endif
-					}
-					else // @GGGG-TODO: the logic is a bit different than BELLA -- double check and clean unused code
-					{
-						localRes.xscore = 0;
-
-						seeds.push_back(seed);
-						seqVs.push_back(seqV);
-						seqHs.push_back(twinseqH);
-
-						xscores.push_back(localRes);
-					}
+					localRes.strand = false;
+					xscores.push_back(localRes);
 				}
-
-			#ifdef STATS
-				xscores[i] = extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]),
-						seqan::EXTEND_BOTH, scoring_scheme,
-						xdrop, (int)k, seqan::GappedXDrop());
-				assignSource(seqsh_ex[i],
-							infix(seqan::source(seqsh[i]),
-								beginPositionH(seed), endPositionH(seed)));
-				assignSource(seqsv_ex[i],
-							infix(seqan::source(seqsv[i]),
-								beginPositionV(seed), endPositionV(seed)));
-			#endif
-				seeds[i] = seed;
-				seedlens[i].first  = static_cast<ushort>(seed._endPositionH -
-														seed._beginPositionH);
-				seedlens[i].second = static_cast<ushort>(seed._endPositionV -
-														seed._beginPositionV);
 			}
 
 		auto end_time = std::chrono::system_clock::now();
-    	add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
+    	add_time("XA:LoganPreprocess", (ms_t(end_time - start_time)).count());
 
-	#ifdef STATS
 		start_time = std::chrono::system_clock::now();
-		// alignment
-		globalAlignment(exec_policy, seqsh_ex, seqsv_ex, scoring_scheme);
-		
+
+		// Call LOGAN only if noAlign is false
+		if(!noAlign) 
+		{ 
+			// @GGGG-TODO: Check the parameter
+			RunLoganAlign(seqHs, seqVs, seeds, bpars, xscores);
+		}
+
 		end_time = std::chrono::system_clock::now();
-    	add_time("XA:global_alignment", (ms_t(end_time - start_time)).count());
-	#endif
+    	add_time("XA:LoganAlign", (ms_t(end_time - start_time)).count());
+
+		// @TODO: fix post alignment
+
 		start_time = std::chrono::system_clock::now();
 		
 		// Compute stats
 		if (count == 0)	// overwrite in the first seed
 		{
-		#pragma omp parallel for
+			// @GGGG: keep the order for the post alignment evaluation (measure slowdown)
+			// #pragma omp parallel for 
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
-			#ifdef STATS
-				computeAlignmentStats(ai[i].stats, seqsh_ex[i], seqsv_ex[i],
-									  scoring_scheme);
-			#endif
-				ai[i].xscore = xscores[i];
-				ai[i].rc     = strands[i];
-				ai[i].seed   =   seeds[i];
+				ai[i].xscore = xscores[i].score; 
+				ai[i].rc     = xscores[i].strand;
+				ai[i].seed   = xscores[i].seed;  
 
 				ai[i].seq_h_length = seqan::length(seqan::source(seqsh[i]));
 				ai[i].seq_v_length = seqan::length(seqan::source(seqsv[i]));
 
-				ai[i].seq_h_seed_length = seedlens[i].first;
-				ai[i].seq_v_seed_length = seedlens[i].second;
+				// @GGGG: this is a bit redundant since we can extract it from seed
+				ai[i].seq_h_seed_length = ai[i].seed.endPositionH - ai[i].seed.beginPositionH;
+				ai[i].seq_v_seed_length = ai[i].seed.endPositionV - ai[i].seed.beginPositionV;
 
 				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
     			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
@@ -364,29 +305,19 @@ GPULoganAligner::apply_batch
 		}
 		else
 		{
-		#pragma omp parallel for
+			// @GGGG: keep the order for the post alignment evaluation (measure slowdown)
+			// #pragma omp parallel for 
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
+				if (xscores[i].score > ai[i].xscore)
+				{
+					ai[i].xscore = xscores[i].score;
+					ai[i].rc     = xscores[i].strand;
+					ai[i].seed   = xscores[i].seed;  
 
-			#ifdef STATS
-				seqan::AlignmentStats stats;
-				computeAlignmentStats(stats, seqsh_ex[i], seqsv_ex[i],
-									  scoring_scheme);
-		
-				if (stats.alignmentIdentity > ai[i].stats.alignmentIdentity)
-				{
-					ai[i].stats				= stats;
-					ai[i].seq_h_seed_length = seedlens[i].first;
-					ai[i].seq_v_seed_length = seedlens[i].second;
-				}
-			#else
-				if (xscores[i] > ai[i].xscore) // GGGG: TODO double check this logic with fresh neurons
-				{
-					ai[i].xscore = xscores[i];
-					ai[i].rc     = strands[i];
-					ai[i].seed   =   seeds[i];
-					ai[i].seq_h_seed_length = seedlens[i].first;
-					ai[i].seq_v_seed_length = seedlens[i].second;
+					// @GGGG: this is a bit redundant since we can extract it from seed
+					ai[i].seq_h_seed_length = ai[i].seed.endPositionH - ai[i].seed.beginPositionH;
+					ai[i].seq_v_seed_length = ai[i].seed.endPositionV - ai[i].seed.beginPositionV;
 				}
 			#endif
 			}
@@ -396,14 +327,10 @@ GPULoganAligner::apply_batch
     	add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());
 	}
 
-
-	delete [] seedlens;
-	delete [] xscores;
-	delete [] strands;
-
 	auto start_time = std::chrono::system_clock::now();
 	
-	// Dump alignment info
+	// Dump alignment info 
+	// @GGGG: this should be fine parallel now
 	#pragma omp parallel
 	{
 	    #pragma omp for
