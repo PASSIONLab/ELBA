@@ -2,11 +2,11 @@
 
 // @TODO: import load balancer from BELLA
 
-#include "../../include/pw/SeedExtendXdrop.hpp"
+#include "../../include/pw/GPULoganAligner.hpp"
 
 uint minOverlapLen = 10000;
 
-void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
+void GPULoganAligner::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
 	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
@@ -91,16 +91,16 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 					direction  = 0;
 					directionT = 0;
 
-					suffix  = begpV; 	// seqV == 2
-					suffixT = begpH; 	// seqV == 2			
+					suffix  = begpV; // seqV == 2
+					suffixT = begpH; // seqV == 2			
 				}
 				else
 				{
 					direction  = 3;
 					directionT = 3;
 
-					suffix  = rlenV - endpV;	// seqV == 1, seqH == 2	
-					suffixT = rlenH - endpH;	// seqV == 1, seqH == 2		
+					suffix  = rlenV - endpV; // seqV == 1, seqH == 2	
+					suffixT = rlenH - endpH; // seqV == 1, seqH == 2		
 				}
 			}
 			overhang  = suffix  << 2 | direction;
@@ -114,7 +114,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 #endif
 }
 
-SeedExtendXdrop::SeedExtendXdrop(
+GPULoganAligner::GPULoganAligner(
     ScoringScheme scoring_scheme,
     ushort seed_length, int xdrop, int seed_count):
     PairwiseFunction(),
@@ -122,146 +122,18 @@ SeedExtendXdrop::SeedExtendXdrop(
     seed_length(seed_length), xdrop(xdrop), seed_count(seed_count){
 }
 
-void SeedExtendXdrop::apply(
+void GPULoganAligner::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
     seqan::Dna5String *seqH, seqan::Dna5String *seqV, ushort k,
     dibella::CommonKmers &cks, std::stringstream& ss)
 {
-  AlignmentInfo ai;
-
-  for (int count = 0; count < seed_count; ++count)
-  {
-#ifdef TWOSEED
-    // row sequence is the same thing as vertical sequence
-    ushort LocalSeedVOffset = (count == 0) ? cks.first.first
-                                                  : cks.second.first;
-	// l_row_seed_start_offset = LocalSeedVOffset											  
-    // col sequence is the same thing as horizontal sequence
-    ushort LocalSeedHOffset = (count == 0) ? cks.first.second 
-                                                  : cks.second.second;
-	// l_col_seed_start_offset = LocalSeedHOffset
-#else
-    // row sequence is the same thing as vertical sequence
-    ushort LocalSeedVOffset = cks.pos[0].first;
-    // col sequence is the same thing as horizontal sequence
-    ushort LocalSeedHOffset = cks.pos[0].second;
-#endif
-
-	seqan::Dna5String seedH;
-	seqan::Dna5String seedV;
-
-	auto start_time = std::chrono::system_clock::now();
-	auto end_time   = std::chrono::system_clock::now();
-
-    // Seed creation params are:
-    // horizontal seed start offset, vertical seed start offset, length
-    TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
-
-	seedH = infix(*seqH, beginPositionH(seed), endPositionH(seed));
-	seedV = infix(*seqV, beginPositionV(seed), endPositionV(seed));
-
-	seqan::Dna5StringReverseComplement twin(seedH);
-
-	seqan::Align<seqan::Dna5String> align;
-	resize(rows(align), 2);
-
-	if(twin == seedV)
-	{
-		ai.rc = true;
-		seqan::Dna5String twinseqH = *seqH;
-		seqan::Dna5StringReverseComplement twinRead(twinseqH);
-		LocalSeedHOffset = length(twinseqH) - LocalSeedHOffset - seed_length;
-
-		setBeginPositionH(seed, LocalSeedHOffset);
-		setBeginPositionV(seed, LocalSeedVOffset);
-		setEndPositionH(seed, LocalSeedHOffset + seed_length);
-		setEndPositionV(seed, LocalSeedVOffset + seed_length);
-
-		/* Perform match extension */
-		start_time = std::chrono::system_clock::now();
-		ai.xscore  = extendSeed(seed, twinseqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, (int)k, seqan::GappedXDrop());
-		end_time   = std::chrono::system_clock::now();
-		add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
-
-	#ifdef STATS
-		assignSource(row(align, 0), infix(twinseqH, beginPositionH(seed),
-										endPositionH(seed)));
-		assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
-										endPositionV(seed)));
-	#endif
-
-	}
-	else
-	{
-		ai.rc = false;
-		start_time = std::chrono::system_clock::now();
-		ai.xscore = extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, (int)k, seqan::GappedXDrop());
-		end_time = std::chrono::system_clock::now();
-		add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
-
-	#ifdef STATS
-		assignSource(row(align, 0), infix(*seqH, beginPositionH(seed),
-										endPositionH(seed)));
-		assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
-										endPositionV(seed)));
-	#endif
-	} 
-
-    /*! Note. This aligns the extended seeds globally, NOT the original
-     * two sequences.
-     *
-     * It seems kind of a waste to have to do the alignment
-     * again after xdrop seed extension but that's the only
-     * way to get the alignment info in SeqAn.
-     * See https://seqan.readthedocs.io/en/master/Tutorial/Algorithms/SeedExtension.html
-     */
-#ifdef STATS
-    start_time = std::chrono::system_clock::now();
-    globalAlignment(align, scoring_scheme);
-    end_time = std::chrono::system_clock::now();
-    add_time("XA:global_alignment", (ms_t(end_time - start_time)).count());
-
-    // Compute the statistics of the alignment.
-    start_time = std::chrono::system_clock::now();
-    computeAlignmentStats(ai[count].stats, align, scoring_scheme);
-    end_time = std::chrono::system_clock::now();
-    add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());
-#endif
-
-    ai.seq_h_length = length(*seqH);
-    ai.seq_v_length = length(*seqV);
-
-	ai.seed = seed;
-    ai.seq_h_seed_length = static_cast<ushort>(seed._endPositionH -
-                                               seed._beginPositionH);
-    ai.seq_v_seed_length = static_cast<ushort>(seed._endPositionV -
-                                               seed._beginPositionV);
-    ai.seq_h_g_idx = g_col_idx;
-    ai.seq_v_g_idx = g_row_idx;
-  }
-
-#ifdef STATS
-  if (seed_count > 2)
-  {
-    max_ai = ai[0].stats.alignmentIdentity > ai[1].stats.alignmentIdentity
-    ? ai[0] : ai[1];
-  }
-  double alen_minus_gapopens = (max_ai.stats.alignmentLength - max_ai.stats.numGapOpens) * 1.0;
-  ss << g_col_idx << "," << g_row_idx << "," << max_ai.stats.alignmentIdentity
-     << "," << max_ai.seq_h_length << "," << max_ai.seq_v_length
-     << "," << max_ai.seq_h_seed_length  << "," << max_ai.seq_v_seed_length
-     << "," << max_ai.stats.numGapOpens
-     << "," << alen_minus_gapopens / max_ai.seq_h_length
-     << "," << alen_minus_gapopens / max_ai.seq_v_length
-	 << "," << cks.count
-	 << std::endl;
-#endif
+    // ...
 }
 
 // @NOTE This is hard-coded to the number of seeds being <= 2
 void
-SeedExtendXdrop::apply_batch
+GPULoganAligner::apply_batch
 (
     seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsh,
 	seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsv,
@@ -310,9 +182,10 @@ SeedExtendXdrop::apply_batch
 		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsv_ex;
 		resize(seqsh_ex, npairs, seqan::Exact{});
 		resize(seqsv_ex, npairs, seqan::Exact{});
-		
-	// extend the current seed and form a new gaps object
-	#pragma omp parallel for
+	
+    // @GGGG: keep the order for the post alignment evaluation (this might not be feasible in this case? measure slowdown)
+    // #pragma omp parallel for 
+	for(IT j = start; j < end; ++j) // I acculate sequences for GPU batch alignment
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
