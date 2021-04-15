@@ -5,7 +5,7 @@
 uint minOverlapLen = 10000;
 
 void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
-	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<ushort>& perprocessarray)
+	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -512,7 +512,7 @@ SeedExtendXdrop::apply_batch
 			bool passed = false;
 
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign, perprocessarray);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign);
 
 			if (passed)
 			{

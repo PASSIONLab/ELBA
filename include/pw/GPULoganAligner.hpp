@@ -1,16 +1,16 @@
-// Created by Saliya Ekanayake on 2019-07-05.
+/* Created by Giulia Guidi on 4/14/2021 */
 
-#ifndef DIBELLA_SEEDEXTENDXDROP_HPP
-#define DIBELLA_SEEDEXTENDXDROP_HPP
+#ifndef DIBELLA_GPULOGAN_HPP
+#define DIBELLA_GPULOGAN_HPP
 
 #include "PairwiseFunction.hpp"
 #include "../AlignmentInfo.hpp"
 
 //template <typename TSequenceValue, typename TSpec>
-class SeedExtendXdrop : public PairwiseFunction{
+class GPULoganAligner : public PairwiseFunction{
 public:
 
-  SeedExtendXdrop(ScoringScheme scoring_scheme,
+  GPULoganAligner(ScoringScheme scoring_scheme,
                   ushort seed_length, int xdrop, int seed_count);
 
   void
@@ -45,4 +45,4 @@ private:
   int seed_count;
 };
 
-#endif //DIBELLA_SEEDEXTENDXDROP_HPP
+#endif //DIBELLA_GPULOGAN_HPP
