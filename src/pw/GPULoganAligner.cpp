@@ -1,23 +1,28 @@
 /* Created by Saliya Ekanayake on 2019-07-05 and modified by Giulia Guidi on 4/14/2021. */
 
 #include "../../include/pw/GPULoganAligner.hpp"
-#include "../loganGPU/logan.cuh"
+#include "logan.cuh"
 
 #define BATCH_SIZE 100000
 #define MIN_OV_LEN 10000
 
-char
-complementbase(char n) {
-	switch(n)
-	{
-	case 'A':
-		return 'T';
-		std::end  (cpyseq),
-		std::begin(cpyseq),
-	complementbase);
-
-	return cpyseq;
-}
+char 
+complementbase(char n)
+{   
+    switch(n)
+    {   
+    case 'A':
+        return 'T';
+    case 'T':
+        return 'A';
+    case 'G':
+        return 'C';
+    case 'C':
+        return 'G';
+    }   
+    assert(false);
+    return ' ';
+} 
 
 void 
 RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs, vector<SeedL>& seeds, vector<loganResult>& xscores)
@@ -365,7 +370,6 @@ GPULoganAligner::apply_batch
 					ai[i].seq_h_seed_length = ai[i].seed.endPositionH - ai[i].seed.beginPositionH;
 					ai[i].seq_v_seed_length = ai[i].seed.endPositionV - ai[i].seed.beginPositionV;
 				}
-			#endif
 			}
 		}
 

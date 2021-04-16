@@ -20,12 +20,14 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "../include/DistributedPairwiseRunner.hpp"
 #include "../include/cxxopts.hpp"
 #include "../include/pw/SeedExtendXdrop.hpp"
+#include "../include/pw/GPULoganAligner.hpp"
 #include "../include/pw/OverlapFinder.hpp"
 #include "../include/pw/FullAligner.hpp"
 #include "../include/kmer/KmerOps.hpp"
 #include "../include/kmer/KmerIntersectSR.hpp"
 #include "../include/Utils.hpp"
 #include "../include/TransitiveReductionSR.hpp"
+
 // #include "Contig.cpp"
 // #include "Assembly.cpp"
 
@@ -277,9 +279,17 @@ int main(int argc, char **argv)
   PairwiseFunction* pf = nullptr;
   uint64_t local_alignments = 1;
 
-  if(xdropAlign)
+  bool LoganAlign = true;
+
+  if(LoganAlign)
   {
-    pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
+    pf = new GPULoganAligner(scoring_scheme, klength, xdrop, seed_count);	    
+    dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
+	  local_alignments = static_cast<GPULoganAligner*>(pf)->nalignments;
+  }
+  else if(xdropAlign)
+  {
+    pf = new SeedExtendXdrop(scoring_scheme, klength, xdrop, seed_count);	    
     dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
 	  local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
   }

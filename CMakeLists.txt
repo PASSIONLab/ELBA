@@ -7,7 +7,7 @@ add_subdirectory($ENV{BLOOM_HOME})
 include_directories(
 	$ENV{SEQAN_HOME}/include 
 	$ENV{COMBBLAS_HOME}/CombBLAS/install/include
-    $ENV{MYPROJDIR}/LOGAN)
+    $ENV{MYPROJDIR}/LOGAN/src/gpu/coalesced/)
 	# possibly add path to boost library (not necessary on Cori, just type 'module load boost')
 link_directories(
     $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
@@ -26,6 +26,7 @@ else()
 endif()
 
 set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
+set(CMAKE_CUDA_FLAGS "-arch=sm_70 -O3 -maxrregcount=32 -std=c++14 -Xcompiler -fopenmp -w")
 
 find_package(MPI REQUIRED)
 find_package(OpenMP REQUIRED)
@@ -83,6 +84,7 @@ add_executable(dibella
         include/TransitiveReductionSR.hpp
         include/CC.h
         include/pw/GPULoganAligner.hpp
+        src/pw/GPULoganAligner.cpp
 	)
 
 set(LOWER_KMER_FREQ 2
