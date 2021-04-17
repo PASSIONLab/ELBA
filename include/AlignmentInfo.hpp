@@ -8,10 +8,6 @@
 
 struct AlignmentInfo
 {
-
-  // @GGGG: for full smith-waterman, I might remove it
-  seqan::AlignmentStats stats;
-
 	int xscore;
 	TSeed seed;
   

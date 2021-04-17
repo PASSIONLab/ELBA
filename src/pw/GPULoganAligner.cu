@@ -85,7 +85,8 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs, vector<LSeed>& seeds
 	}
 }
 
-void GPULoganAligner::PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
+// GPULoganAligner::
+void PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
 	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign)
 {
 	auto maxseed = ai.Lseed;	// returns a seqan:Seed object
@@ -214,8 +215,8 @@ void GPULoganAligner::apply(
 void
 GPULoganAligner::apply_batch
 (
-    seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsh,
-	seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsv,
+    seqan::StringSet<seqan::Dna5String> &seqsh,
+	seqan::StringSet<seqan::Dna5String> &seqsv,
 	uint64_t *lids,
 	uint64_t col_offset,
 	uint64_t row_offset,
@@ -357,8 +358,8 @@ GPULoganAligner::apply_batch
 				ai[i].rc     = xscores[i].rc;
 				ai[i].Lseed   = xscores[i].seed;  
 
-				ai[i].seq_h_length = seqan::length(seqan::source(seqsh[i]));
-				ai[i].seq_v_length = seqan::length(seqan::source(seqsv[i]));
+				ai[i].seq_h_length = seqan::length(seqsh[i]);
+				ai[i].seq_v_length = seqan::length(seqsv[i]);
 
 				// @GGGG: this is a bit redundant since we can extract it from seed
 				ai[i].seq_h_seed_length = ai[i].Lseed.endPositionH - ai[i].Lseed.beginPositionH;
