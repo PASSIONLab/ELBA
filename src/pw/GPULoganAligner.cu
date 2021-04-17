@@ -1,7 +1,7 @@
 /* Created by Saliya Ekanayake on 2019-07-05 and modified by Giulia Guidi on 4/14/2021. */
 
 #include "../../include/pw/GPULoganAligner.hpp"
-#include "logan.cuh"
+#include "../../include/cuda/logan.cuh"
 
 #define BATCH_SIZE 100000
 #define MIN_OV_LEN 10000
@@ -24,8 +24,23 @@ complementbase(char n)
     return ' ';
 } 
 
+std::string
+reversecomplement(const std::string& seq) {
+
+	std::string cpyseq = seq;
+	std::reverse(cpyseq.begin(), cpyseq.end());
+
+	std::transform(
+		std::begin(cpyseq),
+		std::end  (cpyseq),
+		std::begin(cpyseq),
+	complementbase);
+
+	return cpyseq;
+}
+
 void 
-RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs, vector<SeedL>& seeds, vector<loganResult>& xscores)
+RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs, vector<LSeed>& seeds, vector<loganResult>& xscores, int& xdrop, ushort& seed_length)
 {
 	ScoringSchemeL sscheme(1, -1, -1, -1);
 	std::vector<ScoringSchemeL> scoring;
@@ -54,11 +69,11 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs, vector<SeedL>& seeds
 		std::vector<string>::const_iterator last_q  = seqVs.begin() + i + numAlignmentsLocal;
 		std::vector<string> bseqVs(first_q, last_q);
 
-		std::vector<SeedL>::const_iterator first_s = seeds.begin() + i;
-		std::vector<SeedL>::const_iterator last_s  = seeds.begin() + i + numAlignmentsLocal;
-		std::vector<SeedL> bseeds(first_s, last_s);
+		std::vector<LSeed>::const_iterator first_s = seeds.begin() + i;
+		std::vector<LSeed>::const_iterator last_s  = seeds.begin() + i + numAlignmentsLocal;
+		std::vector<LSeed> bseeds(first_s, last_s);
 
-		extendSeedL(bseeds, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount);
+		extendSeedL(bseeds, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount, omp_get_num_threads());
 
 		for(int j = 0; j < numAlignmentsLocal; j++)
 		{
@@ -70,17 +85,17 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs, vector<SeedL>& seeds
 	}
 }
 
-void GPULoganAligner::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
+void GPULoganAligner::PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
 	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign)
 {
-	auto maxseed = ai.seed;	// returns a seqan:Seed object
+	auto maxseed = ai.Lseed;	// returns a seqan:Seed object
 
 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the seqVs (vertical/horizonral direction)
 	// these four return seqan:Tposition objects
-	int begpV = beginPositionV(maxseed);
-	int endpV = endPositionV  (maxseed);
-	int begpH = beginPositionH(maxseed);
-	int endpH = endPositionH  (maxseed);
+	int begpV = getBeginPositionV(maxseed);
+	int endpV = getEndPositionV  (maxseed);
+	int begpH = getBeginPositionH(maxseed);
+	int endpH = getEndPositionH  (maxseed);
 
 	unsigned short int overlapLenH = ai.seq_h_seed_length;
 	unsigned short int overlapLenV = ai.seq_v_seed_length;
@@ -229,16 +244,13 @@ GPULoganAligner::apply_batch
 	lfs << "processing batch of size " << npairs << " with " << numThreads << " threads " << std::endl;
 
 	// for multiple seeds we store the seed with the highest identity
-	AlignmentInfo *ai = new AlignmentInfo[npairs];
+	LoganAlignmentInfo *ai = new LoganAlignmentInfo[npairs];
 	std::pair<ushort, ushort> *seedlens = new std::pair<ushort, ushort>[npairs];
-
-	// bool *strands = new bool[npairs]; // Directly in loganResult
-	// int  *xscores = new int[npairs];
-	// TSeed  *seeds = new TSeed[npairs];
 
 	std::vector<string> seqHs;
 	std::vector<string> seqVs;
-	std::vector<SeedL>  seeds;
+
+	std::vector<LSeed> seeds;
 	std::vector<loganResult> xscores;
 
 	/* GGGG: seed_count is hardcoded here (2) */
@@ -248,71 +260,73 @@ GPULoganAligner::apply_batch
 	
 		// @GGGG: keep the order for the post alignment evaluation (measure slowdown)
 		// #pragma omp parallel for 
-		for(IT j = start; j < end; ++j) // I acculate sequences for GPU batch alignment
-			for (uint64_t i = 0; i < npairs; ++i)
+		for (uint64_t i = 0; i < npairs; ++i) // I acculate sequences for GPU batch alignment
+		{
+			// Init result
+			loganResult localRes; 
+
+			// Get seed location
+			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
+
+		#ifdef TWOSEED
+			ushort LocalSeedVOffset =
+				(count == 0) ? cks->first.first : cks->second.first;
+			ushort LocalSeedHOffset =
+				(count == 0) ? cks->first.second : cks->second.second;
+		#else
+			// GGGG: TODO check reverse complement
+			ushort LocalSeedVOffset = cks.pos[0].first;
+			ushort LocalSeedHOffset = cks.pos[0].second;
+		#endif
+
+			// Get sequences
+			std::string seqH;
+			std::string seqV;
+
+			seqan::assign(seqH, seqsh[i]);
+			seqan::assign(seqV, seqsv[i]);
+
+			uint lenH = seqH.length();
+			uint lenV = seqV.length();
+
+			// Get seed string
+			std::string seedH = seqH.substr(LocalSeedHOffset, seed_length);
+			std::string seedV = seqV.substr(LocalSeedVOffset, seed_length);
+
+			std::string twinseedH = reversecomplement(seedH);
+
+			if(twinseedH == seedV)
 			{
-				// Init result
-				logan::loganResult localRes; 
+				std::string twinseqH(seqH);
 
-				// Get seed location
-				dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
+				std::reverse(std::begin(twinseqH), std::end(twinseqH));
+				std::transform(std::begin(twinseqH), std::end(twinseqH), std::begin(twinseqH), complementbase);
 
-			#ifdef TWOSEED
-				ushort LocalSeedVOffset =
-					(count == 0) ? cks->first.first : cks->second.first;
-				ushort LocalSeedHOffset =
-					(count == 0) ? cks->first.second : cks->second.second;
-			#else
-				// GGGG: TODO check reverse complement
-				ushort LocalSeedVOffset = cks.pos[0].first;
-				ushort LocalSeedHOffset = cks.pos[0].second;
-			#endif
+				LocalSeedHOffset = twinseqH.length(); - LocalSeedHOffset - seed_length;
 
-				// Get sequences
-				std::string seqH = seqsh[i];
-				std::string seqV = seqsv[i];
+				LSeed seed(LocalSeedHOffset, LocalSeedVOffset, LocalSeedHOffset + seed_length, LocalSeedVOffset + seed_length);
 
-				uint lenH = seqH.length();
-				uint lenV = seqV.length();
+				// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
+				seeds.push_back(seed);
+				seqVs.push_back(seqV);
+				seqHs.push_back(twinseqH);
 
-				// Get seed string
-				std::string seedH = seqH.substr(LocalSeedVOffsetH, seed_length);
-				std::string seedV = seqV.substr(LocalSeedVOffsetV, seed_length);
-
-				std::string twinseedH = reversecomplement(seedH);
-
-				if(twinseedH == seedV)
-				{
-					std::string twinseqH(seqH);
-
-					std::reverse(std::begin(twinseqH), std::end(twinseqH));
-					std::transform(std::begin(twinseqH), std::end(twinseqH), std::begin(twinseqH), complementbase);
-
-					LocalSeedHOffset = length(twinseqH) - LocalSeedHOffset - seed_length;
-
-					logan::SeedL seed(LocalSeedHOffset, LocalSeedVOffset, LocalSeedHOffset + seed_length, LocalSeedVOffset + seed_length);
-
-					// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
-					seeds.push_back(seed);
-					seqVs.push_back(seqV);
-					seqHs.push_back(twinseqH);
-
-					localRes.strand = true;
-					xscores.push_back(localRes);
-				}
-				else
-				{
-					logan::SeedL seed(LocalSeedHOffset, LocalSeedVOffset, LocalSeedHOffset + seed_length, LocalSeedVOffset + seed_length);
-
-					// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
-					seeds.push_back(seed);
-					seqVs.push_back(seqV);
-					seqHs.push_back(seqH);
-
-					localRes.strand = false;
-					xscores.push_back(localRes);
-				}
+				localRes.rc = true;
+				xscores.push_back(localRes);
 			}
+			else
+			{
+				LSeed seed(LocalSeedHOffset, LocalSeedVOffset, LocalSeedHOffset + seed_length, LocalSeedVOffset + seed_length);
+
+				// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
+				seeds.push_back(seed);
+				seqVs.push_back(seqV);
+				seqHs.push_back(seqH);
+
+				localRes.rc = false;
+				xscores.push_back(localRes);
+			}
+		}
 
 		auto end_time = std::chrono::system_clock::now();
     	add_time("XA:LoganPreprocess", (ms_t(end_time - start_time)).count());
@@ -323,7 +337,7 @@ GPULoganAligner::apply_batch
 		if(!noAlign) 
 		{ 
 			// @GGGG-TODO: Check the parameter
-			RunLoganAlign(seqHs, seqVs, seeds, xscores);
+			RunLoganAlign(seqHs, seqVs, seeds, xscores, xdrop, seed_length);
 		}
 
 		end_time = std::chrono::system_clock::now();
@@ -340,15 +354,15 @@ GPULoganAligner::apply_batch
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
 				ai[i].xscore = xscores[i].score; 
-				ai[i].rc     = xscores[i].strand;
-				ai[i].seed   = xscores[i].seed;  
+				ai[i].rc     = xscores[i].rc;
+				ai[i].Lseed   = xscores[i].seed;  
 
 				ai[i].seq_h_length = seqan::length(seqan::source(seqsh[i]));
 				ai[i].seq_v_length = seqan::length(seqan::source(seqsv[i]));
 
 				// @GGGG: this is a bit redundant since we can extract it from seed
-				ai[i].seq_h_seed_length = ai[i].seed.endPositionH - ai[i].seed.beginPositionH;
-				ai[i].seq_v_seed_length = ai[i].seed.endPositionV - ai[i].seed.beginPositionV;
+				ai[i].seq_h_seed_length = ai[i].Lseed.endPositionH - ai[i].Lseed.beginPositionH;
+				ai[i].seq_v_seed_length = ai[i].Lseed.endPositionV - ai[i].Lseed.beginPositionV;
 
 				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
     			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
@@ -363,12 +377,12 @@ GPULoganAligner::apply_batch
 				if (xscores[i].score > ai[i].xscore)
 				{
 					ai[i].xscore = xscores[i].score;
-					ai[i].rc     = xscores[i].strand;
-					ai[i].seed   = xscores[i].seed;  
+					ai[i].rc     = xscores[i].rc;
+					ai[i].Lseed   = xscores[i].seed;  
 
 					// @GGGG: this is a bit redundant since we can extract it from seed
-					ai[i].seq_h_seed_length = ai[i].seed.endPositionH - ai[i].seed.beginPositionH;
-					ai[i].seq_v_seed_length = ai[i].seed.endPositionV - ai[i].seed.beginPositionV;
+					ai[i].seq_h_seed_length = ai[i].Lseed.endPositionH - ai[i].Lseed.beginPositionH;
+					ai[i].seq_v_seed_length = ai[i].Lseed.endPositionV - ai[i].Lseed.beginPositionV;
 				}
 			}
 		}
@@ -395,10 +409,10 @@ GPULoganAligner::apply_batch
 			if (passed)
 			{
 				// GGGG: store updated seed start/end position in the CommonKmers pairs (the semantics of these pairs change wrt the original semantics but that's okay)
-				cks->first.first   = beginPositionV(ai[i].seed); 	// start on vertical sequence
-				cks->first.second  = endPositionV(ai[i].seed); 		// end on vertical sequence
-				cks->second.first  = beginPositionH(ai[i].seed);	// start on horizonal sequence
-				cks->second.second = endPositionH(ai[i].seed);		// end on horizonal sequence
+				cks->first.first   = getBeginPositionV(ai[i].Lseed); 	// start on vertical sequence
+				cks->first.second  = getEndPositionV(ai[i].Lseed); 		// end on vertical sequence
+				cks->second.first  = getBeginPositionH(ai[i].Lseed);	// start on horizonal sequence
+				cks->second.second = getEndPositionH(ai[i].Lseed);		// end on horizonal sequence
 
 				cks->lenv 	= ai[i].seq_v_length;
 				cks->lenh 	= ai[i].seq_h_length;

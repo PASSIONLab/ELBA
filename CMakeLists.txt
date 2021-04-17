@@ -2,17 +2,65 @@ cmake_minimum_required(VERSION 3.11)
 project(dibella LANGUAGES C CXX CUDA)
 set(CMAKE_CXX_STANDARD 14)
 
+set(LOWER_KMER_FREQ 2
+    CACHE STRING "Lower bound for the k-mer frequency")
+
+set(UPPER_KMER_FREQ 8
+    CACHE STRING "Upper bound for the k-mer frequency")
+
+set(MAX_KMER_SIZE 32
+    CACHE STRING "Longest k-mer length")
+
+set(DELTACHERNOFF 0.1
+    CACHE STRING "Delta Chernoff's bound")
+
 add_subdirectory($ENV{BLOOM_HOME})
+
+add_library(logan STATIC
+    $ENV{MYPROJDIR}/src/pw/GPULoganAligner.cu
+    $ENV{MYPROJDIR}/include/pw/GPULoganAligner.hpp
+    $ENV{MYPROJDIR}/include/cuda/logan.cuh
+    $ENV{MYPROJDIR}/include/cuda/seed.cuh
+    $ENV{MYPROJDIR}/include/cuda/functions.cuh
+    $ENV{MYPROJDIR}/include/cuda/functions_static.cuh
+    $ENV{MYPROJDIR}/include/cuda/score.cuh
+  )
+
+# Request that logan be built with -std=c++14
+# As this is a public compile feature anything that links to 
+# particles will also build with -std=c++14
+target_compile_features(logan PUBLIC cxx_std_14)
+
+# We need to explicitly state that we need all CUDA files in the 
+# particle library to be built with -dc as the member functions 
+# could be called by other libraries and executables
+set_target_properties(logan PROPERTIES 
+    LINKER_LANGUAGE CXX
+    LANGUAGE CXX
+    CUDA_SEPARABLE_COMPILATION ON)
+
+target_compile_definitions(
+  logan
+  PRIVATE
+    -DMAX_KMER_SIZE=${MAX_KMER_SIZE}
+    -DDELTACHERNOFF=${DELTACHERNOFF}
+    -DLOWER_KMER_FREQ=${LOWER_KMER_FREQ}
+    -DUPPER_KMER_FREQ=${UPPER_KMER_FREQ}
+)
+
+target_include_directories(logan PRIVATE
+    $ENV{SEQAN_HOME}/include
+    )
 
 include_directories(
 	$ENV{SEQAN_HOME}/include 
 	$ENV{COMBBLAS_HOME}/CombBLAS/install/include
-    $ENV{MYPROJDIR}/LOGAN/src/gpu/coalesced/)
+    )
 	# possibly add path to boost library (not necessary on Cori, just type 'module load boost')
 link_directories(
     $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
     $ENV{BLOOM_HOME}/build
-    $ENV{MYPROJDIR}/LOGAN/src/gpu/coalesced/) 
+    ) 
     # I might need to fix this
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -25,7 +73,7 @@ else()
   set(libc "")
 endif()
 
-set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
+set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2 -I$(CUDA INC) -I$(OMPI INC) -L$(OMP LIB) -lmpi -L$(CUDA LIB64) -lcuda -lcudart")
 set(CMAKE_CUDA_FLAGS "-arch=sm_70 -O3 -maxrregcount=32 -std=c++14 -Xcompiler -fopenmp -w")
 
 find_package(MPI REQUIRED)
@@ -84,20 +132,13 @@ add_executable(dibella
         include/TransitiveReductionSR.hpp
         include/CC.h
         include/pw/GPULoganAligner.hpp
-        src/pw/GPULoganAligner.cpp
-	)
-
-set(LOWER_KMER_FREQ 2
-    CACHE STRING "Lower bound for the k-mer frequency")
-
-set(UPPER_KMER_FREQ 8
-    CACHE STRING "Upper bound for the k-mer frequency")
-
-set(MAX_KMER_SIZE 32
-    CACHE STRING "Longest k-mer length")
-
-set(DELTACHERNOFF 0.1
-    CACHE STRING "Delta Chernoff's bound")
+        src/pw/GPULoganAligner.cu
+        include/cuda/logan.cuh
+        include/cuda/seed.cuh
+        include/cuda/functions.cuh
+        include/cuda/functions_static.cuh
+        include/cuda/score.cuh
+    )
 
 target_compile_definitions(
   dibella
@@ -108,7 +149,8 @@ target_compile_definitions(
     -DUPPER_KMER_FREQ=${UPPER_KMER_FREQ}
 )
 
-target_link_libraries(dibella PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC)
+set_property(TARGET dibella PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+target_link_libraries(dibella PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC klogan)
 
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})

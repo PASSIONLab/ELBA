@@ -5,6 +5,7 @@
 
 #include "PairwiseFunction.hpp"
 #include "../AlignmentInfo.hpp"
+// #include "Defines.hpp"
 
 //template <typename TSequenceValue, typename TSpec>
 class GPULoganAligner : public PairwiseFunction{

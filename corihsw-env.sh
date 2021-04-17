@@ -1,3 +1,4 @@
+module purge
 module swap PrgEnv-intel PrgEnv-gnu
 module load cmake
 module load boost
