@@ -23,15 +23,15 @@ struct AlignmentInfo
   uint64_t seq_v_g_idx;
 };
 
-
-// GGGG: to completely separate CPU/GPU compilation
-struct LoganAlignmentInfoCPU
+struct LoganAlignmentInfo
 {
-
   int xscore;
-  TSeed Lseed; // Logan
-  
   bool rc;
+
+  int begSeedH;
+  int begSeedV;
+  int endSeedH;
+  int endSeedV;
 
   ushort seq_h_length;
   ushort seq_v_length;
