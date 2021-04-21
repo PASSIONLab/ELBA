@@ -23,4 +23,30 @@ struct AlignmentInfo
   uint64_t seq_v_g_idx;
 };
 
+// GGGG: to completely separate CPU/GPU compilation
+struct LoganResultCPU {
+    int  score;
+    bool    rc;
+    TSeed seed;
+};
+
+// GGGG: to completely separate CPU/GPU compilation
+struct LoganAlignmentInfoCPU
+{
+
+  int xscore;
+  TSeed Lseed; // Logan
+  
+  bool rc;
+
+  ushort seq_h_length;
+  ushort seq_v_length;
+  
+  ushort seq_h_seed_length;
+  ushort seq_v_seed_length;
+
+  uint64_t seq_h_g_idx;
+  uint64_t seq_v_g_idx;
+};
+
 #endif //DIBELLA_ALIGNMENTINFO_HPP
