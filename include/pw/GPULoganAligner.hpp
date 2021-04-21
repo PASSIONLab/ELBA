@@ -16,7 +16,7 @@ public:
 
   // GGGG: to avoid cross-compilation issues
   // void
-  // PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioScoreOveralap, 
+  // PostAlignDecision(const LoganAlignmentInfoCUDA& ai, bool& passed, float& ratioScoreOveralap, 
   //         uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign);
 
   void
