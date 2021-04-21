@@ -9,16 +9,12 @@
 #include <string>
 #include <vector>
 
+#include "logan.hpp"
+#include "interface.hpp"
+
 #define BATCH_SIZE 100000
 
-struct LoganResult {
-    int  score;
-    bool    rc;
-
-    int begSeedH;
-    int begSeedV;
-    int endSeedH;
-    int endSeedV;
-};
+void RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs, 
+	vector<SeedInterface>& seeds, vector<LoganResult>& xscores, int& xdrop, ushort& seed_length);
 
 #endif // __LOGAN_ALIGN_RESULT_HPP__

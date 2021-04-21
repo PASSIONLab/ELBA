@@ -1,9 +1,10 @@
 /* Created by Saliya Ekanayake on 2019-07-05 and modified by Giulia Guidi on 4/14/2021. */
 
 #include "../../include/pw/GPULoganAligner.hpp"
-#include "../../LoganGPU/logan.hpp"
 
-#define BATCH_SIZE 100000
+#include "../../LoganGPU/RunLoganAligner.hpp" 	// Call to aligner
+#include "../../LoganGPU/interface.hpp"			// LoganResult struct and SeedInterface struct
+
 #define MIN_OV_LEN 10000
 
 char 
@@ -202,8 +203,8 @@ GPULoganAligner::apply_batch
 	std::vector<string> seqHs;
 	std::vector<string> seqVs;
 
-	std::vector<LSeed> seeds;
-	std::vector<loganResult> xscores;
+	std::vector<SeedInterface> seeds;
+	std::vector<LoganResult> xscores;
 
 	/* GGGG: seed_count is hardcoded here (2) */
 	for(int count = 0; count < seed_count; ++count)
@@ -215,20 +216,20 @@ GPULoganAligner::apply_batch
 		for (uint64_t i = 0; i < npairs; ++i) // I acculate sequences for GPU batch alignment
 		{
 			// Init result
-			loganResult localRes; 
+			LoganResult localRes; 
 
 			// Get seed location
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 
 		#ifdef TWOSEED
-			ushort LocalSeedVOffset =
+			ushort LocaSeedInterfaceVOffset =
 				(count == 0) ? cks->first.first : cks->second.first;
-			ushort LocalSeedHOffset =
+			ushort LocaSeedInterfaceHOffset =
 				(count == 0) ? cks->first.second : cks->second.second;
 		#else
 			// GGGG: TODO check reverse complement
-			ushort LocalSeedVOffset = cks.pos[0].first;
-			ushort LocalSeedHOffset = cks.pos[0].second;
+			ushort LocaSeedInterfaceVOffset = cks.pos[0].first;
+			ushort LocaSeedInterfaceHOffset = cks.pos[0].second;
 		#endif
 
 			// Get sequences
@@ -242,8 +243,8 @@ GPULoganAligner::apply_batch
 			uint lenV = seqV.length();
 
 			// Get seed string
-			std::string seedH = seqH.substr(LocalSeedHOffset, seed_length);
-			std::string seedV = seqV.substr(LocalSeedVOffset, seed_length);
+			std::string seedH = seqH.substr(LocaSeedInterfaceHOffset, seed_length);
+			std::string seedV = seqV.substr(LocaSeedInterfaceVOffset, seed_length);
 
 			std::string twinseedH = reversecomplement(seedH);
 
@@ -254,9 +255,9 @@ GPULoganAligner::apply_batch
 				std::reverse(std::begin(twinseqH), std::end(twinseqH));
 				std::transform(std::begin(twinseqH), std::end(twinseqH), std::begin(twinseqH), complementbase);
 
-				LocalSeedHOffset = twinseqH.length(); - LocalSeedHOffset - seed_length;
+				LocaSeedInterfaceHOffset = twinseqH.length(); - LocaSeedInterfaceHOffset - seed_length;
 
-				LSeed seed(LocalSeedHOffset, LocalSeedVOffset, LocalSeedHOffset + seed_length, LocalSeedVOffset + seed_length);
+				SeedInterface seed(LocaSeedInterfaceHOffset, LocaSeedInterfaceVOffset, LocaSeedInterfaceHOffset + seed_length, LocaSeedInterfaceVOffset + seed_length);
 
 				// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
 				seeds.push_back(seed);
@@ -268,7 +269,7 @@ GPULoganAligner::apply_batch
 			}
 			else
 			{
-				LSeed seed(LocalSeedHOffset, LocalSeedVOffset, LocalSeedHOffset + seed_length, LocalSeedVOffset + seed_length);
+				SeedInterface seed(LocaSeedInterfaceHOffset, LocaSeedInterfaceVOffset, LocaSeedInterfaceHOffset + seed_length, LocaSeedInterfaceVOffset + seed_length);
 
 				// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
 				seeds.push_back(seed);
@@ -341,8 +342,8 @@ GPULoganAligner::apply_batch
                     ai[i].endSeedV = xscores[i].endSeedV; 
 
 					// @GGGG: this is a bit redundant since we can extract it from seed
-					ai[i].seq_h_seed_length = ai[i].Lseed.endPositionH - ai[i].Lseed.beginPositionH;
-					ai[i].seq_v_seed_length = ai[i].Lseed.endPositionV - ai[i].Lseed.beginPositionV;
+					ai[i].seq_h_seed_length = ai[i].SeedInterface.endPositionH - ai[i].SeedInterface.beginPositionH;
+					ai[i].seq_v_seed_length = ai[i].SeedInterface.endPositionV - ai[i].SeedInterface.beginPositionV;
 				}
 			}
 		}

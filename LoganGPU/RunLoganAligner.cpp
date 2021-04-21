@@ -1,14 +1,14 @@
 /* Created by Giulia Guidi on 4/20/2021. */
 
 #include "RunLoganAligner.hpp"
-#include "logan.hpp"
 
 using namespace std;
 
 void 
 RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs, 
-	vector<LSeed>& seeds, vector<LoganResult>& xscores, int& xdrop, ushort& seed_length)
+	vector<SeedInterface>& SeedInterfaceSet, vector<LoganResult>& xscores, int& xdrop, ushort& seed_length)
 {
+	std::vector<LSeed> LSeedSet = SeedInterfaceSet; // translare from interface to lseed
 
 	ScoringSchemeL sscheme(1, -1, -1, -1);
 	std::vector<ScoringSchemeL> scoring;
@@ -18,7 +18,7 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
     cudaGetDeviceCount(&deviceCount);
     omp_set_num_threads(deviceCount); // one OMP thread per GPU
 
-	int AlignmentsToBePerformed = seeds.size();
+	int AlignmentsToBePerformed = SeedInterfaceSet.size();
 	int numAlignmentsLocal = BATCH_SIZE * deviceCount; 
 
 	//	Load balancer that divides the work in batches of 100K alignments
@@ -38,25 +38,23 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
 		std::vector<string>::const_iterator last_q  = seqVs.begin() + i + numAlignmentsLocal;
 		std::vector<string> bseqVs(first_q, last_q);
 
-		std::vector<LSeed>::const_iterator first_s = seeds.begin() + i;
-		std::vector<LSeed>::const_iterator last_s  = seeds.begin() + i + numAlignmentsLocal;
+		std::vector<LSeed>::const_iterator first_s = SeedInterfaceSet.begin() + i;
+		std::vector<LSeed>::const_iterator last_s  = SeedInterfaceSet.begin() + i + numAlignmentsLocal;
 		
-		std::vector<LSeed> bseeds(first_s, last_s);
+		std::vector<LSeed> bLSeedSet(first_s, last_s);
 
-		extendSeedL(bseeds, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount, omp_get_num_threads());
+		extendSeedL(bLSeedSet, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount, omp_get_num_threads());
 
 		for(int j = 0; j < numAlignmentsLocal; j++)
 		{
 			xscores[j+i].score     = res[j];
 
-			xscores[j+i].begSeedH  = getBeginPositionH(bseeds[j]);
-			xscores[j+i].begSeedV  = getBeginPositionV(bseeds[j]);
+			xscores[j+i].begSeedH  = getBeginPositionH(bLSeedSet[j]);
+			xscores[j+i].begSeedV  = getBeginPositionV(bLSeedSet[j]);
 
-			xscores[j+i].endSeedH  = getEndPositionH(bseeds[j]);
-			xscores[j+i].endSeedV  = getEndPositionV(bseeds[j]);
+			xscores[j+i].endSeedH  = getEndPositionH(bLSeedSet[j]);
+			xscores[j+i].endSeedV  = getEndPositionV(bLSeedSet[j]);
         }
-        
-        // map LoganResultCUDA to something else
 
 		free(res);
 	}

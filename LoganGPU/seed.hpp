@@ -4,8 +4,10 @@
 // Date:   6 March 2019
 //==================================================================
 
-#include<algorithm> 
-#include<cassert>
+#include <algorithm> 
+#include <cassert>
+
+#include "interface.hpp"
 
 template<typename Tx_>
 const Tx_&  min_logan(const Tx_& _Left, const Tx_& Right_)
@@ -87,6 +89,20 @@ struct LSeed
 		beginDiagonal(other.beginDiagonal),
 		endDiagonal(other.endDiagonal),
 		score(0)
+	{
+		assert(upperDiagonal >= lowerDiagonal);
+	}
+
+	__device__ __host__ LSeed(SeedInterface const& other):
+		beginPositionH(other.beginPositionH),
+		beginPositionV(other.beginPositionV),
+		endPositionH(other.endPositionH),
+		endPositionV(other.endPositionV),
+		lowerDiagonal(min_logan((other.beginPositionH - other.beginPositionV), (other.endPositionH - other.endPositionV))),
+		upperDiagonal(max_logan((other.beginPositionH - other.beginPositionV), (other.endPositionH - other.endPositionV))),
+		beginDiagonal((other.beginPositionH - other.beginPositionV)),
+		endDiagonal((other.endPositionH - other.endPositionV)),
+		score(other.score)
 	{
 		assert(upperDiagonal >= lowerDiagonal);
 	}
