@@ -16,52 +16,48 @@ set(DELTACHERNOFF 0.1
 
 add_subdirectory($ENV{BLOOM_HOME})
 
-add_library(logan STATIC
-    $ENV{MYPROJDIR}/src/pw/GPULoganAligner.cu
-    $ENV{MYPROJDIR}/include/pw/GPULoganAligner.hpp
-    $ENV{MYPROJDIR}/include/cuda/logan.cuh
-    $ENV{MYPROJDIR}/include/cuda/seed.cuh
-    $ENV{MYPROJDIR}/include/cuda/functions.cuh
-    $ENV{MYPROJDIR}/include/cuda/functions_static.cuh
-    $ENV{MYPROJDIR}/include/cuda/score.cuh
-  )
-
-# Request that logan be built with -std=c++14
-# As this is a public compile feature anything that links to 
-# particles will also build with -std=c++14
-target_compile_features(logan PUBLIC cxx_std_14)
-
-# We need to explicitly state that we need all CUDA files in the 
-# particle library to be built with -dc as the member functions 
-# could be called by other libraries and executables
-set_target_properties(logan PROPERTIES 
-    LINKER_LANGUAGE CXX
-    LANGUAGE CXX
-    CUDA_SEPARABLE_COMPILATION ON)
-
 target_compile_definitions(
-  logan
-  PRIVATE
+    LOGAN_XD_LIBRARY_static
+    PRIVATE
     -DMAX_KMER_SIZE=${MAX_KMER_SIZE}
     -DDELTACHERNOFF=${DELTACHERNOFF}
     -DLOWER_KMER_FREQ=${LOWER_KMER_FREQ}
     -DUPPER_KMER_FREQ=${UPPER_KMER_FREQ}
 )
 
-target_include_directories(logan PRIVATE
-    $ENV{SEQAN_HOME}/include
-    )
+if(ENABLE_CUDA)
+    include_directories(
+        $ENV{SEQAN_HOME}/include 
+        $ENV{COMBBLAS_HOME}/CombBLAS/install/include
+        )
+        # possibly add path to boost library (not necessary on Cori, just type 'module load boost')
+    link_directories(
+        $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
+        $ENV{BLOOM_HOME}/build
+        ) 
+        # I might need to fix this
 
-include_directories(
-	$ENV{SEQAN_HOME}/include 
-	$ENV{COMBBLAS_HOME}/CombBLAS/install/include
-    )
-	# possibly add path to boost library (not necessary on Cori, just type 'module load boost')
-link_directories(
-    $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
-    $ENV{BLOOM_HOME}/build
-    ) 
-    # I might need to fix this
+    include_directories($ENV{PROJECTDIR})
+    include_directories("LoganGPU")
+    add_subdirectory(LoganGPU)
+
+    set_property(TARGET dibella PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS OFF) # just to be sure. It should be off in parent dir
+    set(DIBELLA_LINK_LIBRARIES ${DIBELLA_LINK_LIBRARIES} LOGAN_XD_LIBRARY_static GPU_LOC_STATIC) # GPU_LOC_STATIC
+    target_link_libraries(dibella PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC ${DIBELLA_LINK_LIBRARIES})
+
+else()
+
+    include_directories(
+	    $ENV{SEQAN_HOME}/include 
+	    $ENV{COMBBLAS_HOME}/CombBLAS/install/include
+        )
+	    # possibly add path to boost library (not necessary on Cori, just type 'module load boost')
+    link_directories(
+        $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
+        $ENV{BLOOM_HOME}/build
+        ) 
+
+endif()
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -148,9 +144,6 @@ target_compile_definitions(
     -DLOWER_KMER_FREQ=${LOWER_KMER_FREQ}
     -DUPPER_KMER_FREQ=${UPPER_KMER_FREQ}
 )
-
-set_property(TARGET dibella PROPERTY CUDA_SEPARABLE_COMPILATION ON)
-target_link_libraries(dibella PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC klogan)
 
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
