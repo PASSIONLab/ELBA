@@ -1,3 +1,6 @@
+#ifndef __LOGAN_INTERFACE_CUH__
+#define __LOGAN_INTERFACE_CUH__
+
 #include <omp.h>
 #include <chrono>
 #include <cmath>
@@ -50,3 +53,5 @@ struct SeedInterface {
 		score(0)
 	{ }
 };
+
+#endif

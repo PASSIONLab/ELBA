@@ -1,29 +1,27 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
-#if(NOT ENABLE_CUDA)
-#	message(FATAL_ERROR "Trying to build LOGAN-XD but CUDA is not enabled")
-#endif()
+project(logan LANGUAGES C CXX CUDA)
 
+set(CMAKE_CXX_STANDARD 14 CACHE STRING "")
+set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL "")
 set(CMAKE_CUDA_STANDARD 14 CACHE STRING "")
-set(CMAKE_CUDA_STANDARD_REQUIRED ON CACHE BOOL "")
 set(CMAKE_CUDA_EXTENSIONS OFF CACHE BOOL "")
 
 find_package(OpenMP REQUIRED)
 
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
-  cmake_policy(SET CMP0074 NEW) # use the CUDA_ROOT variable 
+  cmake_policy(SET CMP0074 NEW) 
 endif()
 
-enable_language(CUDA)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.18)
   if(NOT CMAKE_CUDA_ARCHITECTURES)
 
     if (CUDA_VERSION VERSION_GREATER_EQUAL 11.0)
-      set(CMAKE_CUDA_ARCHITECTURES 35 50 60 70 80)
+      set(CMAKE_CUDA_ARCHITECTURES 60 70 80)
     elseif (CUDA_VERSION VERSION_GREATER_EQUAL 10.0)
-      set(CMAKE_CUDA_ARCHITECTURES 30 35 50 60 70)
+      set(CMAKE_CUDA_ARCHITECTURES 60 70)
     else()
-      set(CMAKE_CUDA_ARCHITECTURES 30 35 50 60 70)
+      set(CMAKE_CUDA_ARCHITECTURES 50 60 70)
     endif()
     
     message(STATUS "Setting CMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES} -- override with specific target if this build fails")
@@ -32,56 +30,26 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.18)
   endif()
 endif()
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
-set(CMAKE_CUDA_PTX_COMPILATION ON)
+file(GLOB sources ${PROJECT_SOURCE_DIR}/main.cpp)
+file(GLOB headers ${PROJECT_SOURCE_DIR}/RunLoganAligner.hpp interface.hpp logan.hpp score.hpp seed.hpp functions.hpp functions_static.hpp)
 
-if (${CMAKE_VERSION} VERSION_LESS 3.18)
-  find_package(CUDA REQUIRED)
-  CUDA_SELECT_NVCC_ARCH_FLAGS(ARCH_FLAGS_LIST)
-  
-  if(ARCH_FLAGS_LIST)
-    STRING(REPLACE ";" " " ARCH_FLAGS "${ARCH_FLAGS_LIST}")
-  else()
-    foreach(_CMAKE_CUDA_COMPUTE_CAPABILITY 35 50 60 70 80)
-      set(ARCH_FLAGS "${ARCH_FLAGS} -gencode arch=compute_${_CMAKE_CUDA_COMPUTE_CAPABILITY},code=sm_${_CMAKE_CUDA_COMPUTE_CAPABILITY}")
-    endforeach()
-    
-    if(NOT CMAKE_CUDA_COMPUTE_CAPABILITY)
-      set(CMAKE_CUDA_COMPUTE_CAPABILITY 70 CACHE STRING "")
-    endif()
-    message(WARNING "Could not auto-detect the GPU arch flags building for all gpu compute capabilities 3 - 7 and PTX for ${CMAKE_CUDA_COMPUTE_CAPABILITY}")
-    set(ARCH_FLAGS "${ARCH_FLAGS} -gencode arch=compute_${CMAKE_CUDA_COMPUTE_CAPABILITY},code=sm_${CMAKE_CUDA_COMPUTE_CAPABILITY}")
-    set(ARCH_FLAGS "${ARCH_FLAGS} -gencode arch=compute_${CMAKE_CUDA_COMPUTE_CAPABILITY},code=compute_${CMAKE_CUDA_COMPUTE_CAPABILITY}")
-  endif()
+set_source_files_properties(${sources} PROPERTIES
+    LANGUAGE CUDA
+    LINKER_LANGUAGE CUDA)
+
+add_executable(logan ${sources} ${headers})
+target_compile_options(logan PUBLIC
+    $<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_52,code=sm_52>
+    $<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_60,code=sm_60>
+    $<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_61,code=sm_61>
+    $<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_70,code=sm_70>
+    $<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_70,code=compute_70>
+)
+
+target_link_libraries(logan PUBLIC OpenMP::OpenMP_CXX)
+target_include_directories(logan PUBLIC ${PROJECT_SOURCE_DIR})
+
+get_property(LANGUAGES GLOBAL PROPERTY ENABLED_LANGUAGES)
+if(CMAKE_CUDA_COMPILER AND "CUDA" IN_LIST LANGUAGES)
+    target_compile_options(logan PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler -fopenmp -Wno-deprecated-gpu-targets>)
 endif()
-
-message(STATUS "ARCH_FLAGS=${ARCH_FLAGS}")
-
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=-Wall,${OpenMP_CXX_FLAGS} ${ARCH_FLAGS}")
-message(STATUS "CMAKE_CUDA_FLAGS=${CMAKE_CUDA_FLAGS}")
-
-add_library(LOGAN_XD_LIBRARY_obj OBJECT RunLoganAligner.cpp)
-
-if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.13)
-	target_link_libraries(LOGAN_XD_LIBRARY_obj INTERFACE OpenMP::OpenMP_CXX)
-endif()
-
-set_source_files_properties(RunLoganAligner.cpp PROPERTIES LANGUAGE CUDA LINKER_LANGUAGE CUDA)
-option(LOGAN_XD_SHARED "LOGAN-XD shared library" OFF)
-option(LOGAN_XD_STATIC "LOGAN-XD static library" ON)
-
-if (LOGAN_XD_SHARED)
-  add_library(LOGAN_XD_LIBRARY_shared SHARED $<TARGET_OBJECTS:LOGAN_XD_LIBRARY_obj>)
-  set_property(TARGET LOGAN_XD_LIBRARY_shared PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
-  target_link_libraries(LOGAN_XD_LIBRARY_shared INTERFACE OpenMP::OpenMP_CXX) 
-  install(TARGETS LOGAN_XD_LIBRARY_shared LIBRARY DESTINATION lib)
-endif()
-
-if (LOGAN_XD_STATIC)
-  add_library(LOGAN_XD_LIBRARY_static STATIC $<TARGET_OBJECTS:LOGAN_XD_LIBRARY_obj>)
-  target_link_libraries(LOGAN_XD_LIBRARY_static INTERFACE OpenMP::OpenMP_CXX)
-  set_property(TARGET LOGAN_XD_LIBRARY_static PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
-  install(TARGETS LOGAN_XD_LIBRARY_static ARCHIVE DESTINATION lib)
-endif()
-
