@@ -16,49 +16,18 @@ set(DELTACHERNOFF 0.1
 
 add_subdirectory($ENV{BLOOM_HOME})
 
-target_compile_definitions(
-    LOGAN_XD_LIBRARY_static
-    PRIVATE
-    -DMAX_KMER_SIZE=${MAX_KMER_SIZE}
-    -DDELTACHERNOFF=${DELTACHERNOFF}
-    -DLOWER_KMER_FREQ=${LOWER_KMER_FREQ}
-    -DUPPER_KMER_FREQ=${UPPER_KMER_FREQ}
-)
-
-if(ENABLE_CUDA)
-    include_directories(
-        $ENV{SEQAN_HOME}/include 
+include_directories(
+	$ENV{SEQAN_HOME}/include 
         $ENV{COMBBLAS_HOME}/CombBLAS/install/include
-        )
+        $ENV{COMBBLAS_HOME}/LoganGPU
+	)
         # possibly add path to boost library (not necessary on Cori, just type 'module load boost')
-    link_directories(
+link_directories(
         $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
         $ENV{BLOOM_HOME}/build
+	$ENV{COMBBLAS_HOME}/LoganGPU/build
         ) 
-        # I might need to fix this
-
-    include_directories($ENV{PROJECTDIR})
-    include_directories("LoganGPU")
-    add_subdirectory(LoganGPU)
-
-    set_property(TARGET dibella PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS OFF) # just to be sure. It should be off in parent dir
-    set(DIBELLA_LINK_LIBRARIES ${DIBELLA_LINK_LIBRARIES} LOGAN_XD_LIBRARY_static GPU_LOC_STATIC) # GPU_LOC_STATIC
-    target_link_libraries(dibella PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC ${DIBELLA_LINK_LIBRARIES})
-
-else()
-
-    include_directories(
-	    $ENV{SEQAN_HOME}/include 
-	    $ENV{COMBBLAS_HOME}/CombBLAS/install/include
-        )
-	    # possibly add path to boost library (not necessary on Cori, just type 'module load boost')
-    link_directories(
-        $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
-        $ENV{BLOOM_HOME}/build
-        ) 
-
-endif()
-
+       
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -69,8 +38,7 @@ else()
   set(libc "")
 endif()
 
-set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2 -I$(CUDA INC) -I$(OMPI INC) -L$(OMP LIB) -lmpi -L$(CUDA LIB64) -lcuda -lcudart")
-set(CMAKE_CUDA_FLAGS "-arch=sm_70 -O3 -maxrregcount=32 -std=c++14 -Xcompiler -fopenmp -w")
+set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0")
 
 find_package(MPI REQUIRED)
 find_package(OpenMP REQUIRED)
@@ -128,12 +96,7 @@ add_executable(dibella
         include/TransitiveReductionSR.hpp
         include/CC.h
         include/pw/GPULoganAligner.hpp
-        src/pw/GPULoganAligner.cu
-        include/cuda/logan.cuh
-        include/cuda/seed.cuh
-        include/cuda/functions.cuh
-        include/cuda/functions_static.cuh
-        include/cuda/score.cuh
+        src/pw/GPULoganAligner.cpp
     )
 
 target_compile_definitions(
@@ -158,6 +121,9 @@ message(STATUS "${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
 message(STATUS "${CUDART_LIBRARY}")
 target_include_directories(dibella PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 target_link_libraries(dibella PUBLIC ${CUDART_LIBRARY})
+
+# LOGAN
+target_link_libraries(dibella PUBLIC logan)
 
 if(OPENMP_FOUND OR OpenMP_CXX_FOUND)
     # Set THREADED if OpenMP is found

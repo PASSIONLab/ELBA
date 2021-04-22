@@ -1,7 +1,6 @@
-module load gcc/9.1.0
-# It should be cmake/3.18
+module load gcc/8.1.0
 module load cmake
-module load cuda
+module load cuda/11.0.3
 module load boost
 module load python
 

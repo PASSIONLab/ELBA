@@ -19,9 +19,9 @@ echo ""
 cd $COMBBLAS_HOME
 mkdir build_release
 cd build_release
-rm -rf *
-cmake ..
-make -j8
+# rm -rf *
+# cmake ..
+# make -j8
 
 echo ""
 echo "ELBA installation completed."
