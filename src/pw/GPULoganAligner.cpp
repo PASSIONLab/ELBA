@@ -1,9 +1,8 @@
 /* Created by Saliya Ekanayake on 2019-07-05 and modified by Giulia Guidi on 4/14/2021. */
 
 #include "../../include/pw/GPULoganAligner.hpp"
-
 #include "../../LoganGPU/RunLoganAligner.hpp" 	// Call to aligner
-#include "../../LoganGPU/interface.hpp"			// LoganResult struct and SeedInterface struct
+#include "../../LoganGPU/interface.hpp"		// LoganResult struct and SeedInterface struct
 
 #define MIN_OV_LEN 10000
 

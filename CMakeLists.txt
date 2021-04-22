@@ -26,7 +26,12 @@ link_directories(
         $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
         $ENV{BLOOM_HOME}/build
 	$ENV{COMBBLAS_HOME}/LoganGPU/build
-        ) 
+        )
+ 
+# LOGAN
+#set_property(TARGET dibella PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS OFF)
+#set(DIBELLA_LINK_LIBRARY ${DIBELLA_LINK_LIBRARY} LOGAN_XD_LIBRARY_static GPU_LOC_STATIC)
+#target_link_libraries(dibella ${DIBELLA_LINK_LIBRARY})
        
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -99,6 +104,10 @@ add_executable(dibella
         src/pw/GPULoganAligner.cpp
     )
 
+set_property(TARGET dibella PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS OFF)
+set(DIBELLA_LINK_LIBRARY ${DIBELLA_LINK_LIBRARY} LOGAN_XD_LIBRARY_static GPU_LOC_STATIC)
+target_link_libraries(dibella PUBLIC ${DIBELLA_LINK_LIBRARY})
+
 target_compile_definitions(
   dibella
   PRIVATE
@@ -121,9 +130,6 @@ message(STATUS "${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
 message(STATUS "${CUDART_LIBRARY}")
 target_include_directories(dibella PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 target_link_libraries(dibella PUBLIC ${CUDART_LIBRARY})
-
-# LOGAN
-target_link_libraries(dibella PUBLIC logan)
 
 if(OPENMP_FOUND OR OpenMP_CXX_FOUND)
     # Set THREADED if OpenMP is found
