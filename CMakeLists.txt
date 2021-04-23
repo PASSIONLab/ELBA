@@ -17,21 +17,17 @@ set(DELTACHERNOFF 0.1
 add_subdirectory($ENV{BLOOM_HOME})
 
 include_directories(
-	$ENV{SEQAN_HOME}/include 
+	    $ENV{SEQAN_HOME}/include 
         $ENV{COMBBLAS_HOME}/CombBLAS/install/include
         $ENV{COMBBLAS_HOME}/LoganGPU
 	)
-        # possibly add path to boost library (not necessary on Cori, just type 'module load boost')
+# possibly add path to boost library (not necessary on Cori, just type 'module load boost')
+add_subdirectory($ENV{COMBBLAS_HOME}/LoganGPU)
 link_directories(
         $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
         $ENV{BLOOM_HOME}/build
 	$ENV{COMBBLAS_HOME}/LoganGPU/build
         )
- 
-# LOGAN
-#set_property(TARGET dibella PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS OFF)
-#set(DIBELLA_LINK_LIBRARY ${DIBELLA_LINK_LIBRARY} LOGAN_XD_LIBRARY_static GPU_LOC_STATIC)
-#target_link_libraries(dibella ${DIBELLA_LINK_LIBRARY})
        
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -105,7 +101,7 @@ add_executable(dibella
     )
 
 set_property(TARGET dibella PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS OFF)
-set(DIBELLA_LINK_LIBRARY ${DIBELLA_LINK_LIBRARY} LOGAN_XD_LIBRARY_static GPU_LOC_STATIC)
+set(DIBELLA_LINK_LIBRARY ${DIBELLA_LINK_LIBRARY} LOGAN_LIBRARY_static CombBLAS LIBBLOOM-NOUPC MURMURHASH)
 target_link_libraries(dibella PUBLIC ${DIBELLA_LINK_LIBRARY})
 
 target_compile_definitions(
@@ -116,6 +112,8 @@ target_compile_definitions(
     -DLOWER_KMER_FREQ=${LOWER_KMER_FREQ}
     -DUPPER_KMER_FREQ=${UPPER_KMER_FREQ}
 )
+
+target_link_libraries(dibella PUBLIC ZLIB::ZLIB)
 
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
