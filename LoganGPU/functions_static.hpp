@@ -8,7 +8,8 @@
 #define BYTES_INT 4
 // #define N_STREAMS 60
 #define MAX_SIZE_ANTIDIAG 8000
-#define MAX_GPUS 8
+// #define MAX_GPUS 8
+#define MAX_GPUS 1 // multiple mpi to 1 gpu
 
 //trying to see if the scoring scheme is a bottleneck in some way
 #define MATCH     1
@@ -553,6 +554,11 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		}
 	}
 	auto start_transfer = NOW;
+	
+	
+	// Get the device id like adept
+	get diveceCount;
+	gpu_id = myrank % deviceCount;
 
 	#pragma omp parallel for
 	for(int i = 0; i < ngpus; i++){
@@ -560,8 +566,10 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		if(i==ngpus-1)
 			dim = nSequencesLast;
 		//set gpu device
-		cudaSetDevice(i);
+		cudaSetDevice(gpu_id);
+		//cudaSetDevice(i);
 		//create streams
+		
 		cudaStreamCreateWithFlags(&stream_r[i],cudaStreamNonBlocking);
 		cudaStreamCreateWithFlags(&stream_l[i],cudaStreamNonBlocking);
 		//allocate antidiagonals on the GPU
@@ -585,7 +593,8 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		cudaErrchk(cudaMalloc(&suffT_d[i], totalLengthTSuff[i]*sizeof(char)));
 		//copy seeds on the GPU
 		cudaErrchk(cudaMemcpyAsync(seed_d_l[i], &seeds[0]+i*nSequences, dim*sizeof(LSeed), cudaMemcpyHostToDevice, stream_l[i]));
-		cudaErrchk(cudaMemcpyAsync(seed_d_r[i], &seeds_r[0]+i*nSequences, dim*sizeof(LSeed), cudaMemcpyHostToDevice, stream_r[i]));
+		cudaErrchk(cudaMemcpyAsync(seed_d_r[i], &seeds_r[0]+i*nSequences, dim*sizeof(LSeed), cudaMemcpyHostToDevice, 
+					 [i]));
 		//copy offsets on the GPU
 		cudaErrchk(cudaMemcpyAsync(offsetLeftQ_d[i], &offsetLeftQ[i][0], dim*sizeof(int), cudaMemcpyHostToDevice, stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(offsetLeftT_d[i], &offsetLeftT[i][0], dim*sizeof(int), cudaMemcpyHostToDevice, stream_l[i]));
@@ -610,8 +619,9 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	
 	//execute kernels
 	#pragma omp parallel for
-	for(int i = 0; i<ngpus;i++){
+	for(int i = 0; i< ngpus;i++){
 		cudaSetDevice(i);
+		cudaSetDevice(gpu_id);
 		
 		int dim = nSequences;
 		if(i==ngpus-1)
@@ -635,7 +645,8 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	}
 	#pragma omp parallel for
 	for(int i = 0; i < ngpus; i++){
-		cudaSetDevice(i);
+// 		cudaSetDevice(i);
+		cudaSetDevice(gpu_id);
 		cudaDeviceSynchronize();
 	}
 
@@ -651,6 +662,7 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	#pragma omp parallel for
 	for(int i = 0; i < ngpus; i++){
 		cudaSetDevice(i);
+		cudaSetDevice(gpu_id);
 
 		cudaStreamDestroy(stream_l[i]);
 		cudaStreamDestroy(stream_r[i]);
