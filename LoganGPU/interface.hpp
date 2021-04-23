@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+/*
 struct LoganResult {
 
     int  score;
@@ -53,5 +54,5 @@ struct SeedInterface {
 		score(0)
 	{ }
 };
-
+*/
 #endif
