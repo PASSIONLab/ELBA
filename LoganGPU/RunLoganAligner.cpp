@@ -1,7 +1,8 @@
 /* Created by Giulia Guidi on 4/20/2021. */
 
-
 #include "RunLoganAligner.hpp"
+#include "logan.hpp"
+#include "interface.hpp"
 
 using namespace std;
 
