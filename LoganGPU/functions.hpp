@@ -10,9 +10,9 @@
 #define BYTES_INT 4
 
 #ifdef  ONERANKPERNODE
-#define MAXNGPUS 8 // many MPI processes to 1 GPU
+#define MAXNGPUS 8 // 1 MPI process to many GPUs 
 #else
-#define MAXNGPUS 1 // 1 MPI process to many GPUs 
+#define MAXNGPUS 1 // many MPI processes to 1 GPU
 #endif
 
 #define MATCH     1
@@ -595,8 +595,14 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		pergpuseqs[MYTHREAD] = dim;
 		if(i==ngpus-1)
 			dim = nSequencesLast;
+
 		//set gpu device
-		cudaSetDevice(i);
+	#ifdef ONERANKPERNODE
+		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
+	#else
+		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
+	#endif
+
 		//create streams
 		cudaStreamCreateWithFlags(&stream_r[i],cudaStreamNonBlocking);
 		cudaStreamCreateWithFlags(&stream_l[i],cudaStreamNonBlocking);
@@ -639,7 +645,6 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		pergputtime[MYTHREAD] = transfer_ithread.count();
 	}
 	
-	
 	auto end_t1 = NOW;
 	duration<double> setup_transfer=end_t1-start_t1;
 	duration<double> transfer=end_t1-start_transfer;
@@ -648,16 +653,21 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	
 	auto start_c = NOW;
 	
-	//execute kernels
+	// execute kernels
 	#pragma omp parallel for
 	for(int i = 0; i<ngpus;i++)
 	{
 		int MYTHREAD = omp_get_thread_num();
 		auto start_c_ithread_1 = NOW;
-		cudaSetDevice(i);
+
+	#ifdef ONERANKPERNODE
+		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
+	#else
+		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
+	#endif
 		
 		int dim = nSequences;
-		if(i==ngpus-1)
+		if(i == ngpus-1)
 			dim = nSequencesLast;
 		
 		extendSeedLGappedXDropOneDirectionGlobal <<<dim, n_threads, n_threads*sizeof(short), stream_l[i]>>> (seed_d_l[i], prefQ_d[i], prefT_d[i], EXTEND_LEFTL, XDrop, scoreLeft_d[i], offsetLeftQ_d[i], offsetLeftT_d[i], ant_len_left[i], ant_l[i], n_threads);
@@ -665,15 +675,26 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		auto end_c_ithread_1 = NOW;
 		duration<double> c_ithread_1 = end_c_ithread_1 - start_c_ithread_1;
 		pergpuctime[MYTHREAD] = c_ithread_1.count();
-		//cout<<"LAUNCHED"<<endl;
 	}
 
-	#pragma omp parallel for
+	// Get the device id for many MPI processes to 1 GPU option
+	int deviceCount, myrank;
+	int mygpuid;
+
+	mygpuid = MPI_Comm_rank(MPI_COMM_WORLD, &myrank) % deviceCount;
+
+#pragma omp parallel for
 	for(int i = 0; i < ngpus; i++)
 	{
 		int MYTHREAD = omp_get_thread_num();
 		auto start_c_ithread_2 = NOW;
-		cudaSetDevice(i);
+
+	#ifdef ONERANKPERNODE
+		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
+	#else
+		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
+	#endif
+
 		int dim = nSequences;
 		if(i==ngpus-1)
 			dim = nSequencesLast;
@@ -691,7 +712,13 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	{
 		int MYTHREAD = omp_get_thread_num();
 		auto start_c_ithread_3 = NOW;
-		cudaSetDevice(i);
+
+	#ifdef ONERANKPERNODE
+		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
+	#else
+		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
+	#endif
+
 		cudaDeviceSynchronize();
 		auto end_c_ithread_3 = NOW;
 		duration<double> c_ithread_3 = end_c_ithread_3 - start_c_ithread_3;
@@ -714,8 +741,14 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	auto start_f = NOW;
 
 	#pragma omp parallel for
-	for(int i = 0; i < ngpus; i++){
-		cudaSetDevice(i);
+	for(int i = 0; i < ngpus; i++)
+	{
+
+	#ifdef ONERANKPERNODE
+		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
+	#else
+		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
+	#endif
 
 		cudaStreamDestroy(stream_l[i]);
 		cudaStreamDestroy(stream_r[i]);

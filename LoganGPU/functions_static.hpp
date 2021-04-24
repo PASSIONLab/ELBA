@@ -614,7 +614,6 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		//OK
 	}
 	
-	
 	auto end_t1 = NOW;
 	duration<double> setup_transfer=end_t1-start_t1;
 	duration<double> transfer=end_t1-start_transfer;
@@ -724,8 +723,7 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	}
 	
 	free(scoreLeft);
-	free(scoreRight);
-		
+	free(scoreRight);	
 }
 
 
