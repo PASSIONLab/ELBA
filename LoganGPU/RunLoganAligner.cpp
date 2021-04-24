@@ -15,11 +15,15 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
 	scoring.push_back(sscheme);
 
 	int deviceCount;
-	deviceCount = 1;
-//     cudaGetDeviceCount(&deviceCount);
-    omp_set_num_threads(deviceCount); // one OMP thread per GPU
 
+	#ifdef ONERANKPERNODE
+	cudaGetDeviceCount(&deviceCount); // 1 MPI process to many GPUs 
+	#else
+	deviceCount = 1; // many MPI processes to 1 GPU
+	#endif
 
+	// one OMP thread per GPU
+    omp_set_num_threads(deviceCount); 
 	
 	int AlignmentsToBePerformed = SeedInterfaceSet.size();
 	int numAlignmentsLocal = BATCH_SIZE * deviceCount; 

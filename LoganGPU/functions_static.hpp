@@ -6,10 +6,14 @@
 #define N_THREADS 128 
 #define MIN -32768
 #define BYTES_INT 4
-// #define N_STREAMS 60
+
 #define MAX_SIZE_ANTIDIAG 8000
-// #define MAX_GPUS 8
-#define MAX_GPUS 1 // multiple mpi to 1 gpu
+
+#ifdef  ONERANKPERNODE
+#define MAXNGPUS 8 // 1 MPI process to many GPUs 
+#else
+#define MAXNGPUS 1 // many MPI processes to 1 GPU
+#endif
 
 //trying to see if the scoring scheme is a bottleneck in some way
 #define MATCH     1
@@ -51,14 +55,17 @@ __inline__ __device__ void warpReduce(volatile short *input,
 
 __inline__ __device__ short reduce_max(short *input, int dim){
 	unsigned int myTId = threadIdx.x;   
-	if(dim>32){
-		for(int i = N_THREADS/2; i >32; i>>=1){
-			if(myTId < i){
+	if(dim > 32) 
+	{
+		for(int i = N_THREADS/2; i > 32; i>>=1)
+		 {
+			if(myTId < i)
+			{
 						input[myTId] = (input[myTId] > input[myTId + i]) ? input[myTId] : input[myTId + i];
 			}__syncthreads();
-		}//__syncthreads();
+		} //__syncthreads();
 	}
-	if(myTId<32)
+	if(myTId < 32)
 		warpReduce(input, myTId);
 	__syncthreads();
 	return input[0];
@@ -208,16 +215,8 @@ __inline__ __device__ void initAntiDiags(
 	//antiDiag3.resize(2);
 	a3size = 2;
 
-	//if (-gapCost > dropOff)
-	//{
-	// 	antiDiag3[0] = undefined;
-	// 	antiDiag3[1] = undefined;
-	//}
-	//else
-	//{
-		antiDiag3[0] = gapCost;
-		antiDiag3[1] = gapCost;
-	//}
+	antiDiag3[0] = gapCost;
+	antiDiag3[1] = gapCost;
 }
 
 __global__ void extendSeedLGappedXDropOneDirectionGlobal(
@@ -269,8 +268,6 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 	if (rows == 1 || cols == 1)
 		return;
 
-	//printf("%d\n", gapCost);
-	//int undefined = UNDEF;
 	int minCol = 1;
 	int maxCol = 2;
 
@@ -288,8 +285,6 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 
 	while (minCol < maxCol)
 	{	
-
-		
 		++antiDiagNo;
 
 		//antidiagswap
@@ -315,10 +310,12 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 		__syncthreads();	
 	
 		int tmp, antiDiagBest = UNDEF;	
-		for(int i=0; i<a3size; i+=N_THREADS){
+		for(int i = 0; i < a3size; i += N_THREADS)
+		{
 			int size = a3size-i;
 			
-			if(myTId<N_THREADS){
+			if(myTId < N_THREADS)
+			{
 				temp[myTId] = (myTId<size) ? antiDiag3[myTId+i]:UNDEF;				
 			}
 			__syncthreads();
@@ -327,12 +324,14 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 			antiDiagBest = (tmp>antiDiagBest) ? tmp:antiDiagBest;
 
 		}
+
 		best = (best > antiDiagBest) ? best : antiDiagBest;
 		//int prova = simple_max(antiDiag3, a3size);	
 		//if(prova!=antiDiagBest){
 		//	if(myTId==0)
 		//		printf("errore %d/%d\n", prova,antiDiagBest);
 		//}
+
 		while (minCol - offset3 < a3size && antiDiag3[minCol - offset3] == UNDEF &&
 			   minCol - offset2 - 1 < a2size && antiDiag2[minCol - offset2 - 1] == UNDEF)
 		{
@@ -377,11 +376,9 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 			// reached end of database segment
 			longestExtensionCol = a2size + offset2 - 3;
 			longestExtensionRow = antiDiagNo - 1 - longestExtensionCol;
-			longestExtensionScore = antiDiag2[longestExtensionCol - offset2];
-			
+			longestExtensionScore = antiDiag2[longestExtensionCol - offset2];		
 		}
 	}
-
 
 	//could be parallelized in some way
 	if (longestExtensionScore == UNDEF){
@@ -403,7 +400,6 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 		updateExtendedSeedL(mySeed, direction, longestExtensionCol, longestExtensionRow, lowerDiag, upperDiag);
 	seed[myId] = mySeed;
 	res[myId] = longestExtensionScore;
-	//}
 
 }
 
@@ -435,7 +431,7 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	auto start_t1 = NOW;
 
 	//declare streams
-	cudaStream_t stream_r[MAX_GPUS], stream_l[MAX_GPUS];
+	cudaStream_t stream_r[MAXNGPUS], stream_l[MAXNGPUS];
 
 	// NB nSequences is correlated to the number of GPUs that we have
 	
@@ -461,52 +457,53 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	}
 
 	//sequences offsets	 		
-	vector<int> offsetLeftQ[MAX_GPUS];
-	vector<int> offsetLeftT[MAX_GPUS];	
-	vector<int> offsetRightQ[MAX_GPUS];	
-	vector<int> offsetRightT[MAX_GPUS];
+	vector<int> offsetLeftQ[MAXNGPUS];
+	vector<int> offsetLeftT[MAXNGPUS];	
+	vector<int> offsetRightQ[MAXNGPUS];	
+	vector<int> offsetRightT[MAXNGPUS];
 
 	//shared_mem_size per block per GPU
-	int ant_len_left[MAX_GPUS];
-	int ant_len_right[MAX_GPUS];
+	int ant_len_left[MAXNGPUS];
+	int ant_len_right[MAXNGPUS];
 
 	//antidiag in case shared memory isn't enough
-	short *ant_l[MAX_GPUS], *ant_r[MAX_GPUS];
+	short *ant_l[MAXNGPUS], *ant_r[MAXNGPUS];
 
 	//total lenght of the sequences
-	int totalLengthQPref[MAX_GPUS];
-	int totalLengthTPref[MAX_GPUS];
-	int totalLengthQSuff[MAX_GPUS];
-	int totalLengthTSuff[MAX_GPUS];
+	int totalLengthQPref[MAXNGPUS];
+	int totalLengthTPref[MAXNGPUS];
+	int totalLengthQSuff[MAXNGPUS];
+	int totalLengthTSuff[MAXNGPUS];
 
 	//declare and allocate sequences prefixes and suffixes
-	char *prefQ[MAX_GPUS], *prefT[MAX_GPUS];
-	char *suffQ[MAX_GPUS], *suffT[MAX_GPUS];
+	char *prefQ[MAXNGPUS], *prefT[MAXNGPUS];
+	char *suffQ[MAXNGPUS], *suffT[MAXNGPUS];
 
 	//declare GPU offsets
-	int *offsetLeftQ_d[MAX_GPUS], *offsetLeftT_d[MAX_GPUS];
-	int *offsetRightQ_d[MAX_GPUS], *offsetRightT_d[MAX_GPUS];
+	int *offsetLeftQ_d[MAXNGPUS], *offsetLeftT_d[MAXNGPUS];
+	int *offsetRightQ_d[MAXNGPUS], *offsetRightT_d[MAXNGPUS];
 	
 	//declare GPU results
-	int *scoreLeft_d[MAX_GPUS], *scoreRight_d[MAX_GPUS];
+	int *scoreLeft_d[MAXNGPUS], *scoreRight_d[MAXNGPUS];
 
 	//declare GPU seeds
-	LSeed *seed_d_l[MAX_GPUS], *seed_d_r[MAX_GPUS];
+	LSeed *seed_d_l[MAXNGPUS], *seed_d_r[MAXNGPUS];
 
 	//declare prefixes and suffixes on the GPU  
-	char *prefQ_d[MAX_GPUS], *prefT_d[MAX_GPUS];
-	char *suffQ_d[MAX_GPUS], *suffT_d[MAX_GPUS];
+	char *prefQ_d[MAXNGPUS], *prefT_d[MAXNGPUS];
+	char *suffQ_d[MAXNGPUS], *suffT_d[MAXNGPUS];
 
 	#pragma omp parallel for
-	for(int i = 0; i < ngpus; i++){
+	for(int i = 0; i < ngpus; i++)
+	{
 		int dim = nSequences;
-		if(i==ngpus-1)
-			dim = nSequencesLast;
-		//compute offsets and shared memory per block
+		if(i == ngpus-1) dim = nSequencesLast;
+
+		// compute offsets and shared memory per block
 		ant_len_left[i]=0;
 		ant_len_right[i]=0;
-		for(int j = 0; j < dim; j++){
-
+		for(int j = 0; j < dim; j++)
+		{
 			offsetLeftQ[i].push_back(getBeginPositionV(seeds[j+i*nSequences]));
 			offsetLeftT[i].push_back(getBeginPositionH(seeds[j+i*nSequences]));
 			ant_len_left[i] = std::max(std::min(offsetLeftQ[i][j],offsetLeftT[i][j]), ant_len_left[i]);
@@ -521,16 +518,19 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		partial_sum(offsetLeftT[i].begin(),offsetLeftT[i].end(),offsetLeftT[i].begin());
 		partial_sum(offsetRightQ[i].begin(),offsetRightQ[i].end(),offsetRightQ[i].begin());
 		partial_sum(offsetRightT[i].begin(),offsetRightT[i].end(),offsetRightT[i].begin());
+
 		//set total length of the sequences
 		totalLengthQPref[i] = offsetLeftQ[i][dim-1];
 		totalLengthTPref[i] = offsetLeftT[i][dim-1];
 		totalLengthQSuff[i] = offsetRightQ[i][dim-1];
 		totalLengthTSuff[i] = offsetRightT[i][dim-1];
+
 		//allocate sequences prefix and suffix on the CPU
 		prefQ[i] = (char*)malloc(sizeof(char)*totalLengthQPref[i]);
 		prefT[i] = (char*)malloc(sizeof(char)*totalLengthTPref[i]);
 		suffQ[i] = (char*)malloc(sizeof(char)*totalLengthQSuff[i]);
 		suffT[i] = (char*)malloc(sizeof(char)*totalLengthTSuff[i]);
+
 		//generate prefix and suffix on the CPU
 		//std::cout << "SETTING UP PREF/SUFF" << std::endl;
 		reverse_copy(query[0+i*nSequences].c_str(),query[0+i*nSequences].c_str()+offsetLeftQ[i][0],prefQ[i]);
@@ -538,8 +538,10 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		memcpy(prefT[i], target[0+i*nSequences].c_str(), offsetLeftT[i][0]);
 		memcpy(suffQ[i], query[0+i*nSequences].c_str()+getEndPositionV(seeds[0+i*nSequences]), offsetRightQ[i][0]);
 		reverse_copy(target[0+i*nSequences].c_str()+getEndPositionH(seeds[0+i*nSequences]),target[0+i*nSequences].c_str()+getEndPositionH(seeds[0+i*nSequences])+offsetRightT[i][0],suffT[i]);
+		
 		//memcpy(suffT[i], target[0+i*nSequences].c_str()+getEndPositionH(seeds[0+i*nSequences]), offsetRightT[i][0]);
-		for(int j = 1; j<dim; j++){
+		for(int j = 1; j<dim; j++)
+		{
 			char *seqptr = prefQ[i] + offsetLeftQ[i][j-1];
 			reverse_copy(query[j+i*nSequences].c_str(),query[j+i*nSequences].c_str()+(offsetLeftQ[i][j]-offsetLeftQ[i][j-1]),seqptr);
 			//memcpy(seqptr, query[j+i*nSequences].c_str(), offsetLeftQ[i][j]-offsetLeftQ[i][j-1]);
@@ -550,26 +552,30 @@ inline void extendSeedL(vector<LSeed> &seeds,
 			seqptr = suffT[i] + offsetRightT[i][j-1];
 			reverse_copy(target[j+i*nSequences].c_str()+getEndPositionH(seeds[j+i*nSequences]),target[j+i*nSequences].c_str()+getEndPositionH(seeds[j+i*nSequences])+(offsetRightT[i][j]-offsetRightT[i][j-1]),seqptr);
 			//memcpy(seqptr, target[j+i*nSequences].c_str()+getEndPositionH(seeds[j+i*nSequences]), offsetRightT[i][j]-offsetRightT[i][j-1]);
-
 		}
 	}
 	auto start_transfer = NOW;
 	
-	
-	// Get the device id like adept
-	get diveceCount;
-	gpu_id = myrank % deviceCount;
+	// Get the device id for many MPI processes to 1 GPU option
+	int deviceCount, myrank;
+	int mygpuid;
 
-	#pragma omp parallel for
-	for(int i = 0; i < ngpus; i++){
+	mygpuid = MPI_Comm_rank(MPI_COMM_WORLD, &myrank) % deviceCount;
+
+#pragma omp parallel for
+	for(int i = 0; i < ngpus; i++)
+	{
 		int dim = nSequences;
-		if(i==ngpus-1)
-			dim = nSequencesLast;
-		//set gpu device
-		cudaSetDevice(gpu_id);
-		//cudaSetDevice(i);
+		if(i == ngpus-1) dim = nSequencesLast;
+
+		// set gpu device
+	#ifdef ONERANKPERNODE
+		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
+	#else
+		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
+	#endif
+
 		//create streams
-		
 		cudaStreamCreateWithFlags(&stream_r[i],cudaStreamNonBlocking);
 		cudaStreamCreateWithFlags(&stream_l[i],cudaStreamNonBlocking);
 		//allocate antidiagonals on the GPU
@@ -617,36 +623,54 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	
 	auto start_c = NOW;
 	
-	//execute kernels
-	#pragma omp parallel for
-	for(int i = 0; i< ngpus;i++){
-		cudaSetDevice(i);
-		cudaSetDevice(gpu_id);
+	// execute kernels
+#pragma omp parallel for
+	for(int i = 0; i < ngpus; i++)
+	{
+
+	#ifdef ONERANKPERNODE
+		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
+	#else
+		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
+	#endif
 		
 		int dim = nSequences;
-		if(i==ngpus-1)
+		if(i == ngpus-1)
 			dim = nSequencesLast;
 		
 		extendSeedLGappedXDropOneDirectionGlobal <<<dim, N_THREADS, 0, stream_l[i]>>> (seed_d_l[i], prefQ_d[i], prefT_d[i], EXTEND_LEFTL, XDrop, scoreLeft_d[i], offsetLeftQ_d[i], offsetLeftT_d[i], ant_len_left[i], ant_l[i]);
 		extendSeedLGappedXDropOneDirectionGlobal <<<dim, N_THREADS, 0, stream_r[i]>>> (seed_d_r[i], suffQ_d[i], suffT_d[i], EXTEND_RIGHTL, XDrop, scoreRight_d[i], offsetRightQ_d[i], offsetRightT_d[i], ant_len_right[i], ant_r[i]);
 
-		//cout<<"LAUNCHED"<<endl;
 	}
-	#pragma omp parallel for
-	for(int i = 0; i < ngpus; i++){
-		cudaSetDevice(i);
+
+#pragma omp parallel for
+	for(int i = 0; i < ngpus; i++) {
+
+	#ifdef ONERANKPERNODE
+		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
+	#else
+		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
+	#endif
+
 		int dim = nSequences;
 		if(i==ngpus-1)
 			dim = nSequencesLast;
+
 		cudaErrchk(cudaMemcpyAsync(scoreLeft+i*nSequences, scoreLeft_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(&seeds[0]+i*nSequences, seed_d_l[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(scoreRight+i*nSequences, scoreRight_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_r[i]));
 		cudaErrchk(cudaMemcpyAsync(&seeds_r[0]+i*nSequences, seed_d_r[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_r[i]));
 	}
-	#pragma omp parallel for
-	for(int i = 0; i < ngpus; i++){
-// 		cudaSetDevice(i);
-		cudaSetDevice(gpu_id);
+
+#pragma omp parallel for
+	for(int i = 0; i < ngpus; i++)
+	{
+	#ifdef ONERANKPERNODE
+		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
+	#else
+		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
+	#endif
+
 		cudaDeviceSynchronize();
 	}
 
@@ -659,10 +683,15 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	//cudaStreamDestroy(stream_l);
 	//cudaStreamDestroy(stream_r);
 
-	#pragma omp parallel for
-	for(int i = 0; i < ngpus; i++){
-		cudaSetDevice(i);
-		cudaSetDevice(gpu_id);
+#pragma omp parallel for
+	for(int i = 0; i < ngpus; i++)
+	{
+
+	#ifdef ONERANKPERNODE
+		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
+	#else
+		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
+	#endif
 
 		cudaStreamDestroy(stream_l[i]);
 		cudaStreamDestroy(stream_r[i]);

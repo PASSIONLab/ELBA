@@ -8,11 +8,13 @@
 
 #define MIN -32768
 #define BYTES_INT 4
-//#define N_STREAMS 60
-//#define MAX_SIZE_ANTIDIAG 8000
-#define MAX_GPUS 8
 
-//trying to see if the scoring scheme is a bottleneck in some way
+#ifdef  ONERANKPERNODE
+#define MAXNGPUS 8 // many MPI processes to 1 GPU
+#else
+#define MAXNGPUS 1 // 1 MPI process to many GPUs 
+#endif
+
 #define MATCH     1
 #define MISMATCH -1
 #define GAP_EXT  -1
