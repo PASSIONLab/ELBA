@@ -413,6 +413,7 @@ inline void extendSeedL(vector<LSeed> &seeds,
 			int *res,
 			int numAlignments,
 			int ngpus,
+			int myrank,
 			int n_threads //keep it just for compatibility but is's never used here
 			)
 {
@@ -557,10 +558,10 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	auto start_transfer = NOW;
 	
 	// Get the device id for many MPI processes to 1 GPU option
-	int deviceCount, myrank;
-	int mygpuid;
+	int deviceCount;
+	cudaGetDeviceCount(&deviceCount);
 
-	mygpuid = MPI_Comm_rank(MPI_COMM_WORLD, &myrank) % deviceCount;
+	int mygpuid = myrank % deviceCount; // myrank passed as argument so I don't have to link CUDA/MPI
 
 #pragma omp parallel for
 	for(int i = 0; i < ngpus; i++)
@@ -599,8 +600,7 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		cudaErrchk(cudaMalloc(&suffT_d[i], totalLengthTSuff[i]*sizeof(char)));
 		//copy seeds on the GPU
 		cudaErrchk(cudaMemcpyAsync(seed_d_l[i], &seeds[0]+i*nSequences, dim*sizeof(LSeed), cudaMemcpyHostToDevice, stream_l[i]));
-		cudaErrchk(cudaMemcpyAsync(seed_d_r[i], &seeds_r[0]+i*nSequences, dim*sizeof(LSeed), cudaMemcpyHostToDevice, 
-					 [i]));
+		cudaErrchk(cudaMemcpyAsync(seed_d_r[i], &seeds_r[0]+i*nSequences, dim*sizeof(LSeed), cudaMemcpyHostToDevice, stream_r[i]));
 		//copy offsets on the GPU
 		cudaErrchk(cudaMemcpyAsync(offsetLeftQ_d[i], &offsetLeftQ[i][0], dim*sizeof(int), cudaMemcpyHostToDevice, stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(offsetLeftT_d[i], &offsetLeftT[i][0], dim*sizeof(int), cudaMemcpyHostToDevice, stream_l[i]));

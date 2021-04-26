@@ -8,7 +8,7 @@ using namespace std;
 
 void 
 RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs, 
-	vector<SeedInterface>& SeedInterfaceSet, vector<LoganResult>& xscores, int& xdrop, ushort& seed_length)
+	vector<SeedInterface>& SeedInterfaceSet, vector<LoganResult>& xscores, int& xdrop, ushort& seed_length, int& myrank)
 {
 	ScoringSchemeL sscheme(1, -1, -1, -1);
 	std::vector<ScoringSchemeL> scoring;
@@ -50,13 +50,13 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
 		std::vector<SeedInterface> bSeedInterface(first_s, last_s);
 
 		std::vector<LSeed> bLSeedSet;
-		for(int k = 0; k < bSeedInterface.size(); k++)
+		for(int k = 0; k < (int)bSeedInterface.size(); k++)
 		{
 			LSeed lseed(bSeedInterface[k]);
 			bLSeedSet.push_back(lseed);
 		}
 
-		extendSeedL(bLSeedSet, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount, omp_get_num_threads());
+		extendSeedL(bLSeedSet, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount, myrank, omp_get_num_threads());
 
 		for(int j = 0; j < numAlignmentsLocal; j++)
 		{

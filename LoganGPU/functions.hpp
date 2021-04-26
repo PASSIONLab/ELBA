@@ -426,6 +426,7 @@ inline void extendSeedL(vector<LSeed> &seeds,
 			int *res,
 			int numAlignments,
 			int ngpus,
+			int myrank,
 			int n_threads
 			//,long int cups
 			)
@@ -652,6 +653,12 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	std::cout << "Input transfer and malloc time: " << transfer.count() << std::endl;
 	
 	auto start_c = NOW;
+
+	// Get the device id for many MPI processes to 1 GPU option
+	int deviceCount;
+	cudaGetDeviceCount(&deviceCount);
+
+	int mygpuid = myrank % deviceCount; // myrank passed as argument so I don't have to link CUDA/MPI
 	
 	// execute kernels
 	#pragma omp parallel for
@@ -676,12 +683,6 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		duration<double> c_ithread_1 = end_c_ithread_1 - start_c_ithread_1;
 		pergpuctime[MYTHREAD] = c_ithread_1.count();
 	}
-
-	// Get the device id for many MPI processes to 1 GPU option
-	int deviceCount, myrank;
-	int mygpuid;
-
-	mygpuid = MPI_Comm_rank(MPI_COMM_WORLD, &myrank) % deviceCount;
 
 #pragma omp parallel for
 	for(int i = 0; i < ngpus; i++)

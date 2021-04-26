@@ -1,7 +1,7 @@
 #!/bin/bash
 
-source corigpu-env.sh
-read lower upper delta
+#source corigpu-env.sh
+#read lower upper delta
 
 export COMBBLAS_HOME=$PWD
 export BLOOM_HOME=$PWD/src/libbloom/
@@ -12,11 +12,11 @@ echo ""
 echo "Enviroment variables set and modules loaded."
 echo ""
 
-cd $LOGAN_HOME
-mkdir build
-cd build
-cmake ..
-make -j4
+#cd $LOGAN_HOME
+#mkdir build
+#cd build
+#cmake ..
+#make -j4
 
 echo ""
 echo "LOGAN installation completed."
@@ -39,9 +39,9 @@ echo ""
 cd $COMBBLAS_HOME
 mkdir build_release
 cd build_release
-cmake -DLOWER_KMER_FREQ=$lower -DUPPER_KMER_FREQ=$upper -DDELTACHERNOFF=$delta ..
+cmake -DLOWER_KMER_FREQ=220 -DUPPER_KMER_FREQ=300 -DDELTACHERNOFF=0.7 ..
 make -j8
 
 echo ""
-echo "ELBA installation completed using upper [$upper], lower [$lower], and delta [$delta]."
+echo "ELBA installation completed using upper [300], lower [220], and delta [0.7]."
 echo ""

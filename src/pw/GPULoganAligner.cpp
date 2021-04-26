@@ -288,7 +288,9 @@ GPULoganAligner::apply_batch
 		if(!noAlign) 
 		{ 
 			// @GGGG-TODO: Check the parameter
-			RunLoganAlign(seqHs, seqVs, seeds, xscores, xdrop, seed_length);
+			int myrank;
+			MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+			RunLoganAlign(seqHs, seqVs, seeds, xscores, xdrop, seed_length, myrank);
 		}
 
 		end_time = std::chrono::system_clock::now();
