@@ -277,6 +277,11 @@ int main(int argc, char **argv)
   PairwiseFunction* pf = nullptr;
   uint64_t local_alignments = 1;
 
+  // Output intermediate matrix post-alignment
+  std::string candidatem = myoutput;
+  candidatem += ".candidatematrix.mm";
+  B.ParallelWriteMM(candidatem, true, dibella::CkOutputMMHandler()); 
+
   if(xdropAlign)
   {
     pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
@@ -304,7 +309,7 @@ int main(int argc, char **argv)
 
   // Output intermediate matrix post-alignment
   std::string postalignment = myoutput;
-  postalignment += ".postalignment.mm";
+  postalignment += ".resultmatrix.mm";
   B.ParallelWriteMM(postalignment, true, dibella::CkOutputMMHandler()); 
   
   //////////////////////////////////////////////////////////////////////////////////////
@@ -320,6 +325,11 @@ int main(int argc, char **argv)
   }
 
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
+
+  // Output intermediate matrix post-alignment
+  std::string stringm = myoutput;
+  stringm += ".stringmatrix.mm";
+  B.ParallelWriteMM(stringm, true, dibella::CkOutputMMHandler()); 
 
   //////////////////////////////////////////////////////////////////////////////////////
   // CONTIG EXTRACTION                                                                // 
