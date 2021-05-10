@@ -164,9 +164,9 @@ public:
             if(got == kmercounts->end())
             {
 #ifdef KHASH
-                kmercounts->insert(kmer.getArray(), make_tuple(newReadIdList(), newPositionsList(), 0));
+                //kmercounts->insert(kmer.getArray(), make_tuple(newReadIdList(), newPositionsList(), 0));
 #else
-                kmercounts->insert(make_pair(kmer.getArray(), make_tuple(newReadIdList(), newPositionsList(), 0)));
+                //kmercounts->insert(make_pair(kmer.getArray(), make_tuple(newReadIdList(), newPositionsList(), 0)));
 #endif
                 if (andCount) includeCount(false);
             } else {
