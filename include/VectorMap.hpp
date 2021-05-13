@@ -276,14 +276,14 @@ public:
 	iterator find (const key_type& k)
     {
 		size_type bidx = getBucketIdx(k);
-		//omp_set_lock(bucket_locks + bidx);
+		omp_set_lock(bucket_locks + bidx);
 		typename Map::iterator it = _data[bidx].find(k);
 		if (it == _data[bidx].end()) {
-			//omp_unset_lock(bucket_locks + bidx);
+			omp_unset_lock(bucket_locks + bidx);
 			return end();
 		}
 		else {
-			//omp_unset_lock(bucket_locks + bidx);
+			omp_unset_lock(bucket_locks + bidx);
 			return iterator(_data, bidx, it);
 		}
 	}
@@ -291,14 +291,14 @@ public:
 	const_iterator find (const key_type& k) const
     {
 		size_type bidx = getBucketIdx(k);
-		//omp_set_lock(bucket_locks + bidx);
+		omp_set_lock(bucket_locks + bidx);
 		typename Map::const_iterator it = _data[bidx].find(k);
 		if (it == _data[bidx].end()) {
-			//omp_unset_lock(bucket_locks + bidx);
+			omp_unset_lock(bucket_locks + bidx);
 			return end();
 		}
 		else {
-			//omp_unset_lock(bucket_locks + bidx);
+			omp_unset_lock(bucket_locks + bidx);
 			return const_iterator(_data, bidx, it);
 		}
 	}
@@ -306,10 +306,10 @@ public:
 	pair<iterator,bool> insert(const value_type& val)
     {
 		size_type bidx = getBucketIdx(val.first);
-		//omp_set_lock(bucket_locks + bidx);
+		omp_set_lock(bucket_locks + bidx);
 		pair<typename Map::iterator, bool> ret = _data[bidx].insert(val);
 		pair<iterator, bool> ret2(iterator(_data, bidx, ret.first), ret.second);
-		//omp_unset_lock(bucket_locks + bidx);
+		omp_unset_lock(bucket_locks + bidx);
 		return ret2;
 	}
 

@@ -98,7 +98,7 @@ static int bloom_check_add_concurrent_safe(struct bloom * bloom,
       }
       else {
         lock_table_entry = a % bloom->lock_table_size;
-        //omp_set_lock( bloom->lock_table + lock_table_entry);
+        omp_set_lock( bloom->lock_table + lock_table_entry);
         lock_phase = 1;
       }
     }
@@ -110,7 +110,7 @@ static int bloom_check_add_concurrent_safe(struct bloom * bloom,
     }
   }
   if(lock_phase) {
-    //omp_unset_lock(bloom->lock_table + lock_table_entry);
+    omp_unset_lock(bloom->lock_table + lock_table_entry);
   }
 
   if (hits == bloom->hashes) {
