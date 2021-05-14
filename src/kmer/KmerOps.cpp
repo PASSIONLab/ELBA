@@ -164,9 +164,9 @@ public:
             if(got == kmercounts->end())
             {
 #ifdef KHASH
-                //kmercounts->insert(kmer.getArray(), make_tuple(newReadIdList(), newPositionsList(), 0));
+                kmercounts->insert(kmer.getArray(), make_tuple(newReadIdList(), newPositionsList(), 0));
 #else
-                //kmercounts->insert(make_pair(kmer.getArray(), make_tuple(newReadIdList(), newPositionsList(), 0)));
+                kmercounts->insert(make_pair(kmer.getArray(), make_tuple(newReadIdList(), newPositionsList(), 0)));
 #endif
                 if (andCount) includeCount(false);
             } else {
@@ -177,7 +177,7 @@ public:
         return inBloom;
     }
 
-    void updateReadIds(KmerCountsType::iterator got) {
+    void updateReadIds(KmerCountsType::iterator got, omp_lock_t* bucket_lock) {
 #ifdef KHASH
         READIDS reads = get<0>(*got);  // ::value returns (const valtype_t &) but ::* returns (valtype_t &), which can be changed
         POSITIONS& positions = get<1>(*got);
@@ -190,20 +190,31 @@ public:
         // never add duplicates, also currently doesn't support more than 1 positions per read ID
         int index;
         for (index = 0; index < maxKmerFreq && reads[index] > nullReadId; index++) {
-			if (reads[index] == readId) return;
+			if (reads[index] == readId) {
+                omp_unset_lock(bucket_lock);
+                return;
+            }
 		}
         // if the loop finishes without returning, the index is set to the next open space or there are no open spaces
-        if (index >= maxKmerFreq || reads[index] > nullReadId) return;
+        if (index >= maxKmerFreq || reads[index] > nullReadId) {
+            omp_unset_lock(bucket_lock);
+            return;
+        }
 
         ASSERT(reads[index] == nullReadId, "reads[index] does not equal expected value of nullReadId");
         reads[index] = readId;
 
         positions[index] = position;
+        omp_unset_lock(bucket_lock);
     }
 
     bool includeCount(bool doStoreReadId) {
-        auto got = kmercounts->find(kmer.getArray());  // kmercounts is a global variable
-        if ( doStoreReadId && (got != kmercounts->end()) ) { updateReadIds(got); }
+        omp_lock_t* bucket_lock;
+        auto got = kmercounts->find_without_unlock(kmer.getArray(), &bucket_lock);  // kmercounts is a global variable
+        if(got == kmercounts->end() || ! doStoreReadId) {
+            omp_unset_lock(bucket_lock);
+        }
+        if ( doStoreReadId && (got != kmercounts->end()) ) { updateReadIds(got, bucket_lock); }
         return includeCount(got);
     }
 
@@ -356,6 +367,8 @@ void DealWithInMemoryData(VectorKmer& mykmers, int pass, struct bloom* bm, Vecto
     {
         ASSERT(pass == 2, "");
         size_t count = mykmers.size();
+
+        #pragma omp parallel for default(shared)
         for(size_t i = 0; i < count; ++i)
         {
             KmerInfo ki(mykmers[i], myreadids[i], mypositions[i]);

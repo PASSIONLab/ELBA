@@ -303,6 +303,42 @@ public:
 		}
 	}
 
+	/*
+	 * Both of these functions return a reference to a lock maintained
+	 * by this hash table along with the iterator itself (returned)
+	 * by a pointer. Neither of these functions will unset the lock
+	 * before returning. The caller function is responsible for unsetting
+	 * the lock returned by the function. 
+	 * 
+	 */
+	iterator find_without_unlock (const key_type& k, omp_lock_t** lock_ptr)
+    {
+		size_type bidx = getBucketIdx(k);
+		*lock_ptr = bucket_locks + bidx;
+		omp_set_lock(bucket_locks + bidx);
+		typename Map::iterator it = _data[bidx].find(k);
+		if (it == _data[bidx].end()) {
+			return end();
+		}
+		else {
+			return iterator(_data, bidx, it);
+		}
+	}
+
+	const_iterator find_without_unlock (const key_type& k, omp_lock_t** lock_ptr) const
+    {
+		size_type bidx = getBucketIdx(k);
+		*lock_ptr = bucket_locks + bidx;
+		omp_set_lock(bucket_locks + bidx);
+		typename Map::const_iterator it = _data[bidx].find(k);
+		if (it == _data[bidx].end()) {
+			return end();
+		}
+		else {
+			return const_iterator(_data, bidx, it);
+		}
+	}
+
 	pair<iterator,bool> insert(const value_type& val)
     {
 		size_type bidx = getBucketIdx(val.first);
