@@ -212,13 +212,17 @@ public:
         bool inserted = false;
         if(got != kmercounts->end()) // don't count anything else
         {
+            int* val_pointer;
 			// count the kmer in mercount
 #ifdef KHASH
-			++(get<2>(*got));  // ::value returns (const valtype_t &) but ::* returns (valtype_t &), which can be changed
+			val_pointer = &(get<2>(*got));  // ::value returns (const valtype_t &) but ::* returns (valtype_t &), which can be changed
 #else
-			++(get<2>(got->second)); // increment the counter regardless of quality extensions
+			val_pointer = &(get<2>(got->second)); // increment the counter regardless of quality extensions
 #endif
             inserted = true;
+
+            // For thread safety, make the increment is atomic
+            __atomic_add_fetch(val_pointer, 1, __ATOMIC_RELAXED);
         }
         MPI_Pcontrol(-1,"HashTable");
         return inserted;
