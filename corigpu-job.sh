@@ -1,8 +1,9 @@
 #!/bin/bash
 #SBATCH -A m2865
 #SBATCH -C gpu
+#SBATCH -N 1
 #SBATCH -q regular
-#SBATCH -t 1:00:00
+#SBATCH -t 10:00
 #SBATCH --ntasks-per-node=16
 #SBATCH -c 2
 #SBATCH --gpus-per-node=8

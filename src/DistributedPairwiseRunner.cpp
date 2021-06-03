@@ -370,7 +370,7 @@ DistributedPairwiseRunner::run_batch
 			<< std::endl;
 
 		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, noAlign, k, nreads);
-		
+
 		delete [] lids;
 		++batch_idx;
 	}

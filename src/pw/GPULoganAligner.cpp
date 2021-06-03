@@ -179,6 +179,9 @@ GPULoganAligner::apply_batch
     int debugThr
 )
 {
+
+	int myrank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 	// seqan::ExecutionPolicy<seqan::Parallel, seqan::Vectorial> exec_policy;
 
 	int numThreads = 1;
@@ -253,12 +256,12 @@ GPULoganAligner::apply_batch
 				std::reverse(std::begin(twinseqH), std::end(twinseqH));
 				std::transform(std::begin(twinseqH), std::end(twinseqH), std::begin(twinseqH), complementbase);
 
-				LocalSeedHOffset = twinseqH.length(); - LocalSeedHOffset - seed_length;
+				LocalSeedHOffset = twinseqH.length() - LocalSeedHOffset - seed_length;
 
-				SeedInterface seed(LocalSeedHOffset, LocalSeedVOffset, LocalSeedHOffset + seed_length, LocalSeedVOffset + seed_length);
+				SeedInterface seed(LocalSeedHOffset, LocalSeedVOffset, seed_length); //LocalSeedHOffset + seed_length, LocalSeedVOffset + seed_length);
 
 				// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
-				seeds.push_back(seed);
+				seeds.push_back(seed); // segfault origin might be around here 
 				seqVs.push_back(seqV);
 				seqHs.push_back(twinseqH);
 
@@ -267,10 +270,10 @@ GPULoganAligner::apply_batch
 			}
 			else
 			{
-				SeedInterface seed(LocalSeedHOffset, LocalSeedVOffset, LocalSeedHOffset + seed_length, LocalSeedVOffset + seed_length);
+				SeedInterface seed(LocalSeedHOffset, LocalSeedVOffset, seed_length); //LocalSeedHOffset + , LocalSeedVOffset + seed_length);
 
 				// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
-				seeds.push_back(seed);
+				seeds.push_back(seed); // segfault origin might be around here 
 				seqVs.push_back(seqV);
 				seqHs.push_back(seqH);
 
@@ -288,8 +291,6 @@ GPULoganAligner::apply_batch
 		if(!noAlign) 
 		{ 
 			// @GGGG-TODO: Check the parameter
-			int myrank;
-			MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 			RunLoganAlign(seqHs, seqVs, seeds, xscores, xdrop, seed_length, myrank);
 		}
 

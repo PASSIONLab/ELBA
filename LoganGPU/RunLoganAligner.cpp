@@ -53,7 +53,7 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
 		for(int k = 0; k < (int)bSeedInterface.size(); k++)
 		{
 			LSeed lseed(bSeedInterface[k]);
-			bLSeedSet.push_back(lseed);
+			bLSeedSet.push_back(lseed); // segfault origin might be around here 
 		}
 
 		extendSeedL(bLSeedSet, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount, myrank, omp_get_num_threads());
