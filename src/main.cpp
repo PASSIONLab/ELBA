@@ -83,6 +83,7 @@ bool fullAlign = false;
 
 /*! Perform xdrop alignment */
 bool xdropAlign = false;
+bool LoganAlign = false;
 
 /*! File path to output global sequence index to original global sequence
  * index mapping */
@@ -279,8 +280,6 @@ int main(int argc, char **argv)
   PairwiseFunction* pf = nullptr;
   uint64_t local_alignments = 1;
 
-  bool LoganAlign = true;
-
   if(LoganAlign)
   {
     pf = new GPULoganAligner(scoring_scheme, klength, xdrop, seed_count);	    
@@ -433,6 +432,8 @@ int parse_args(int argc, char **argv)
     (CMD_OPTION_FULL_ALIGN, CMD_OPTION_DESCRIPTION_FULL_ALIGN)
     (CMD_OPTION_XDROP_ALIGN, CMD_OPTION_DESCRIPTION_XDROP_ALIGN,
      cxxopts::value<int>())
+    (CMD_OPTION_LOGAN_ALIGN, CMD_OPTION_DESCRIPTION_LOGAN_ALIGN,
+     cxxopts::value<int>()) 
     (CMD_OPTION_IDX_MAP, CMD_OPTION_DESCRIPTION_IDX_MAP,
      cxxopts::value<std::string>())
     (CMD_OPTION_ALPH, CMD_OPTION_DESCRIPTION_ALPH,
@@ -557,6 +558,12 @@ int parse_args(int argc, char **argv)
     xdrop = result[CMD_OPTION_XDROP_ALIGN].as<int>();
   }
 
+  if (result.count(CMD_OPTION_LOGAN_ALIGN)) {
+    LoganAlign = true;
+    noAlign    = false;
+    xdrop = result[CMD_OPTION_LOGAN_ALIGN].as<int>();
+  }
+
   if (result.count(CMD_OPTION_ALPH)) {
     std::string tmp = result[CMD_OPTION_ALPH].as<std::string>();
     if (tmp == "dna"){
@@ -625,6 +632,7 @@ void pretty_print_config(std::string &append_to) {
     bool_to_str(noAlign),
     bool_to_str(fullAlign),
     bool_to_str(xdropAlign)  + (xdropAlign  ? " | xdrop: " + std::to_string(xdrop) : ""),
+    bool_to_str(LoganAlign)  + (LoganAlign  ? " | xdrop: " + std::to_string(xdrop) : ""),
     !idx_map_file.empty() ? idx_map_file : "None",
     std::to_string(alph_t)
   };
