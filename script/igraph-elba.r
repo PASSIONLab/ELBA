@@ -68,3 +68,5 @@ E(S)$weight
 
 write_graph(S, "testr1.dot", format = c("dot"))
 
+## Type 'dot -T pdf -O testr1.dot -Ename=weight' from command line to generate the plot using GraphViz
+
