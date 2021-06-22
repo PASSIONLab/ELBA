@@ -310,7 +310,7 @@ int main(int argc, char **argv)
   // Output intermediate matrix post-alignment
   std::string postalignment = myoutput;
   postalignment += ".resultmatrix.mm";
-  B.ParallelWriteMM(postalignment, true, dibella::CkOutputMMHandler()); 
+  B.ParallelWriteMM(postalignment, true, dibella::CkOutputHandler()); 
   
   //////////////////////////////////////////////////////////////////////////////////////
   // TRANSITIVE REDUCTION                                                             // 

@@ -5,7 +5,7 @@
 uint minOverlapLen = 10000;
 
 void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
-	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign)
+	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -46,8 +46,16 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 		endpV = rlenV - tmp;
 	}
 
-	if((begpH == 0 & rlenH-endpH == 0) || (begpV == 0 & rlenV-endpV == 0))
+	if(begpH == 0 && rlenH-endpH == 0)
+	{
+		ContainedSeqMyThread.push_back(seqH); // Push back global index
 		contained = true;
+	}
+	else if(begpV == 0 && rlenV-endpV == 0)
+	{
+		ContainedSeqMyThread.push_back(seqV); // Push back global index
+		contained = true;
+	}
 	
 	if(!contained)
 	{
@@ -272,6 +280,7 @@ SeedExtendXdrop::apply_batch
 	const bool noAlign,
 	ushort k,
 	uint64_t nreads,
+	std::vector<int64_t>& ContainedSeqPerBatch,
     float ratioScoreOverlap, // GGGG: this is my ratioScoreOverlap variable change name later
     int debugThr
 )
@@ -458,6 +467,7 @@ SeedExtendXdrop::apply_batch
 				ai[i].seq_h_seed_length = seedlens[i].first;
 				ai[i].seq_v_seed_length = seedlens[i].second;
 
+				// GGGG: global idx over here to use in the FullDistVect for removing contained vertices/seqs
 				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
     			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
@@ -501,10 +511,16 @@ SeedExtendXdrop::apply_batch
 	delete [] strands;
 
 	auto start_time = std::chrono::system_clock::now();
+
+	int maxt = omp_get_num_threads();
+	std::vector<std::vector<int64_t>> ContainedSeqPerThread(maxt);
 	
 	// Dump alignment info
 	#pragma omp parallel
 	{
+		int tid = omp_get_thread_num();
+		ContainedSeqPerThread[tid].resize(nreads);
+
 	    #pragma omp for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
@@ -512,7 +528,11 @@ SeedExtendXdrop::apply_batch
 			bool passed = false;
 
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign);
+
+			// GGGG: ai stores global idx to to store in ContainedSeqPerBatch
+			// GGGG: in PostAlignDecision() we can mark as contained sequences as removable in ContainedSeqPerBatch and their local contained edges
+			// GGGG: ContainedSeqPerBatch global indexes of contained sequences
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
 
 			if (passed)
 			{
@@ -529,6 +549,14 @@ SeedExtendXdrop::apply_batch
 			}
 		}
 	}
+
+	// Concatenate per-thread result
+	// unsigned int readssofar = 0;
+	// for(int t = 0; t < omp_get_num_threads(); ++t)
+	// {
+	// 	copy(ContainedSeqPerThread[t].begin(), ContainedSeqPerThread[t].end(), ContainedSeqPerBatch.begin() + readssofar);
+	// 	readssofar += ContainedSeqPerThread[t].size();
+	// }
 
 	auto end_time = std::chrono::system_clock::now();
   	add_time("XA:StringOp",

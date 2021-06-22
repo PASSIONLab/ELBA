@@ -130,10 +130,13 @@ namespace dibella {
                         uint64_t row,
                         uint64_t col)
         {
-				int dir = v.overhang  & 3;
+		int dir = v.overhang  & 3;
                 int len = v.overhang >> 2;
-                os << len;
-				// os << dir << "\t" << len;
+                // os << len;
+		// os;
+		std::string val = std::to_string(len) + "." + std::to_string(dir);
+		// os << dir << "\t" << len;
+		os << val;
         }
     };
 

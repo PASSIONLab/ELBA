@@ -196,8 +196,9 @@ struct GreaterBinaryOp : binary_function <T1, T2, bool>
 {
     bool operator() (const T1& x, const T2& y) const
     {
-        if(length(x) >= length(y) && dir(y) == dir(x)) return true;
-        else return false;
+	if(length(x) >= length(y) && dir(y) == dir(x)) return true;
+  	//if(dir(y) == dir(x)) return true;
+      	else return false;
     }
 };
 
@@ -260,11 +261,11 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         B += BT;
     }
 
-#ifdef DIBELLA_DEBUG
+//#ifdef DIBELLA_DEBUG
     tu.print_str("Matrix B += BT: ");
     B.PrintInfo();
-    B.ParallelWriteMM("matrixBT.mm", true, dibella::CkOutputMMHandler()); 
-#endif
+    B.ParallelWriteMM("matrixBT.mm", true, dibella::CkOutputHandler()); 
+//#endif
 	
     uint nnz, prev;
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;

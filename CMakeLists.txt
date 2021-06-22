@@ -81,10 +81,10 @@ add_executable(dibella
         include/CC.h
 	)
 
-set(LOWER_KMER_FREQ 2
+set(LOWER_KMER_FREQ 20
     CACHE STRING "Lower bound for the k-mer frequency")
 
-set(UPPER_KMER_FREQ 8
+set(UPPER_KMER_FREQ 30
     CACHE STRING "Upper bound for the k-mer frequency")
 
 set(MAX_KMER_SIZE 32

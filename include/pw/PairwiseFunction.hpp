@@ -40,6 +40,7 @@ public:
          const bool noAlign,
          ushort k,
          uint64_t nreads,
+         std::vector<int64_t>& ContainedSeqPerProc,
          float ratioScoreOverlap = 0.99,   // GGGG: Precomputed for error rate = 15% and default scoring matrix (1,-1,-1) (0.445 for CLR, 0.99 for CCS)
 			   int debugThr = 50) = 0;            // GGGG: Fixed threshold, this is convenient only for debugging
 

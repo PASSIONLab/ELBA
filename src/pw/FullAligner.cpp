@@ -81,6 +81,7 @@ FullAligner::apply_batch
 	const bool noAlign,
 	ushort k,
 	uint64_t nreads,
+	std::vector<int64_t>& ContainedSeqPerProc,
     float ratioScoreOverlap,
 	int debugThr
 )
