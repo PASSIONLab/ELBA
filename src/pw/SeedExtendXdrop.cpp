@@ -2,7 +2,8 @@
 
 #include "../../include/pw/SeedExtendXdrop.hpp"
 
-uint minOverlapLen = 10000;
+uint minOverlapLen = 7500;
+uint maxOverhang = 25;
 
 void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
 	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
@@ -36,7 +37,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	bool chimeric  = false; 
 
 	// seqH is column entry and seqV is row entry, for each column, we iterate over seqHs
-	int seqH = ai.seq_v_g_idx, seqV = ai.seq_h_g_idx;
+	int64_t seqH = ai.seq_v_g_idx, seqV = ai.seq_h_g_idx;
 	
 	// Reserve length/position if rc [x]
 	if(ai.rc)
@@ -46,12 +47,12 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 		endpV = rlenV - tmp;
 	}
 
-	if(begpH == 0 && rlenH-endpH == 0)
+	if(begpH <= maxOverhang && rlenH-endpH <= maxOverhang) // seqH contained
 	{
 		ContainedSeqMyThread.push_back(seqH); // Push back global index
 		contained = true;
 	}
-	else if(begpV == 0 && rlenV-endpV == 0)
+	else if(begpV <= maxOverhang && rlenV-endpV <= maxOverhang) // seqV contained
 	{
 		ContainedSeqMyThread.push_back(seqV); // Push back global index
 		contained = true;
@@ -298,8 +299,7 @@ SeedExtendXdrop::apply_batch
 	uint64_t npairs = seqan::length(seqsh);
 	setNumThreads(exec_policy, numThreads);
 	
-	lfs << "processing batch of size " << npairs << " with "
-		<< numThreads << " threads " << std::endl;
+	lfs << "processing batch of size " << npairs << " with " << numThreads << " threads " << std::endl;
 
 	// for multiple seeds we store the seed with the highest identity
 	AlignmentInfo *ai = new AlignmentInfo[npairs];
@@ -512,26 +512,28 @@ SeedExtendXdrop::apply_batch
 
 	auto start_time = std::chrono::system_clock::now();
 
-	int maxt = omp_get_num_threads();
-	std::vector<std::vector<int64_t>> ContainedSeqPerThread(maxt);
+	std::vector<std::vector<int64_t>> ContainedSeqPerThread(numThreads);
+
+	// GGGG: this should not be needed but segfault
+	for(int t = 0; t < numThreads; t++)
+		ContainedSeqPerThread[t].resize(std::ceil(nreads/numThreads)); // GGGG: I used abitrary number here; might need more spece, keep an eye on this
 	
 	// Dump alignment info
 	#pragma omp parallel
 	{
-		int tid = omp_get_thread_num();
-		ContainedSeqPerThread[tid].resize(nreads);
-
 	    #pragma omp for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
 			// Only keep alignments that meet BELLA criteria
 			bool passed = false;
+			int tid = omp_get_thread_num();
 
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 
 			// GGGG: ai stores global idx to to store in ContainedSeqPerBatch
 			// GGGG: in PostAlignDecision() we can mark as contained sequences as removable in ContainedSeqPerBatch and their local contained edges
 			// GGGG: ContainedSeqPerBatch global indexes of contained sequences
+
 			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
 
 			if (passed)
@@ -550,17 +552,28 @@ SeedExtendXdrop::apply_batch
 		}
 	}
 
+	// lfs << "Before concatenation ContainedSeqPerThread" << std::endl;
+
+	int readcount = 0;
+	for(int t = 0; t < numThreads; ++t)
+	{
+		readcount += ContainedSeqPerThread[t].size();
+	}
+
+	unsigned int readssofar = 0; 
+	ContainedSeqPerBatch.resize(readcount);
+
 	// Concatenate per-thread result
-	// unsigned int readssofar = 0;
-	// for(int t = 0; t < omp_get_num_threads(); ++t)
-	// {
-	// 	copy(ContainedSeqPerThread[t].begin(), ContainedSeqPerThread[t].end(), ContainedSeqPerBatch.begin() + readssofar);
-	// 	readssofar += ContainedSeqPerThread[t].size();
-	// }
+	for(int t = 0; t < numThreads; ++t)
+	{
+		copy(ContainedSeqPerThread[t].begin(), ContainedSeqPerThread[t].end(), ContainedSeqPerBatch.begin() + readssofar);
+		readssofar += ContainedSeqPerThread[t].size();
+	}
+
+	// lfs << "Post concatenation ContainedSeqPerThread, readcount " << readcount << std::endl;
 
 	auto end_time = std::chrono::system_clock::now();
-  	add_time("XA:StringOp",
-			 (ms_t(end_time - start_time)).count());
+  	add_time("XA:StringOp", (ms_t(end_time - start_time)).count());
 
 	delete [] ai;
 

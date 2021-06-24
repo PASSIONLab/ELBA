@@ -378,89 +378,105 @@ DistributedPairwiseRunner::run_batch
 		delete [] lids;
 		++batch_idx;
 	}
-	
-	// Concatenate per-batch result
-	// unsigned int readssofar = 0;
-	// std::vector<int64_t> ContainedSeqPerProc;
 
-	// for(int b = 0; b < batch_cnt; ++b)
-	// {
-	// 	copy(ContainedSeqPerBatch[b].begin(), ContainedSeqPerBatch[b].end(), ContainedSeqPerProc.begin() + readssofar);
-	// 	readssofar += ContainedSeqPerBatch[b].size();
-	// }
+	// lfs << "Before concatenation ContainedSeqPerBatch" << std::endl;
+	
+	int readcount = 0;
+	for(int b = 0; b < batch_cnt; ++b)
+	{
+		readcount += ContainedSeqPerBatch[b].size();
+	}
+
+	unsigned int readssofar = 0; 
+	std::vector<int64_t> ContainedSeqPerProc(readcount);
+
+	// Concatenate per-batch result
+	for(int b = 0; b < batch_cnt; ++b)
+	{
+		copy(ContainedSeqPerBatch[b].begin(), ContainedSeqPerBatch[b].end(), ContainedSeqPerProc.begin() + readssofar);
+		readssofar += ContainedSeqPerBatch[b].size();
+	}
+
+	lfs << "Post concatenation ContainedSeqPerBatch, readcount " << readcount << std::endl;
+
+	std::sort(ContainedSeqPerProc.begin(), ContainedSeqPerProc.end());
+	ContainedSeqPerProc.erase(unique(ContainedSeqPerProc.begin(), ContainedSeqPerProc.end()), ContainedSeqPerProc.end());
+
+	lfs << "Removed duplicates and sorted, contained readcount " << ContainedSeqPerProc.size() << " out of " << nreads << " sequences" << std::endl;
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	// CONTAINED SEQRUENCES COMMUNICATION                                               // 
 	//////////////////////////////////////////////////////////////////////////////////////
 
-	// GGGG: Pass FullDistVect of length nreads to store idx of contained vertices
-	// GGGG: col_offset, row_offset to move from local to global read idx on each processor
-	// GGGG: edges from/to contained seqs are gonna be removed
-
 	// Don't use boolean (it's bitmap not array of boolean, this messes up in communication)
-	// FullyDistVec<int64_t, int64_t> ContainedSeqGlobal(gmat->getcommgrid(), nreads, 0); // I need to use same type as index for Prune()
+	FullyDistVec<int64_t, int64_t> ContainedSeqGlobal(gmat->getcommgrid(), nreads, 0); // I need to use same type as index for Prune()
 
-	// int nprocs;
+	FullyDistVec<int64_t, int64_t> ri(gmat->getcommgrid(), nreads, 0); // I need to use same type as index for Prune()
+	FullyDistVec<int64_t, int64_t> ci(gmat->getcommgrid(), nreads, 0); // I need to use same type as index for Prune()
+
+	int nprocs;
+	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+	// A vector of vector for communication
+	std::vector<std::vector<int64_t>> buffer(nprocs); // outer dim is the number of processes
 	
-	// MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+	int * sendcnt = new int[nprocs](); // zero initialize
+	int * recvcnt = new int[nprocs];
 
-	// // A vector of vector for communication
-	// std::vector<std::vector<int64_t>> buffer(nprocs); // outer dim is the number of processes
+	// Each proc has a bunch of int64_t vectors with indexes (possible duplicates intra- and inter-proc)
+	for(int i = 0; i < ContainedSeqPerProc.size(); i++)
+	{
+		int64_t lid; // local seq index 
+		int owner = ContainedSeqGlobal.Owner(ContainedSeqPerProc[i], lid);  // find the owner (global_index, local_index)
+
+		buffer[owner].push_back(lid);
+		++sendcnt[owner];
+	}
+
+	// GGGG: Alltoall to share the count and Alltoallv for vector 
+	MPI_Alltoall(sendcnt, 1, MPI_INT, recvcnt, 1, MPI_INT, MPI_COMM_WORLD);
+
+	std::vector<int64_t> sendbuffer;
+	std::vector<int64_t> recvbuffer;
+
+	// Concatenate buffer for Alltoallv
+	for(int i = 0; i < nprocs; ++i)
+	{
+		sendbuffer.insert(sendbuffer.end(), buffer[i].begin(), buffer[i].end());
+	}
+
+	// Compute displacements for Alltoallv
+	int * sdispls = new int[nprocs];
+	int * rdispls = new int[nprocs];
+
+	sdispls[0] = 0;
+	rdispls[0] = 0;
+
+	for(int i = 0; i < nprocs-1; ++i)
+	{
+		sdispls[i+1] = sdispls[i] + sendcnt[i];
+		rdispls[i+1] = rdispls[i] + recvcnt[i];
+	}
+
+	int64_t totrecv = std::accumulate(recvcnt, recvcnt + nprocs, static_cast<int64_t>(0));
+	recvbuffer.resize(totrecv);
 	
-	// int * sendcnt = new int[nprocs];
-	// int * recvcnt = new int[nprocs];
-
-	// // Each proc has a bunch of int64_t vectors with indexes (possible duplicates intra- and inter-proc)
-	// for(int i = 0; i < ContainedSeqPerProc.size(); i++)
-	// {
-	// 	// GGGG: I don't know to use the Owner function correctly over here
-	// 	// GGGG: Given a global index from rank i, that might appears multiple times in the rank i vector, but I also know that seqs is owned by other procs
-	// 	// GGGG: how do I get those owners using Owner function or another way?
-
-	// 	// int owner;
-	// 	int64_t lid; // local seq index 
-	// 	int owner = ContainedSeqGlobal.Owner(ContainedSeqPerProc[i], lid);  // find the owner (global_index, local_index)
-
-	// 	printf("Owner %d lid %d", owner, lid);
-
-	// 	buffer[owner].push_back(lid);
-	// 	++sendcnt[owner];
-	// }
-
-	// // GGGG: Alltoall to share the count and Alltoallv for vector 
-	// MPI_Alltoall(sendcnt, 1, MPI_INT, recvcnt, 1, MPI_INT, MPI_COMM_WORLD);
-
-	// std::vector<int64_t> sendbuffer;
-	// std::vector<int64_t> recvbuffer;
-
-	// // Concatenate buffer for Alltoallv
-	// for(int i = 0; i < nprocs; ++i)
-	// {
-	// 	sendbuffer.insert(sendbuffer.end(), buffer[i].begin(), buffer[i].end());
-	// }
-
-	// // Compute displacements for Alltoallv
-	// int * sdispls = new int[nprocs];
-	// int * rdispls = new int[nprocs];
-
-	// sdispls[0] = 0;
-	// rdispls[0] = 0;
-
-	// for(int i = 0; i < nprocs-1; ++i)
-	// {
-	// 	sdispls[i+1] = sdispls[i] + sendcnt[i];
-	// 	rdispls[i+1] = rdispls[i] + recvcnt[i];
-	// }
-
-	// int64_t totrecv = std::accumulate(recvcnt, recvcnt + nprocs, static_cast<int64_t>(0));
-	// recvbuffer.resize(totrecv);
+	// GGGG: Alltoallv for vector
+	// Data is already in the right order (recepeint will receive from nrpocs processes)
+	MPI_Alltoallv(sendbuffer.data(), sendcnt, sdispls, MPI_LONG, recvbuffer.data(), recvcnt, rdispls, MPI_LONG, MPI_COMM_WORLD);
+	DeleteAll(sendcnt, recvcnt, sdispls, rdispls);
 	
-	// // GGGG: Alltoallv for vector
-	// // Data is already in the right order (recepeint will receive from nrpocs processes)
-	// MPI_Alltoallv(sendbuffer.data(), sendcnt, sdispls, MPI_LONG, recvbuffer.data(), recvcnt, rdispls, MPI_LONG, MPI_COMM_WORLD);
-	// DeleteAll(sendcnt, recvcnt, sdispls, rdispls);
-	
-	// Go over recvbuffer and set elements to 1 in ContainedSeqPerGlobal?
+	// Go over recvbuffer and set elements to 1 in ContainedSeqPerGlobal
+	for(int k = 0; k < totrecv; k++)
+	{
+		int idx = recvbuffer[k];
+		ContainedSeqGlobal.SetElement(idx, 1); // SetElement only work locally (owner)
+	}
+
+	// Use FindInds https://github.com/PASSIONLab/CombBLAS/blob/master/include/CombBLAS/FullyDistSpVec.cpp
+	// Pass the returned vec and then pass it to the Prune function (two identical vec)
+	FullyDistVec<int64_t, int64_t> toerase = ContainedSeqGlobal.FindInds(bind2nd(greater<int64_t>(), 0));	// Only the non-zero indices (contained sequences)
+	// toerase.DebugPrint(); // 0 is here but it's not erase from the matrix
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	// TOTAL ALIGNMENTES COMMUNICATION                                                  // 
@@ -499,24 +515,22 @@ DistributedPairwiseRunner::run_batch
 				 std::to_string(nelims_ckthr_tot) + "\n");
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	// PRUNE MATRIX FROM SPURIOUS AND CONTAINED ALIGNMENTS                              // 
+	// PRUNE MATRIX FROM SPURIOUS AND CONTAINED ALIGNMENT                               // 
 	//////////////////////////////////////////////////////////////////////////////////////
 
-	// GGGG: now we need AlltoAll to communicate contained vertices/sequences
-	// GGGG: now we need to mark local edges as removable (passed = false) based on the new information we got from the AlltoAll
-	// GGGG: if not passed, the edge will be removed in the next step
+	tu.print_str("\t* nnz before pruning " + std::to_string(gmat->getnnz()) + "\n");
 
-	// Use FindInds https://github.com/PASSIONLab/CombBLAS/blob/master/include/CombBLAS/FullyDistSpVec.cpp
-	// Pass the returned vec and then apss it to the Prune function (two identical vec)
+	// Prune pairs that do not meet score criteria
+	auto elim_score = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
+	gmat->Prune(elim_score); 
 
-	// GGGG: edges pruned here
-	// Prune pairs that do not meet coverage criteria
-	auto elim_cov = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
-	gmat->Prune(elim_cov); 
+	// GGGG: if noAlign == true, we remove only the contained overlaps as they are not useful for transitive reduction (next prune)
+	tu.print_str("\t* nnz after 1st pruning (score) " + std::to_string(gmat->getnnz()) + "\n");
 
-	// GGGG: if noAlign == true, we remove only the contained overlaps as they are not useful for transitive reduction
-	tu.print_str("nnzs in the pruned matrix " +
-				 std::to_string(gmat->getnnz()) + "\n");
+	// Prune pairs involving contained seqs
+	gmat->PruneFull(toerase, toerase);
+
+	tu.print_str("\t* nnz after 2nd pruning (contained) " + std::to_string(gmat->getnnz()) + "\n");
 	
 	delete [] algn_cnts;
 	delete [] mattuples;
