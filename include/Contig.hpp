@@ -8,16 +8,9 @@
 #include "kmer/CommonKmers.hpp"
 #include "Utils.hpp"
 #include "CC.h"
-// #include "SR.hpp"
 
 // #define MATRIXPOWER
 #define MAXPATHLEN 5000
-
-// typedef struct CustomVectorEntry
-// {
-//     int* ids[MAXPATHLEN];
-//     int* offsets[MAXPATHLEN]; // this is supposed to be ids.size()-1
-// };
 
 /*! Namespace declarations */
 using namespace combblas;

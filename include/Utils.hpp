@@ -12,14 +12,21 @@
 
 using namespace std;
 
+template <class T, std::size_t N>
+ostream& operator<<(ostream& o, const array<T, N>& arr)
+{
+    copy(arr.cbegin(), arr.cend(), ostream_iterator<T>(o, " "));
+    return o;
+}
+
 template <class NT>
 class PSpMat
 {
 public:
-  typedef combblas::SpTuples <uint64_t, NT> Tuples;	
-  typedef combblas::SpDCCols <uint64_t, NT> DCCols;
-  typedef combblas::SpParMat <uint64_t, NT, DCCols> MPI_DCCols;
-  typedef std::tuple<uint64_t, uint64_t, NT *> ref_tuples;
+  typedef combblas::SpTuples <int64_t, NT> Tuples;	
+  typedef combblas::SpDCCols <int64_t, NT> DCCols;
+  typedef combblas::SpParMat <int64_t, NT, DCCols> MPI_DCCols;
+  typedef std::tuple<int64_t, int64_t, NT *> ref_tuples;
 };
 
 typedef vector<vector<array<char, 2>>>  VectorVectorChar;
