@@ -125,19 +125,20 @@ void tobinary(ushort n, int* arr)
     }
 }
 
+// Check direction
 bool testdir(ushort dir1, ushort dir2, ushort& dir)
 {
     ushort rbit, lbit;
     ushort start, end;
 
-    int mybin1[2] = {0, 0};
-    int mybin2[2] = {0, 0};
+    int mybin1[2] = {0, 0}; // 0 1
+    int mybin2[2] = {0, 0}; // 0 0
 
     if(dir1 != 0) tobinary(dir1, mybin1);
     if(dir2 != 0) tobinary(dir2, mybin2);
 
-    rbit = mybin1[0];
-    lbit = mybin2[1];
+    rbit = mybin1[0]; // 1 
+    lbit = mybin2[1]; // 0
 
     if(rbit != lbit)
     {
@@ -178,9 +179,6 @@ struct MinPlusBiSRing
         if(testdir(dir(arg1), dir(arg2), mydir))
         {
             uint len = infplus(arg1, arg2);
-
-            // printf("dir1 %d len1 %d dir2 %d len2 %d mydir %d len %d\n", dir(arg1), length(arg1), dir(arg2), length(arg2), len, mydir);
-
             return compose(res, len, mydir);
         } 
         else return id();
@@ -196,9 +194,8 @@ struct GreaterBinaryOp : binary_function <T1, T2, bool>
 {
     bool operator() (const T1& x, const T2& y) const
     {
-	if(length(x) >= length(y) && dir(y) == dir(x)) return true;
-  	//if(dir(y) == dir(x)) return true;
-      	else return false;
+        if(length(x) >= length(y) && dir(y) == dir(x)) return true;
+        else return false;
     }
 };
 
@@ -230,6 +227,13 @@ struct ZeroOverhangSR : unary_function <T, bool>
     bool operator() (const T& x) const { if(x.overhang == 0) return true; else return false; }
 };
 
+// Prune one strand
+// template <class T>
+// struct Dir2SR : unary_function <T, bool>
+// {
+//     bool operator() (const T& x) const { if(dir(x) == 2) return true; else return false; }
+// };
+
 template <class T, class OUT>
 struct OverhangTSRing : unary_function <T, OUT>
 {
@@ -237,8 +241,25 @@ struct OverhangTSRing : unary_function <T, OUT>
     {
         OUT xT = static_cast<OUT>(x);
 
-        xT.overhang = x.overhangT;
+        xT.overhang  = x.overhangT;
         xT.overhangT = x.overhang;
+
+        xT.lenh = x.lenv;
+        xT.lenv = x.lenh;
+
+        // @GGGG-TODO (update coordinates)
+
+        // int begH = x.first.first;
+        // int begV = x.second;
+
+        // int endH =
+        // int endV =
+
+        // xT.first.first   =
+        // xT.first.second  =
+
+        // xT.second.first  =
+        // xT.second.second =
 
         return xT;
     }
@@ -261,11 +282,11 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         B += BT;
     }
 
-//#ifdef DIBELLA_DEBUG
+#ifdef DIBELLA_DEBUG
     tu.print_str("Matrix B += BT: ");
     B.PrintInfo();
-    B.ParallelWriteMM("matrixBT.mm", true, dibella::CkOutputHandler()); 
-//#endif
+    B.ParallelWriteMM("ecoli-double-strand-symmetric.mm", true, dibella::CkOutputMMHandler());     
+#endif
 	
     uint nnz, prev;
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
@@ -288,7 +309,7 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
     #ifdef DIBELLA_DEBUG
         tu.print_str("Matrix C = B^2: ");
         C.PrintInfo();
-	C.ParallelWriteMM("matrixB2.mm", true, dibella::CkOutputMMHandler()); 
+	    C.ParallelWriteMM("matrixB2.mm", true, dibella::CkOutputMMHandler()); 
     #endif
     
         start = MPI_Wtime();
@@ -304,7 +325,7 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
     #ifdef DIBELLA_DEBUG
         tu.print_str("Matrix F = B + FUZZ: ");
         F.PrintInfo();
-	F.ParallelWriteMM("matrixF.mm", true, dibella::CkOutputMMHandler()); 
+	    F.ParallelWriteMM("matrixF.mm", true, dibella::CkOutputMMHandler()); 
     #endif
 
         /* Find transitive edges that can be removed
@@ -320,7 +341,7 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
     #ifdef DIBELLA_DEBUG
         tu.print_str("Matrix I = F >= B: ");
         I.PrintInfo();
-	I.ParallelWriteMM("matrixI.mm", true, dibella::CkOutputMMHandlerBool());
+	    I.ParallelWriteMM("matrixI.mm", true, dibella::CkOutputMMHandlerBool());
     #endif
 
         /* Remove transitive edges
@@ -344,6 +365,12 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
 
     tu.print_str("Matrix B, i.e AAt after transitive reduction: ");
     B.PrintInfo();
+
+    // /* Prune two-dir edges */
+    // B.Prune(Dir2SR<dibella::CommonKmers>(), true);
+    // tu.print_str("B+=BT post pruning of 2-dir edges before TR: ");
+    // B.PrintInfo();
+    // B.ParallelWriteMM("ecoli-double-strand-two-pruned-bt.mm", true, dibella::CkOutputMMHandler()); 
 
  #ifdef DIBELLA_DEBUG
     B.ParallelWriteMM("matrixS.mm", true, dibella::CkOutputMMHandler()); 
