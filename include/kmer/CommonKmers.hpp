@@ -6,7 +6,7 @@
 #include "../Types.hpp"
 #include "../Defines.hpp"
 
-// GGGG: needed for benchmarking
+// for benchmarking
 #define EXTRA
 
 namespace dibella {
@@ -60,6 +60,8 @@ namespace dibella {
 		score(score) {
 	}
 
+	operator bool() const { return overhang; };
+
     // Overload + operator to add two CommonKmers objects
 	// Used for: B += BT (TransitiveReductionSR.hpp)
 	// The +operator when creating the symmetric matrix doesn't really matter, there's gonna be zeros on the other side
@@ -78,6 +80,71 @@ namespace dibella {
 		else return false;
 	}
 
+	// Used in SR.hpp fo MinPlus
+	// friend bool operator<(const CommonKmers& lhs, const CommonKmers& rhs)
+	// {
+	// 	ushort len1 = lhs.overhang >> 2;
+	// 	ushort len2 = rhs.overhang >> 2;
+
+	// 	if(len1 < len2) return true;
+	// 	else return false;
+	// }
+
+	// Used in SR.hpp fo MinPlus
+	// friend CommonKmers operator+(const CommonKmers& lhs, const CommonKmers& rhs)
+	// {
+	// 	CommonKmers me;
+
+	// 	ushort dir;
+
+	// 	int mybin1[2] = {0, 0};
+	// 	int mybin2[2] = {0, 0};
+
+	// 	if((lhs.overhang & 3) != 0)
+	// 	{
+	// 		int nbit = 2;
+	// 		uint n = lhs.overhang & 3;
+	// 		for(int i = 0; i < nbit; i++)
+	// 		{ 
+	// 			mybin1[i] = n % 2; 
+	// 			n = n / 2; 
+	// 		}
+	// 	}
+
+	// 	if((rhs.overhang & 3) != 0)
+	// 	{
+	// 		int nbit = 2;
+	// 		uint n = rhs.overhang & 3;
+	// 		for(int i = 0; i < nbit; i++)
+	// 		{ 
+	// 			mybin2[i] = n % 2; 
+	// 			n = n / 2; 
+	// 		}
+	// 	}
+
+	// 	ushort start = mybin1[1]; 
+	// 	ushort end   = mybin2[0]; 
+
+	// 	if(start == 0)
+	// 	{
+	// 		if(end == 0) dir = 0;
+	// 		else dir = 1;
+	// 	}
+	// 	else
+	// 	{
+	// 		if(end == 0) dir = 2;
+	// 		else dir = 3;      
+	// 	}
+
+	// 	ushort len1 = lhs.overhang >> 2;
+	// 	ushort len2 = rhs.overhang >> 2;
+
+	// 	len1 += len2;
+
+	// 	me.overhang = len1 << 2 | dir;
+	// 	return me;
+	// }
+
     friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m)
 	{
 	#ifdef TWOSEED
@@ -95,8 +162,6 @@ namespace dibella {
     }
 
 	};
-
-	/* GGGG: matrix symmetrication removed */
 
 	struct CkOutputHandler
 	{
@@ -130,13 +195,12 @@ namespace dibella {
                         uint64_t row,
                         uint64_t col)
         {
-		int dir = v.overhang  & 3;
-                int len = v.overhang >> 2;
-                // os << len;
-		// os;
-		std::string val = std::to_string(len) + "." + std::to_string(dir);
-		// os << dir << "\t" << len;
-		os << val;
+			int dir = v.overhang  & 3;
+			int len = v.overhang >> 2;
+			os << dir << "\t" << len;
+			// os;
+			// std::string val = std::to_string(len) + "\t" + std::to_string(dir);
+			// os << val;
         }
     };
 
@@ -148,7 +212,7 @@ namespace dibella {
                         uint64_t row,
                         uint64_t col)
         {
-                os << v;
+            os << v;
         }
     };
 
