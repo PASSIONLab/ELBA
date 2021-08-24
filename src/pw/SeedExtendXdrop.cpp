@@ -94,7 +94,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			}
 			else
 			{
-				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
+				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenH-endpH == 0))
 				{
 					direction  = 0;
 					directionT = 0;
