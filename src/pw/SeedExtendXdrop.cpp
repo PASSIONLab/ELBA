@@ -514,11 +514,11 @@ SeedExtendXdrop::apply_batch
 	auto start_time = std::chrono::system_clock::now();
 
 	std::vector<std::vector<int64_t>> ContainedSeqPerThread(numThreads);
-
-	// GGGG: this should not be needed but segfault
-	//for(int t = 0; t < numThreads; t++)
-	//	ContainedSeqPerThread[t].resize(std::ceil(nreads/numThreads)); // GGGG: I used abitrary number here; might need more spece, keep an eye on this
 	
+	// TODO@GGGG: reproduce and fix segfault
+	// for(int t = 0; t < numThreads; t++)
+	// 	ContainedSeqPerThread[t].resize(std::ceil(nreads/numThreads));
+
 	// Dump alignment info
 	#pragma omp parallel
 	{

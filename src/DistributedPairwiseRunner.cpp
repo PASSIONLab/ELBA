@@ -426,10 +426,16 @@ DistributedPairwiseRunner::run_batch
 	// Each proc has a bunch of int64_t vectors with indexes (possible duplicates intra- and inter-proc)
 	for(int i = 0; i < ContainedSeqPerProc.size(); i++)
 	{
-		int64_t lid; // local seq index 
+		int64_t lid; 
+
+		//! Given global index gind,
+		//! Return the owner processor id, and
+		//! Assign the local index to lind
 		int owner = ContainedSeqGlobal.Owner(ContainedSeqPerProc[i], lid);  // find the owner (global_index, local_index)
 
-		buffer[owner].push_back(lid);
+		int64_t gid = ContainedSeqPerProc[i];
+
+		buffer[owner].push_back(gid);
 		++sendcnt[owner];
 	}
 
