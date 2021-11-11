@@ -47,12 +47,13 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 		endpV = rlenV - tmp;
 	}
 
-	if(begpH <= maxOverhang && rlenH-endpH <= maxOverhang) // seqH contained
+	//if(begpH <= maxOverhang && rlenH-endpH <= maxOverhang) // seqH contained
+    if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
 	{
 		ContainedSeqMyThread.push_back(seqH); // Push back global index
 		contained = true;
 	}
-	else if(begpV <= maxOverhang && rlenV-endpV <= maxOverhang) // seqV contained
+    else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV)) // SeqV contained // else if(begpV <= maxOverhang && rlenV-endpV <= maxOverhang) 
 	{
 		ContainedSeqMyThread.push_back(seqV); // Push back global index
 		contained = true;
@@ -515,8 +516,8 @@ SeedExtendXdrop::apply_batch
 	std::vector<std::vector<int64_t>> ContainedSeqPerThread(numThreads);
 
 	// GGGG: this should not be needed but segfault
-	for(int t = 0; t < numThreads; t++)
-		ContainedSeqPerThread[t].resize(std::ceil(nreads/numThreads)); // GGGG: I used abitrary number here; might need more spece, keep an eye on this
+	//for(int t = 0; t < numThreads; t++)
+	//	ContainedSeqPerThread[t].resize(std::ceil(nreads/numThreads)); // GGGG: I used abitrary number here; might need more spece, keep an eye on this
 	
 	// Dump alignment info
 	#pragma omp parallel
