@@ -476,7 +476,7 @@ DistributedPairwiseRunner::run_batch
 	// Use FindInds https://github.com/PASSIONLab/CombBLAS/blob/master/include/CombBLAS/FullyDistSpVec.cpp
 	// Pass the returned vec and then pass it to the Prune function (two identical vec)
 	FullyDistVec<int64_t, int64_t> toerase = ContainedSeqGlobal.FindInds(bind2nd(greater<int64_t>(), 0));	// Only the non-zero indices (contained sequences)
-	// toerase.DebugPrint(); // 0 is here but it's not erase from the matrix
+	toerase.DebugPrint(); // 0 is here but it's not erase from the matrix
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	// TOTAL ALIGNMENTES COMMUNICATION                                                  // 
