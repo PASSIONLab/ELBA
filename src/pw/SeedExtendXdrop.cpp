@@ -25,6 +25,9 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 	unsigned short int minLeft  = min(begpV, begpH);
 	unsigned short int minRight = min(rlenV - endpV, rlenH - endpH);
+	
+	int64_t seqV = ai.seq_v_g_idx;
+	int64_t seqH = ai.seq_h_g_idx;
 
 	overlap = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
 
@@ -34,11 +37,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	// Contained overlaps removed for now, reintroduce them later
 	// @GGGG-TODO: identify chimeric sequences
 	bool contained = false;
-	bool chimeric  = false; 
-
-	// GGGG: consistent with rlenH rlenV, overlapLenH, overlapLenV
-	// butI need to check where seed comes from
-	int64_t seqV = ai.seq_v_g_idx, seqH = ai.seq_h_g_idx;
+	bool chimeric  = false;
 	
 	// Reserve length/position if rc [x]
 	if(ai.rc)
@@ -49,31 +48,13 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	}
 
 	//if(begpH <= maxOverhang && rlenH-endpH <= maxOverhang) // seqH contained
-    if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
+    	if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
 	{ 
-		/* debugging	
-		if(seqH == 7561) {
-			
-			printf("7561 is contained in %d\n", seqV+1);
-			printf("7561 is seqH and %d is seqV: begpV %d, begpH %d, (rlenV - endpV) %d, (rlenH - endpH) %d\n", seqV+1, begpV, begpH, (rlenV - endpV), (rlenH - endpH));
-		printf("rlenH %d and rlenV %d\n", rlenH, rlenV);
-		printf("endpH %d and endpV %d\n\n", endpH, endpV);
-
-		}*/
 		ContainedSeqMyThread.push_back(seqH); // Push back global index
 		contained = true;
 	}
-    else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV)) // SeqV contained // else if(begpV <= maxOverhang && rlenV-endpV <= maxOverhang) 
+    	else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV)) // SeqV contained // else if(begpV <= maxOverhang && rlenV-endpV <= maxOverhang) 
 	{
-		/* debugging
-		if(seqV == 7561) {
-			
-			printf("7561 is contained in %d\n", seqH+1);
-			printf("7561 is seqV and %d is seqH: begpV %d, begpH %d, (rlenV - endpV) %d, (rlenH - endpH) %d\n", seqV+1, begpV, begpH, (rlenV - endpV), (rlenH - endpH));
-		printf("rlenH %d and rlenV %d\n", rlenH, rlenV);
-		printf("endpH %d and endpV %d\n\n", endpH, endpV);
-		}*/
-
 		ContainedSeqMyThread.push_back(seqV); // Push back global index
 		contained = true;
 	}
@@ -86,9 +67,6 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			if((float)ai.xscore < myThr || overlap < minOverlapLen) passed = false;
 			else passed = true;
 		}
-		// debugging
-		//if(seqH == 4111) printf("4112 is not contained in %d and their threshold result is %d\n", seqV+1, passed);
-		//if(seqV == 4111) printf("4112 is not contained in %d and their threshold result is %d\n", seqH+1, passed);
 
 		if(passed)
 		{
@@ -163,34 +141,33 @@ void SeedExtendXdrop::apply(
 
   for (int count = 0; count < seed_count; ++count)
   {
-#ifdef TWOSEED
-    // row sequence is the same thing as vertical sequence
-    ushort LocalSeedVOffset = (count == 0) ? cks.first.first
-                                                  : cks.second.first;
-	// l_row_seed_start_offset = LocalSeedVOffset											  
-    // col sequence is the same thing as horizontal sequence
-    ushort LocalSeedHOffset = (count == 0) ? cks.first.second 
-                                                  : cks.second.second;
-	// l_col_seed_start_offset = LocalSeedHOffset
-#else
-    // row sequence is the same thing as vertical sequence
-    ushort LocalSeedVOffset = cks.pos[0].first;
-    // col sequence is the same thing as horizontal sequence
-    ushort LocalSeedHOffset = cks.pos[0].second;
-#endif
+	// In KmerIntersectSR.hpp we have (where res == cks):
+	// 	res.first.first 	= arg1.first.first;	// Kmer 1 on argA
+	// 	res.first.second 	= arg1.first.second;	// Kmer 2 on argA
+	// 	res.second.first 	= arg2.first.first;	// Kmer 1 on argB
+	// 	res.second.second 	= arg2.first.second;	// Kmer 2 on argB
 
-	seqan::Dna5String seedH;
-	seqan::Dna5String seedV;
+   	// argA (see KmerIntersectSR.hpp) == row == seqV
+    	ushort LocalSeedVOffset = (count == 0) ? cks.first.first : cks.second.first;
+	// argB (see KmerIntersectSR.hpp) == col == seqH
+    	ushort LocalSeedHOffset = (count == 0) ? cks.first.second : cks.second.second;
+
+	seqan::Dna5String seedV; // seed on arg1 == row == seqV
+	seqan::Dna5String seedH; // seed on arg2 == col == seqH
 
 	auto start_time = std::chrono::system_clock::now();
 	auto end_time   = std::chrono::system_clock::now();
 
-    // Seed creation params are:
-    // horizontal seed start offset, vertical seed start offset, length
-    TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
-
-	seedH = infix(*seqH, beginPositionH(seed), endPositionH(seed));
-	seedV = infix(*seqV, beginPositionV(seed), endPositionV(seed));
+    	// seed creation params are:
+    	// horizontal seed start offset, vertical seed start offset, length
+    	TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
+	
+	// GGGG: for reference -->
+	// 	seqan::Dna5String *seq_v = dfd->row_seq(l_row_idx);  seqV (from row)
+	// 	seqan::Dna5String *seq_h = dfd->col_seq(l_col_idx);  seqH (from col)
+	  
+	seedV = infix(*seqV, beginPositionV(seed), endPositionV(seed)); // seed on argA == row == seqV
+	seedH = infix(*seqH, beginPositionH(seed), endPositionH(seed)); // seed on argB == col == seqH
 
 	seqan::Dna5StringReverseComplement twin(seedH);
 
@@ -239,37 +216,37 @@ void SeedExtendXdrop::apply(
 	#endif
 	} 
 
-    /*! Note. This aligns the extended seeds globally, NOT the original
-     * two sequences.
-     *
-     * It seems kind of a waste to have to do the alignment
-     * again after xdrop seed extension but that's the only
-     * way to get the alignment info in SeqAn.
-     * See https://seqan.readthedocs.io/en/master/Tutorial/Algorithms/SeedExtension.html
-     */
+	/*! Note. This aligns the extended seeds globally, NOT the original
+	* two sequences.
+	*
+	* It seems kind of a waste to have to do the alignment
+	* again after xdrop seed extension but that's the only
+	* way to get the alignment info in SeqAn.
+	* See https://seqan.readthedocs.io/en/master/Tutorial/Algorithms/SeedExtension.html
+	*/
 #ifdef STATS
-    start_time = std::chrono::system_clock::now();
-    globalAlignment(align, scoring_scheme);
-    end_time = std::chrono::system_clock::now();
-    add_time("XA:global_alignment", (ms_t(end_time - start_time)).count());
+    	start_time = std::chrono::system_clock::now();
+    	globalAlignment(align, scoring_scheme);
+    	end_time = std::chrono::system_clock::now();
+    	add_time("XA:global_alignment", (ms_t(end_time - start_time)).count());
 
-    // Compute the statistics of the alignment.
-    start_time = std::chrono::system_clock::now();
-    computeAlignmentStats(ai[count].stats, align, scoring_scheme);
-    end_time = std::chrono::system_clock::now();
-    add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());
+    	// Compute the statistics of the alignment.
+    	start_time = std::chrono::system_clock::now();
+    	computeAlignmentStats(ai[count].stats, align, scoring_scheme);
+    	end_time = std::chrono::system_clock::now();
+    	add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());
 #endif
 
-    ai.seq_h_length = length(*seqH);
-    ai.seq_v_length = length(*seqV);
-
-	ai.seed = seed;
-    ai.seq_h_seed_length = static_cast<ushort>(seed._endPositionH -
-                                               seed._beginPositionH);
-    ai.seq_v_seed_length = static_cast<ushort>(seed._endPositionV -
+    	ai.seq_h_length = length(*seqH); // col
+    	ai.seq_v_length = length(*seqV); // row
+	
+    	ai.seed = seed;
+    	ai.seq_h_seed_length = static_cast<ushort>(seed._endPositionH -
+    	                                           seed._beginPositionH);
+    	ai.seq_v_seed_length = static_cast<ushort>(seed._endPositionV -
                                                seed._beginPositionV);
-    ai.seq_h_g_idx = g_col_idx;
-    ai.seq_v_g_idx = g_row_idx;
+    	ai.seq_h_g_idx = g_col_idx;
+    	ai.seq_v_g_idx = g_row_idx;
   }
 
 #ifdef STATS
@@ -299,14 +276,14 @@ SeedExtendXdrop::apply_batch
 	uint64_t *lids,
 	uint64_t col_offset,
 	uint64_t row_offset,
-    PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
-    std::ofstream &lfs,
+   	PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
+   	std::ofstream &lfs,
 	const bool noAlign,
 	ushort k,
 	uint64_t nreads,
 	std::vector<int64_t>& ContainedSeqPerBatch,
-    float ratioScoreOverlap, // GGGG: this is my ratioScoreOverlap variable change name later
-    int debugThr
+    	float ratioScoreOverlap, // GGGG: this is my ratioScoreOverlap variable change name later
+    	int debugThr
 )
 {
 	seqan::ExecutionPolicy<seqan::Parallel, seqan::Vectorial> exec_policy;
@@ -314,9 +291,9 @@ SeedExtendXdrop::apply_batch
 	int numThreads = 1;
 	#ifdef THREADED
 	#pragma omp parallel
-    {
-      	numThreads = omp_get_num_threads();
-    }
+    	{
+      		numThreads = omp_get_num_threads();
+    	}
 	#endif
 
 	uint64_t npairs = seqan::length(seqsh);
@@ -348,29 +325,29 @@ SeedExtendXdrop::apply_batch
 		{
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 
-		#ifdef TWOSEED
-			ushort LocalSeedVOffset =
-				(count == 0) ? cks->first.first : cks->second.first;
-			ushort LocalSeedHOffset =
-				(count == 0) ? cks->first.second : cks->second.second;
-		#else
-			// GGGG: TODO check reverse complement
-			ushort LocalSeedVOffset = cks.pos[0].first;
-			ushort LocalSeedHOffset = cks.pos[0].second;
-		#endif
+			// In KmerIntersectSR.hpp we have (where res == cks):
+			// 	res.first.first 	= arg1.first.first;	// Kmer 1 on argA
+			// 	res.first.second 	= arg1.first.second;	// Kmer 2 on argA
+			// 	res.second.first 	= arg2.first.first;	// Kmer 1 on argB
+			// 	res.second.second 	= arg2.first.second;	// Kmer 2 on argB
 
-			seqan::Dna5String seedH;
-			seqan::Dna5String seedV;
+			// argA (see KmerIntersectSR.hpp) == row == seqV
+			ushort LocalSeedVOffset = (count == 0) ? cks.first.first : cks.second.first;
+			// argB (see KmerIntersectSR.hpp) == col == seqH
+			ushort LocalSeedHOffset = (count == 0) ? cks.first.second : cks.second.second;
+
+			seqan::Dna5String seedV; // seed on arg1 == row == seqV
+			seqan::Dna5String seedH; // seed on arg2 == col == seqH
 
 			auto start_time = std::chrono::system_clock::now();
 			auto end_time   = std::chrono::system_clock::now();
 
-			// Seed creation params are:
+			// seed creation params are:
 			// horizontal seed start offset, vertical seed start offset, length
 			TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
 
-			seedH = infix(seqan::source(seqsh[i]), beginPositionH(seed), endPositionH(seed));
-			seedV = infix(seqan::source(seqsv[i]), beginPositionV(seed), endPositionV(seed));
+			seedV = infix(seqan::source(seqsv[i]), beginPositionV(seed), endPositionV(seed)); // seed on argA == row == seqV
+			seedH = infix(seqan::source(seqsh[i]), beginPositionH(seed), endPositionH(seed)); // seed on argB == col == seqH
 
 			seqan::Dna5StringReverseComplement twin(seedH);
 
@@ -477,8 +454,7 @@ SeedExtendXdrop::apply_batch
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
 			#ifdef STATS
-				computeAlignmentStats(ai[i].stats, seqsh_ex[i], seqsv_ex[i],
-									  scoring_scheme);
+				computeAlignmentStats(ai[i].stats, seqsh_ex[i], seqsv_ex[i], scoring_scheme);
 			#endif
 				ai[i].xscore = xscores[i];
 				ai[i].rc     = strands[i];
@@ -492,7 +468,7 @@ SeedExtendXdrop::apply_batch
 
 				// GGGG: global idx over here to use in the FullDistVect for removing contained vertices/seqs
 				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
-    			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
+    				ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
 		}
 		else
@@ -575,8 +551,6 @@ SeedExtendXdrop::apply_batch
 		}
 	}
 
-	// lfs << "Before concatenation ContainedSeqPerThread" << std::endl;
-
 	int readcount = 0;
 	for(int t = 0; t < numThreads; ++t)
 	{
@@ -592,8 +566,6 @@ SeedExtendXdrop::apply_batch
 		copy(ContainedSeqPerThread[t].begin(), ContainedSeqPerThread[t].end(), ContainedSeqPerBatch.begin() + readssofar);
 		readssofar += ContainedSeqPerThread[t].size();
 	}
-
-	// lfs << "Post concatenation ContainedSeqPerThread, readcount " << readcount << std::endl;
 
 	auto end_time = std::chrono::system_clock::now();
   	add_time("XA:StringOp", (ms_t(end_time - start_time)).count());
