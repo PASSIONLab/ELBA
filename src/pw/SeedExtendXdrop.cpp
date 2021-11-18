@@ -332,9 +332,9 @@ SeedExtendXdrop::apply_batch
 			// 	res.second.second 	= arg2.first.second;	// Kmer 2 on argB
 
 			// argA (see KmerIntersectSR.hpp) == row == seqV
-			ushort LocalSeedVOffset = (count == 0) ? cks.first.first : cks.second.first;
+			ushort LocalSeedVOffset = (count == 0) ? cks->first.first : cks->second.first;
 			// argB (see KmerIntersectSR.hpp) == col == seqH
-			ushort LocalSeedHOffset = (count == 0) ? cks.first.second : cks.second.second;
+			ushort LocalSeedHOffset = (count == 0) ? cks->first.second : cks->second.second;
 
 			seqan::Dna5String seedV; // seed on arg1 == row == seqV
 			seqan::Dna5String seedH; // seed on arg2 == col == seqH
