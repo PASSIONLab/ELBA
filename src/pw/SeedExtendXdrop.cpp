@@ -36,8 +36,9 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	bool contained = false;
 	bool chimeric  = false; 
 
-	// seqH is column entry and seqV is row entry, for each column, we iterate over seqHs
-	int64_t seqH = ai.seq_v_g_idx, seqV = ai.seq_h_g_idx;
+	// GGGG: consistent with rlenH rlenV, overlapLenH, overlapLenV
+	// butI need to check where seed comes from
+	int64_t seqV = ai.seq_v_g_idx, seqH = ai.seq_h_g_idx;
 	
 	// Reserve length/position if rc [x]
 	if(ai.rc)
@@ -49,12 +50,30 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 	//if(begpH <= maxOverhang && rlenH-endpH <= maxOverhang) // seqH contained
     if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
-	{
+	{ 
+		/* debugging	
+		if(seqH == 7561) {
+			
+			printf("7561 is contained in %d\n", seqV+1);
+			printf("7561 is seqH and %d is seqV: begpV %d, begpH %d, (rlenV - endpV) %d, (rlenH - endpH) %d\n", seqV+1, begpV, begpH, (rlenV - endpV), (rlenH - endpH));
+		printf("rlenH %d and rlenV %d\n", rlenH, rlenV);
+		printf("endpH %d and endpV %d\n\n", endpH, endpV);
+
+		}*/
 		ContainedSeqMyThread.push_back(seqH); // Push back global index
 		contained = true;
 	}
     else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV)) // SeqV contained // else if(begpV <= maxOverhang && rlenV-endpV <= maxOverhang) 
 	{
+		/* debugging
+		if(seqV == 7561) {
+			
+			printf("7561 is contained in %d\n", seqH+1);
+			printf("7561 is seqV and %d is seqH: begpV %d, begpH %d, (rlenV - endpV) %d, (rlenH - endpH) %d\n", seqV+1, begpV, begpH, (rlenV - endpV), (rlenH - endpH));
+		printf("rlenH %d and rlenV %d\n", rlenH, rlenV);
+		printf("endpH %d and endpV %d\n\n", endpH, endpV);
+		}*/
+
 		ContainedSeqMyThread.push_back(seqV); // Push back global index
 		contained = true;
 	}
@@ -67,6 +86,9 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			if((float)ai.xscore < myThr || overlap < minOverlapLen) passed = false;
 			else passed = true;
 		}
+		// debugging
+		//if(seqH == 4111) printf("4112 is not contained in %d and their threshold result is %d\n", seqV+1, passed);
+		//if(seqV == 4111) printf("4112 is not contained in %d and their threshold result is %d\n", seqH+1, passed);
 
 		if(passed)
 		{
