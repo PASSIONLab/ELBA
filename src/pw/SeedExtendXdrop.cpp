@@ -42,18 +42,17 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	// Reserve length/position if rc [x]
 	if(ai.rc)
 	{
-		uint tmp = begpV;
-		begpV = rlenV - endpV;
-		endpV = rlenV - tmp;
+		uint tmp = begpH;
+		begpH = rlenH - endpH;
+		endpH = rlenH - tmp;
 	}
 
-	//if(begpH <= maxOverhang && rlenH-endpH <= maxOverhang) // seqH contained
-    	if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
+    if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
 	{ 
 		ContainedSeqMyThread.push_back(seqH); // Push back global index
 		contained = true;
 	}
-    	else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV)) // SeqV contained // else if(begpV <= maxOverhang && rlenV-endpV <= maxOverhang) 
+    else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
 	{
 		ContainedSeqMyThread.push_back(seqV); // Push back global index
 		contained = true;
@@ -76,40 +75,40 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			// !reverse complement
 			if(!ai.rc)
 			{
-				if(begpH > begpV)
+				if(begpV > begpH)
 				{
 					direction  = 1;
 					directionT = 2;
 
-					suffix  = rlenV - endpV;
-					suffixT = begpH;
+                    suffix = rlenH - endpH;
+                    suffixT = begpV;
 				}	
 				else
 				{
 					direction  = 2;
 					directionT = 1;
 
-					suffix  = rlenH - endpH;
-					suffixT = begpV;
+                    suffix = begpH;
+                    suffixT = rlenV - endpV;
 				} 
 			}
 			else
 			{
-				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenH-endpH == 0))
+				if((begpV > 0) && (begpH > 0) && (rlenV-endpV == 0) && (rlenH-endpH == 0))
 				{
 					direction  = 0;
 					directionT = 0;
 
-					suffix  = begpV; 	// seqV == 2
-					suffixT = begpH; 	// seqV == 2			
+					suffix  = begpH;
+					suffixT = begpV;
 				}
 				else
 				{
 					direction  = 3;
 					directionT = 3;
 
-					suffix  = rlenV - endpV;	// seqV == 1, seqH == 2	
-					suffixT = rlenH - endpH;	// seqV == 1, seqH == 2		
+					suffix  = rlenH - endpH;
+					suffixT = rlenV - endpV;
 				}
 			}
 			overhang  = suffix  << 2 | direction;
