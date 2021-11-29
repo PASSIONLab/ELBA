@@ -300,8 +300,7 @@ DistributedPairwiseRunner::run_batch
 					++algn_cnt;
 				}
 
-				if ((l_col_idx >= l_row_idx) &&
-					(l_col_idx != l_row_idx || g_col_idx > g_row_idx))
+				if ((l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx || g_col_idx > g_row_idx))
 				{
 					if (cks->count < ckthr) ++nelims_ckthr_cur;
 				}
@@ -352,9 +351,8 @@ DistributedPairwiseRunner::run_batch
 
 				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
 
-				if ((cks->count >= ckthr)    && 
-					(l_col_idx >= l_row_idx) &&
-					(l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
+			//	if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
+				if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
 
 					seqsh[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));

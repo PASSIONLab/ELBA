@@ -22,7 +22,7 @@ else()
   set(libc "")
 endif()
 
-set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
+set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0")
 
 find_package(MPI REQUIRED)
 find_package(OpenMP REQUIRED)

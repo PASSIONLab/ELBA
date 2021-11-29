@@ -282,11 +282,11 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         B += BT;
     }
 
-#ifdef DIBELLA_DEBUG
+//#ifdef DIBELLA_DEBUG
     tu.print_str("Matrix B += BT: ");
     B.PrintInfo();
     B.ParallelWriteMM("ecoli-double-strand-symmetric.mm", true, dibella::CkOutputMMHandler());     
-#endif
+//#endif
 	
     uint nnz, prev;
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;

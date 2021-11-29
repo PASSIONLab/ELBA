@@ -71,7 +71,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 		{
 			uint32_t direction, directionT;
 			uint32_t suffix, suffixT;
-
+				
 			// !reverse complement
 			if(!ai.rc)
 			{
@@ -80,16 +80,16 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 					direction  = 1;
 					directionT = 2;
 
-                    suffix = rlenH - endpH;
-                    suffixT = begpV;
+                    			suffix = rlenH - endpH;
+                    			suffixT = begpV;
 				}	
 				else
 				{
 					direction  = 2;
 					directionT = 1;
 
-                    suffix = begpH;
-                    suffixT = rlenV - endpV;
+                    			suffix = begpH;
+                    			suffixT = rlenV - endpV;
 				} 
 			}
 			else

@@ -35,6 +35,8 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include <fstream>
 
 #define TWOSEED
+//#define TRIL
+//#define TRIU
 //#define DIBELLA_DEBUG
 
 /*! Namespace declarations */
@@ -47,6 +49,16 @@ typedef dibella::KmerIntersect<PosInRead, dibella::CommonKmers> KmerIntersectSR_
 int parse_args(int argc, char **argv);
 
 void pretty_print_config(std::string &append_to);
+
+auto TriLSR = [] (const std::tuple<int64_t, int64_t, int>& t)
+{
+        return static_cast<bool>(std::get<0>(t) <= std::get<1>(t));
+};
+
+auto TriUSR = [] (const std::tuple<int64_t, int64_t, int>& t)
+{
+        return static_cast<bool>(std::get<0>(t) >= std::get<1>(t));
+};
 
 std::string get_padding(ushort count, std::string prefix);
 
@@ -310,8 +322,17 @@ int main(int argc, char **argv)
   // Output intermediate matrix post-alignment
   std::string postalignment = myoutput;
   postalignment += ".resultmatrix.mm";
-  B.ParallelWriteMM(postalignment, true, dibella::CkOutputHandler()); 
+  B.ParallelWriteMM(postalignment, true, dibella::CkOutputHandler());
+
+#ifdef TRIU
+  // Prune lower triangular matrix to remove junk values that have not been aligned to save computation (symmetric matrix so it's ok)
+  B.PruneI(TriUSR, true);
   
+  std::string triu = myoutput;
+  triu += ".triu.resultmatrix.mm";
+  B.ParallelWriteMM(triu, true, dibella::CkOutputHandler()); 
+#endif
+
   //////////////////////////////////////////////////////////////////////////////////////
   // TRANSITIVE REDUCTION                                                             // 
   //////////////////////////////////////////////////////////////////////////////////////
