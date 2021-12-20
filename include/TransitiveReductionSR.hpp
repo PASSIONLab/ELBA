@@ -23,7 +23,10 @@
 using namespace combblas;
 using namespace std;
 
+#ifndef FUZZ
 #define FUZZ (1000)
+#endif
+
 #define DEBUG
 
 /** Given a biridrected graph, an edge v ?-? x can only be considered transitive given a pair of edges v ?-? w ?-? x if:

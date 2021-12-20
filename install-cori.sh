@@ -5,8 +5,9 @@ export COMBBLAS_HOME=$PWD
 export BLOOM_HOME=$PWD/src/libbloom/
 export SEQAN_HOME=$PWD/seqan
 
-git clone https://github.com/PASSIONLab/CombBLAS.git
+git clone https://github.com/gabe-raulet/CombBLAS
 cd $COMBBLAS_HOME/CombBLAS
+git checkout from-scratch
 mkdir build
 mkdir install
 cd build

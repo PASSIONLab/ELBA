@@ -101,6 +101,7 @@ target_compile_definitions(
     -DDELTACHERNOFF=${DELTACHERNOFF}
     -DLOWER_KMER_FREQ=${LOWER_KMER_FREQ}
     -DUPPER_KMER_FREQ=${UPPER_KMER_FREQ}
+    -DFUZZ=${FUZZ}
 )
 
 target_link_libraries(dibella PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC)
