@@ -1,5 +1,10 @@
 // Created by Giulia Guidi on 04/02/21.
 
+// Edited by Gabriel Raulet on 12/20/21.
+
+#ifndef CONTIG_HPP
+#define CONTIG_HPP
+
 #include <cmath>
 #include <map>
 #include <fstream>
@@ -9,117 +14,122 @@
 #include "Utils.hpp"
 #include "CC.h"
 
-// #define MATRIXPOWER
-#define MAXPATHLEN 5000
-
-/*! Namespace declarations */
 using namespace combblas;
-// typedef ContigSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> ContigSRing_t;
+
+FullyDistVec<int64_t, int64_t> GetReadLengths(std::shared_ptr<DistributedFastaData> dfd)
+{
+    uint64_t global_count = dfd->global_count();
+    uint64_t global_start_idx = dfd->global_start_idx();
+    uint64_t l_seq_count = dfd->l_seq_count;
+
+    //seqan::Dna5String *rseq = dfd->row_seq(0);
+    //seqan::Dna5String *cseq = dfd->col_seq(0);
+
+    FastaData *lfd = dfd->lfd();
+
+    lfd->print();
+
+    ushort len;
+    uint64_t start_offset, end_offset_inclusive;
+    char *buf = lfd->get_sequence_id(0, len, start_offset, end_offset_inclusive);
+
+    char seqid[len+1];
+    strncpy(seqid, buf+start_offset, len);
 
 
-// std::vector<std::string> 
-// CreateContig(PSpMat<dibella::CommonKmers>::MPI_DCCols& S, std::string& myoutput, TraceUtils tu, 
-//    PSpMat<dibella::CommonKmers>::DCCols* spSeq, std::shared_ptr<DistributedFastaData> dfd, int64_t nreads)
-// {    
 
-   // float balance = S.LoadImbalance();
-   // int64_t nnz   = S.getnnz();
+    int myrank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
-   // std::ostringstream outs;
-   // outs.str("");
-   // outs.clear();
-   // outs << "CreateContig::LoadBalance: " << balance << endl;
-   // outs << "CreateContig::nonzeros: "    << nnz     << endl;
-   // SpParHelper::Print(outs.str());
+    std::cout << "myrank=" << myrank << ", seqid=" << seqid << std::endl;
 
-   // int64_t nCC = 0;
-   // FullyDistVec<int64_t, int64_t> myLabelCC = CC(S, nCC);
+    //std::cout << "myrank=" << myrank
+    //          << ", global_count=" << global_count
+    //          << ", global_start_idx=" << global_start_idx 
+    //          << ", l_seq_count=" << l_seq_count
+    //          << ", length(rseq)=" << length(*rseq)
+    //          << ", length(cseq)=" << length(*cseq) << std::endl;
 
-   //	std::string myccoutput = myoutput + ".cc";
-   //	myLabelCC.ParallelWrite(myccoutput, 1);
+    FullyDistVec<int64_t, int64_t> vector;
+    return vector;
+}
 
-   // uint64_t nContig = myLabelCC.Reduce(maximum<int64_t>(), (int64_t)0);
-   // nContig++; // because of zero based indexing for cluster
 
-   // std::stringstream ncc;
-   // ncc << "nContig: " << nContig << endl;
-   // SpParHelper::Print(ncc.str());
+FullyDistVec<int64_t, int64_t> GetContigAssignments (
+    const SpParMat<int64_t, dibella::CommonKmers, SpDCCols<int64_t, dibella::CommonKmers>>& OverlapGraph,
+    FullyDistVec<int64_t, int64_t>& Branches,
+    FullyDistVec<int64_t, int64_t>& Roots,
+    int64_t& NumContigs
+)
+{
+    SpParMat<int64_t, int64_t, SpDCCols<int64_t, int64_t>> A = OverlapGraph;
 
-   // First4Clust(myLabelCC);
-   // HistCC(myLabelCC, nCC);
+    SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> D1 = A;
+    FullyDistVec<int64_t, int64_t> degs1(D1.getcommgrid());
 
-   // PrintCC(myLabelCC, nCC);
+    D1.Reduce(degs1, Row, std::plus<int64_t>(), static_cast<int64_t>(0));
 
-#ifdef MATRIXPOWER
+    Branches = degs1.FindInds(bind2nd(std::greater<int64_t>(), 2));
 
-    // PSpMat<dibella::CommonKmers>::MPI_DCCols T = S; // (T) traversal matrix
-    // PSpMat<dibella::CommonKmers>::MPI_DCCols ContigM(S.getcommgrid()); // Contig matrix
-    // dibella::CommonKmers defaultBVal; 
+    A.PruneFull(Branches, Branches);
 
-    // Read vector is gonna multiply the matrix and create contig from there
-    // FullyDistVec<int64_t, std::array<char, MAXCONTIGLEN>> ReadVector(S.getcommgrid());
-    // char* nt; // NT initial value
+    SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> D2 = A;
+    FullyDistVec<int64_t, int64_t> degs2(D2.getcommgrid());
 
-    // CustomVectorEntry nt;
-    /*
-     * A vector of read ids that is my path [0, 1, 3, 67] (paths)
-     * A vector of offset [10, 40, 50] (offsets) and offsets.size = paths.size -1 
-     * Offset 10 tells me that i have to cut the last 10 bases of read1 and concatenate them to read0, then 40 from read3 and concatenate them to read1 etc. 
-    */
-    // FullyDistVec<int64_t, char*> ReadVector(S.getcommgrid(), nreads, nt);
-    //	auto dcsc = spSeq->GetDCSC();
+    D2.Reduce(degs2, Row, std::plus<int64_t>(), static_cast<int64_t>(0));
 
-    // GGGG: fill the read vector with sequences
-    // IT * ir; //!< row indices, size nz
-    //	for (uint64_t i = 0; i < dcsc->nz; ++i)
-    //	{
-    //		int64_t lrid = dcsc->ir[i]; // local row idx
-    //    seqan::Dna5String rseq = *(dfd->row_seq(lrid));
+    Roots = degs2.Find(bind2nd(std::equal_to<int64_t>(), 1));
 
-    //    std::array<char, MAXCONTIGLEN> crseq;
-    //    std::string cpprseq;
-    //    std::copy(begin(rseq), end(rseq), begin(cpprseq)); // @GGGG: this doesnt work
+    FullyDistVec<int64_t, int64_t> vCC = CC(A, NumContigs);
 
-    //    char* crseq = new char[MAXCONTIGLEN];
-    //    crseq = &cpprseq[0]; // C++14
+    return vCC;
+}
 
-    //    std::cout << rseq << std::endl;
-    
-    //   ReadVector.SetElement(lrid, crseq); // SetElement only work locally (owner)
-    //	}
+FullyDistVec<int64_t, int64_t> GetContigSizes (
+    const SpParMat<int64_t, dibella::CommonKmers, SpDCCols<int64_t, dibella::CommonKmers>>& OverlapGraph,
+    const FullyDistVec<int64_t, int64_t>& Assignments,
+    const int64_t& NumContigs
+)
+{
+    FullyDistVec<int64_t, int64_t> overlapLens(OverlapGraph.getcommgrid());
+    FullyDistVec<int64_t, int64_t> colReduce(OverlapGraph.getcommgrid());
 
-    // ReadVector.DebugPrint();
-    // FullyDistVec<int64_t, std::array<char, MAXSEQLEN>> ContigVector(S.getcommgrid());
-    // FullyDistVec<int64_t, char*> ContigVector(S.getcommgrid());
+    OverlapGraph.Reduce(overlapLens, Row, std::plus<int64_t>(), static_cast<int64_t>(0));
+    OverlapGraph.Reduce(colReduce, Column, std::plus<int64_t>(), static_cast<int64_t>(0));
 
-    // do
-    // { 
-    //     // ContigSR concatenates entries
-    //     ReadVector = ContigVector;
-    //     ContigVector = SpMV<ContigSR>(S, ReadVector);
-                
-    // } while (ReadVector != ContigVector); // Once the two vec are identical we're done
+    overlapLens += colReduce;
 
-    // // GGGG: we know how long are the contig(s) from the CC so we could just extract those or can I use a FullySpDist vector and get only on contig?
+    std::vector<int64_t> LocalCCSizes(NumContigs, 0);
+    std::vector<int64_t> LocalCC = Assignments.GetLocVec();
 
-    // ContigM.ParallelWriteMM("contig.miracle.mm", true, dibella::CkOutputMMHandler());
+    int64_t LocalCCSize = Assignments.LocArrSize();
+
+    for (int64_t i = 0; i < LocalCCSize; ++i)
+        LocalCCSizes[LocalCC[i]]++;
+
+    int nprocs, myrank;
+    MPI_Comm World = OverlapGraph.getcommgrid()->GetWorld();
+    MPI_Comm_size(World, &nprocs);
+    MPI_Comm_rank(World, &myrank);
+
+    int avesize = NumContigs / nprocs;
+    int lastsize = NumContigs - (avesize * (nprocs - 1));
+
+    std::vector<int> recvcounts(nprocs, avesize);
+    recvcounts.back() = lastsize;
+
+    int mysize = (myrank != nprocs - 1)? avesize : lastsize;
+
+    std::vector<int64_t> FillVecCC(mysize);
+
+    MPI_Reduce_scatter(LocalCCSizes.data(), FillVecCC.data(), recvcounts.data(), MPI_INT64_T, MPI_SUM, World);
+
+    FullyDistVec<int64_t, int64_t> CCSizes(FillVecCC, OverlapGraph.getcommgrid());
+
+    return CCSizes;
+}
 
 #endif
 
-    // std::vector<std::string> myContigSet;
-    // @GGGG-TODO: Create contig sequence from connected component matrix
-    // {
-    //      ...
-    // }
 
-    // return myContigSet;
-// }
 
-// FullyDistVec<int64_t, dibella::CommonKmers> ReduceV(T.getcommgrid());
-// FullyDistVec<int64_t, dibella::CommonKmers> ContigV(T.getcommgrid());
-
-// ContigV =  T.Reduce(Row, ReduceMSR_t(), NullValue);
-// ReduceV = nT.Reduce(Row, ReduceMSR_t(), NullValue);
-
-// useExtendedBinOp doesn't seem to be used anywhere, only passed as argument?
-// ContigV.EWiseApply(ReduceV, GreaterSR_t(), IsNotEndContigSR_t(), false)

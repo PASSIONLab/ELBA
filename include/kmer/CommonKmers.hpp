@@ -62,6 +62,8 @@ namespace dibella {
 
 	operator bool() const { return overhang; };
 
+    //operator int64_t() const { return overhang; }
+
     // Overload + operator to add two CommonKmers objects
 	// Used for: B += BT (TransitiveReductionSR.hpp)
 	// The +operator when creating the symmetric matrix doesn't really matter, there's gonna be zeros on the other side

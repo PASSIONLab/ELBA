@@ -358,6 +358,18 @@ int main(int argc, char **argv)
 
   // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
+  FullyDistVec<int64_t, int64_t> ReadLengths = GetReadLengths(dfd);
+
+  //int64_t NumContigs;
+  //FullyDistVec<int64_t, int64_t> Branches, Roots, ContigSizes, ContigAssignments;
+
+  //ContigAssignments = GetContigAssignments(B, Branches, Roots, NumContigs);
+  //ContigSizes = GetContigSizes(B, ContigAssignments, NumContigs);
+
+  //std::string ccout = myoutput;
+  //ccout += ".reads.per.contig.txt";
+  //ContigSizes.ParallelWrite(ccout, true);
+
   // std::vector<std::string> myContigSet;
   // bool contigging = true;
 
