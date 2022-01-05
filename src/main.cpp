@@ -156,6 +156,7 @@ int main(int argc, char **argv)
 #endif
     
     int nprocs, myrank;
+
     MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD,&myrank);
   
@@ -263,6 +264,8 @@ int main(int argc, char **argv)
   }
   tp->times["EndMain:DfdWait()"] = std::chrono::system_clock::now();
 
+  GetReadLengths(dfd, parops->grid);
+
   //////////////////////////////////////////////////////////////////////////////////////
   // PAIRWISE ALIGNMENT                                                               // 
   //////////////////////////////////////////////////////////////////////////////////////
@@ -356,9 +359,13 @@ int main(int argc, char **argv)
   // CONTIG EXTRACTION                                                                // 
   //////////////////////////////////////////////////////////////////////////////////////
 
+  GetReadLengths(dfd, parops->grid);
+
   // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
-  FullyDistVec<int64_t, int64_t> ReadLengths = GetReadLengths(dfd);
+  //FullyDistVec<int64_t, int64_t> ReadLengths = GetReadLengths(dfd);
+
+  //GetReadLengths(dfd, B.getcommgrid());
 
   //int64_t NumContigs;
   //FullyDistVec<int64_t, int64_t> Branches, Roots, ContigSizes, ContigAssignments;

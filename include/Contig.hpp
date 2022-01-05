@@ -16,42 +16,37 @@
 
 using namespace combblas;
 
-FullyDistVec<int64_t, int64_t> GetReadLengths(std::shared_ptr<DistributedFastaData> dfd)
+//FullyDistVec<int64_t, int64_t> GetReadLengths(std::shared_ptr<DistributedFastaData> dfd)
+void GetReadLengths(std::shared_ptr<DistributedFastaData> dfd, std::shared_ptr<CommGrid> commgrid)
 {
     uint64_t global_count = dfd->global_count();
     uint64_t global_start_idx = dfd->global_start_idx();
     uint64_t l_seq_count = dfd->l_seq_count;
 
-    //seqan::Dna5String *rseq = dfd->row_seq(0);
-    //seqan::Dna5String *cseq = dfd->col_seq(0);
+    seqan::Dna5String *rseq = dfd->row_seq(0);
+    seqan::Dna5String *cseq = dfd->col_seq(0);
 
     FastaData *lfd = dfd->lfd();
-
-    lfd->print();
 
     ushort len;
     uint64_t start_offset, end_offset_inclusive;
     char *buf = lfd->get_sequence_id(0, len, start_offset, end_offset_inclusive);
 
     char seqid[len+1];
+    seqid[len] = 0;
     strncpy(seqid, buf+start_offset, len);
 
-
-
     int myrank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    MPI_Comm_rank(commgrid->GetWorld(), &myrank);
 
-    std::cout << "myrank=" << myrank << ", seqid=" << seqid << std::endl;
+    //std::cout << "myrank=" << myrank << ", seqid=" << seqid << std::endl;
 
-    //std::cout << "myrank=" << myrank
-    //          << ", global_count=" << global_count
-    //          << ", global_start_idx=" << global_start_idx 
-    //          << ", l_seq_count=" << l_seq_count
-    //          << ", length(rseq)=" << length(*rseq)
-    //          << ", length(cseq)=" << length(*cseq) << std::endl;
-
-    FullyDistVec<int64_t, int64_t> vector;
-    return vector;
+    std::cout << "myrank=" << myrank
+              << ", global_count=" << global_count
+              << ", global_start_idx=" << global_start_idx 
+              << ", l_seq_count=" << l_seq_count
+              << ", length(rseq)=" << length(*rseq)
+              << ", length(cseq)=" << length(*cseq) << std::endl;
 }
 
 
