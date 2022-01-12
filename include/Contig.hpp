@@ -16,42 +16,34 @@
 
 using namespace combblas;
 
-//FullyDistVec<int64_t, int64_t> GetReadLengths(std::shared_ptr<DistributedFastaData> dfd)
-void GetReadLengths(std::shared_ptr<DistributedFastaData> dfd, std::shared_ptr<CommGrid> commgrid)
+FullyDistVec<int64_t, int64_t> GetReadLengths(std::shared_ptr<DistributedFastaData> dfd, std::shared_ptr<CommGrid> commgrid)
 {
-    uint64_t global_count = dfd->global_count();
-    uint64_t global_start_idx = dfd->global_start_idx();
-    uint64_t l_seq_count = dfd->l_seq_count;
+    int myrank = commgrid->GetRank();
+    int myrowrank = commgrid->GetRankInProcRow();
+    int mycolrank = commgrid->GetRankInProcCol();
+    int gridrows = commgrid->GetGridRows();
+    int gridcols = commgrid->GetGridCols();
+    int gridsize = gridrows * gridcols;
 
-    seqan::Dna5String *rseq = dfd->row_seq(0);
-    seqan::Dna5String *cseq = dfd->col_seq(0);
+    uint64_t numreads = dfd->global_count();
+    uint64_t rowreads = (myrowrank==gridrows-1)? (numreads-(gridrows-1)*(numreads/gridrows)) : (numreads/gridrows);
+    uint64_t myreads  = (mycolrank==gridcols-1)? (rowreads-(gridcols-1)*(rowreads/gridcols)) : (rowreads/gridcols);
 
-    FastaData *lfd = dfd->lfd();
+    uint64_t startidx = (rowreads/gridcols) * mycolrank;
 
-    ushort len;
-    uint64_t start_offset, end_offset_inclusive;
-    char *buf = lfd->get_sequence_id(0, len, start_offset, end_offset_inclusive);
+    std::vector<int64_t> local_readlens(myreads, 0);
 
-    char seqid[len+1];
-    seqid[len] = 0;
-    strncpy(seqid, buf+start_offset, len);
+    for (int i = 0; i < myreads; ++i)
+        local_readlens[i] = length(*(dfd->col_seq(i+startidx)));
 
-    int myrank;
-    MPI_Comm_rank(commgrid->GetWorld(), &myrank);
-
-    //std::cout << "myrank=" << myrank << ", seqid=" << seqid << std::endl;
-
-    std::cout << "myrank=" << myrank
-              << ", global_count=" << global_count
-              << ", global_start_idx=" << global_start_idx 
-              << ", l_seq_count=" << l_seq_count
-              << ", length(rseq)=" << length(*rseq)
-              << ", length(cseq)=" << length(*cseq) << std::endl;
+    FullyDistVec<int64_t, int64_t> ReadLengths(local_readlens, commgrid);
+    return ReadLengths;
 }
 
 
 FullyDistVec<int64_t, int64_t> GetContigAssignments (
     const SpParMat<int64_t, dibella::CommonKmers, SpDCCols<int64_t, dibella::CommonKmers>>& OverlapGraph,
+    const FullyDistVec<int64_t, int64_t>& ReadLengths,
     FullyDistVec<int64_t, int64_t>& Branches,
     FullyDistVec<int64_t, int64_t>& Roots,
     int64_t& NumContigs
@@ -82,6 +74,7 @@ FullyDistVec<int64_t, int64_t> GetContigAssignments (
 
 FullyDistVec<int64_t, int64_t> GetContigSizes (
     const SpParMat<int64_t, dibella::CommonKmers, SpDCCols<int64_t, dibella::CommonKmers>>& OverlapGraph,
+    const FullyDistVec<int64_t, int64_t>& ReadLengths,
     const FullyDistVec<int64_t, int64_t>& Assignments,
     const int64_t& NumContigs
 )
@@ -98,6 +91,8 @@ FullyDistVec<int64_t, int64_t> GetContigSizes (
     std::vector<int64_t> LocalCC = Assignments.GetLocVec();
 
     int64_t LocalCCSize = Assignments.LocArrSize();
+
+    std::vector<int64_t> localRSizes = ReadLengths.GetLocVec();
 
     for (int64_t i = 0; i < LocalCCSize; ++i)
         LocalCCSizes[LocalCC[i]]++;

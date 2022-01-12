@@ -297,10 +297,12 @@ int main(int argc, char **argv)
   candidatem += ".candidatematrix.mm";
   B.ParallelWriteMM(candidatem, true, dibella::CkOutputMMHandler()); 
 
+  FullyDistVec<int64_t, int64_t> toerase;
+
   if(xdropAlign)
   {
     pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);	    
-    dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
+    toerase = dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
 	  local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
   }
   else if(fullAlign)
@@ -309,6 +311,10 @@ int main(int argc, char **argv)
     dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
 	  local_alignments = static_cast<FullAligner*>(pf)->nalignments;
   }
+
+  std::string stringerase = myoutput;
+  stringerase += ".toerase.txt";
+  toerase.ParallelWrite(stringerase, true);
 
   tp->times["EndMain:DprAlign()"] = std::chrono::system_clock::now();
   delete pf;
@@ -359,23 +365,23 @@ int main(int argc, char **argv)
   // CONTIG EXTRACTION                                                                // 
   //////////////////////////////////////////////////////////////////////////////////////
 
-  GetReadLengths(dfd, parops->grid);
+  tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
-  // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
+  int64_t NumContigs;
+  FullyDistVec<int64_t, int64_t> Branches, Roots, ContigSizes, ContigAssignments, ReadLengths;
 
-  //FullyDistVec<int64_t, int64_t> ReadLengths = GetReadLengths(dfd);
+  ReadLengths = GetReadLengths(dfd, B.getcommgrid());
 
-  //GetReadLengths(dfd, B.getcommgrid());
+  ContigAssignments = GetContigAssignments(B, ReadLengths, Branches, Roots, NumContigs);
+  ContigSizes = GetContigSizes(B, ReadLengths, ContigAssignments, NumContigs);
 
-  //int64_t NumContigs;
-  //FullyDistVec<int64_t, int64_t> Branches, Roots, ContigSizes, ContigAssignments;
+  //std::string rout = myoutput;
+  //rout += ".readlengths.txt";
+  //ReadLengths.ParallelWrite(rout, true);
 
-  //ContigAssignments = GetContigAssignments(B, Branches, Roots, NumContigs);
-  //ContigSizes = GetContigSizes(B, ContigAssignments, NumContigs);
-
-  //std::string ccout = myoutput;
-  //ccout += ".reads.per.contig.txt";
-  //ContigSizes.ParallelWrite(ccout, true);
+  std::string ccout = myoutput;
+  ccout += ".reads.per.contig.txt";
+  ContigSizes.ParallelWrite(ccout, true);
 
   // std::vector<std::string> myContigSet;
   // bool contigging = true;
@@ -385,7 +391,7 @@ int main(int argc, char **argv)
   //   myContigSet = CreateContig(B, myoutput, tu, B.seqptr(), dfd, seq_count);
   // }
 
-  // tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
+  tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
 
   // //////////////////////////////////////////////////////////////////////////////////////
   // // SCAFFOLDING                                                                      // 

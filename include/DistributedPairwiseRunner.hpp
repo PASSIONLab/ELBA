@@ -24,13 +24,13 @@ public:
 
   void write_overlaps(const char *file);
   void run(PairwiseFunction *pf, const char* file, std::ofstream& lfs, int log_freq, ushort k);
-  void run_batch(PairwiseFunction *pf, 
-                    std::ofstream& lfs,
-                    int log_freq, int ckthr, bool aln_score_thr, TraceUtils tu,
-                    const bool noAlign,
-                    ushort k,
-                    uint64_t nreads,
-                    bool score_only = false);
+  FullyDistVec<int64_t, int64_t> run_batch(PairwiseFunction *pf,
+                                           std::ofstream& lfs,
+                                           int log_freq, int ckthr, bool aln_score_thr, TraceUtils tu,
+                                           const bool noAlign,
+                                           ushort k,
+                                           uint64_t nreads,
+                                           bool score_only = false);
 
 private:
   PSpMat<dibella::CommonKmers>::DCCols * spSeq;

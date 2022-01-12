@@ -195,7 +195,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 }
 
 
-void
+FullyDistVec<int64_t, int64_t>
 DistributedPairwiseRunner::run_batch
 (
     PairwiseFunction	*pf,
@@ -407,6 +407,7 @@ DistributedPairwiseRunner::run_batch
 	//////////////////////////////////////////////////////////////////////////////////////
 
 	// Don't use boolean (it's bitmap not array of boolean, this messes up in communication)
+
 	FullyDistVec<int64_t, int64_t> ContainedSeqGlobal(gmat->getcommgrid(), nreads, 0); // I need to use same type as index for Prune()
 
 	FullyDistVec<int64_t, int64_t> ri(gmat->getcommgrid(), nreads, 0); // I need to use same type as index for Prune()
@@ -534,10 +535,13 @@ DistributedPairwiseRunner::run_batch
 	// Prune pairs involving contained seqs
 	gmat->PruneFull(toerase, toerase);
 
+    /* TODO
+     * toerase should be used to cross index the contigs of size 1 that are contained reads!! */
+
 	tu.print_str("\t* nnz after 2nd pruning (contained) " + std::to_string(gmat->getnnz()) + "\n");
 	
 	delete [] algn_cnts;
 	delete [] mattuples;
 
-	return;
+	return toerase;
 }
