@@ -11,6 +11,10 @@ nonexclusive, irrevocable, worldwide license in the Software to reproduce, distr
 derivative works, and perform publicly and display publicly, and to permit others to do so.
 */
 
+#ifndef DIBELLA_DEBUG
+#define DIBELLA_DEBUG
+#endif
+
 #include <iostream>
 #include <cmath>
 #include "../include/Constants.hpp"

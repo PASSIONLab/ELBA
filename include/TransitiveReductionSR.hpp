@@ -61,6 +61,7 @@ const uint infplus(const dibella::CommonKmers& a, const dibella::CommonKmers& b)
     if (length(a) == inf || length(b) == inf) {
     	return inf;
     }
+    //std::cout << "length(a) = " << length(a) << ", length(b) = " << length(b) << std::endl;
     return length(a) + length(b);
 }
 
@@ -139,6 +140,8 @@ bool testdir(ushort dir1, ushort dir2, ushort& dir)
 
     if(dir1 != 0) tobinary(dir1, mybin1);
     if(dir2 != 0) tobinary(dir2, mybin2);
+
+    //std::cout << "dir1=" << dir1 << ", dir2=" << dir2 << ", mybin1 = " << mybin1[0] << " " << mybin1[1] << ", mybin2 = " << mybin2[0] << " " << mybin2[1] << std::endl;
 
     rbit = mybin1[0]; // 1 
     lbit = mybin2[1]; // 0
@@ -288,7 +291,7 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
 #ifdef DIBELLA_DEBUG
     tu.print_str("Matrix B += BT: ");
     B.PrintInfo();
-    B.ParallelWriteMM("result-matrix-symmetric.mm", true, dibella::CkOutputMMHandler());     
+    B.ParallelWriteMM("result-matrix-symmetric.mm", true, dibella::CkOutputHandler());     
 #endif
 	
     uint nnz, prev;
@@ -384,6 +387,9 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
     MPI_Reduce(&timeC,  &maxtimeC,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&timeI,  &maxtimeI,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&timeA,  &maxtimeA,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    int myrank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
     if(myrank == 0)
     {

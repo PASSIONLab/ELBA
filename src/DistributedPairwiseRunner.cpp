@@ -298,7 +298,9 @@ DistributedPairwiseRunner::run_batch
 					(l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
 					++algn_cnt;
-				}
+				} else {
+                    std::cout << "l_col_idx=" << l_col_idx << "\tl_row_idx=" << l_row_idx << "\tg_col_idx=" << g_col_idx << "\tg_row_idx=" << g_row_idx << std::endl;
+                }
 
 				if ((l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx || g_col_idx > g_row_idx))
 				{
@@ -355,8 +357,11 @@ DistributedPairwiseRunner::run_batch
 				if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
 
+                    /* NOTE: seqH is col index, seqV is row index */
 					seqsh[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));
 					seqsv[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
+
+                    //std::cout << "l_col_idx=" << l_col_idx << "\tl_row_idx=" << l_row_idx << "\tg_col_idx=" << g_col_idx << "\tg_row_idx=" << g_row_idx << std::endl;
 
 					lids[algn_idx] = i;
 					++algn_idx;

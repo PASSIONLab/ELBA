@@ -31,8 +31,31 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 	overlap = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
 
+    /* seqH seqV rv begH endH lenH begV endV lenV overlapLenH overlapLenV overlap */
+
+    //if
+    //(
+    //    ((seqH==6784)&&(seqV==4149)) || ((seqV==6784)&&(seqH==4149)) ||
+    //    ((seqH==6953)&&(seqV==4542)) || ((seqV==6953)&&(seqH==4542)) ||
+    //    ((seqH==3276)&&(seqV==4542)) || ((seqV==3276)&&(seqH==4542)) ||
+    //    ((seqH==3276)&&(seqV==3240)) || ((seqV==3276)&&(seqH==3240)) ||
+    //    ((seqH==467) &&(seqV==3240)) || ((seqV==467) &&(seqH==3240))
+    //)
+    //{
+    //    std::cout << seqH+1 << "\t" << seqV+1 << "\t" << ai.rc << "        "
+    //              << begpH << "\t" << endpH << "\t" << rlenH << "        "
+    //              << begpV << "\t" << endpV << "\t" << rlenV << std::endl;
+    //} 
+
+
+            
+
 #ifndef FIXEDTHR
 	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)overlap);
+
+    std::cout << seqH+1 << "\t" << seqV+1 << "\t" << ai.rc << "        "
+              << begpH << "\t" << endpH << "\t" << rlenH << "        "
+              << begpV << "\t" << endpV << "\t" << rlenV << std::endl;
 
 	// Contained overlaps removed for now, reintroduce them later
 	// @GGGG-TODO: identify chimeric sequences
@@ -63,8 +86,12 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 		// If noAlign is false, set passed to false if the score isn't good enough
 		if(!noAlign)
 		{
-			if((float)ai.xscore < myThr || overlap < minOverlapLen) passed = false;
-			else passed = true;
+			if((float)ai.xscore < myThr || overlap < minOverlapLen) {
+                std::cout << seqH+1 << "\t" << seqV+1
+                          << "\tai.xscore=" << ai.xscore << " < " << myThr << "=myThr || overlap="
+                          << overlap << " < " << minOverlapLen << "=minOverlapLen" << std::endl;
+                passed = false;
+            } else passed = true;
 		}
 
 		if(passed)
@@ -83,7 +110,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
                     			suffix = rlenH - endpH;
                     			suffixT = begpV;
 				}	
-				else
+				else // POTENTIAL DANGER: logic is (begpH >= begpV), not (begpH > begpV)
 				{
 					direction  = 2;
 					directionT = 1;
@@ -102,19 +129,36 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 					suffix  = begpH;
 					suffixT = begpV;
 				}
-				else
+				else //((begpV==0) && (begpH==0) && (rlenV-endpV > 0) && (rlenH - endpH > 0))
 				{
 					direction  = 3;
 					directionT = 3;
 
 					suffix  = rlenH - endpH;
 					suffixT = rlenV - endpV;
-				}
+                }
 			}
 			overhang  = suffix  << 2 | direction;
 			overhangT = suffixT << 2 | directionT;
+
+            //if
+            //(
+            //    ((seqH==6784)&&(seqV==4149)) || ((seqV==6784)&&(seqH==4149)) ||
+            //    ((seqH==6953)&&(seqV==4542)) || ((seqV==6953)&&(seqH==4542)) ||
+            //    ((seqH==3276)&&(seqV==4542)) || ((seqV==3276)&&(seqH==4542)) ||
+            //    ((seqH==3276)&&(seqV==3240)) || ((seqV==3276)&&(seqH==3240)) ||
+            //    ((seqH==467) &&(seqV==3240)) || ((seqV==467) &&(seqH==3240))
+            //)
+            //{
+            //    std::cout << seqH+1 << "\t" << seqV+1 << "\t" << direction << "\t" << suffix << std::endl;
+            //    std::cout << seqV+1 << "\t" << seqH+1 << "\t" << directionT << "\t" << suffixT << std::endl;
+            //} 
+            if ((seqH==4)  && (seqV==1)) {
+                std::cout << seqV+1 << "\t" << seqH+1 << "\t" << direction << "\t" << suffix << std::endl;
+            }
 		} // if(passed)
 	} // if(!contained)
+
 		
 #else
 	if(ai.xscore >= FIXEDTHR)
