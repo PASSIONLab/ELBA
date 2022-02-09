@@ -29,9 +29,11 @@ namespace dibella {
 	uint32_t overhang;
 	uint32_t overhangT;
 
-#ifdef EXTRA
+    int rc;
 	uint32_t lenv;
 	uint32_t lenh;
+
+#ifdef EXTRA
 	uint32_t overlap;
 #endif
 
@@ -177,13 +179,17 @@ namespace dibella {
 			if(dir == 0 || dir == 3) rc = 1;
 
 			// direction, rc, overhang, begV, endV, begH, endH (OverlapLen and others computed in python script during translation)
-			os << dir << "\t" << rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t"
-				<< v.second.first << "\t" <<
-				#ifdef EXTRA
-				v.second.second  << "\t"  << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
-				#else
-				v.second.second;
-				#endif
+			// os << dir << "\t" << rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t"
+				// << v.second.first << "\t" <<
+				// #ifdef EXTRA
+				// v.second.second  << "\t"  << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
+				// #else
+				// v.second.second;
+				// #endif
+
+            os << dir << "\t" << rc << "\t" << v.first.first << "\t" << v.first.second << "\t" << v.second.first << "\t" << v.second.second << "\t"
+               << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
+
 		}
 	};
 

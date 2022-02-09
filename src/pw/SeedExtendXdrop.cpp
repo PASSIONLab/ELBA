@@ -545,6 +545,7 @@ SeedExtendXdrop::apply_batch
 				cks->lenv 	= ai[i].seq_v_length;
 				cks->lenh 	= ai[i].seq_h_length;
 				cks->score  = ai[i].xscore;
+                cks->rc     = ai[i].rc;
 				cks->passed = passed;	// keep this
 			}
 		}

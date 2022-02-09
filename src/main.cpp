@@ -27,6 +27,8 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "../include/Utils.hpp"
 #include "../include/TransitiveReductionSR.hpp"
 #include "../include/Contig.hpp"
+#include "../include/ReadOverlap.hpp"
+#include "../include/TransitiveReduction.hpp"
 // #include "Assembly.cpp"
 
 #include "seqan/score/score_matrix_data.h"
@@ -324,26 +326,34 @@ int main(int argc, char **argv)
   postalignment += ".resultmatrix.mm";
   B.ParallelWriteMM(postalignment, true, dibella::CkOutputHandler());
 
-#ifdef TRIU
+// #ifdef TRIU
   // Prune lower triangular matrix to remove junk values that have not been aligned to save computation (symmetric matrix so it's ok)
   B.PruneI(TriUSR, true);
 
   std::string triu = myoutput;
   triu += ".triu.resultmatrix.mm";
-  B.ParallelWriteMM(triu, true, dibella::CkOutputHandler());
-#endif
+  // B.ParallelWriteMM(triu, true, dibella::CkOutputHandler());
 
   //////////////////////////////////////////////////////////////////////////////////////
   // TRANSITIVE REDUCTION                                                             //
   //////////////////////////////////////////////////////////////////////////////////////
 
+  SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> R = B;
+  B.ParallelWriteMM("common_kmers.mm", true, dibella::CkOutputHandler());
+  R.ParallelWriteMM("read_overlaps.mm", true, ReadOverlapHandler());
+
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
+
 
   bool transitive_reduction = true; // use in development only
   if (transitive_reduction)
   {
-    TransitiveReduction(B, tu);
+    TransitiveReductionOld(B, tu);
   }
+
+  TransitiveReduction(R);
+
+
 
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 

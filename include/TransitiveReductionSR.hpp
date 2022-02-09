@@ -271,7 +271,7 @@ typedef ReduceMBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::Com
 typedef Bind2ndBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> Bind2ndSR_t;
 
 /* TR main function */
-void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils tu)
+void TransitiveReductionOld(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils tu)
 {
     PSpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
     BT.Transpose();
@@ -282,11 +282,13 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         B += BT;
     }
 
-#ifdef DIBELLA_DEBUG
-    tu.print_str("Matrix B += BT: ");
-    B.PrintInfo();
     B.ParallelWriteMM("result-matrix-symmetric.mm", true, dibella::CkOutputMMHandler());
-#endif
+
+// #ifdef DIBELLA_DEBUG
+    // tu.print_str("Matrix B += BT: ");
+    // B.PrintInfo();
+    // B.ParallelWriteMM("result-matrix-symmetric.mm", true, dibella::CkOutputMMHandler());
+// #endif
 
     uint nnz, prev;
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
