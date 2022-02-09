@@ -22,13 +22,13 @@ namespace dibella {
 	bool passed;
 
 	uint32_t score; /* Used for storing alignment score */
-	
-	/*! GGGG: this is either the suffix or prefix entry need for the transitive reduction 
+
+	/*! GGGG: this is either the suffix or prefix entry need for the transitive reduction
 	 *	StringMatrixEntry econdes both direction and overhang length for both strands */
 	// std::vector<uint32_t> overhang(2, 0);
 	uint32_t overhang;
 	uint32_t overhangT;
-	
+
 #ifdef EXTRA
 	uint32_t lenv;
 	uint32_t lenh;
@@ -51,7 +51,7 @@ namespace dibella {
     CommonKmers() : count(1), passed(false), overhang(0) {
     }
     explicit
-	CommonKmers(ushort count) : 
+	CommonKmers(ushort count) :
 		count(count), passed(false), overhang(0) {
     }
 
@@ -105,9 +105,9 @@ namespace dibella {
 	// 		int nbit = 2;
 	// 		uint n = lhs.overhang & 3;
 	// 		for(int i = 0; i < nbit; i++)
-	// 		{ 
-	// 			mybin1[i] = n % 2; 
-	// 			n = n / 2; 
+	// 		{
+	// 			mybin1[i] = n % 2;
+	// 			n = n / 2;
 	// 		}
 	// 	}
 
@@ -116,14 +116,14 @@ namespace dibella {
 	// 		int nbit = 2;
 	// 		uint n = rhs.overhang & 3;
 	// 		for(int i = 0; i < nbit; i++)
-	// 		{ 
-	// 			mybin2[i] = n % 2; 
-	// 			n = n / 2; 
+	// 		{
+	// 			mybin2[i] = n % 2;
+	// 			n = n / 2;
 	// 		}
 	// 	}
 
-	// 	ushort start = mybin1[1]; 
-	// 	ushort end   = mybin2[0]; 
+	// 	ushort start = mybin1[1];
+	// 	ushort end   = mybin2[0];
 
 	// 	if(start == 0)
 	// 	{
@@ -133,7 +133,7 @@ namespace dibella {
 	// 	else
 	// 	{
 	// 		if(end == 0) dir = 2;
-	// 		else dir = 3;      
+	// 		else dir = 3;
 	// 	}
 
 	// 	ushort len1 = lhs.overhang >> 2;
@@ -155,7 +155,7 @@ namespace dibella {
 		os << "|" << m.count << "(";
 		for(int i = 0; i < m.pos.size(); i++)
 		{
-			os << m.pos[i].first << "," << m.pos[i].second << ")| ";  
+			os << m.pos[i].first << "," << m.pos[i].second << ")| ";
 		}
 	#endif
 		return os;
@@ -172,13 +172,13 @@ namespace dibella {
 				uint64_t col)
 		{
 			// GGGG: we need the overhand value to create input in graph dot for comparison
-			int dir = v.overhang & 3; 
+			int dir = v.overhang & 3;
 			int rc  = 0;
 			if(dir == 0 || dir == 3) rc = 1;
 
 			// direction, rc, overhang, begV, endV, begH, endH (OverlapLen and others computed in python script during translation)
-			os << dir << "\t" << rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t" 
-				<< v.second.first << "\t" << 
+			os << dir << "\t" << rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t"
+				<< v.second.first << "\t" <<
 				#ifdef EXTRA
 				v.second.second  << "\t"  << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
 				#else
