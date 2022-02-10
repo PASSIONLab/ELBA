@@ -1,13 +1,13 @@
 /*
-PASTIS Copyright (c) 2020, The Regents of the University of California, through Lawrence Berkeley National Laboratory 
+PASTIS Copyright (c) 2020, The Regents of the University of California, through Lawrence Berkeley National Laboratory
 (subject to receipt of any required approvals from the U.S. Dept. of Energy). All rights reserved.
 
-If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Intellectual 
+If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Intellectual
 Property Office at IPO@lbl.gov.
 
-NOTICE. This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently 
-retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, 
-nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare 
+NOTICE. This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently
+retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up,
+nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare
 derivative works, and perform publicly and display publicly, and to permit others to do so.
 */
 
@@ -27,8 +27,10 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "../include/kmer/KmerIntersectSR.hpp"
 #include "../include/Utils.hpp"
 #include "../include/TransitiveReductionSR.hpp"
+#include "../include/Contig.hpp"
+#include "../include/ReadOverlap.hpp"
+#include "../include/TransitiveReduction.hpp"
 
-// #include "Contig.cpp"
 // #include "Assembly.cpp"
 
 #include "seqan/score/score_matrix_data.h"
@@ -37,6 +39,8 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include <fstream>
 
 #define TWOSEED
+//#define TRIL
+//#define TRIU
 //#define DIBELLA_DEBUG
 
 /*! Namespace declarations */
@@ -49,6 +53,16 @@ typedef dibella::KmerIntersect<PosInRead, dibella::CommonKmers> KmerIntersectSR_
 int parse_args(int argc, char **argv);
 
 void pretty_print_config(std::string &append_to);
+
+auto TriLSR = [] (const std::tuple<int64_t, int64_t, int>& t)
+{
+        return static_cast<bool>(std::get<0>(t) <= std::get<1>(t));
+};
+
+auto TriUSR = [] (const std::tuple<int64_t, int64_t, int>& t)
+{
+        return static_cast<bool>(std::get<0>(t) >= std::get<1>(t));
+};
 
 std::string get_padding(ushort count, std::string prefix);
 
@@ -107,7 +121,7 @@ int log_freq;
 int ckthr = 1;
 
 /*! Score threshold */
-bool aln_score_thr = false; // GGGG: Currently not used 
+bool aln_score_thr = false; // GGGG: Currently not used
 
 int main(int argc, char **argv)
 {
@@ -144,11 +158,11 @@ int main(int argc, char **argv)
         nthreads = omp_get_num_threads();
     }
 #endif
-    
+
     int nprocs, myrank;
     MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD,&myrank);
-  
+
     if(myrank == 0)
     {
         std::cout << "Process Grid (p x p x t): " << sqrt(nprocs) << " x " << sqrt(nprocs) << " x " << nthreads << std::endl;
@@ -165,7 +179,7 @@ int main(int argc, char **argv)
   tp->times["StartMain"] = std::chrono::system_clock::now();
   std::time_t start_prog_time = std::chrono::system_clock::to_time_t(
   tp->times["StartMain"]);
-  
+
   print_str = "\nINFO: Program started on ";
   print_str.append(std::ctime(&start_prog_time));
   print_str.append("\nINFO: Job ID ").append(job_name).append("\n");
@@ -173,14 +187,14 @@ int main(int argc, char **argv)
   tu.print_str(print_str);
 
   //////////////////////////////////////////////////////////////////////////////////////
-  // PARALLEL FASTA READER                                                            // 
+  // PARALLEL FASTA READER                                                            //
   //////////////////////////////////////////////////////////////////////////////////////
 
   tp->times["StartMain:newDFD()"] = std::chrono::system_clock::now();
   std::shared_ptr<DistributedFastaData> dfd = std::make_shared<DistributedFastaData>(
       input_file.c_str(), idx_map_file.c_str(), input_overlap,
       klength, parops, tp, tu);
-  
+
   tp->times["EndMain:newDFD()"] = std::chrono::system_clock::now();
 
   if (dfd->global_count() != seq_count)
@@ -199,7 +213,7 @@ int main(int argc, char **argv)
   }
 
   //////////////////////////////////////////////////////////////////////////////////////
-  // K-MER COUNTING + GENERATE A/AT                                                   // 
+  // K-MER COUNTING + GENERATE A/AT                                                   //
   //////////////////////////////////////////////////////////////////////////////////////
 
   /*! Create alphabet */
@@ -226,13 +240,13 @@ int main(int argc, char **argv)
   tp->times["EndMain:At()"] = std::chrono::system_clock::now();
 
   //////////////////////////////////////////////////////////////////////////////////////
-  // OVERLAP DETECTION                                                                // 
+  // OVERLAP DETECTION                                                                //
   //////////////////////////////////////////////////////////////////////////////////////
 
   tp->times["StartMain:AAt()"] = std::chrono::system_clock::now();
 
   // @GGGG-TODO: check vector version (new one stack error)
-  PSpMat<dibella::CommonKmers>::MPI_DCCols B = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);  
+  PSpMat<dibella::CommonKmers>::MPI_DCCols B = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);
 
   tp->times["EndMain:AAt()"] = std::chrono::system_clock::now();
 
@@ -254,7 +268,7 @@ int main(int argc, char **argv)
   tp->times["EndMain:DfdWait()"] = std::chrono::system_clock::now();
 
   //////////////////////////////////////////////////////////////////////////////////////
-  // PAIRWISE ALIGNMENT                                                               // 
+  // PAIRWISE ALIGNMENT                                                               //
   //////////////////////////////////////////////////////////////////////////////////////
 
   uint64_t n_rows, n_cols;
@@ -279,19 +293,35 @@ int main(int argc, char **argv)
   PairwiseFunction* pf = nullptr;
   uint64_t local_alignments = 1;
 
-  bool LoganAlign = true;
+  // Output intermediate matrix post-alignment
+  std::string candidatem = myoutput;
+  candidatem += ".candidatematrix.mm";
+  B.ParallelWriteMM(candidatem, true, dibella::CkOutputMMHandler());
+
+  // @GGGG: this should be input parameter
+  bool LoganAlign = true;  
 
   if(LoganAlign)
   {
+    tu.print_str("GPU-based LOGAN alignment started");
+    
     pf = new GPULoganAligner(scoring_scheme, klength, xdrop, seed_count);	    
+    
     dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
 	  local_alignments = static_cast<GPULoganAligner*>(pf)->nalignments;
+    
+    tu.print_str("GPU-based LOGAN alignment completed");
   }
   else if(xdropAlign)
   {
+    tu.print_str("CPU-based SeqAn alignment started");
+    
     pf = new SeedExtendXdrop(scoring_scheme, klength, xdrop, seed_count);	    
+    
     dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
 	  local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
+    
+    tu.print_str("CPU-based SeqAn alignment completed");
   }
   else if(fullAlign)
   {
@@ -306,7 +336,7 @@ int main(int argc, char **argv)
   uint64_t total_alignments = 0;
   MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
 
-  // total_alignments should be zero if "noAlign" is true 
+  // total_alignments should be zero if "noAlign" is true
   if(is_print_rank)
   {
     std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments << std::endl;
@@ -314,45 +344,71 @@ int main(int argc, char **argv)
 
   // Output intermediate matrix post-alignment
   std::string postalignment = myoutput;
-  postalignment += ".postalignment.mm";
-  B.ParallelWriteMM(postalignment, true, dibella::CkOutputMMHandler()); 
-  
+  postalignment += ".resultmatrix.mm";
+  B.ParallelWriteMM(postalignment, true, dibella::CkOutputHandler());
+
+  // @GGGG: this is useless (double check and remove)
+  // #ifdef TRIU
+  // Prune lower triangular matrix to remove junk values that have not been aligned to save computation (symmetric matrix so it's ok)
+  B.PruneI(TriUSR, true);
+
+  std::string triu = myoutput;
+  triu += ".triu.resultmatrix.mm";
+
+  // std::vector<int64_t> toprune = {5,6};
+  // FullyDistVec<int64_t, int64_t> ToPrune(toprune, B.getcommgrid());
+  // B.PruneFull(ToPrune, ToPrune);
+
   //////////////////////////////////////////////////////////////////////////////////////
-  // TRANSITIVE REDUCTION                                                             // 
+  // TRANSITIVE REDUCTION                                                             //
   //////////////////////////////////////////////////////////////////////////////////////
+
+  SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> R = B;
+
+  //B.ParallelWriteMM("common_kmers.mm", true, dibella::CkOutputHandler());
+  //R.ParallelWriteMM("read_overlaps.mm", true, ReadOverlapHandler());
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
-  bool transitive_reduction = true; // use in development only
+  // @GGGG: this should be input parameter
+  bool transitive_reduction = false;
   if (transitive_reduction)
   {
-    TransitiveReduction(B, tu);
+    TransitiveReduction(R);
   }
 
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
+  // Output intermediate matrix post-alignment
+  std::string stringm = myoutput;
+  stringm += ".stringmatrix.mm";
+  
+  double start = MPI_Wtime();
+  B.ParallelWriteMM(stringm, true, dibella::CkOutputMMHandler());
+  double ppend = MPI_Wtime() - start;
+
   //////////////////////////////////////////////////////////////////////////////////////
-  // CONTIG EXTRACTION                                                                // 
+  // CONTIG EXTRACTION                                                                //
   //////////////////////////////////////////////////////////////////////////////////////
 
   // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
   // std::vector<std::string> myContigSet;
-  // bool contigging = false;
+  // bool contigging = true;
 
   // if(contigging)
   // {
-  //   // myContigSet = CreateContig(B, myoutput, tu);
+  //   myContigSet = CreateContig(B, myoutput, tu, B.seqptr(), dfd, seq_count);
   // }
 
   // tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
 
   // //////////////////////////////////////////////////////////////////////////////////////
-  // // SCAFFOLDING                                                                      // 
+  // // SCAFFOLDING                                                                      //
   // //////////////////////////////////////////////////////////////////////////////////////
 
   // tp->times["StartMain:ScaffoldContig()"] = std::chrono::system_clock::now();
-  
+
   // bool scaffolding = false;
   // if(!contigging) scaffolding = false;
 
@@ -362,20 +418,19 @@ int main(int argc, char **argv)
   // }
 
   //////////////////////////////////////////////////////////////////////////////////////
-  // OUTPUT ASSEMBLY                                                                  // 
+  // OUTPUT ASSEMBLY                                                                  //
   //////////////////////////////////////////////////////////////////////////////////////
 
   // matrix market extension
-  myoutput += ".mm";
-
-  double start = MPI_Wtime();
-	B.ParallelWriteMM(myoutput, true, dibella::CkOutputMMHandler());
-	double ppend = MPI_Wtime() - start;
+  // myoutput += ".mm";
+  // double start = MPI_Wtime();
+  // B.ParallelWriteMM(myoutput, true, dibella::CkOutputMMHandler());
+  // double ppend = MPI_Wtime() - start;
 
 	tu.print_str("ParallelWriteMM " + std::to_string(ppend)+ "\n");
 
   //////////////////////////////////////////////////////////////////////////////////////
-  // END OF PROGRAM                                                                   // 
+  // END OF PROGRAM                                                                   //
   //////////////////////////////////////////////////////////////////////////////////////
 
   tp->times["EndMain"] = std::chrono::system_clock::now();
@@ -396,7 +451,7 @@ int main(int argc, char **argv)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
-// INPUT COMMAND LINE PARSER                                                        // 
+// INPUT COMMAND LINE PARSER                                                        //
 //////////////////////////////////////////////////////////////////////////////////////
 
 int parse_args(int argc, char **argv)
@@ -540,9 +595,9 @@ int parse_args(int argc, char **argv)
   }
 
   if (result.count(CMD_OPTION_NO_ALIGN)) {
-    /* GGGG: You need to call the outer function anyway to calculate overhangs but the xdrop 
+    /* GGGG: You need to call the outer function anyway to calculate overhangs but the xdrop
     case value doesn't matter, because the actual pw alignment function is not executed */
-    xdropAlign = true; 
+    xdropAlign = true;
     noAlign    = true;
   }
 
