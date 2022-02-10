@@ -873,7 +873,7 @@ MoreHLLTimers InsertIntoHLL(string& myread, HyperLogLog& hll, uint64_t& found, u
             if (extraTimers)
                 t.parsingTime += getDuration(t);
 
-            Kmer lexsmall =  mykmer.rep();
+            Kmer lexsmall = mykmer.rep();
             if (extraTimers)
                 t.lexKmerTime += getDuration(t);
 
