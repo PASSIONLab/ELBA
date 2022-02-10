@@ -30,8 +30,8 @@ public:
   virtual
   void
   apply_batch (
-         seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsh,
-			   seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsv,
+         seqan::StringSet<seqan::Dna5String> &seqsh,
+			   seqan::StringSet<seqan::Dna5String> &seqsv,
 			   uint64_t *lids,
 			   uint64_t col_offset,
 			   uint64_t row_offset,

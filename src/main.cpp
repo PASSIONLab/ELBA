@@ -20,6 +20,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "../include/DistributedPairwiseRunner.hpp"
 #include "../include/cxxopts.hpp"
 #include "../include/pw/SeedExtendXdrop.hpp"
+#include "../include/pw/GPULoganAligner.hpp"
 #include "../include/pw/OverlapFinder.hpp"
 #include "../include/pw/FullAligner.hpp"
 #include "../include/kmer/KmerOps.hpp"
@@ -29,6 +30,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "../include/Contig.hpp"
 #include "../include/ReadOverlap.hpp"
 #include "../include/TransitiveReduction.hpp"
+
 // #include "Assembly.cpp"
 
 #include "seqan/score/score_matrix_data.h"
@@ -296,11 +298,30 @@ int main(int argc, char **argv)
   candidatem += ".candidatematrix.mm";
   B.ParallelWriteMM(candidatem, true, dibella::CkOutputMMHandler());
 
-  if(xdropAlign)
+  // @GGGG: this should be input parameter
+  bool LoganAlign = true;  
+
+  if(LoganAlign)
   {
-    pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);
+    tu.print_str("GPU-based LOGAN alignment started");
+    
+    pf = new GPULoganAligner(scoring_scheme, klength, xdrop, seed_count);	    
+    
+    dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
+	  local_alignments = static_cast<GPULoganAligner*>(pf)->nalignments;
+    
+    tu.print_str("GPU-based LOGAN alignment completed");
+  }
+  else if(xdropAlign)
+  {
+    tu.print_str("CPU-based SeqAn alignment started");
+    
+    pf = new SeedExtendXdrop(scoring_scheme, klength, xdrop, seed_count);	    
+    
     dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
 	  local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
+    
+    tu.print_str("CPU-based SeqAn alignment completed");
   }
   else if(fullAlign)
   {
@@ -326,14 +347,13 @@ int main(int argc, char **argv)
   postalignment += ".resultmatrix.mm";
   B.ParallelWriteMM(postalignment, true, dibella::CkOutputHandler());
 
-// #ifdef TRIU
+  // @GGGG: this is useless (double check and remove)
+  // #ifdef TRIU
   // Prune lower triangular matrix to remove junk values that have not been aligned to save computation (symmetric matrix so it's ok)
   B.PruneI(TriUSR, true);
 
   std::string triu = myoutput;
   triu += ".triu.resultmatrix.mm";
-  // B.ParallelWriteMM(triu, true, dibella::CkOutputHandler());
-
 
   // std::vector<int64_t> toprune = {5,6};
   // FullyDistVec<int64_t, int64_t> ToPrune(toprune, B.getcommgrid());
@@ -350,21 +370,22 @@ int main(int argc, char **argv)
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
-
-  //bool transitive_reduction = true; // use in development only
-  //if (transitive_reduction)
-  //{
-  //  TransitiveReductionOld(B, tu);
-  //}
-
-  //TransitiveReduction(R);
+  // @GGGG: this should be input parameter
+  bool transitive_reduction = false;
+  if (transitive_reduction)
+  {
+    TransitiveReduction(R);
+  }
 
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
   // Output intermediate matrix post-alignment
   std::string stringm = myoutput;
   stringm += ".stringmatrix.mm";
+  
+  double start = MPI_Wtime();
   B.ParallelWriteMM(stringm, true, dibella::CkOutputMMHandler());
+  double ppend = MPI_Wtime() - start;
 
   //////////////////////////////////////////////////////////////////////////////////////
   // CONTIG EXTRACTION                                                                //
@@ -401,11 +422,10 @@ int main(int argc, char **argv)
   //////////////////////////////////////////////////////////////////////////////////////
 
   // matrix market extension
-  myoutput += ".mm";
-
-  double start = MPI_Wtime();
-	B.ParallelWriteMM(myoutput, true, dibella::CkOutputMMHandler());
-	double ppend = MPI_Wtime() - start;
+  // myoutput += ".mm";
+  // double start = MPI_Wtime();
+  // B.ParallelWriteMM(myoutput, true, dibella::CkOutputMMHandler());
+  // double ppend = MPI_Wtime() - start;
 
 	tu.print_str("ParallelWriteMM " + std::to_string(ppend)+ "\n");
 

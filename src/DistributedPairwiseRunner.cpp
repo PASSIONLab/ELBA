@@ -322,8 +322,8 @@ DistributedPairwiseRunner::run_batch
 		}
 		
 		// allocate StringSet
-		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsh;
-		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsv;
+		seqan::StringSet<seqan::Dna5String> seqsh;
+		seqan::StringSet<seqan::Dna5String> seqsv;
 		resize(seqsh, algn_cnts[numThreads], seqan::Exact{});
 		resize(seqsv, algn_cnts[numThreads], seqan::Exact{});
 
@@ -355,8 +355,8 @@ DistributedPairwiseRunner::run_batch
 				if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
 
-					seqsh[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));
-					seqsv[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
+					seqsh[algn_idx] = seqan::Dna5String(*(dfd->col_seq(l_col_idx)));
+					seqsv[algn_idx] = seqan::Dna5String(*(dfd->row_seq(l_row_idx)));
 
 					lids[algn_idx] = i;
 					++algn_idx;
@@ -372,7 +372,7 @@ DistributedPairwiseRunner::run_batch
 
 		// GGGG: fill ContainedSeqPerBatch
 		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, noAlign, k, nreads, ContainedSeqPerBatch[batch_idx]);
-		
+
 		delete [] lids;
 		++batch_idx;
 	}
@@ -506,7 +506,7 @@ DistributedPairwiseRunner::run_batch
 	uint64_t avgalignments = nalignments_tot / parops->world_procs_count;
 
 	// min, max num alignments per proc
-  	MPI_Reduce(&nalignments, &maxalignments, 1, MPI_UINT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&nalignments, &maxalignments, 1, MPI_UINT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
  	MPI_Reduce(&nalignments, &minalignments, 1, MPI_UINT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
 
 	tu.print_str(

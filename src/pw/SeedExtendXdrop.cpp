@@ -80,16 +80,16 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 					direction  = 1;
 					directionT = 2;
 
-                    			suffix = rlenH - endpH;
-                    			suffixT = begpV;
+          suffix = rlenH - endpH;
+          suffixT = begpV;
 				}
 				else
 				{
 					direction  = 2;
 					directionT = 1;
 
-                    			suffix = begpH;
-                    			suffixT = rlenV - endpV;
+          suffix = begpH;
+          suffixT = rlenV - endpV;
 				}
 			}
 			else
@@ -146,24 +146,24 @@ void SeedExtendXdrop::apply(
 	// 	res.second.first 	= arg2.first.first;	// Kmer 1 on argB
 	// 	res.second.second 	= arg2.first.second;	// Kmer 2 on argB
 
-   	// argA (see KmerIntersectSR.hpp) == row == seqV
+      // argA (see KmerIntersectSR.hpp) == row == seqV
     	ushort LocalSeedVOffset = (count == 0) ? cks.first.first : cks.second.first;
-	// argB (see KmerIntersectSR.hpp) == col == seqH
+	    // argB (see KmerIntersectSR.hpp) == col == seqH
     	ushort LocalSeedHOffset = (count == 0) ? cks.first.second : cks.second.second;
 
-	seqan::Dna5String seedV; // seed on arg1 == row == seqV
-	seqan::Dna5String seedH; // seed on arg2 == col == seqH
+	    seqan::Dna5String seedV; // seed on arg1 == row == seqV
+	    seqan::Dna5String seedH; // seed on arg2 == col == seqH
 
-	auto start_time = std::chrono::system_clock::now();
-	auto end_time   = std::chrono::system_clock::now();
+	    auto start_time = std::chrono::system_clock::now();
+	    auto end_time   = std::chrono::system_clock::now();
 
     	// seed creation params are:
     	// horizontal seed start offset, vertical seed start offset, length
     	TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
 
 	// GGGG: for reference -->
-	// 	seqan::Dna5String *seq_v = dfd->row_seq(l_row_idx);  seqV (from row)
-	// 	seqan::Dna5String *seq_h = dfd->col_seq(l_col_idx);  seqH (from col)
+	// seqan::Dna5String *seq_v = dfd->row_seq(l_row_idx);  seqV (from row)
+	// seqan::Dna5String *seq_h = dfd->col_seq(l_col_idx);  seqH (from col)
 
 	seedV = infix(*seqV, beginPositionV(seed), endPositionV(seed)); // seed on argA == row == seqV
 	seedH = infix(*seqH, beginPositionH(seed), endPositionH(seed)); // seed on argB == col == seqH
@@ -213,28 +213,16 @@ void SeedExtendXdrop::apply(
 		assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
 										endPositionV(seed)));
 	#endif
-	}
+	} 
 
-	/*! Note. This aligns the extended seeds globally, NOT the original
-	* two sequences.
-	*
-	* It seems kind of a waste to have to do the alignment
-	* again after xdrop seed extension but that's the only
-	* way to get the alignment info in SeqAn.
-	* See https://seqan.readthedocs.io/en/master/Tutorial/Algorithms/SeedExtension.html
-	*/
-#ifdef STATS
-    	start_time = std::chrono::system_clock::now();
-    	globalAlignment(align, scoring_scheme);
-    	end_time = std::chrono::system_clock::now();
-    	add_time("XA:global_alignment", (ms_t(end_time - start_time)).count());
-
-    	// Compute the statistics of the alignment.
-    	start_time = std::chrono::system_clock::now();
-    	computeAlignmentStats(ai[count].stats, align, scoring_scheme);
-    	end_time = std::chrono::system_clock::now();
-    	add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());
-#endif
+    /*! Note. This aligns the extended seeds globally, NOT the original
+     * two sequences.
+     *
+     * It seems kind of a waste to have to do the alignment
+     * again after xdrop seed extension but that's the only
+     * way to get the alignment info in SeqAn.
+     * See https://seqan.readthedocs.io/en/master/Tutorial/Algorithms/SeedExtension.html
+     */
 
     	ai.seq_h_length = length(*seqH); // col
     	ai.seq_v_length = length(*seqV); // row
@@ -270,8 +258,8 @@ void SeedExtendXdrop::apply(
 void
 SeedExtendXdrop::apply_batch
 (
-    seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsh,
-	seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsv,
+    seqan::StringSet<seqan::Dna5String> &seqsh,
+	seqan::StringSet<seqan::Dna5String> &seqsv,
 	uint64_t *lids,
 	uint64_t col_offset,
 	uint64_t row_offset,
@@ -313,8 +301,8 @@ SeedExtendXdrop::apply_batch
 	{
 		auto start_time = std::chrono::system_clock::now();
 
-		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsh_ex;
-		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsv_ex;
+		seqan::StringSet<seqan::Dna5String> seqsh_ex;
+		seqan::StringSet<seqan::Dna5String> seqsv_ex;
 		resize(seqsh_ex, npairs, seqan::Exact{});
 		resize(seqsv_ex, npairs, seqan::Exact{});
 
@@ -358,7 +346,7 @@ SeedExtendXdrop::apply_batch
 			if(twin == seedV)
 			{
 				strands[i] = true;
-				seqan::Dna5String twinseqH = seqan::source(seqsh[i]);
+				seqan::Dna5String twinseqH = seqsh[i];
 				seqan::Dna5StringReverseComplement twinRead(twinseqH);
 				LocalSeedHOffset = length(twinseqH) - LocalSeedHOffset - seed_length;
 
@@ -371,7 +359,7 @@ SeedExtendXdrop::apply_batch
 				{
 					/* Perform match extension */
 					start_time = std::chrono::system_clock::now();
-					xscores[i] = extendSeed(seed, twinRead, seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
+					xscores[i] = extendSeed(seed, twinRead, seqsv[i], seqan::EXTEND_BOTH, scoring_scheme,
 							xdrop, (int)k,
 							seqan::GappedXDrop());
 
@@ -402,12 +390,6 @@ SeedExtendXdrop::apply_batch
 					end_time = std::chrono::system_clock::now();
 					add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
 
-				#ifdef STATS
-					assignSource(row(align, 0), infix(*seqH, beginPositionH(seed),
-													endPositionH(seed)));
-					assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
-													endPositionV(seed)));
-				#endif
 				}
 				else
 				{
@@ -415,17 +397,6 @@ SeedExtendXdrop::apply_batch
 				}
 			}
 
-		#ifdef STATS
-			xscores[i] = extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]),
-					   seqan::EXTEND_BOTH, scoring_scheme,
-					   xdrop, (int)k, seqan::GappedXDrop());
-			assignSource(seqsh_ex[i],
-						 infix(seqan::source(seqsh[i]),
-							   beginPositionH(seed), endPositionH(seed)));
-			assignSource(seqsv_ex[i],
-						 infix(seqan::source(seqsv[i]),
-							   beginPositionV(seed), endPositionV(seed)));
-		#endif
 			seeds[i] = seed;
 			seedlens[i].first  = static_cast<ushort>(seed._endPositionH -
 													 seed._beginPositionH);
@@ -452,15 +423,13 @@ SeedExtendXdrop::apply_batch
 		#pragma omp parallel for
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
-			#ifdef STATS
-				computeAlignmentStats(ai[i].stats, seqsh_ex[i], seqsv_ex[i], scoring_scheme);
-			#endif
+      
 				ai[i].xscore = xscores[i];
 				ai[i].rc     = strands[i];
 				ai[i].seed   =   seeds[i];
 
-				ai[i].seq_h_length = seqan::length(seqan::source(seqsh[i]));
-				ai[i].seq_v_length = seqan::length(seqan::source(seqsv[i]));
+				ai[i].seq_h_length = seqan::length(seqsh[i]);
+				ai[i].seq_v_length = seqan::length(seqsv[i]);
 
 				ai[i].seq_h_seed_length = seedlens[i].first;
 				ai[i].seq_v_seed_length = seedlens[i].second;
@@ -475,19 +444,6 @@ SeedExtendXdrop::apply_batch
 		#pragma omp parallel for
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
-
-			#ifdef STATS
-				seqan::AlignmentStats stats;
-				computeAlignmentStats(stats, seqsh_ex[i], seqsv_ex[i],
-									  scoring_scheme);
-
-				if (stats.alignmentIdentity > ai[i].stats.alignmentIdentity)
-				{
-					ai[i].stats				= stats;
-					ai[i].seq_h_seed_length = seedlens[i].first;
-					ai[i].seq_v_seed_length = seedlens[i].second;
-				}
-			#else
 				if (xscores[i] > ai[i].xscore) // GGGG: TODO double check this logic with fresh neurons
 				{
 					ai[i].xscore = xscores[i];
@@ -496,7 +452,6 @@ SeedExtendXdrop::apply_batch
 					ai[i].seq_h_seed_length = seedlens[i].first;
 					ai[i].seq_v_seed_length = seedlens[i].second;
 				}
-			#endif
 			}
 		}
 
@@ -519,7 +474,7 @@ SeedExtendXdrop::apply_batch
 	// Dump alignment info
 	#pragma omp parallel
 	{
-	    #pragma omp for
+	  #pragma omp for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
 			// Only keep alignments that meet BELLA criteria

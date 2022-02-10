@@ -1,17 +1,22 @@
 cmake_minimum_required(VERSION 3.11)
-project(dibella)
+project(dibella LANGUAGES C CXX CUDA)
 set(CMAKE_CXX_STANDARD 14)
 
 add_subdirectory($ENV{BLOOM_HOME})
 
 include_directories(
-	$ENV{SEQAN_HOME}/include
-	$ENV{COMBBLAS_HOME}/CombBLAS/install/include)
-	# possibly add path to boost library (not necessary on Cori, just type 'module load boost')
+	    $ENV{SEQAN_HOME}/include 
+      $ENV{COMBBLAS_HOME}/CombBLAS/install/include
+      $ENV{COMBBLAS_HOME}/LoganGPU
+	)
+# possibly add path to boost library (not necessary on Cori, just type 'module load boost')
+add_subdirectory($ENV{COMBBLAS_HOME}/LoganGPU)
 link_directories(
-    $ENV{COMBBLAS_HOME}/CombBLAS/install/lib
-    $ENV{BLOOM_HOME}/build)
-
+        $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
+        $ENV{BLOOM_HOME}/build
+	      $ENV{COMBBLAS_HOME}/LoganGPU/build
+  )
+     
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -22,6 +27,7 @@ else()
   set(libc "")
 endif()
 
+# remove '-mavx2' when running on IBM Power 9 (Summit)
 set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
 
 find_package(MPI REQUIRED)
@@ -80,23 +86,30 @@ add_executable(dibella
         include/TransitiveReductionSR.hpp
         include/CC.h
         include/Contig.hpp
+        include/pw/GPULoganAligner.hpp
+        src/pw/GPULoganAligner.cpp
 	)
 
+# LOWER_KMER_FREQ and UPPER_KMER_FREQ based on E. coli CCS 29x (need to change for any given dataset based on error rate and depth)
 set(LOWER_KMER_FREQ 20
     CACHE STRING "Lower bound for the k-mer frequency")
 
 set(UPPER_KMER_FREQ 30
     CACHE STRING "Upper bound for the k-mer frequency")
-
+    
 set(MAX_KMER_SIZE 32
     CACHE STRING "Longest k-mer length")
 
-set(DELTACHERNOFF 0.1
+# DELTACHERNOFF can be 0.7-1 for CCS and 0.1-0.2 for CLR
+set(DELTACHERNOFF 1
     CACHE STRING "Delta Chernoff's bound")
-
+    
 set(FUZZ 1000
-    CACHE STRING "Fuzz Value for Transitive Transitive Reduction")
+    CACHE STRING "FUZZ value for transitive reduction")
 
+set_property(TARGET dibella PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS OFF)
+set(DIBELLA_LINK_LIBRARY ${DIBELLA_LINK_LIBRARY} LOGAN_LIBRARY_static CombBLAS LIBBLOOM-NOUPC MURMURHASH)
+target_link_libraries(dibella PUBLIC ${DIBELLA_LINK_LIBRARY})
 
 target_compile_definitions(
   dibella
@@ -108,12 +121,21 @@ target_compile_definitions(
     -DFUZZ=${FUZZ}
 )
 
-target_link_libraries(dibella PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC)
+target_link_libraries(dibella PUBLIC ZLIB::ZLIB)
 
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
     target_link_libraries(dibella PUBLIC ${MPI_LIBRARIES})
 endif()
+
+find_library(CUDART_LIBRARY cudart ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
+if (CUDA_FOUND)
+	message(STATUS "Cuda found...")
+endif()
+message(STATUS "${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+message(STATUS "${CUDART_LIBRARY}")
+target_include_directories(dibella PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+target_link_libraries(dibella PUBLIC ${CUDART_LIBRARY})
 
 if(OPENMP_FOUND OR OpenMP_CXX_FOUND)
     # Set THREADED if OpenMP is found
