@@ -15,6 +15,10 @@
 #include <string>
 #include <sstream>
 
+#ifndef FUZZ
+#define FUZZ 1000
+#endif
+
 int intplus(int a, int b)
 {
     if (a == MAX_INT || b == MAX_INT) return MAX_INT;
@@ -72,6 +76,36 @@ struct MinPlusSR
 
 };
 
+struct PlusFuzzSRing : unary_function<ReadOverlap, ReadOverlap>
+{
+    ReadOverlap operator() (ReadOverlap& x) const
+    {
+        ReadOverlap fuzzed = x;
+
+        for (int i = 0; i < 4; ++i)
+            fuzzed.sfx[i] = intplus(fuzzed.sfx[i], FUZZ);
+
+        return fuzzed;
+    }
+};
+
+struct TransitiveSelection : binary_function<ReadOverlap, ReadOverlap, bool>
+{
+    bool operator() (const ReadOverlap& x, const ReadOverlap& y) const
+    {
+        int xdir = x.direction();
+        return (x.sfx[xdir] >= y.sfx[xdir]);
+    }
+};
+
+struct TransitiveRemoval : binary_function<ReadOverlap, bool, ReadOverlap>
+{
+    ReadOverlap operator() (ReadOverlap& x, const bool& y)
+    {
+        if (!y) x.valid = 0;
+        return x;
+    }
+};
 
 void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>& R)
 {
@@ -91,6 +125,25 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
     N.Prune(InvalidSRing(), true);
 
     N.ParallelWriteMM("N.mm", true, ReadOverlapHandler());
+
+    SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> M = R;
+
+    M.Apply(PlusFuzzSRing());
+
+    M.ParallelWriteMM("M.mm", true, ReadOverlapHandler());
+
+    ReadOverlap id;
+
+    SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> I = EWiseApply<bool, SpDCCols<int64_t, bool>>(M, N, TransitiveSelection(), false, id);
+
+    I.ParallelWriteMM("I.mm", true, dibella::CkOutputMMHandlerBool());
+
+    R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, I, TransitiveRemoval(), true, true);
+
+    R.Prune(InvalidSRing(), true);
+
+    R.ParallelWriteMM("S.mm", true, ReadOverlapHandler());
+
 }
 
 

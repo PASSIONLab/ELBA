@@ -334,11 +334,17 @@ int main(int argc, char **argv)
   triu += ".triu.resultmatrix.mm";
   // B.ParallelWriteMM(triu, true, dibella::CkOutputHandler());
 
+
+  // std::vector<int64_t> toprune = {5,6};
+  // FullyDistVec<int64_t, int64_t> ToPrune(toprune, B.getcommgrid());
+  // B.PruneFull(ToPrune, ToPrune);
+
   //////////////////////////////////////////////////////////////////////////////////////
   // TRANSITIVE REDUCTION                                                             //
   //////////////////////////////////////////////////////////////////////////////////////
 
   SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> R = B;
+
   B.ParallelWriteMM("common_kmers.mm", true, dibella::CkOutputHandler());
   R.ParallelWriteMM("read_overlaps.mm", true, ReadOverlapHandler());
 

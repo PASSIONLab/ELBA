@@ -91,11 +91,12 @@ struct ReadOverlapHandler
     template <typename c, typename t>
     void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, uint64_t row, uint64_t col)
     {
-        os << e.direction() << "\t"   << e.rc << "\t"
-                            << e.b[0] << "\t" << e.e[0] << "\t"
-                            << e.b[1] << "\t" << e.e[1] << "\t"
-                            << e.l[0] << "\t" << e.l[1] << "\t"
-                            << e.overlap;
+        os << e.direction() << "\t" << e.sfx[0] << "\t" << e.sfx[1] << "\t" << e.sfx[2] << "\t" << e.sfx[3];
+        // os << e.direction() << "\t"   << e.rc << "\t"
+                            // << e.b[0] << "\t" << e.e[0] << "\t"
+                            // << e.b[1] << "\t" << e.e[1] << "\t"
+                            // << e.l[0] << "\t" << e.l[1] << "\t"
+                            // << e.overlap;
     }
 };
 
