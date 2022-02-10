@@ -17,7 +17,7 @@ struct ReadOverlap
     int valid;
     int overlap;
 
-    ReadOverlap() : valid(0), rc(0), overlap(0), b{}, e{}, l{}
+    ReadOverlap() : valid(1), rc(0), overlap(0), b{}, e{}, l{}
     {
         for (int i = 0; i < 4; ++i) sfx[i] = MAX_INT;
     }
@@ -91,7 +91,7 @@ struct ReadOverlapHandler
     template <typename c, typename t>
     void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, uint64_t row, uint64_t col)
     {
-        os << e.direction() << "\t" << e.rc << "\t"
+        os << e.direction() << "\t"   << e.rc << "\t"
                             << e.b[0] << "\t" << e.e[0] << "\t"
                             << e.b[1] << "\t" << e.e[1] << "\t"
                             << e.l[0] << "\t" << e.l[1] << "\t"
@@ -112,7 +112,7 @@ struct ReadOverlapMMHandler
 
 struct InvalidSRing : unary_function<ReadOverlap, ReadOverlap>
 {
-    bool operator() (const ReadOverlap& x) { return (x.valid == 0); }
+    bool operator() (const ReadOverlap& x) { return (x.valid == 0 || x.direction() == -1); }
 };
 
 struct TransposeSRing : unary_function <ReadOverlap, ReadOverlap>
@@ -134,6 +134,7 @@ struct TransposeSRing : unary_function <ReadOverlap, ReadOverlap>
         return xT;
     }
 };
+
 
 
 #endif
