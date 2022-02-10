@@ -345,21 +345,19 @@ int main(int argc, char **argv)
 
   SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> R = B;
 
-  B.ParallelWriteMM("common_kmers.mm", true, dibella::CkOutputHandler());
-  R.ParallelWriteMM("read_overlaps.mm", true, ReadOverlapHandler());
+  //B.ParallelWriteMM("common_kmers.mm", true, dibella::CkOutputHandler());
+  //R.ParallelWriteMM("read_overlaps.mm", true, ReadOverlapHandler());
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
 
-  bool transitive_reduction = true; // use in development only
-  if (transitive_reduction)
-  {
-    TransitiveReductionOld(B, tu);
-  }
+  //bool transitive_reduction = true; // use in development only
+  //if (transitive_reduction)
+  //{
+  //  TransitiveReductionOld(B, tu);
+  //}
 
-  TransitiveReduction(R);
-
-
+  //TransitiveReduction(R);
 
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 

@@ -55,10 +55,10 @@ struct MinPlusSR
         int udir = u.direction();
 
         if (udir&1) {
-            uxv.sfx[0] = intplus(u.sfx[1], v.sfx[0]);
-            uxv.sfx[1] = intplus(u.sfx[1], v.sfx[1]);
-            uxv.sfx[2] = intplus(u.sfx[3], v.sfx[0]);
-            uxv.sfx[3] = intplus(u.sfx[3], v.sfx[1]);
+            uxv.sfx[0] = intplus(u.sfx[1], v.sfx[0]); /* >------>  >------< */
+            uxv.sfx[1] = intplus(u.sfx[1], v.sfx[1]); /* >------>  >------> */
+            uxv.sfx[2] = intplus(u.sfx[3], v.sfx[0]); /* <------>  >------< */
+            uxv.sfx[3] = intplus(u.sfx[3], v.sfx[1]); /* <------>  >------> */
         } else {
             uxv.sfx[0] = intplus(u.sfx[0], v.sfx[2]);
             uxv.sfx[1] = intplus(u.sfx[0], v.sfx[3]);
@@ -73,7 +73,6 @@ struct MinPlusSR
     {
         y = omin(y, multiply(a, x));
     }
-
 };
 
 struct PlusFuzzSRing : unary_function<ReadOverlap, ReadOverlap>
@@ -119,31 +118,33 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
 
     R.ParallelWriteMM("R.mm", true, ReadOverlapHandler());
 
-    SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> Rc = R;
-    SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> N = Mult_AnXBn_DoubleBuff<MinPlusSR, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, Rc);
+    int nnz, prev;
+    do {
 
-    N.Prune(InvalidSRing(), true);
+        prev = R.getnnz();
 
-    N.ParallelWriteMM("N.mm", true, ReadOverlapHandler());
+        SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> Rc = R;
+        SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> N = Mult_AnXBn_DoubleBuff<MinPlusSR, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, Rc);
 
-    SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> M = R;
+        N.Prune(InvalidSRing(), true);
 
-    M.Apply(PlusFuzzSRing());
+        SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> M = R;
 
-    M.ParallelWriteMM("M.mm", true, ReadOverlapHandler());
+        M.Apply(PlusFuzzSRing());
 
-    ReadOverlap id;
+        ReadOverlap id;
 
-    SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> I = EWiseApply<bool, SpDCCols<int64_t, bool>>(M, N, TransitiveSelection(), false, id);
+        SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> I = EWiseApply<bool, SpDCCols<int64_t, bool>>(M, N, TransitiveSelection(), false, id);
 
-    I.ParallelWriteMM("I.mm", true, dibella::CkOutputMMHandlerBool());
+        R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, I, TransitiveRemoval(), true, true);
 
-    R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, I, TransitiveRemoval(), true, true);
+        R.Prune(InvalidSRing(), true);
 
-    R.Prune(InvalidSRing(), true);
+        nnz = R.getnnz();
 
-    R.ParallelWriteMM("S.mm", true, ReadOverlapHandler());
+    } while (nnz != prev);
 
+    R.ParallelWriteMM("S.mm", true, ReadOverlapMMHandler());
 }
 
 
