@@ -351,13 +351,12 @@ int main(int argc, char **argv)
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
 
-  //bool transitive_reduction = true; // use in development only
-  //if (transitive_reduction)
-  //{
-  //  TransitiveReductionOld(B, tu);
-  //}
+  bool transitive_reduction = true; // use in development only
+  if (transitive_reduction)
+  {
+    TransitiveReduction(B);
+  }
 
-  //TransitiveReduction(R);
 
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
