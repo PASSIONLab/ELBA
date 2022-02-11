@@ -80,16 +80,16 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 					direction  = 1;
 					directionT = 2;
 
-          suffix = rlenH - endpH;
-          suffixT = begpV;
+					suffix = rlenH - endpH;
+					suffixT = begpV;
 				}
 				else
 				{
 					direction  = 2;
 					directionT = 1;
 
-          suffix = begpH;
-          suffixT = rlenV - endpV;
+					suffix = begpH;
+					suffixT = rlenV - endpV;
 				}
 			}
 			else
@@ -146,20 +146,20 @@ void SeedExtendXdrop::apply(
 	// 	res.second.first 	= arg2.first.first;	// Kmer 1 on argB
 	// 	res.second.second 	= arg2.first.second;	// Kmer 2 on argB
 
-      // argA (see KmerIntersectSR.hpp) == row == seqV
-    	ushort LocalSeedVOffset = (count == 0) ? cks.first.first : cks.second.first;
-	    // argB (see KmerIntersectSR.hpp) == col == seqH
-    	ushort LocalSeedHOffset = (count == 0) ? cks.first.second : cks.second.second;
+    // argA (see KmerIntersectSR.hpp) == row == seqV
+    ushort LocalSeedVOffset = (count == 0) ? cks.first.first : cks.second.first;
+	// argB (see KmerIntersectSR.hpp) == col == seqH
+    ushort LocalSeedHOffset = (count == 0) ? cks.first.second : cks.second.second;
 
-	    seqan::Dna5String seedV; // seed on arg1 == row == seqV
-	    seqan::Dna5String seedH; // seed on arg2 == col == seqH
+	seqan::Dna5String seedV; // seed on arg1 == row == seqV
+	seqan::Dna5String seedH; // seed on arg2 == col == seqH
 
-	    auto start_time = std::chrono::system_clock::now();
-	    auto end_time   = std::chrono::system_clock::now();
+	auto start_time = std::chrono::system_clock::now();
+	auto end_time   = std::chrono::system_clock::now();
 
-    	// seed creation params are:
-    	// horizontal seed start offset, vertical seed start offset, length
-    	TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
+    // seed creation params are:
+    // horizontal seed start offset, vertical seed start offset, length
+    TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
 
 	// GGGG: for reference -->
 	// seqan::Dna5String *seq_v = dfd->row_seq(l_row_idx);  seqV (from row)
@@ -190,14 +190,6 @@ void SeedExtendXdrop::apply(
 		ai.xscore  = extendSeed(seed, twinseqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, (int)k, seqan::GappedXDrop());
 		end_time   = std::chrono::system_clock::now();
 		add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
-
-	#ifdef STATS
-		assignSource(row(align, 0), infix(twinseqH, beginPositionH(seed),
-										endPositionH(seed)));
-		assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
-										endPositionV(seed)));
-	#endif
-
 	}
 	else
 	{
@@ -206,13 +198,6 @@ void SeedExtendXdrop::apply(
 		ai.xscore = extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, (int)k, seqan::GappedXDrop());
 		end_time = std::chrono::system_clock::now();
 		add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
-
-	#ifdef STATS
-		assignSource(row(align, 0), infix(*seqH, beginPositionH(seed),
-										endPositionH(seed)));
-		assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
-										endPositionV(seed)));
-	#endif
 	} 
 
     /*! Note. This aligns the extended seeds globally, NOT the original
@@ -235,23 +220,6 @@ void SeedExtendXdrop::apply(
     	ai.seq_h_g_idx = g_col_idx;
     	ai.seq_v_g_idx = g_row_idx;
   }
-
-#ifdef STATS
-  if (seed_count > 2)
-  {
-    max_ai = ai[0].stats.alignmentIdentity > ai[1].stats.alignmentIdentity
-    ? ai[0] : ai[1];
-  }
-  double alen_minus_gapopens = (max_ai.stats.alignmentLength - max_ai.stats.numGapOpens) * 1.0;
-  ss << g_col_idx << "," << g_row_idx << "," << max_ai.stats.alignmentIdentity
-     << "," << max_ai.seq_h_length << "," << max_ai.seq_v_length
-     << "," << max_ai.seq_h_seed_length  << "," << max_ai.seq_v_seed_length
-     << "," << max_ai.stats.numGapOpens
-     << "," << alen_minus_gapopens / max_ai.seq_h_length
-     << "," << alen_minus_gapopens / max_ai.seq_v_length
-	 << "," << cks.count
-	 << std::endl;
-#endif
 }
 
 // @NOTE This is hard-coded to the number of seeds being <= 2
@@ -269,8 +237,8 @@ SeedExtendXdrop::apply_batch
 	ushort k,
 	uint64_t nreads,
 	std::vector<int64_t>& ContainedSeqPerBatch,
-    	float ratioScoreOverlap, // GGGG: this is my ratioScoreOverlap variable change name later
-    	int debugThr
+    float ratioScoreOverlap, // GGGG: this is my ratioScoreOverlap variable change name later
+    int debugThr
 )
 {
 	seqan::ExecutionPolicy<seqan::Parallel, seqan::Vectorial> exec_policy;
@@ -313,9 +281,9 @@ SeedExtendXdrop::apply_batch
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 
 			// In KmerIntersectSR.hpp we have (where res == cks):
-			// 	res.first.first 	= arg1.first.first;	// Kmer 1 on argA
+			// 	res.first.first 	= arg1.first.first;		// Kmer 1 on argA
 			// 	res.first.second 	= arg1.first.second;	// Kmer 2 on argA
-			// 	res.second.first 	= arg2.first.first;	// Kmer 1 on argB
+			// 	res.second.first 	= arg2.first.first;		// Kmer 1 on argB
 			// 	res.second.second 	= arg2.first.second;	// Kmer 2 on argB
 
 			// argA (see KmerIntersectSR.hpp) == row == seqV
@@ -333,15 +301,10 @@ SeedExtendXdrop::apply_batch
 			// horizontal seed start offset, vertical seed start offset, length
 			TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
 
-			seedV = infix(seqan::source(seqsv[i]), beginPositionV(seed), endPositionV(seed)); // seed on argA == row == seqV
-			seedH = infix(seqan::source(seqsh[i]), beginPositionH(seed), endPositionH(seed)); // seed on argB == col == seqH
+			seedV = infix(seqsv[i], beginPositionV(seed), endPositionV(seed)); // seed on argA == row == seqV
+			seedH = infix(seqsh[i], beginPositionH(seed), endPositionH(seed)); // seed on argB == col == seqH
 
 			seqan::Dna5StringReverseComplement twin(seedH);
-
-		#ifdef STATS
-			seqan::Align<seqan::Dna5String> align;
-			resize(rows(align), 2);
-		#endif
 
 			if(twin == seedV)
 			{
@@ -370,13 +333,6 @@ SeedExtendXdrop::apply_batch
 				{
 					xscores[i] = 0;
 				}
-
-			#ifdef STATS
-				assignSource(row(align, 0), infix(twinRead, beginPositionH(seed),
-												endPositionH(seed)));
-				assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
-												endPositionV(seed)));
-			#endif
 			}
 			else
 			{
@@ -384,7 +340,7 @@ SeedExtendXdrop::apply_batch
 				if(!noAlign)
 				{
 					start_time = std::chrono::system_clock::now();
-					xscores[i] = extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
+					xscores[i] = extendSeed(seed, seqsh[i], seqsv[i], seqan::EXTEND_BOTH, scoring_scheme,
 							xdrop, (int)k,
 							seqan::GappedXDrop());
 					end_time = std::chrono::system_clock::now();
@@ -436,7 +392,7 @@ SeedExtendXdrop::apply_batch
 
 				// GGGG: global idx over here to use in the FullDistVect for removing contained vertices/seqs
 				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
-    				ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
+    			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
 		}
 		else

@@ -3,7 +3,8 @@
 #include "../../include/pw/GPULoganAligner.hpp"
 #include "../../LoganGPU/RunLoganAligner.hpp" 	// Call to aligner
 
-#define MIN_OV_LEN 10000
+uint minOverlapLenL = 5000;
+uint maxOverhangL = 25;
 
 char 
 complementbase(char n)
@@ -39,7 +40,7 @@ reversecomplement(const std::string& seq) {
 }
 
 void PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
-	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign)
+	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
 {
 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the seqVs (vertical/horizonral direction)
 	// these four return seqan:Tposition objects
@@ -57,35 +58,44 @@ void PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioS
 	unsigned short int minLeft  = min(begpV, begpH);
 	unsigned short int minRight = min(rlenV - endpV, rlenH - endpH);
 
+	int64_t seqV = ai.seq_v_g_idx;
+	int64_t seqH = ai.seq_h_g_idx;
+
 	overlap = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
 
 #ifndef FIXEDTHR
 	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)overlap);
 
 	// Contained overlaps removed for now, reintroduce them later
+	// @GGGG-TODO: identify chimeric sequences
 	bool contained = false;
-	bool chimeric  = false; 
+	bool chimeric  = false;
 
-	// seqH is column entry and seqV is row entry, for each column, we iterate over seqHs
-	int seqH = ai.seq_v_g_idx, seqV = ai.seq_h_g_idx;
-	
 	// Reserve length/position if rc [x]
 	if(ai.rc)
 	{
-		uint tmp = begpV;
-		begpV = rlenV - endpV;
-		endpV = rlenV - tmp;
+		uint tmp = begpH;
+		begpH = rlenH - endpH;
+		endpH = rlenH - tmp;
 	}
 
-	if((begpH == 0 & rlenH-endpH == 0) || (begpV == 0 & rlenV-endpV == 0))
+    if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
+	{
+		ContainedSeqMyThread.push_back(seqH); // Push back global index
 		contained = true;
-	
+	}
+    else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
+	{
+		ContainedSeqMyThread.push_back(seqV); // Push back global index
+		contained = true;
+	}
+
 	if(!contained)
 	{
 		// If noAlign is false, set passed to false if the score isn't good enough
 		if(!noAlign)
 		{
-			if((float)ai.xscore < myThr || overlap < MIN_OV_LEN) passed = false;
+			if((float)ai.xscore < myThr || overlap < minOverlapLenL) passed = false;
 			else passed = true;
 		}
 
@@ -97,47 +107,47 @@ void PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioS
 			// !reverse complement
 			if(!ai.rc)
 			{
-				if(begpH > begpV)
+				if(begpV > begpH)
 				{
 					direction  = 1;
 					directionT = 2;
 
-					suffix  = rlenV - endpV;
-					suffixT = begpH;
-				}	
+					suffix = rlenH - endpH;
+					suffixT = begpV;
+				}
 				else
 				{
 					direction  = 2;
 					directionT = 1;
 
-					suffix  = rlenH - endpH;
-					suffixT = begpV;
-				} 
+					suffix = begpH;
+					suffixT = rlenV - endpV;
+				}
 			}
 			else
 			{
-				if((begpV > 0) & (begpH > 0) & (rlenV-endpV == 0) & (rlenV-endpV == 0))
+				if((begpV > 0) && (begpH > 0) && (rlenV-endpV == 0) && (rlenH-endpH == 0))
 				{
 					direction  = 0;
 					directionT = 0;
 
-					suffix  = begpV; // seqV == 2
-					suffixT = begpH; // seqV == 2			
+					suffix  = begpH;
+					suffixT = begpV;
 				}
 				else
 				{
 					direction  = 3;
 					directionT = 3;
 
-					suffix  = rlenV - endpV; // seqV == 1, seqH == 2	
-					suffixT = rlenH - endpH; // seqV == 1, seqH == 2		
+					suffix  = rlenH - endpH;
+					suffixT = rlenV - endpV;
 				}
 			}
 			overhang  = suffix  << 2 | direction;
 			overhangT = suffixT << 2 | directionT;
 		} // if(passed)
 	} // if(!contained)
-		
+
 #else
 	if(ai.xscore >= FIXEDTHR)
 		passed = true;
@@ -175,14 +185,13 @@ GPULoganAligner::apply_batch
 	const bool noAlign,
 	ushort k,
 	uint64_t nreads,
+	std::vector<int64_t>& ContainedSeqPerBatch,
     float ratioScoreOverlap, // GGGG: this is my ratioScoreOverlap variable change name later
     int debugThr
 )
 {
-
 	int myrank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-	// seqan::ExecutionPolicy<seqan::Parallel, seqan::Vectorial> exec_policy;
 
 	int numThreads = 1;
 	#ifdef THREADED
@@ -222,16 +231,16 @@ GPULoganAligner::apply_batch
 			// Get seed location
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 
-		#ifdef TWOSEED
-			ushort LocalSeedVOffset =
-				(count == 0) ? cks->first.first : cks->second.first;
-			ushort LocalSeedHOffset =
-				(count == 0) ? cks->first.second : cks->second.second;
-		#else
-			// GGGG: TODO check reverse complement
-			ushort LocalSeedVOffset = cks.pos[0].first;
-			ushort LocalSeedHOffset = cks.pos[0].second;
-		#endif
+			// In KmerIntersectSR.hpp we have (where res == cks):
+			// 	res.first.first 	= arg1.first.first;		// Kmer 1 on argA
+			// 	res.first.second 	= arg1.first.second;	// Kmer 2 on argA
+			// 	res.second.first 	= arg2.first.first;		// Kmer 1 on argB
+			// 	res.second.second 	= arg2.first.second;	// Kmer 2 on argB
+
+			// argA (see KmerIntersectSR.hpp) == row == seqV
+			ushort LocalSeedVOffset = (count == 0) ? cks->first.first : cks->second.first;
+			// argB (see KmerIntersectSR.hpp) == col == seqH
+			ushort LocalSeedHOffset = (count == 0) ? cks->first.second : cks->second.second;
 
 			// Get sequences
 			std::string seqH;
@@ -247,9 +256,9 @@ GPULoganAligner::apply_batch
 			std::string seedH = seqH.substr(LocalSeedHOffset, seed_length);
 			std::string seedV = seqV.substr(LocalSeedVOffset, seed_length);
 
-			std::string twinseedH = reversecomplement(seedH);
+			std::string twinH = reversecomplement(seedH);
 
-			if(twinseedH == seedV)
+			if(twinH == seedV)
 			{
 				std::string twinseqH(seqH);
 
@@ -322,6 +331,7 @@ GPULoganAligner::apply_batch
 				ai[i].seq_h_seed_length = ai[i].endSeedH - ai[i].begSeedH;
 				ai[i].seq_v_seed_length = ai[i].endSeedV - ai[i].begSeedV;
 
+				// GGGG: global idx over here to use in the FullDistVect for removing contained vertices/seqs
 				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
     			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
@@ -354,9 +364,10 @@ GPULoganAligner::apply_batch
 	}
 
 	auto start_time = std::chrono::system_clock::now();
-	
+	std::vector<std::vector<int64_t>> ContainedSeqPerThread(numThreads);
+
 	// Dump alignment info 
-	// @GGGG: this should be fine parallel now
+	// @GGGG: this should be fine parallel now (2/22 check here!)
 	#pragma omp parallel
 	{
 	    #pragma omp for
@@ -364,9 +375,10 @@ GPULoganAligner::apply_batch
 		{
 			// Only keep alignments that meet BELLA criteria
 			bool passed = false;
+			int tid = omp_get_thread_num();
 
 			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
 
 			if (passed)
 			{
@@ -384,6 +396,22 @@ GPULoganAligner::apply_batch
 				cks->passed = passed;	// keep this
 			}
 		}
+	}
+
+	int readcount = 0;
+	for(int t = 0; t < numThreads; ++t)
+	{
+		readcount += ContainedSeqPerThread[t].size();
+	}
+
+	unsigned int readssofar = 0;
+	ContainedSeqPerBatch.resize(readcount);
+
+	// Concatenate per-thread result
+	for(int t = 0; t < numThreads; ++t)
+	{
+		copy(ContainedSeqPerThread[t].begin(), ContainedSeqPerThread[t].end(), ContainedSeqPerBatch.begin() + readssofar);
+		readssofar += ContainedSeqPerThread[t].size();
 	}
 
 	auto end_time = std::chrono::system_clock::now();
