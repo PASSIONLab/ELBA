@@ -326,19 +326,6 @@ int main(int argc, char **argv)
   postalignment += ".resultmatrix.mm";
   B.ParallelWriteMM(postalignment, true, dibella::CkOutputHandler());
 
-// #ifdef TRIU
-  // Prune lower triangular matrix to remove junk values that have not been aligned to save computation (symmetric matrix so it's ok)
-  B.PruneI(TriUSR, true);
-
-  std::string triu = myoutput;
-  triu += ".triu.resultmatrix.mm";
-  // B.ParallelWriteMM(triu, true, dibella::CkOutputHandler());
-
-
-  // std::vector<int64_t> toprune = {5,6};
-  // FullyDistVec<int64_t, int64_t> ToPrune(toprune, B.getcommgrid());
-  // B.PruneFull(ToPrune, ToPrune);
-
   //////////////////////////////////////////////////////////////////////////////////////
   // TRANSITIVE REDUCTION                                                             //
   //////////////////////////////////////////////////////////////////////////////////////
@@ -354,7 +341,7 @@ int main(int argc, char **argv)
   bool transitive_reduction = true; // use in development only
   if (transitive_reduction)
   {
-    TransitiveReduction(R);
+    TransitiveReduction(R, tu);
   }
 
 

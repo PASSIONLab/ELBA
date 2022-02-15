@@ -66,55 +66,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			if((float)ai.xscore < myThr || overlap < minOverlapLen) passed = false;
 			else passed = true;
 		}
-
-		if(passed)
-		{
-			uint32_t direction, directionT;
-			uint32_t suffix, suffixT;
-
-			// !reverse complement
-			if(!ai.rc)
-			{
-				if(begpV > begpH)
-				{
-					direction  = 1;
-					directionT = 2;
-
-                    			suffix = rlenH - endpH;
-                    			suffixT = begpV;
-				}
-				else
-				{
-					direction  = 2;
-					directionT = 1;
-
-                    			suffix = begpH;
-                    			suffixT = rlenV - endpV;
-				}
-			}
-			else
-			{
-				if((begpV > 0) && (begpH > 0) && (rlenV-endpV == 0) && (rlenH-endpH == 0))
-				{
-					direction  = 0;
-					directionT = 0;
-
-					suffix  = begpH;
-					suffixT = begpV;
-				}
-				else
-				{
-					direction  = 3;
-					directionT = 3;
-
-					suffix  = rlenH - endpH;
-					suffixT = rlenV - endpV;
-				}
-			}
-			overhang  = suffix  << 2 | direction;
-			overhangT = suffixT << 2 | directionT;
-		} // if(passed)
-	} // if(!contained)
+	}
 
 #else
 	if(ai.xscore >= FIXEDTHR)

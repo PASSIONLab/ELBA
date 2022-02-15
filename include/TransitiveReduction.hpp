@@ -106,7 +106,7 @@ struct TransitiveRemoval : binary_function<ReadOverlap, bool, ReadOverlap>
     }
 };
 
-void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>& R)
+void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>& R, TraceUtils tu)
 {
     SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> RT = R;
     RT.Transpose();
@@ -116,10 +116,13 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
 
     R.Prune(InvalidSRing(), true);
 
-    R.ParallelWriteMM("R.mm", true, ReadOverlapHandler());
+    R.ParallelWriteMM("R.mm", true, ReadOverlapMMHandler());
 
     int nnz, prev;
     do {
+
+        tu.print_str("Matrix R, i.e. AAt, mid transitive reduction: ");
+        R.PrintInfo();
 
         prev = R.getnnz();
 
@@ -145,6 +148,9 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
     } while (nnz != prev);
 
     R.ParallelWriteMM("S.mm", true, ReadOverlapMMHandler());
+
+    tu.print_str("Matrix R, i.e. AAt after transitive reduction: ");
+    R.PrintInfo();
 }
 
 

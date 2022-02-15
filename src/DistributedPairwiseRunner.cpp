@@ -531,6 +531,8 @@ DistributedPairwiseRunner::run_batch
 	// GGGG: if noAlign == true, we remove only the contained overlaps as they are not useful for transitive reduction (next prune)
 	tu.print_str("\t* nnz after 1st pruning (score) " + std::to_string(gmat->getnnz()) + "\n");
 
+    toerase.PrintInfo("toerase");
+
 	// Prune pairs involving contained seqs
 	gmat->PruneFull(toerase, toerase);
 
