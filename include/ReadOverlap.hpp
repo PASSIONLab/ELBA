@@ -92,11 +92,6 @@ struct ReadOverlapHandler
     void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, uint64_t row, uint64_t col)
     {
         os << e.direction() << "\t" << e.sfx[0] << "\t" << e.sfx[1] << "\t" << e.sfx[2] << "\t" << e.sfx[3];
-        // os << e.direction() << "\t"   << e.rc << "\t"
-                            // << e.b[0] << "\t" << e.e[0] << "\t"
-                            // << e.b[1] << "\t" << e.e[1] << "\t"
-                            // << e.l[0] << "\t" << e.l[1] << "\t"
-                            // << e.overlap;
     }
 };
 
@@ -110,32 +105,5 @@ struct ReadOverlapMMHandler
         os << dir << "\t" << suf;
     }
 };
-
-struct InvalidSRing : unary_function<ReadOverlap, ReadOverlap>
-{
-    bool operator() (const ReadOverlap& x) { return (x.valid == 0 || x.direction() == -1); }
-};
-
-struct TransposeSRing : unary_function <ReadOverlap, ReadOverlap>
-{
-    ReadOverlap operator() (const ReadOverlap& x) const
-    {
-        ReadOverlap xT = x;
-
-        xT.b[0] = x.l[1] - x.e[1];
-        xT.e[0] = x.l[1] - x.b[1];
-        xT.b[1] = x.l[0] - x.e[0];
-        xT.e[1] = x.l[0] - x.b[0];
-
-        xT.l[0] = x.l[1];
-        xT.l[1] = x.l[0];
-
-        xT.refix(1);
-
-        return xT;
-    }
-};
-
-
 
 #endif

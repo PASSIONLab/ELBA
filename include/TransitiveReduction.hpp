@@ -21,20 +21,42 @@
 
 int intplus(int a, int b)
 {
-    if (a == MAX_INT || b == MAX_INT) return MAX_INT;
-    return a + b;
+    return (a == MAX_INT || b == MAX_INT) ? MAX_INT : a + b;
 }
 
-ReadOverlap omin(const ReadOverlap& u, const ReadOverlap& v)
+struct InvalidSRing : unary_function<ReadOverlap, ReadOverlap>
 {
-        ReadOverlap uxv = ReadOverlap();
+    bool operator() (const ReadOverlap& x) { return (x.valid == 0 || x.direction() == -1); }
+};
 
-        uxv.sfx[0] = std::min(u.sfx[0], v.sfx[0]);
-        uxv.sfx[1] = std::min(u.sfx[1], v.sfx[1]);
-        uxv.sfx[2] = std::min(u.sfx[2], v.sfx[2]);
-        uxv.sfx[3] = std::min(u.sfx[3], v.sfx[3]);
+struct TransposeSRing : unary_function <ReadOverlap, ReadOverlap>
+{
+    ReadOverlap operator() (const ReadOverlap& x) const
+    {
+        ReadOverlap xT = x;
 
-        return uxv;
+        xT.b[0] = x.l[1] - x.e[1];
+        xT.e[0] = x.l[1] - x.b[1];
+        xT.b[1] = x.l[0] - x.e[0];
+        xT.e[1] = x.l[0] - x.b[0];
+
+        xT.l[0] = x.l[1];
+        xT.l[1] = x.l[0];
+
+        xT.refix(1);
+
+        return xT;
+    }
+};
+
+ReadOverlap omin(const ReadOverlap& e1, const ReadOverlap& e2)
+{
+    ReadOverlap e = ReadOverlap();
+
+    for (int i = 0; i < 4; ++i)
+        e.sfx[i] = std::min(e1.sfx[i], e2.sfx[i]);
+    
+    return e;
 }
 
 struct MinPlusSR
@@ -43,30 +65,23 @@ struct MinPlusSR
     static bool returnedSAID() { return false; } /* what does this do? */
     static MPI_Op mpi_op() { return MPI_MIN; }   /* what does this do? */
 
-    static ReadOverlap add(const ReadOverlap& u, const ReadOverlap& v)
+    static ReadOverlap add(const ReadOverlap& e1, const ReadOverlap& e2)
     {
-        return omin(u, v);
+        return omin(e1, e2);
     }
 
-    static ReadOverlap multiply(const ReadOverlap& u, const ReadOverlap& v)
+    static ReadOverlap multiply(const ReadOverlap& e1, const ReadOverlap& e2)
     {
-        ReadOverlap uxv = ReadOverlap();
+        ReadOverlap e = ReadOverlap();
 
-        int udir = u.direction();
+        int indove = e1.direction()&1;
 
-        if (udir&1) {
-            uxv.sfx[0] = intplus(u.sfx[1], v.sfx[0]); /* >------>  >------< */
-            uxv.sfx[1] = intplus(u.sfx[1], v.sfx[1]); /* >------>  >------> */
-            uxv.sfx[2] = intplus(u.sfx[3], v.sfx[0]); /* <------>  >------< */
-            uxv.sfx[3] = intplus(u.sfx[3], v.sfx[1]); /* <------>  >------> */
-        } else {
-            uxv.sfx[0] = intplus(u.sfx[0], v.sfx[2]);
-            uxv.sfx[1] = intplus(u.sfx[0], v.sfx[3]);
-            uxv.sfx[2] = intplus(u.sfx[2], v.sfx[2]);
-            uxv.sfx[3] = intplus(u.sfx[2], v.sfx[3]);
-        }
+        e.sfx[0] = intplus(e1.sfx[indove],   e2.sfx[2*(!indove)]  ); /* >--@ @--< */
+        e.sfx[1] = intplus(e1.sfx[indove],   e2.sfx[2*(!indove)+1]); /* >--@ @--> */
+        e.sfx[2] = intplus(e1.sfx[indove+2], e2.sfx[2*(!indove)]  ); /* <--@ @--< */
+        e.sfx[3] = intplus(e1.sfx[indove+2], e2.sfx[2*(!indove)+1]); /* <--@ @--> */
 
-        return uxv;
+        return e;
     }
 
     static void axpy(ReadOverlap a, const ReadOverlap& x, ReadOverlap& y)
@@ -152,6 +167,5 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
     tu.print_str("Matrix R, i.e. AAt after transitive reduction: ");
     R.PrintInfo();
 }
-
 
 #endif
