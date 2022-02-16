@@ -82,6 +82,8 @@ struct ReadOverlap
         return true;
     }
 
+    operator bool() const { return direction() != -1 && valid; }
+
     ReadOverlap operator+(const ReadOverlap& b)
     {
         ReadOverlap myobj;

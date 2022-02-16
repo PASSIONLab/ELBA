@@ -332,9 +332,6 @@ int main(int argc, char **argv)
 
   SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> R = B;
 
-  //B.ParallelWriteMM("common_kmers.mm", true, dibella::CkOutputHandler());
-  //R.ParallelWriteMM("read_overlaps.mm", true, ReadOverlapHandler());
-
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
 
@@ -355,6 +352,14 @@ int main(int argc, char **argv)
   //////////////////////////////////////////////////////////////////////////////////////
   // CONTIG EXTRACTION                                                                //
   //////////////////////////////////////////////////////////////////////////////////////
+
+  int64_t NumContigs;
+  FullyDistVec<int64_t, int64_t> Branches, Roots, ContigSizes, ContigAssignments;
+
+  ContigAssignments = GetContigAssignments(R, Branches, Roots, NumContigs);
+  ContigSizes = GetContigSizes(R, ContigAssignments, NumContigs);
+
+  ContigSizes.ParallelWrite("contig-sizes.txt", true);
 
   // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
