@@ -159,7 +159,6 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
         R.Prune(InvalidSRing(), true);
 
         nnz = R.getnnz();
-
     } while (nnz != prev);
 
     R.ParallelWriteMM("S.mm", true, ReadOverlapMMHandler());

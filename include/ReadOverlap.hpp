@@ -24,12 +24,16 @@ struct ReadOverlap
 
     ReadOverlap(const ReadOverlap& rhs) : rc(rhs.rc), valid(rhs.valid), overlap(rhs.overlap)
     {
-        for (int i = 0; i < 4; ++i)
+        int i;
+
+        for (i = 0; i < 4; ++i)
             sfx[i] = rhs.sfx[i];
 
-        b[0] = rhs.b[0]; b[1] = rhs.b[1];
-        e[0] = rhs.e[0]; e[1] = rhs.e[1];
-        l[0] = rhs.l[0]; l[1] = rhs.l[1];
+        for (i = 0; i < 2; ++i) {
+            b[i] = rhs.b[i];
+            e[i] = rhs.e[i];
+            l[i] = rhs.l[i];
+        }
     }
 
     ReadOverlap(const dibella::CommonKmers& cks) : valid(1), overlap(0)
