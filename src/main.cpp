@@ -359,6 +359,7 @@ int main(int argc, char **argv)
   ContigAssignments = GetContigAssignments(R, Branches, Roots, NumContigs);
   ContigSizes = GetContigSizes(R, ContigAssignments, NumContigs);
 
+  ContigAssignments.ParallelWrite("contig-assignments.txt", true);
   ContigSizes.ParallelWrite("contig-sizes.txt", true);
 
   // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();

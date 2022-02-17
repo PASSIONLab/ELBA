@@ -1,8 +1,7 @@
 #!/bin/bash
 
-git clone https://github.com/gabe-raulet/CombBLAS
+git clone https://github.com/PASSIONLab/CombBLAS
 cd $COMBBLAS_HOME/CombBLAS
-git checkout dibella-branch
 mkdir -p build
 mkdir -p install
 cd build
