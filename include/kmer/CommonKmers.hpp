@@ -6,7 +6,7 @@
 #include "../Types.hpp"
 #include "../Defines.hpp"
 
-// GGGG: needed for benchmarking
+// for benchmarking
 #define EXTRA
 
 namespace dibella {
@@ -22,16 +22,18 @@ namespace dibella {
 	bool passed;
 
 	uint32_t score; /* Used for storing alignment score */
-	
-	/*! GGGG: this is either the suffix or prefix entry need for the transitive reduction 
+
+	/*! GGGG: this is either the suffix or prefix entry need for the transitive reduction
 	 *	StringMatrixEntry econdes both direction and overhang length for both strands */
 	// std::vector<uint32_t> overhang(2, 0);
 	uint32_t overhang;
 	uint32_t overhangT;
-	
-#ifdef EXTRA
+
+    int rc;
 	uint32_t lenv;
 	uint32_t lenh;
+
+#ifdef EXTRA
 	uint32_t overlap;
 #endif
 
@@ -51,7 +53,7 @@ namespace dibella {
     CommonKmers() : count(1), passed(false), overhang(0) {
     }
     explicit
-	CommonKmers(ushort count) : 
+	CommonKmers(ushort count) :
 		count(count), passed(false), overhang(0) {
     }
 
@@ -59,6 +61,8 @@ namespace dibella {
 		passed(passed),
 		score(score) {
 	}
+
+	operator bool() const { return overhang; };
 
     // Overload + operator to add two CommonKmers objects
 	// Used for: B += BT (TransitiveReductionSR.hpp)
@@ -78,6 +82,71 @@ namespace dibella {
 		else return false;
 	}
 
+	// Used in SR.hpp fo MinPlus
+	// friend bool operator<(const CommonKmers& lhs, const CommonKmers& rhs)
+	// {
+	// 	ushort len1 = lhs.overhang >> 2;
+	// 	ushort len2 = rhs.overhang >> 2;
+
+	// 	if(len1 < len2) return true;
+	// 	else return false;
+	// }
+
+	// Used in SR.hpp fo MinPlus
+	// friend CommonKmers operator+(const CommonKmers& lhs, const CommonKmers& rhs)
+	// {
+	// 	CommonKmers me;
+
+	// 	ushort dir;
+
+	// 	int mybin1[2] = {0, 0};
+	// 	int mybin2[2] = {0, 0};
+
+	// 	if((lhs.overhang & 3) != 0)
+	// 	{
+	// 		int nbit = 2;
+	// 		uint n = lhs.overhang & 3;
+	// 		for(int i = 0; i < nbit; i++)
+	// 		{
+	// 			mybin1[i] = n % 2;
+	// 			n = n / 2;
+	// 		}
+	// 	}
+
+	// 	if((rhs.overhang & 3) != 0)
+	// 	{
+	// 		int nbit = 2;
+	// 		uint n = rhs.overhang & 3;
+	// 		for(int i = 0; i < nbit; i++)
+	// 		{
+	// 			mybin2[i] = n % 2;
+	// 			n = n / 2;
+	// 		}
+	// 	}
+
+	// 	ushort start = mybin1[1];
+	// 	ushort end   = mybin2[0];
+
+	// 	if(start == 0)
+	// 	{
+	// 		if(end == 0) dir = 0;
+	// 		else dir = 1;
+	// 	}
+	// 	else
+	// 	{
+	// 		if(end == 0) dir = 2;
+	// 		else dir = 3;
+	// 	}
+
+	// 	ushort len1 = lhs.overhang >> 2;
+	// 	ushort len2 = rhs.overhang >> 2;
+
+	// 	len1 += len2;
+
+	// 	me.overhang = len1 << 2 | dir;
+	// 	return me;
+	// }
+
     friend std::ostream &operator<<(std::ostream &os, const CommonKmers &m)
 	{
 	#ifdef TWOSEED
@@ -88,15 +157,13 @@ namespace dibella {
 		os << "|" << m.count << "(";
 		for(int i = 0; i < m.pos.size(); i++)
 		{
-			os << m.pos[i].first << "," << m.pos[i].second << ")| ";  
+			os << m.pos[i].first << "," << m.pos[i].second << ")| ";
 		}
 	#endif
 		return os;
     }
 
 	};
-
-	/* GGGG: matrix symmetrication removed */
 
 	struct CkOutputHandler
 	{
@@ -107,18 +174,22 @@ namespace dibella {
 				uint64_t col)
 		{
 			// GGGG: we need the overhand value to create input in graph dot for comparison
-			int dir = v.overhang & 3; 
+			int dir = v.overhang & 3;
 			int rc  = 0;
 			if(dir == 0 || dir == 3) rc = 1;
 
 			// direction, rc, overhang, begV, endV, begH, endH (OverlapLen and others computed in python script during translation)
-			os << dir << "\t" << rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t" 
-				<< v.second.first << "\t" << 
-				#ifdef EXTRA
-				v.second.second  << "\t"  << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
-				#else
-				v.second.second;
-				#endif
+			// os << dir << "\t" << rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t"
+				// << v.second.first << "\t" <<
+				// #ifdef EXTRA
+				// v.second.second  << "\t"  << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
+				// #else
+				// v.second.second;
+				// #endif
+
+            os << dir << "\t" << rc << "\t" << v.first.first << "\t" << v.first.second << "\t" << v.second.first << "\t" << v.second.second << "\t"
+               << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
+
 		}
 	};
 
@@ -130,10 +201,12 @@ namespace dibella {
                         uint64_t row,
                         uint64_t col)
         {
-				int dir = v.overhang  & 3;
-                int len = v.overhang >> 2;
-                os << len;
-				// os << dir << "\t" << len;
+			int dir = v.overhang  & 3;
+			int len = v.overhang >> 2;
+			os << dir << "\t" << len;
+			// os;
+			// std::string val = std::to_string(len) + "\t" + std::to_string(dir);
+			// os << val;
         }
     };
 
@@ -145,7 +218,7 @@ namespace dibella {
                         uint64_t row,
                         uint64_t col)
         {
-                os << v;
+            os << v;
         }
     };
 

@@ -253,6 +253,9 @@ DistributedPairwiseRunner::run_batch
 
 	uint64_t *algn_cnts   = new uint64_t[numThreads + 1];
 	uint64_t nelims_ckthr = 0; // nelims_alnthr = 0, nelims_both = 0;
+
+	// GGGG: local vector containing global indexes of sequences whose nonzeros should be removed because contained vertex
+	std::vector<std::vector<int64_t>> ContainedSeqPerBatch(batch_cnt);
 	
 	while (batch_idx < batch_cnt) 
 	{
@@ -297,8 +300,7 @@ DistributedPairwiseRunner::run_batch
 					++algn_cnt;
 				}
 
-				if ((l_col_idx >= l_row_idx) &&
-					(l_col_idx != l_row_idx || g_col_idx > g_row_idx))
+				if ((l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx || g_col_idx > g_row_idx))
 				{
 					if (cks->count < ckthr) ++nelims_ckthr_cur;
 				}
@@ -320,8 +322,8 @@ DistributedPairwiseRunner::run_batch
 		}
 		
 		// allocate StringSet
-		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsh;
-		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsv;
+		seqan::StringSet<seqan::Dna5String> seqsh;
+		seqan::StringSet<seqan::Dna5String> seqsv;
 		resize(seqsh, algn_cnts[numThreads], seqan::Exact{});
 		resize(seqsv, algn_cnts[numThreads], seqan::Exact{});
 
@@ -349,13 +351,12 @@ DistributedPairwiseRunner::run_batch
 
 				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
 
-				if ((cks->count >= ckthr)    && 
-					(l_col_idx >= l_row_idx) &&
-					(l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
+			//	if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
+				if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
 
-					seqsh[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));
-					seqsv[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
+					seqsh[algn_idx] = seqan::Dna5String(*(dfd->col_seq(l_col_idx)));
+					seqsv[algn_idx] = seqan::Dna5String(*(dfd->row_seq(l_row_idx)));
 
 					lids[algn_idx] = i;
 					++algn_idx;
@@ -369,17 +370,127 @@ DistributedPairwiseRunner::run_batch
 			<< " overall " 						<< nalignments
 			<< std::endl;
 
-		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, noAlign, k, nreads);
-		
+		// GGGG: fill ContainedSeqPerBatch
+		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, noAlign, k, nreads, ContainedSeqPerBatch[batch_idx]);
+
 		delete [] lids;
 		++batch_idx;
 	}
+
+	// lfs << "Before concatenation ContainedSeqPerBatch" << std::endl;
+	
+	int readcount = 0;
+	for(int b = 0; b < batch_cnt; ++b)
+	{
+		readcount += ContainedSeqPerBatch[b].size();
+	}
+
+	unsigned int readssofar = 0; 
+	std::vector<int64_t> ContainedSeqPerProc(readcount);
+
+	// Concatenate per-batch result
+	for(int b = 0; b < batch_cnt; ++b)
+	{
+		copy(ContainedSeqPerBatch[b].begin(), ContainedSeqPerBatch[b].end(), ContainedSeqPerProc.begin() + readssofar);
+		readssofar += ContainedSeqPerBatch[b].size();
+	}
+
+	lfs << "Post concatenation ContainedSeqPerBatch, readcount " << readcount << std::endl;
+
+	std::sort(ContainedSeqPerProc.begin(), ContainedSeqPerProc.end());
+	ContainedSeqPerProc.erase(unique(ContainedSeqPerProc.begin(), ContainedSeqPerProc.end()), ContainedSeqPerProc.end());
+
+	lfs << "Removed duplicates and sorted, contained readcount " << ContainedSeqPerProc.size() << " out of " << nreads << " sequences" << std::endl;
+
+	//////////////////////////////////////////////////////////////////////////////////////
+	// CONTAINED SEQRUENCES COMMUNICATION                                               // 
+	//////////////////////////////////////////////////////////////////////////////////////
+
+	// Don't use boolean (it's bitmap not array of boolean, this messes up in communication)
+	FullyDistVec<int64_t, int64_t> ContainedSeqGlobal(gmat->getcommgrid(), nreads, 0); // I need to use same type as index for Prune()
+
+	FullyDistVec<int64_t, int64_t> ri(gmat->getcommgrid(), nreads, 0); // I need to use same type as index for Prune()
+	FullyDistVec<int64_t, int64_t> ci(gmat->getcommgrid(), nreads, 0); // I need to use same type as index for Prune()
+
+	int nprocs;
+	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+	// A vector of vector for communication
+	std::vector<std::vector<int64_t>> buffer(nprocs); // outer dim is the number of processes
+	
+	int * sendcnt = new int[nprocs](); // zero initialize
+	int * recvcnt = new int[nprocs];
+
+	// Each proc has a bunch of int64_t vectors with indexes (possible duplicates intra- and inter-proc)
+	for(int i = 0; i < ContainedSeqPerProc.size(); i++)
+	{
+		int64_t lid; 
+
+		//! Given global index gind,
+		//! Return the owner processor id, and
+		//! Assign the local index to lind
+		int owner = ContainedSeqGlobal.Owner(ContainedSeqPerProc[i], lid);  // find the owner (global_index, local_index)
+
+		int64_t gid = ContainedSeqPerProc[i];
+
+		buffer[owner].push_back(gid);
+		++sendcnt[owner];
+	}
+
+	// GGGG: Alltoall to share the count and Alltoallv for vector 
+	MPI_Alltoall(sendcnt, 1, MPI_INT, recvcnt, 1, MPI_INT, MPI_COMM_WORLD);
+
+	std::vector<int64_t> sendbuffer;
+	std::vector<int64_t> recvbuffer;
+
+	// Concatenate buffer for Alltoallv
+	for(int i = 0; i < nprocs; ++i)
+	{
+		sendbuffer.insert(sendbuffer.end(), buffer[i].begin(), buffer[i].end());
+	}
+
+	// Compute displacements for Alltoallv
+	int * sdispls = new int[nprocs];
+	int * rdispls = new int[nprocs];
+
+	sdispls[0] = 0;
+	rdispls[0] = 0;
+
+	for(int i = 0; i < nprocs-1; ++i)
+	{
+		sdispls[i+1] = sdispls[i] + sendcnt[i];
+		rdispls[i+1] = rdispls[i] + recvcnt[i];
+	}
+
+	int64_t totrecv = std::accumulate(recvcnt, recvcnt + nprocs, static_cast<int64_t>(0));
+	recvbuffer.resize(totrecv);
+	
+	// GGGG: Alltoallv for vector
+	// Data is already in the right order (recepeint will receive from nrpocs processes)
+	MPI_Alltoallv(sendbuffer.data(), sendcnt, sdispls, MPI_LONG, recvbuffer.data(), recvcnt, rdispls, MPI_LONG, MPI_COMM_WORLD);
+	DeleteAll(sendcnt, recvcnt, sdispls, rdispls);
+	
+	// Go over recvbuffer and set elements to 1 in ContainedSeqPerGlobal
+	for(int k = 0; k < totrecv; k++)
+	{
+		int idx = recvbuffer[k];
+		ContainedSeqGlobal.SetElement(idx, 1); // SetElement only work locally (owner)
+	}
+
+	// Use FindInds https://github.com/PASSIONLab/CombBLAS/blob/master/include/CombBLAS/FullyDistSpVec.cpp
+	// Pass the returned vec and then pass it to the Prune function (two identical vec)
+	FullyDistVec<int64_t, int64_t> toerase = ContainedSeqGlobal.FindInds(bind2nd(greater<int64_t>(), 0));	// Only the non-zero indices (contained sequences)
+	// toerase.DebugPrint(); // 0 is here but it's not erase from the matrix
+
+	//////////////////////////////////////////////////////////////////////////////////////
+	// TOTAL ALIGNMENTES COMMUNICATION                                                  // 
+	//////////////////////////////////////////////////////////////////////////////////////
 
 	if(noAlign) nalignments = 0;
 
 	pf->nalignments = nalignments;
 	pf->print_avg_times(parops, lfs);
-
+ 
 	lfs << "#alignments run " << nalignments << std::endl;
 
 	// Compute statistics
@@ -395,7 +506,7 @@ DistributedPairwiseRunner::run_batch
 	uint64_t avgalignments = nalignments_tot / parops->world_procs_count;
 
 	// min, max num alignments per proc
-  	MPI_Reduce(&nalignments, &maxalignments, 1, MPI_UINT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&nalignments, &maxalignments, 1, MPI_UINT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
  	MPI_Reduce(&nalignments, &minalignments, 1, MPI_UINT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
 
 	tu.print_str(
@@ -407,13 +518,23 @@ DistributedPairwiseRunner::run_batch
 				 "\n  Eliminated due to common k-mer threshold " +
 				 std::to_string(nelims_ckthr_tot) + "\n");
 
-	// Prune pairs that do not meet coverage criteria
-	auto elim_cov = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
-	gmat->Prune(elim_cov);
+	//////////////////////////////////////////////////////////////////////////////////////
+	// PRUNE MATRIX FROM SPURIOUS AND CONTAINED ALIGNMENT                               // 
+	//////////////////////////////////////////////////////////////////////////////////////
 
-	// GGGG: if noAlign == true, we remove only the contained overlaps as they are not useful for transitive reduction
-	tu.print_str("nnzs in the pruned matrix " +
-				 std::to_string(gmat->getnnz()) + "\n");
+	tu.print_str("\t* nnz before pruning " + std::to_string(gmat->getnnz()) + "\n");
+
+	// Prune pairs that do not meet score criteria
+	auto elim_score = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
+	gmat->Prune(elim_score); 
+
+	// GGGG: if noAlign == true, we remove only the contained overlaps as they are not useful for transitive reduction (next prune)
+	tu.print_str("\t* nnz after 1st pruning (score) " + std::to_string(gmat->getnnz()) + "\n");
+
+	// Prune pairs involving contained seqs
+	gmat->PruneFull(toerase, toerase);
+
+	tu.print_str("\t* nnz after 2nd pruning (contained) " + std::to_string(gmat->getnnz()) + "\n");
 	
 	delete [] algn_cnts;
 	delete [] mattuples;

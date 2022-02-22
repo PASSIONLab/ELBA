@@ -6,7 +6,7 @@
 #include "../include/kmer/CommonKmers.hpp"
 #include "../include/Utils.hpp"
 
-#include <sys/time.h> 
+#include <sys/time.h>
 #include <iostream>
 #include <functional>
 #include <algorithm>
@@ -27,7 +27,7 @@ using namespace std;
 #define DEBUG
 
 /** Given a biridrected graph, an edge v ?-? x can only be considered transitive given a pair of edges v ?-? w ?-? x if:
- * (1) The two heads adjacent to w have opposite orientation: 
+ * (1) The two heads adjacent to w have opposite orientation:
  *      2nd bit != 1st bit in MinPlus semiring B = A^2 such as 01 and 01 or 10 and 10;
  * (2) The heads adjacent to v in v ?-? w and v ?-? x have the same orientation, and
  * (3) The heads adjacent to x in v ?-? x and w ?-? x have the same orientation:
@@ -35,9 +35,9 @@ using namespace std;
 */
 
 dibella::CommonKmers compose(dibella::CommonKmers& me, const uint& suffix, const ushort& dir)
-{ 
+{
     me.overhang = suffix << 2 | dir;
-    return me; 
+    return me;
 }
 
 uint length(const dibella::CommonKmers& me) { return me.overhang >> 2; }
@@ -115,29 +115,30 @@ struct PlusFBiSRing : unary_function <T, OUT>
     }
 };
 
-void tobinary(ushort n, int* arr) 
-{ 
+void tobinary(ushort n, int* arr)
+{
     int nbit = 2;
     for(int i = 0; i < nbit; i++)
-    { 
-        arr[i] = n % 2; 
-        n = n / 2; 
+    {
+        arr[i] = n % 2;
+        n = n / 2;
     }
 }
 
+// Check direction
 bool testdir(ushort dir1, ushort dir2, ushort& dir)
 {
     ushort rbit, lbit;
     ushort start, end;
 
-    int mybin1[2] = {0, 0};
-    int mybin2[2] = {0, 0};
+    int mybin1[2] = {0, 0}; // 0 1
+    int mybin2[2] = {0, 0}; // 0 0
 
     if(dir1 != 0) tobinary(dir1, mybin1);
     if(dir2 != 0) tobinary(dir2, mybin2);
 
-    rbit = mybin1[0];
-    lbit = mybin2[1];
+    rbit = mybin1[0]; // 1
+    lbit = mybin2[1]; // 0
 
     if(rbit != lbit)
     {
@@ -152,7 +153,7 @@ bool testdir(ushort dir1, ushort dir2, ushort& dir)
         else
         {
             if(end == 0) dir = 2;
-            else dir = 3;      
+            else dir = 3;
         }
         return true;
     }
@@ -178,15 +179,12 @@ struct MinPlusBiSRing
         if(testdir(dir(arg1), dir(arg2), mydir))
         {
             uint len = infplus(arg1, arg2);
-
-            // printf("dir1 %d len1 %d dir2 %d len2 %d mydir %d len %d\n", dir(arg1), length(arg1), dir(arg2), length(arg2), len, mydir);
-
             return compose(res, len, mydir);
-        } 
+        }
         else return id();
 	}
 	static void axpy(T1 a, const T2 & x, OUT & y)
-	{   
+	{
 		y = min(y, multiply(a, x));
 	}
 };
@@ -229,6 +227,13 @@ struct ZeroOverhangSR : unary_function <T, bool>
     bool operator() (const T& x) const { if(x.overhang == 0) return true; else return false; }
 };
 
+// Prune one strand
+// template <class T>
+// struct Dir2SR : unary_function <T, bool>
+// {
+//     bool operator() (const T& x) const { if(dir(x) == 2) return true; else return false; }
+// };
+
 template <class T, class OUT>
 struct OverhangTSRing : unary_function <T, OUT>
 {
@@ -236,8 +241,25 @@ struct OverhangTSRing : unary_function <T, OUT>
     {
         OUT xT = static_cast<OUT>(x);
 
-        xT.overhang = x.overhangT;
+        xT.overhang  = x.overhangT;
         xT.overhangT = x.overhang;
+
+        xT.lenh = x.lenv;
+        xT.lenv = x.lenh;
+
+        // @GGGG-TODO (update coordinates)
+
+        // int begH = x.first.first;
+        // int begV = x.second;
+
+        // int endH =
+        // int endV =
+
+        // xT.first.first   =
+        // xT.first.second  =
+
+        // xT.second.first  =
+        // xT.second.second =
 
         return xT;
     }
@@ -249,23 +271,25 @@ typedef ReduceMBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::Com
 typedef Bind2ndBiSRing <dibella::CommonKmers, dibella::CommonKmers, dibella::CommonKmers> Bind2ndSR_t;
 
 /* TR main function */
-void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils tu)
+void TransitiveReductionOld(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils tu)
 {
     PSpMat<dibella::CommonKmers>::MPI_DCCols BT = B;
     BT.Transpose();
-    BT.Apply(OverhangTSRing<dibella::CommonKmers, dibella::CommonKmers>()); 
+    BT.Apply(OverhangTSRing<dibella::CommonKmers, dibella::CommonKmers>());
 
     if(!(BT == B))
     {
         B += BT;
     }
 
-#ifdef DIBELLA_DEBUG
-    tu.print_str("Matrix B += BT: ");
-    B.PrintInfo();
-    B.ParallelWriteMM("matrixBT.mm", true, dibella::CkOutputMMHandler()); 
-#endif
-	
+    B.ParallelWriteMM("result-matrix-symmetric.mm", true, dibella::CkOutputMMHandler());
+
+// #ifdef DIBELLA_DEBUG
+    // tu.print_str("Matrix B += BT: ");
+    // B.PrintInfo();
+    // B.ParallelWriteMM("result-matrix-symmetric.mm", true, dibella::CkOutputMMHandler());
+// #endif
+
     uint nnz, prev;
     double timeA2 = 0, timeC = 0, timeI = 0, timeA = 0;
 
@@ -287,44 +311,44 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
     #ifdef DIBELLA_DEBUG
         tu.print_str("Matrix C = B^2: ");
         C.PrintInfo();
-	C.ParallelWriteMM("matrixB2.mm", true, dibella::CkOutputMMHandler()); 
+	    C.ParallelWriteMM("matrixB2.mm", true, dibella::CkOutputMMHandler());
     #endif
-    
+
         start = MPI_Wtime();
         FullyDistVec<int64_t, dibella::CommonKmers> vA(B.getcommgrid());
 
-        dibella::CommonKmers id; 
+        dibella::CommonKmers id;
         vA = B.Reduce(Row, ReduceMSR_t(), id);
         vA.Apply(PlusFBiSRing<dibella::CommonKmers, dibella::CommonKmers>());
 
         F.DimApply(Row, vA, Bind2ndSR_t());
-        
+
         timeC += MPI_Wtime() - start;
     #ifdef DIBELLA_DEBUG
         tu.print_str("Matrix F = B + FUZZ: ");
         F.PrintInfo();
-	F.ParallelWriteMM("matrixF.mm", true, dibella::CkOutputMMHandler()); 
+	    F.ParallelWriteMM("matrixF.mm", true, dibella::CkOutputMMHandler());
     #endif
 
         /* Find transitive edges that can be removed
-        * I = F >= C 
+        * I = F >= C
         */
         start = MPI_Wtime();
         bool isLogicalNot = false;
         PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, PSpMat<bool>::DCCols>(F, C, GreaterBinaryOp<dibella::CommonKmers, dibella::CommonKmers>(), isLogicalNot, id);
 
         I.Prune(ZeroUnaryOp<bool>(), true);
-    
+
         timeI += MPI_Wtime() - start;
     #ifdef DIBELLA_DEBUG
         tu.print_str("Matrix I = F >= B: ");
         I.PrintInfo();
-	I.ParallelWriteMM("matrixI.mm", true, dibella::CkOutputMMHandlerBool());
+	    I.ParallelWriteMM("matrixI.mm", true, dibella::CkOutputMMHandlerBool());
     #endif
 
         /* Remove transitive edges
         * B = B .* not(I)
-        */ 
+        */
         start = MPI_Wtime();
         isLogicalNot = true;
         B = EWiseApply<dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(B, I, EWiseMulOp<dibella::CommonKmers, bool>(), isLogicalNot, true);
@@ -337,18 +361,24 @@ void TransitiveReduction(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUtils
         tu.print_str("Matrix B = B .* not(I): ");
         B.PrintInfo();
     #endif
-        nnz = B.getnnz();     
-        
+        nnz = B.getnnz();
+
     } while (nnz != prev);
 
     tu.print_str("Matrix B, i.e AAt after transitive reduction: ");
     B.PrintInfo();
 
+    // /* Prune two-dir edges */
+    // B.Prune(Dir2SR<dibella::CommonKmers>(), true);
+    // tu.print_str("B+=BT post pruning of 2-dir edges before TR: ");
+    // B.PrintInfo();
+    // B.ParallelWriteMM("ecoli-double-strand-two-pruned-bt.mm", true, dibella::CkOutputMMHandler());
+
  #ifdef DIBELLA_DEBUG
-    B.ParallelWriteMM("matrixS.mm", true, dibella::CkOutputMMHandler()); 
-	
+    B.ParallelWriteMM("matrixS.mm", true, dibella::CkOutputMMHandler());
+
     double maxtimeA2, maxtimeC, maxtimeI, maxtimeA;
-    
+
     MPI_Reduce(&timeA2, &maxtimeA2, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&timeC,  &maxtimeC,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&timeI,  &maxtimeI,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);

@@ -18,8 +18,8 @@ public:
              dibella::CommonKmers &cks, std::stringstream& ss) override;
 
   void
-  apply_batch(seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsh,
-			        seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsv,
+  apply_batch(seqan::StringSet<seqan::Dna5String> &seqsh,
+			        seqan::StringSet<seqan::Dna5String> &seqsv,
 			        uint64_t *lids,
 			        uint64_t col_offset,
 			        uint64_t row_offset,
@@ -28,7 +28,8 @@ public:
               const bool noAlign,
               ushort k,
               uint64_t nreads,
-              float ratioScoreOverlap = 0.99,   // GGGG: Precomputed for error rate = 15% and default scoring matrix (1,-1,-1) (0.445 for CLR, 0.99 for CCS)
+              std::vector<int64_t>& ContainedSeqPerProc,
+              float ratioScoreOverlap = 0.99,    // GGGG: Precomputed for error rate = 15% and default scoring matrix (1,-1,-1) (0.445 for CLR, 0.99 for CCS)
               int debugThr = 50) override;      // GGGG: Fixed threshold, this is convenient only for debugging
 
 private:
