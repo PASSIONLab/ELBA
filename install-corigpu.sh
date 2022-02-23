@@ -12,17 +12,18 @@ echo ""
 echo "Enviroment variables set and modules loaded."
 echo ""
 
-#cd $LOGAN_HOME
-#mkdir build
-#cd build
-#cmake ..
-#make -j4
+cd $LOGAN_HOME
+mkdir build
+cd build
+cmake ..
+make -j4
 
 echo ""
 echo "LOGAN installation completed."
 echo ""
 
 cd $COMBBLAS_HOME
+rm -rf CombBLAS
 git clone https://github.com/PASSIONLab/CombBLAS.git
 cd $COMBBLAS_HOME/CombBLAS
 mkdir build

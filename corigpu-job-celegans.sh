@@ -14,4 +14,4 @@ export OMP_PLACES=threads
 export OMP_PROC_BIND=spread
 
 export SLURM_CPU_BIND="cores"
-srun -n 16 /global/cscratch1/sd/gguidi/diBELLA.2D/build_release/./dibella -i /global/cscratch1/sd/gguidi/IPDPS2021/inputs/celegans40x.fa -k 17 --idxmap elba.celegans40x.skylake.nvidia.16.idxmap -c 4421593 --alph dna --af elba.celegans40x.skylake.nvidia.16.result -s 1 -O 100000 --afreq 100000 --xa 7
+srun -n 16 /global/cscratch1/sd/gguidi/sc-gpu/diBELLA.2D/build_release/./dibella -i /global/cscratch1/sd/gguidi/sc-gpu/diBELLA.2D/celegans40x.fa -k 17 --idxmap elba.celegans40x.skylake.nvidia.16.idxmap -c 4421593 --alph dna --af elba.celegans40x.skylake.nvidia.16.result -s 1 -O 100000 --afreq 100000 --xa 15
