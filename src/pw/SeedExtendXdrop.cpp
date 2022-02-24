@@ -40,23 +40,32 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	bool chimeric  = false;
 
 	// Reserve length/position if rc [x]
-	if(ai.rc)
-	{
-		uint tmp = begpH;
-		begpH = rlenH - endpH;
-		endpH = rlenH - tmp;
-	}
 
-    if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
-	{
-		ContainedSeqMyThread.push_back(seqH); // Push back global index
-		contained = true;
-	}
-    else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
-	{
-		ContainedSeqMyThread.push_back(seqV); // Push back global index
-		contained = true;
-	}
+	//if(ai.rc)
+	//{
+	//	uint tmp = begpH;
+	//	begpH = rlenH - endpH;
+	//	endpH = rlenH - tmp;
+	//}
+
+    //if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
+	//{
+	//	ContainedSeqMyThread.push_back(seqH); // Push back global index
+	//	contained = true;
+	//}
+    //else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
+	//{
+	//	ContainedSeqMyThread.push_back(seqV); // Push back global index
+	//	contained = true;
+	//}
+
+    if (rlenH <= rlenV && begpH <= maxOverhang && rlenH-endpH <= maxOverhang) {
+        ContainedSeqMyThread.push_back(seqH);
+        contained = true;
+    } else if (rlenV <= rlenH && begpV <= maxOverhang && rlenV-endpV <= maxOverhang) {
+        ContainedSeqMyThread.push_back(seqV);
+        contained = true;
+    }
 
 	if(!contained)
 	{
