@@ -68,6 +68,16 @@ struct ReadOverlap
         return -1;
     }
 
+    int arrows(int& t, int& h) const
+    {
+        int d = direction();
+        if (d == -1) return d;
+
+        t = (d>>1)&1;
+        h = d&1;
+        return d;
+    }
+
     int getsuffix(int& dir) const
     {
         dir = direction();
@@ -97,7 +107,9 @@ struct ReadOverlapHandler
     template <typename c, typename t>
     void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, uint64_t row, uint64_t col)
     {
-        os << e.direction() << "\t" << e.sfx[0] << "\t" << e.sfx[1] << "\t" << e.sfx[2] << "\t" << e.sfx[3];
+        os << e.direction() << "\t" << e.sfx[0] << "\t" << e.sfx[1] << "\t" << e.sfx[2] << "\t" << e.sfx[3] << "\t";
+        os << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t";
+        os << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
     }
 };
 

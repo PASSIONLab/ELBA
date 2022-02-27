@@ -74,12 +74,19 @@ struct MinPlusSR
     {
         ReadOverlap e = ReadOverlap();
 
-        int indove = e1.direction()&1;
+        int d1 = e1.direction();
+        int d2 = e2.direction();
 
-        e.sfx[0] = intplus(e1.sfx[indove],   e2.sfx[2*(!indove)]  ); /* >--@ @--< */
-        e.sfx[1] = intplus(e1.sfx[indove],   e2.sfx[2*(!indove)+1]); /* >--@ @--> */
-        e.sfx[2] = intplus(e1.sfx[indove+2], e2.sfx[2*(!indove)]  ); /* <--@ @--< */
-        e.sfx[3] = intplus(e1.sfx[indove+2], e2.sfx[2*(!indove)+1]); /* <--@ @--> */
+        if (d1 == -1 || d2 == -1) return e;
+
+        int t1 = (d1>>1)&1;
+        int t2 = (d2>>1)&1;
+        int h1 = d1&1;
+        int h2 = d2&1;
+
+        if (t2 == h1) return e;
+
+        e.sfx[2*t1 + h2] = e.sfx[d1] + e.sfx[d2];
 
         return e;
     }
@@ -108,6 +115,9 @@ struct TransitiveSelection : binary_function<ReadOverlap, ReadOverlap, bool>
     bool operator() (const ReadOverlap& x, const ReadOverlap& y) const
     {
         int xdir = x.direction();
+
+        if (xdir == -1) return false;
+
         return (x.sfx[xdir] >= y.sfx[xdir]);
     }
 };
@@ -116,7 +126,7 @@ struct TransitiveRemoval : binary_function<ReadOverlap, bool, ReadOverlap>
 {
     ReadOverlap operator() (ReadOverlap& x, const bool& y)
     {
-        if (!y) x.valid = 0;
+        if (y) x.valid = 0;
         return x;
     }
 };
@@ -134,6 +144,13 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
     R.ParallelWriteMM("R.mm", true, ReadOverlapMMHandler());
 
     int nnz, prev;
+
+    //SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> Rc = R;
+    SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> N = R;
+
+    int counts = 6;
+    bool countdown = false;
+
     do {
 
         tu.print_str("Matrix R, i.e. AAt, mid transitive reduction: ");
@@ -141,8 +158,8 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
 
         prev = R.getnnz();
 
-        SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> Rc = R;
-        SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> N = Mult_AnXBn_DoubleBuff<MinPlusSR, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, Rc);
+        SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> Nc = N;
+        N = Mult_AnXBn_DoubleBuff<MinPlusSR, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(Nc, R);
 
         N.Prune(InvalidSRing(), true);
 
@@ -153,15 +170,26 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
         ReadOverlap id;
 
         SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> I = EWiseApply<bool, SpDCCols<int64_t, bool>>(M, N, TransitiveSelection(), false, id);
+        I.Prune([](const bool& x) {return !x; });
+        SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> IT = I;
+        IT.Transpose();
+        I.EWiseMult(IT, false);
 
-        R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, I, TransitiveRemoval(), true, true);
+        R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, I, TransitiveRemoval(), true, false);
 
         R.Prune(InvalidSRing(), true);
-
         nnz = R.getnnz();
-    } while (nnz != prev);
+
+        if (nnz == prev) 
+            countdown = true;
+
+        if (countdown)
+            counts--;
+
+    } while (counts >= 0);
 
     R.ParallelWriteMM("S.mm", true, ReadOverlapMMHandler());
+    R.ParallelWriteMM("SO.mm", true, ReadOverlapHandler());
 
     tu.print_str("Matrix R, i.e. AAt after transitive reduction: ");
     R.PrintInfo();
