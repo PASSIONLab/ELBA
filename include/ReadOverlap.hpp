@@ -9,119 +9,160 @@
 static constexpr int MAX_INT = std::numeric_limits<int>::max();
 static constexpr int XBOUND = 150;
 
+struct ReadOverlap;
+
+struct OverlapPath
+{
+    int sfx[4];
+    OverlapPath();
+    OverlapPath(const ReadOverlap& e);
+    void setinf();
+};
+
 struct ReadOverlap
 {
-    int rc;
+    int sfx, dir, rc, overlap;
     int b[2], e[2], l[2];
-    int sfx[4];
-    int valid;
-    int overlap;
 
-    ReadOverlap() : valid(1), rc(0), overlap(0), b{}, e{}, l{}
+    ReadOverlap() : sfx(0), dir(-1) {}
+    ReadOverlap(int sfx, int dir) : sfx(sfx), dir(dir)
     {
-        for (int i = 0; i < 4; ++i) sfx[i] = MAX_INT;
+        if (sfx <= 0) dir = -1;
     }
 
-    ReadOverlap(const ReadOverlap& rhs) : rc(rhs.rc), valid(rhs.valid), overlap(rhs.overlap)
+    ReadOverlap(const OverlapPath& e)
     {
-        int i;
+        int c = 0;
+        for (int i = 0; i < 4; ++i) {
+            if (e.sfx[i] < MAX_INT) {
+                sfx = e.sfx[i];
+                dir = i;
+                c++;
+            }
+        }
 
-        for (i = 0; i < 4; ++i)
-            sfx[i] = rhs.sfx[i];
-
-        for (i = 0; i < 2; ++i) {
-            b[i] = rhs.b[i];
-            e[i] = rhs.e[i];
-            l[i] = rhs.l[i];
+        if (c != 1) {
+            sfx = 0;
+            dir = -1;
         }
     }
 
-    ReadOverlap(const dibella::CommonKmers& cks) : valid(1), overlap(0)
+    ReadOverlap(const ReadOverlap& lhs) : sfx(lhs.sfx), dir(lhs.dir), rc(lhs.rc), overlap(lhs.overlap)
+    {
+        for (int i = 0; i < 2; ++i) {
+            b[i] = lhs.b[i];
+            e[i] = lhs.e[i];
+            l[i] = lhs.l[i];
+        }
+    }
+
+    ReadOverlap(const dibella::CommonKmers& cks)
     {
         b[0] = cks.first.first;  b[1] = cks.second.first;
         e[0] = cks.first.second; e[1] = cks.second.second;
         l[0] = cks.lenv;         l[1] = cks.lenh;
 
         rc = cks.rc;
-        overlap = cks.overlap;
 
         refix();
     }
 
     void refix(int sdove = 0)
     {
-        if (!valid) return;
+        if (dir == -1) return;
 
-        for (int i = 0; i < 4; ++i) sfx[i] = MAX_INT;
-
-        if (l[0] - e[0] < XBOUND && b[1] < XBOUND)
-            sfx[(rc) ? (0) : (1+sdove)] = l[1] - e[1];
-        else if (l[1] - e[1] < XBOUND && b[0] < XBOUND)
-            sfx[(rc) ? (3) : (2-sdove)] = b[1];
-        else
-            valid = 0;
+        if (l[0] - e[0] < XBOUND && b[1] < XBOUND) {
+            dir = (rc) ? (0) : (1+sdove);
+            sfx = l[1] - e[1];
+            overlap = e[0] - b[0];
+        } else if (l[1] - e[1] < XBOUND && b[0] < XBOUND) {
+            dir = (rc) ? (3) : (2-sdove);
+            sfx = b[1];
+            overlap = e[0] - b[0];
+        } else {
+            sfx = 0;
+            dir = -1;
+        }
     }
 
-    int direction() const
+    bool isvalid() const { return (sfx > 0 && dir >= 0); }
+
+    bool arrows(int& t, int& h) const
     {
-        for (int i = 0; i < 4; ++i) { if (sfx[i] < MAX_INT) return i; }
-        return -1;
-    }
+        if (!isvalid())
+            return false;
 
-    int arrows(int& t, int& h) const
-    {
-        int d = direction();
-        if (d == -1) return d;
+        t = (dir>>1)&1;
+        h = dir&1;
 
-        t = (d>>1)&1;
-        h = d&1;
-        return d;
-    }
-
-    int getsuffix(int& dir) const
-    {
-        dir = direction();
-
-        return (dir != -1) ? sfx[dir] : MAX_INT;
+        return true;
     }
 
     friend bool operator==(const ReadOverlap& lhs, const ReadOverlap& rhs)
     {
-        for (int i = 0; i < 4; ++i)
-            if (lhs.sfx[i] != rhs.sfx[i]) return false;
-        return true;
+        return (lhs.sfx == rhs.sfx && lhs.dir == rhs.dir);
     }
 
-    operator bool() const { return direction() != -1 && valid; }
+    operator bool() const { return isvalid(); }
 
     ReadOverlap operator+(const ReadOverlap& b)
     {
-        ReadOverlap myobj;
-        myobj = b;
+        ReadOverlap myobj = b;
         return myobj;
     }
 };
 
-struct ReadOverlapHandler
+OverlapPath::OverlapPath() { setinf(); }
+OverlapPath::OverlapPath(const ReadOverlap& e)
+{
+    setinf();
+
+    if (e.isvalid())
+        sfx[e.dir] = e.sfx;
+}
+
+void OverlapPath::setinf() { for (int i = 0; i < 4; ++i) sfx[i] = MAX_INT; }
+
+struct ReadOverlapExtraHandler
 {
     template <typename c, typename t>
-    void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, uint64_t row, uint64_t col)
+    void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
     {
-        os << e.direction() << "\t" << e.sfx[0] << "\t" << e.sfx[1] << "\t" << e.sfx[2] << "\t" << e.sfx[3] << "\t";
-        os << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t";
-        os << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
+        os << e.dir << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
+        //else
+            //os << e.dir << "\t" << e.l[1]-e.e[1] << "\t" << e.l[1]-e.b[1] << "\t" << e.l[1] << "\t" << e.l[0]-e.e[0] << "\t" << e.l[0]-e.b[0] << "\t" << e.l[0];
     }
+    
 };
 
-struct ReadOverlapMMHandler
+struct ReadOverlapHandler
 {
+    ReadOverlap getNoNum(int64_t row, int64_t col) { return ReadOverlap(); }
+
     template <typename c, typename t>
-    void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, uint64_t row, uint64_t col)
+    void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
     {
-        int dir, suf;
-        suf = e.getsuffix(dir);
-        os << dir << "\t" << suf;
+        os << e.dir << "\t" << e.sfx;
     }
+
+    template <typename c, typename t>
+    void read(std::basic_istream<c,t>& is, const ReadOverlap& e, int64_t row, int64_t col)
+    {
+        int sfx, dir;
+        is >> dir >> sfx;
+
+        return ReadOverlap(sfx, dir);
+    }
+
+    void binaryfill(FILE *rFile, int64_t row, int64_t col, ReadOverlap& e) {}
+
+    size_t entrylength() { return sizeof(ReadOverlap); }
 };
+
+int intplus(int a, int b)
+{
+    return (a == MAX_INT || b == MAX_INT) ? MAX_INT : a + b;
+}
+
 
 #endif
