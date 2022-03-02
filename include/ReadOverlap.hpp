@@ -23,14 +23,15 @@ struct ReadOverlap
 {
     int sfx, dir, rc, overlap;
     int b[2], e[2], l[2];
+    int transpose;
 
-    ReadOverlap() : sfx(0), dir(-1) {}
-    ReadOverlap(int sfx, int dir) : sfx(sfx), dir(dir)
+    ReadOverlap() : sfx(0), dir(-1), transpose(0) {}
+    ReadOverlap(int sfx, int dir) : sfx(sfx), dir(dir), transpose(0)
     {
         if (sfx <= 0) dir = -1;
     }
 
-    ReadOverlap(const OverlapPath& e)
+    ReadOverlap(const OverlapPath& e) : transpose(0)
     {
         int c = 0;
         for (int i = 0; i < 4; ++i) {
@@ -47,7 +48,7 @@ struct ReadOverlap
         }
     }
 
-    ReadOverlap(const ReadOverlap& lhs) : sfx(lhs.sfx), dir(lhs.dir), rc(lhs.rc), overlap(lhs.overlap)
+    ReadOverlap(const ReadOverlap& lhs) : sfx(lhs.sfx), dir(lhs.dir), rc(lhs.rc), overlap(lhs.overlap), transpose(lhs.transpose)
     {
         for (int i = 0; i < 2; ++i) {
             b[i] = lhs.b[i];
@@ -70,6 +71,8 @@ struct ReadOverlap
     void refix(int sdove = 0)
     {
         if (dir == -1) return;
+
+        if (sdove==1) transpose = 1;
 
         if (l[0] - e[0] < XBOUND && b[1] < XBOUND) {
             dir = (rc) ? (0) : (1+sdove);
@@ -128,7 +131,7 @@ struct ReadOverlapExtraHandler
     template <typename c, typename t>
     void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
     {
-        os << e.dir << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
+        os << e.dir << "\t" << e.transpose << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
         //else
             //os << e.dir << "\t" << e.l[1]-e.e[1] << "\t" << e.l[1]-e.b[1] << "\t" << e.l[1] << "\t" << e.l[0]-e.e[0] << "\t" << e.l[0]-e.b[0] << "\t" << e.l[0];
     }
