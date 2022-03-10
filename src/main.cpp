@@ -356,11 +356,54 @@ int main(int argc, char **argv)
   int64_t NumContigs;
   FullyDistVec<int64_t, int64_t> Branches, Roots, ContigSizes, ContigAssignments;
 
+  /* read idxs to contig ids map */
   ContigAssignments = GetContigAssignments(R, Branches, Roots, NumContigs);
-  ContigSizes = GetContigSizes(R, ContigAssignments, NumContigs);
-
   ContigAssignments.ParallelWrite("contig-assignments.txt", true);
+
+  /* contig idxs to contig sizes map */
+  ContigSizes = GetContigSizes(ContigAssignments, NumContigs);
   ContigSizes.ParallelWrite("contig-sizes.txt", true);
+
+  //std::vector<std::tuple<int64_t, int64_t>> FilteredContigSizes = GetFilteredContigSizes(ContigSizes, 3);
+
+  //NumContigs = FilteredContigSizes.size();
+
+  //std::vector<int64_t> Contig2ProcAssignments(NumContigs);
+  //std::vector<int64_t> idmap(NumContigs);
+
+  //if (!myrank)
+  //  GreedyNumberPartitioning(FilteredContigSizes, Contig2ProcAssignments, idmap);
+
+  //MPI_Bcast(Contig2ProcAssignments.data(), NumContigs, MPI_INT64_T, 0, MPI_COMM_WORLD);
+  //MPI_Bcast(idmap.data(), NumContigs, MPI_INT64_T, 0, MPI_COMM_WORLD);
+
+  //std::vector<int64_t> LocalRead2ContigAssignments = ContigAssignments.GetLocVec();
+  //std::vector<int64_t> LocalRead2ProcAssignments(LocalRead2ContigAssignments.size(), -1);
+
+  //std::unordered_map<int64_t, int64_t> r2c;
+
+  //for (int i = 0; i < idmap.size(); ++i)
+  //  r2c[idmap[i]] = i;
+
+  //int lengthuntil = ContigAssignments.LengthUntil();
+
+  //for (int i = 0; i < LocalRead2ContigAssignments.size(); ++i) {
+  //  int64_t ContigID = LocalRead2ContigAssignments[i];
+  //  if (r2c.find(ContigID) != r2c.end()) {
+  //    LocalRead2ProcAssignments[i] = Contig2ProcAssignments[r2c[ContigID]];
+  //  }
+  //}
+  //FullyDistVec<int64_t, int64_t> Read2ProcAssignments(LocalRead2ProcAssignments, ContigAssignments.getcommgrid());
+
+  FullyDistVec<int64_t, int64_t> Read2ProcAssignments = GetReadAssignments(ContigAssignments, ContigSizes);
+
+  Read2ProcAssignments.DebugPrint();
+  Read2ProcAssignments.ParallelWrite("read-to-proc-assignments.txt", true);
+
+  std::vector<int64_t> LocalIdxs;
+  SpDCCols<int64_t, ReadOverlap> ContigChains = R.InducedSubgraphs2Procs(Read2ProcAssignments, LocalIdxs);
+
+  ContigChains.PrintInfo();
 
   // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 

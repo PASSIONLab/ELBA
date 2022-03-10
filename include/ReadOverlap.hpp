@@ -65,6 +65,14 @@ struct ReadOverlap
 
         rc = cks.rc;
 
+        //if (b[0] > b[1]) {
+        //    b[0] += 15;
+        //    e[1] -= 15;
+        //} else {
+        //    b[1] += 15;
+        //    e[0] -= 15;
+        //}
+
         refix();
     }
 

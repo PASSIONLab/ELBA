@@ -428,7 +428,7 @@ SeedExtendXdrop::apply_batch
 
 				// GGGG: global idx over here to use in the FullDistVect for removing contained vertices/seqs
 				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
-    				ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
+                ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
 		}
 		else
@@ -508,6 +508,10 @@ SeedExtendXdrop::apply_batch
 				cks->score  = ai[i].xscore;
                 cks->rc     = ai[i].rc;
 				cks->passed = passed;	// keep this
+
+                std::cout << ai[i].seq_v_g_idx+1 << "\t" << ai[i].seq_h_g_idx+1 << "\t" << ai[i].rc << "\t" << ai[i].xscore << "\t"
+                          << ai[i].seq_v_length << "\t" << ai[i].seq_h_length << "\t"
+                          << cks->first.first << "\t" << cks->first.second << "\t" << cks->second.first << "\t" << cks->second.second << std::endl;
 			}
 		}
 	}

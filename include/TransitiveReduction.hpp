@@ -205,7 +205,8 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
         cur = T.getnnz();
 
         T.ParallelWriteMM("T." + ss.str() + ".mm", true);
-    } while (i++ <= 15);
+    } while (0);
+    //} while (i++ <= 8);
     //} while (prev != cur);
 
     R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), false, false);
