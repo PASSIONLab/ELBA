@@ -6,6 +6,8 @@
 #include <map>
 #include <fstream>
 
+#include <cassert>
+
 #include "TraceUtils.hpp"
 #include "ReadOverlap.hpp"
 #include "Utils.hpp"
@@ -17,7 +19,6 @@ FullyDistVec<int64_t, int64_t> GetContigAssignments
 (
     const SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>& OverlapGraph,
     FullyDistVec<int64_t, int64_t>& Branches,
-    FullyDistVec<int64_t, int64_t>& Roots,
     int64_t& NumContigs
 )
 {
@@ -143,7 +144,6 @@ void GreedyNumberPartitioning(std::vector<std::tuple<int64_t, int64_t>> Filtered
     }
 }
 
-
 FullyDistVec<int64_t, int64_t> GetReadAssignments
 (
     FullyDistVec<int64_t, int64_t>& ContigAssignments,
@@ -188,5 +188,40 @@ FullyDistVec<int64_t, int64_t> GetReadAssignments
     FullyDistVec<int64_t, int64_t> Read2ProcAssignments(LocalRead2ProcAssignments, ContigAssignments.getcommgrid());
     return Read2ProcAssignments;
 }
+
+
+std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(SpDCCols<int64_t, ReadOverlap>& ContigChains, std::vector<int64_t>& LocalIdxs, int myrank)
+{
+    std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> ContigCoords;
+
+    int64_t numreads = ContigChains.getnrow();
+
+    assert(numreads == ContigChains.getncol());
+    assert(numreads = LocalIdxs.size());
+
+    std::vector<int64_t> roots;
+    std::unordered_set<int64_t> used_roots;
+
+    for (auto colit = ContigChains.begcol(); colit != ContigChains.endcol(); ++colit) {
+        int64_t deg = 0;
+        for (auto nzit = ContigChains.begnz(colit); nzit != ContigChains.endnz(colit); ++nzit, ++deg);
+        if (deg==1)
+            roots.push_back(colit.colid());
+    }
+
+    //for (auto itr = roots.begin(); itr != roots.end(); ++itr) {
+    //    int64_t root = *itr;
+    //    
+    //}
+
+    auto dcsc = ContigChains.GetDCSC();
+
+    return ContigCoords;
+}
+
+//std::vector<std::string> LocalAssembly(SpDCCols<int64_t, ReadOverlap>& ContigChains)
+//{
+//    std::vector<std::string> ContigSet;
+//}
 
 #endif 
