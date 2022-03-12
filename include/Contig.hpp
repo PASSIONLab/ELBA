@@ -19,26 +19,38 @@ FullyDistVec<int64_t, int64_t> GetContigAssignments
 (
     const SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>& OverlapGraph,
     FullyDistVec<int64_t, int64_t>& Branches,
+    FullyDistVec<int64_t, int64_t>& Roots,
     int64_t& NumContigs
 )
 {
+    /* copy */
     SpParMat<int64_t, int64_t, SpDCCols<int64_t, int64_t>> A = OverlapGraph;
 
+    /* boolean matrix used for branch finding calculation */
     SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> D1 = A;
     FullyDistVec<int64_t, int64_t> degs1(D1.getcommgrid());
 
+    /* get vertex degrees */
     D1.Reduce(degs1, Row, std::plus<int64_t>(), static_cast<int64_t>(0));
 
+    /* branchces are those vertices of degree 3 or greater */
     Branches = degs1.FindInds(bind2nd(std::greater<int64_t>(), 2));
 
+    /* get rid of edges incident with all branching vertices */
     A.PruneFull(Branches, Branches);
 
+    /* boolean matrix used for root finding calculation */
     SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> D2 = A;
     FullyDistVec<int64_t, int64_t> degs2(D2.getcommgrid());
 
     D2.Reduce(degs2, Row, std::plus<int64_t>(), static_cast<int64_t>(0));
 
+    /* root vertices have degree 1 */
+    Roots = degs2.FindInds(bind2nd(std::equal_to<int64_t>(), 1));
+
     FullyDistVec<int64_t, int64_t> vCC = CC(A, NumContigs);
+
+    //FullyDistVec<int64_t, int64_t> Root2ContigAssignments = vCC(Roots);    
 
     return vCC;
 }
@@ -190,7 +202,7 @@ FullyDistVec<int64_t, int64_t> GetReadAssignments
 }
 
 
-std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(SpDCCols<int64_t, ReadOverlap>& ContigChains, std::vector<int64_t>& LocalIdxs, int myrank)
+std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(SpCCols<int64_t, ReadOverlap>& ContigChains, std::vector<int64_t>& LocalIdxs, int myrank)
 {
     std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> ContigCoords;
 
@@ -199,29 +211,71 @@ std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(Sp
     assert(numreads == ContigChains.getncol());
     assert(numreads = LocalIdxs.size());
 
-    std::vector<int64_t> roots;
+    bool visited[numreads] = {0};
     std::unordered_set<int64_t> used_roots;
 
-    for (auto colit = ContigChains.begcol(); colit != ContigChains.endcol(); ++colit) {
-        int64_t deg = 0;
-        for (auto nzit = ContigChains.begnz(colit); nzit != ContigChains.endnz(colit); ++nzit, ++deg);
-        if (deg==1)
-            roots.push_back(colit.colid());
+    auto csc = ContigChains.GetCSC();
+
+    for (int64_t v = 0; v < csc->n; ++v) {
+
+        if (csc->jc[v+1] - csc->jc[v] != 1 || used_roots.find(v) != used_roots.end())
+            continue;
+        
+        std::vector<std::tuple<int64_t, int64_t, int64_t>> contig;
+
+        int64_t cur = v;
+        int64_t coords[2] = {0, 0};
+        int64_t i1next = 0;
+        int64_t start, end, col;
+
+        ReadOverlap e;
+
+        do {
+            e = csc->num[cur];
+
+            switch (e.dir) {
+                case 0:
+                    coords[0] = e.b[0] + 15;
+                    coords[1] = e.l[1] - e.b[1];
+                    break;
+                case 3:
+                    coords[0] = e.e[0] - 15;
+                    coords[1] = e.l[1] - e.e[1];
+                    break;
+                case 1:
+                    coords[0] = (e.transpose)? (e.l[0] - e.e[0] + 15) : (e.b[0] + 15);
+                    coords[1] = (e.transpose)? (e.l[1] - e.e[1]) : (e.b[1]);
+                    break;
+                case 2:
+                    coords[0] = (e.transpose)? (e.l[0] - e.b[0] - 15) : (e.e[0] - 15);
+                    coords[1] = (e.transpose)? (e.l[1] - e.b[1]) : (e.e[1]);
+                    break;
+                default:
+                    break;
+            }
+
+            contig.push_back(std::make_tuple(i1next, coords[0], LocalIdxs[cur]));
+            visited[cur] = true;
+                        
+            i1next = coords[1];
+
+            start = csc->jc[cur];
+            end = csc->jc[cur+1];
+
+            col = start;
+
+            while (col < end && visited[csc->ir[col]])
+                col++;
+
+            cur = csc->ir[col];
+
+        } while (col < end);
+
+        used_roots.insert(cur);
+        ContigCoords.push_back(contig);
     }
-
-    //for (auto itr = roots.begin(); itr != roots.end(); ++itr) {
-    //    int64_t root = *itr;
-    //    
-    //}
-
-    auto dcsc = ContigChains.GetDCSC();
 
     return ContigCoords;
 }
-
-//std::vector<std::string> LocalAssembly(SpDCCols<int64_t, ReadOverlap>& ContigChains)
-//{
-//    std::vector<std::string> ContigSet;
-//}
 
 #endif 

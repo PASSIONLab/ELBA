@@ -354,11 +354,17 @@ int main(int argc, char **argv)
   //////////////////////////////////////////////////////////////////////////////////////
 
   int64_t NumContigs;
-  FullyDistVec<int64_t, int64_t> Branches, ContigSizes, ContigAssignments;
+  FullyDistVec<int64_t, int64_t> Branches, ContigSizes, Roots, ContigAssignments;
 
   /* read idxs to contig ids map */
-  ContigAssignments = GetContigAssignments(R, Branches, NumContigs);
+  ContigAssignments = GetContigAssignments(R, Branches, Roots, NumContigs);
   ContigAssignments.ParallelWrite("contig-assignments.txt", true);
+  //Branches.ParallelWrite("branches.txt", true);
+  //Roots.ParallelWrite("roots.txt", true);
+
+  //ContigAssignments.DebugPrint();
+  //Branches.DebugPrint();
+  //Roots.DebugPrint();
 
   /* contig idxs to contig sizes map */
   ContigSizes = GetContigSizes(ContigAssignments, NumContigs);
@@ -371,11 +377,20 @@ int main(int argc, char **argv)
   Read2ProcAssignments.ParallelWrite("read-to-proc-assignments.txt", true);
 
   std::vector<int64_t> LocalIdxs;
-  SpDCCols<int64_t, ReadOverlap> ContigChains = R.InducedSubgraphs2Procs(Read2ProcAssignments, LocalIdxs);
+  SpCCols<int64_t, ReadOverlap> ContigChains = R.InducedSubgraphs2Procs(Read2ProcAssignments, LocalIdxs);
 
   std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> ContigCoords = LocalAssembly(ContigChains, LocalIdxs, myrank);
 
-  //std::vector<std::string> ContigSet = LocalAssembly(ContigChains);
+  if (!myrank) {
+    for (int i = 0; i < ContigCoords.size(); ++i) {
+        std::vector<std::tuple<int64_t, int64_t, int64_t>> contig = ContigCoords[i];
+        std::cout << "contig " << i << ": ";
+        for (int j = 0; j < contig.size(); ++j) {
+            std::cout << "(" << std::get<0>(contig[j]) << ", " << std::get<1>(contig[j]) << ", " << std::get<2>(contig[j]) << ") ";
+        }
+        std::cout << std::endl;
+    }
+  }
 
   // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
