@@ -191,7 +191,6 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
         Nc = N;
 
         OverlapPath id;
-        //SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> I = EWiseApply<bool, SpDCCols<int64_t, bool>>(R, N, TransitiveSelection(), false, id);
         SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> I = EWiseApply<bool, SpDCCols<int64_t, bool>>(M, N, TransitiveSelection(), false, id);
         SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> It = I;
         It.Transpose();

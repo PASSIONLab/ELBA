@@ -233,31 +233,10 @@ std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(Sp
         do {
             e = csc->num[cur];
 
-            switch (e.dir) {
-                case 0:
-                    coords[0] = e.b[0] + 15;
-                    coords[1] = e.l[1] - e.b[1];
-                    break;
-                case 3:
-                    coords[0] = e.e[0] - 15;
-                    coords[1] = e.l[1] - e.e[1];
-                    break;
-                case 1:
-                    coords[0] = (e.transpose)? (e.l[0] - e.e[0] + 15) : (e.b[0] + 15);
-                    coords[1] = (e.transpose)? (e.l[1] - e.e[1]) : (e.b[1]);
-                    break;
-                case 2:
-                    coords[0] = (e.transpose)? (e.l[0] - e.b[0] - 15) : (e.e[0] - 15);
-                    coords[1] = (e.transpose)? (e.l[1] - e.b[1]) : (e.e[1]);
-                    break;
-                default:
-                    break;
-            }
-
-            contig.push_back(std::make_tuple(i1next, coords[0], LocalIdxs[cur]));
+            contig.push_back(std::make_tuple(i1next, e.coords[0], LocalIdxs[cur]));
             visited[cur] = true;
                         
-            i1next = coords[1];
+            i1next = e.coords[1];
 
             start = csc->jc[cur];
             end = csc->jc[cur+1];

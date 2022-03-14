@@ -334,13 +334,14 @@ int main(int argc, char **argv)
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
-
   bool transitive_reduction = true; // use in development only
   if (transitive_reduction)
   {
     TransitiveReduction(R, tu);
   }
 
+  R.Apply(Tupleize());
+  R.ParallelWriteMM("tuples.mm", true, TupleHandler());
 
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
@@ -379,6 +380,8 @@ int main(int argc, char **argv)
   std::vector<int64_t> LocalIdxs;
   SpCCols<int64_t, ReadOverlap> ContigChains = R.InducedSubgraphs2Procs(Read2ProcAssignments, LocalIdxs);
 
+  ContigChains.Transpose();
+
   std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> ContigCoords = LocalAssembly(ContigChains, LocalIdxs, myrank);
 
   if (!myrank) {
@@ -386,7 +389,7 @@ int main(int argc, char **argv)
         std::vector<std::tuple<int64_t, int64_t, int64_t>> contig = ContigCoords[i];
         std::cout << "contig " << i << ": ";
         for (int j = 0; j < contig.size(); ++j) {
-            std::cout << "(" << std::get<0>(contig[j]) << ", " << std::get<1>(contig[j]) << ", " << std::get<2>(contig[j]) << ") ";
+            std::cout << "(" << std::get<0>(contig[j]) << ", " << std::get<1>(contig[j]) << ", " << std::get<2>(contig[j])+1 << ") ";
         }
         std::cout << std::endl;
     }
