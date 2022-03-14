@@ -360,12 +360,6 @@ int main(int argc, char **argv)
   /* read idxs to contig ids map */
   ContigAssignments = GetContigAssignments(R, Branches, Roots, NumContigs);
   ContigAssignments.ParallelWrite("contig-assignments.txt", true);
-  //Branches.ParallelWrite("branches.txt", true);
-  //Roots.ParallelWrite("roots.txt", true);
-
-  //ContigAssignments.DebugPrint();
-  //Branches.DebugPrint();
-  //Roots.DebugPrint();
 
   /* contig idxs to contig sizes map */
   ContigSizes = GetContigSizes(ContigAssignments, NumContigs);
@@ -384,17 +378,21 @@ int main(int argc, char **argv)
 
   std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> ContigCoords = LocalAssembly(ContigChains, LocalIdxs, myrank);
 
-  if (!myrank) {
-    for (int i = 0; i < ContigCoords.size(); ++i) {
-        std::vector<std::tuple<int64_t, int64_t, int64_t>> contig = ContigCoords[i];
-        std::cout << "contig " << i << ": ";
-        for (int j = 0; j < contig.size(); ++j) {
-            std::cout << "(" << std::get<0>(contig[j]) << ", " << std::get<1>(contig[j]) << ", " << std::get<2>(contig[j])+1 << ") ";
-        }
-        std::cout << std::endl;
+  std::stringstream iss;
+  iss << "contigs_rank_" << myrank << ".txt";
+  
+  std::ofstream contig_file(iss.str());
+
+  for (int i = 0; i < ContigCoords.size(); ++i) {
+    std::vector<std::tuple<int64_t, int64_t, int64_t>> contig = ContigCoords[i];
+    contig_file << "contig " << i << ": ";
+    for (int j = 0; j < contig.size(); ++j) {
+        contig_file << "(" << std::get<0>(contig[j]) << ", " << std::get<1>(contig[j]) << ", " << std::get<2>(contig[j])+1 << ") ";
     }
+    contig_file << std::endl;
   }
 
+  contig_file.close();
   // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
   // std::vector<std::string> myContigSet;

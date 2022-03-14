@@ -50,8 +50,6 @@ FullyDistVec<int64_t, int64_t> GetContigAssignments
 
     FullyDistVec<int64_t, int64_t> vCC = CC(A, NumContigs);
 
-    //FullyDistVec<int64_t, int64_t> Root2ContigAssignments = vCC(Roots);    
-
     return vCC;
 }
 
@@ -201,7 +199,6 @@ FullyDistVec<int64_t, int64_t> GetReadAssignments
     return Read2ProcAssignments;
 }
 
-
 std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(SpCCols<int64_t, ReadOverlap>& ContigChains, std::vector<int64_t>& LocalIdxs, int myrank)
 {
     std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> ContigCoords;
@@ -224,43 +221,42 @@ std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(Sp
         std::vector<std::tuple<int64_t, int64_t, int64_t>> contig;
 
         int64_t cur = v;
-        int64_t start, end, col;
+        int64_t start, end, next;
+        int64_t i1last = 0;
 
+        ReadOverlap e;
 
-        ReadOverlap e = csc->num[cur];
-        int64_t i1last = (e.dir == 0 || e.dir == 1)? 0 : e.l[0];
+        bool first = true;
 
-        contig.push_back(std::make_tuple(0, 0, 0));
-
-        for (;;) {
-            std::get<0>(contig.back()) = i1last;
-            std::get<1>(contig.back()) = e.coords[0];
-            std::get<2>(contig.back()) = LocalIdxs[cur];
-
-            i1last = e.coords[1];
-
+        while (true) {
             visited[cur] = true;
             start = csc->jc[cur];
             end = csc->jc[cur+1];
-            col = start;
+            next = start;
 
-            while (col < end && visited[csc->ir[col]])
-                ++col;
+            while (next < end && visited[csc->ir[next]])
+                ++next;
 
-            cur = csc->ir[col];
-            
-            if (col < end)
-                contig.push_back(std::make_tuple(0, 0, 0));
-            else
+            if (next >= end)
                 break;
 
-            e = csc->num[cur];
+            e = csc->num[next];
+
+            if (first) {
+                i1last = (e.dir == 0 || e.dir == 1)? 0 : e.l[0];
+                first = false;
+            }
+
+            contig.push_back(std::make_tuple(i1last, e.coords[0], LocalIdxs[cur]));
+
+            i1last = e.coords[1];
+            cur = csc->ir[next];
         }
 
+        contig.push_back(std::make_tuple(i1last, (e.dir == 1 || e.dir == 3)? e.l[1] : 0, LocalIdxs[cur]));
+
         used_roots.insert(cur);
-
         ContigCoords.push_back(contig);
-
     }
 
     return ContigCoords;
