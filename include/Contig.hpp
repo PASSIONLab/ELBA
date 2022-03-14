@@ -221,7 +221,7 @@ std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(Sp
         std::vector<std::tuple<int64_t, int64_t, int64_t>> contig;
 
         int64_t cur = v;
-        int64_t start, end, next;
+        int64_t end, next;
         int64_t i1last = 0;
 
         ReadOverlap e;
@@ -230,9 +230,8 @@ std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(Sp
 
         while (true) {
             visited[cur] = true;
-            start = csc->jc[cur];
+            next = csc->jc[cur];
             end = csc->jc[cur+1];
-            next = start;
 
             while (next < end && visited[csc->ir[next]])
                 ++next;
@@ -261,5 +260,7 @@ std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(Sp
 
     return ContigCoords;
 }
+
+
 
 #endif 
