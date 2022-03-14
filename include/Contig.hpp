@@ -224,34 +224,43 @@ std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(Sp
         std::vector<std::tuple<int64_t, int64_t, int64_t>> contig;
 
         int64_t cur = v;
-        int64_t coords[2] = {0, 0};
-        int64_t i1next = 0;
         int64_t start, end, col;
 
-        ReadOverlap e;
 
-        do {
-            e = csc->num[cur];
+        ReadOverlap e = csc->num[cur];
+        int64_t i1last = (e.dir == 0 || e.dir == 1)? 0 : e.l[0];
 
-            contig.push_back(std::make_tuple(i1next, e.coords[0], LocalIdxs[cur]));
+        contig.push_back(std::make_tuple(0, 0, 0));
+
+        for (;;) {
+            std::get<0>(contig.back()) = i1last;
+            std::get<1>(contig.back()) = e.coords[0];
+            std::get<2>(contig.back()) = LocalIdxs[cur];
+
+            i1last = e.coords[1];
+
             visited[cur] = true;
-                        
-            i1next = e.coords[1];
-
             start = csc->jc[cur];
             end = csc->jc[cur+1];
-
             col = start;
 
             while (col < end && visited[csc->ir[col]])
-                col++;
+                ++col;
 
             cur = csc->ir[col];
+            
+            if (col < end)
+                contig.push_back(std::make_tuple(0, 0, 0));
+            else
+                break;
 
-        } while (col < end);
+            e = csc->num[cur];
+        }
 
         used_roots.insert(cur);
+
         ContigCoords.push_back(contig);
+
     }
 
     return ContigCoords;
