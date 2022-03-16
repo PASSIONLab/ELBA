@@ -380,7 +380,7 @@ int main(int argc, char **argv)
 
   std::stringstream iss;
   iss << "contigs_rank_" << myrank << ".txt";
-  
+
   std::ofstream contig_file(iss.str());
 
   for (int i = 0; i < ContigCoords.size(); ++i) {

@@ -211,8 +211,6 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
     R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), false, false);
     R.Prune(InvalidSRing());
 
-    //R.Apply(FlipReverseCoordinates());
-
     R.ParallelWriteMM("S.mm", true, ReadOverlapHandler());
     R.ParallelWriteMM("Sf.mm", true, ReadOverlapExtraHandler());
 

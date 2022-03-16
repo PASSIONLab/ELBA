@@ -138,7 +138,6 @@ struct ReadOverlapExtraHandler
     {
         os << e.dir << "\t" << e.transpose << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
     }
-    
 };
 
 struct ReadOverlapHandler

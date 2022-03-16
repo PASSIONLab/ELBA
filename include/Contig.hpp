@@ -107,7 +107,7 @@ std::vector<std::tuple<int64_t, int64_t>> GetFilteredContigSizes(const FullyDist
         if (locvec[i] >= MinimumContigSize)
             sendbuf.push_back(std::make_tuple(i+lengthuntil, locvec[i]));
 
-    std::vector<int> recvcounts(nprocs);     
+    std::vector<int> recvcounts(nprocs);
     std::vector<int> displs(nprocs, 0);
 
     recvcounts[myrank] = sendbuf.size();
@@ -167,9 +167,9 @@ FullyDistVec<int64_t, int64_t> GetReadAssignments
     MPI_Comm_size(World, &nprocs);
 
     std::vector<std::tuple<int64_t, int64_t>> FilteredContigSizes = GetFilteredContigSizes(ContigSizes, 3);
-    
+
     int64_t NumContigs = FilteredContigSizes.size();
-    
+
     std::vector<int64_t> Contig2ProcAssignments(NumContigs);
     std::vector<int64_t> idmap(NumContigs);
 
@@ -217,7 +217,7 @@ std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(Sp
 
         if (csc->jc[v+1] - csc->jc[v] != 1 || used_roots.find(v) != used_roots.end())
             continue;
-        
+
         std::vector<std::tuple<int64_t, int64_t, int64_t>> contig;
 
         int64_t cur = v;
@@ -261,6 +261,4 @@ std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(Sp
     return ContigCoords;
 }
 
-
-
-#endif 
+#endif
