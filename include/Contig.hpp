@@ -261,4 +261,138 @@ std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(Sp
     return ContigCoords;
 }
 
+std::vector<std::string> ReadExchange(std::vector<int> request_ids, const std::vector<std::string>& locreads, const int myoffset)
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+    std::sort(request_ids.begin(), request_ids.end());
+
+    const int num_request_ids = request_ids.size(); /* total number of reads that this processor is requesting */
+    const int num_locreads = locreads.size();       /* total number of reads stored on this processor */
+
+    /* STEP ONE
+     * --------
+     * give everyone access to information regarding global read id offset information */
+
+    std::vector<int> g_offsets(nprocs);    /* global offset for reads stored on each processor */
+    std::vector<int> g_readcounts(nprocs); /* number of reads stored on each processor */
+
+    MPI_Allgather(&myoffset, 1, MPI_INT, g_offsets.data(), 1, MPI_INT, MPI_COMM_WORLD);
+    MPI_Allgather(&num_locreads, 1, MPI_INT, g_readcounts.data(), 1, MPI_INT, MPI_COMM_WORLD);
+
+    /* STEP TWO
+     * --------
+     * using global offset and read counts information, each local processor must compute
+     * the number of reads it will be sending to each other processor. then communicate these
+     * counts all-to-all so that every process knows how many reads it will receive from each
+     * process. finally, use these counts to do a variable all-to-all which communicates
+     * to each process the order that their local read sequences will need to be packed
+     * in order to be sent correctly to their destinations later */
+
+    std::vector<int> read_sendcounts(nprocs, 0);
+    std::vector<int> read_recvcounts(nprocs, 0);
+
+    int where = 0;
+    for (auto itr = request_ids.begin(); itr != request_ids.end(); ++itr) {
+        while (*itr >= g_offsets[where] + g_readcounts[where])
+            ++where;
+        ++read_sendcounts[where];
+    }
+
+
+    MPI_Alltoall(read_sendcounts.data(), 1, MPI_INT, read_recvcounts.data(), 1, MPI_INT, MPI_COMM_WORLD);
+
+    std::vector<int> read_sdispls(nprocs, 0);
+    std::vector<int> read_rdispls(nprocs, 0);
+
+    std::partial_sum(read_sendcounts.begin(), read_sendcounts.end()-1, read_sdispls.begin()+1);
+    std::partial_sum(read_recvcounts.begin(), read_recvcounts.end()-1, read_rdispls.begin()+1);
+
+    std::vector<int> myids(num_locreads); /* will store local read ids in the order in which they will be sent to other processes */
+
+    MPI_Alltoallv(request_ids.data(), read_sendcounts.data(), read_sdispls.data(), MPI_INT, myids.data(), read_recvcounts.data(), read_rdispls.data(), MPI_INT, MPI_COMM_WORLD);
+
+    /* TODO : describe or delete, i.e. figure this out */
+    std::transform(myids.begin(), myids.end(), myids.begin(), [&](const int& n) { return n - myoffset; });
+
+    /* STEP THREE
+     * ----------
+     * pack local reads in correct order and record index information for each read, i.e. all reads
+     * that are going to a particular processor will be sent and receive as a long char buffer array, and
+     * we therefore have to send alongside (in another collective all-to-all) it the details of
+     * where in the char buffer each read is located, i.e. start and end indices */
+
+    auto bufcntr = [](int a, std::string b) { return a + b.size(); };
+    int packedbuf_length = std::accumulate(locreads.begin(), locreads.end(), 0, bufcntr);
+
+    char *packedbuf = new char[packedbuf_length+1]();         /* packed buffer of all outgoing reads for Alltoallv communication */
+    std::vector<int> packedbuf_sendcounts(nprocs, 0);         /* specify how many chars are being sent to each processor */
+    std::vector<int> packedbuf_read_lengths(num_locreads, 0); /* for each read in packed buffer, give its read length */
+
+    int k = 0;
+    char *packptr = packedbuf;
+    for (int i = 0; i < nprocs; ++i) {
+        int l_offset = 0;
+        for (int j = 0; j < read_recvcounts[i]; ++j) {
+            std::string l_read = locreads[myids[j + read_rdispls[i]]];
+            int copylen = l_read.copy(packptr, l_read.size());
+            packedbuf_read_lengths[k++] = copylen;
+            packedbuf_sendcounts[i] += copylen;
+            l_offset += copylen;
+            packptr += copylen;
+        }
+    }
+
+    /* STEP FOUR
+     * ---------
+     * all-to-all communicate the char buffers and the packing information */
+
+    std::vector<int> packedbuf_recvcounts(nprocs);
+
+    MPI_Alltoall(packedbuf_sendcounts.data(), 1, MPI_INT, packedbuf_recvcounts.data(), 1, MPI_INT, MPI_COMM_WORLD);
+
+    std::vector<int> packedbuf_sdispls(nprocs, 0);
+    std::vector<int> packedbuf_rdispls(nprocs, 0);
+
+    std::partial_sum(packedbuf_sendcounts.begin(), packedbuf_sendcounts.end()-1, packedbuf_sdispls.begin()+1);
+    std::partial_sum(packedbuf_recvcounts.begin(), packedbuf_recvcounts.end()-1, packedbuf_rdispls.begin()+1);
+
+    int packedbuf_recvlen = std::accumulate(packedbuf_recvcounts.begin(), packedbuf_recvcounts.end(), 0);
+
+    char *packedbuf_recv = new char[packedbuf_recvlen+1]();
+
+    MPI_Alltoallv(packedbuf,      packedbuf_sendcounts.data(), packedbuf_sdispls.data(), MPI_CHAR,
+                  packedbuf_recv, packedbuf_recvcounts.data(), packedbuf_rdispls.data(), MPI_CHAR, MPI_COMM_WORLD);
+
+    std::vector<int> recv_read_lengths(num_request_ids);
+
+    MPI_Alltoallv(packedbuf_read_lengths.data(), read_recvcounts.data(), read_rdispls.data(), MPI_INT,
+                  recv_read_lengths.data(),      read_sendcounts.data(), read_sdispls.data(), MPI_INT, MPI_COMM_WORLD);
+
+    /* STEP FIVE
+     * --------
+     * unpack the received char buffers using the packing information. construct a vector of read
+     * strings corresponding exactly to the initial requested ids vector that was passed as input
+     * to this function */
+
+    std::vector<std::string> requested_reads;
+    requested_reads.reserve(num_request_ids);
+
+    k = 0;
+    for (int i = 0; i < nprocs; ++i) {
+        char *procbuf = packedbuf_recv + packedbuf_rdispls[i];
+        int procbuf_length = packedbuf_recvcounts[i];
+        int buf_offset = 0;
+        for (int j = 0; j < read_sendcounts[i]; ++j) {
+            int read_length = recv_read_lengths[k++];
+            requested_reads.emplace_back(procbuf + buf_offset, read_length);
+            buf_offset += read_length;
+        }
+    }
+
+    return requested_reads;
+}
+
 #endif
