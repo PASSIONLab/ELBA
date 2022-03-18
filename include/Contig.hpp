@@ -5,8 +5,8 @@
 #include <cmath>
 #include <map>
 #include <fstream>
-
 #include <cassert>
+#include <limits>
 
 #include "TraceUtils.hpp"
 #include "ReadOverlap.hpp"
@@ -118,6 +118,8 @@ std::vector<std::tuple<int64_t, int64_t>> GetFilteredContigSizes(const FullyDist
 
     int64_t totalsize = std::accumulate(recvcounts.begin(), recvcounts.end(), static_cast<int64_t>(0));
 
+    assert((totalsize < std::numeric_limits<int>::max()));
+
     std::vector<std::tuple<int64_t, int64_t>> recvbuf(totalsize);
 
     MPI_Allgatherv(sendbuf.data(), recvcounts[myrank], MPIType<std::tuple<int64_t, int64_t>>(), recvbuf.data(), recvcounts.data(), displs.data(), MPIType<std::tuple<int64_t, int64_t>>(), World);
@@ -205,8 +207,8 @@ std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(Sp
 
     int64_t numreads = ContigChains.getnrow();
 
-    assert(numreads == ContigChains.getncol());
-    assert(numreads = LocalIdxs.size());
+    assert((numreads == ContigChains.getncol()));
+    assert((numreads = LocalIdxs.size()));
 
     bool visited[numreads] = {0};
     std::unordered_set<int64_t> used_roots;
@@ -261,7 +263,8 @@ std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> LocalAssembly(Sp
     return ContigCoords;
 }
 
-std::vector<std::string> ReadExchange(std::vector<int> request_ids, const std::vector<std::string>& locreads, const int myoffset)
+// std::vector<std::string> ReadExchange(std::vector<int> request_ids, const std::vector<std::string>& locreads, const int myoffset)
+std::vector<std::string> ReadExchange(std::vector<int> request_ids, std::shared_ptr<DistributedFastaData>& dfd)
 {
     int myrank, nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
@@ -314,7 +317,6 @@ std::vector<std::string> ReadExchange(std::vector<int> request_ids, const std::v
 
     MPI_Alltoallv(request_ids.data(), read_sendcounts.data(), read_sdispls.data(), MPI_INT, myids.data(), read_recvcounts.data(), read_rdispls.data(), MPI_INT, MPI_COMM_WORLD);
 
-    /* TODO : describe or delete, i.e. figure this out */
     std::transform(myids.begin(), myids.end(), myids.begin(), [&](const int& n) { return n - myoffset; });
 
     /* STEP THREE
@@ -359,7 +361,9 @@ std::vector<std::string> ReadExchange(std::vector<int> request_ids, const std::v
     std::partial_sum(packedbuf_sendcounts.begin(), packedbuf_sendcounts.end()-1, packedbuf_sdispls.begin()+1);
     std::partial_sum(packedbuf_recvcounts.begin(), packedbuf_recvcounts.end()-1, packedbuf_rdispls.begin()+1);
 
-    int packedbuf_recvlen = std::accumulate(packedbuf_recvcounts.begin(), packedbuf_recvcounts.end(), 0);
+    int64_t packedbuf_recvlen = std::accumulate(packedbuf_recvcounts.begin(), packedbuf_recvcounts.end(), static_cast<int64_t>(0));
+
+    assert((packedbuf_recvlen < std::numeric_limits<int64_t>::max()));
 
     char *packedbuf_recv = new char[packedbuf_recvlen+1]();
 
