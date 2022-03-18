@@ -23,8 +23,8 @@
 using namespace combblas;
 using namespace std;
 
-#define FUZZ (1000)
-#define DEBUG
+//#define FUZZ (1000)
+//#define DEBUG
 
 /** Given a biridrected graph, an edge v ?-? x can only be considered transitive given a pair of edges v ?-? w ?-? x if:
  * (1) The two heads adjacent to w have opposite orientation:

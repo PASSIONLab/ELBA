@@ -153,10 +153,7 @@ struct ReadOverlapHandler
     template <typename c, typename t>
     void read(std::basic_istream<c,t>& is, const ReadOverlap& e, int64_t row, int64_t col)
     {
-        int sfx, dir;
-        is >> dir >> sfx;
-
-        return ReadOverlap(sfx, dir);
+        is >> e.dir >> e.sfx;
     }
 
     void binaryfill(FILE *rFile, int64_t row, int64_t col, ReadOverlap& e) {}

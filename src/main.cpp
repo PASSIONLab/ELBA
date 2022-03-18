@@ -385,14 +385,26 @@ int main(int argc, char **argv)
 
   for (int i = 0; i < ContigCoords.size(); ++i) {
     std::vector<std::tuple<int64_t, int64_t, int64_t>> contig = ContigCoords[i];
-    contig_file << "contig " << i << ": ";
+    contig_file << "contig " << i << ":" << std::endl;
     for (int j = 0; j < contig.size(); ++j) {
-        contig_file << "(" << std::get<0>(contig[j]) << ", " << std::get<1>(contig[j]) << ", " << std::get<2>(contig[j])+1 << ") ";
+        contig_file << std::get<0>(contig[j]) << "\t" << std::get<1>(contig[j]) << "\t" << std::get<2>(contig[j]) << std::endl;
     }
-    contig_file << std::endl;
   }
 
   contig_file.close();
+
+  //std::vector<std::string> contigs = ReadExchange(LocalIdxs, dfd);
+
+  iss.str("");
+  iss << "local_idxs_rank_" << myrank << ".txt";
+
+  std::ofstream local_idxs_file(iss.str());
+  int i = 1;
+  for (auto itr = LocalIdxs.begin(); itr != LocalIdxs.end(); ++itr, ++i)
+    local_idxs_file << i << "\t" << *itr << std::endl;
+
+  local_idxs_file.close();
+
   // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
   // std::vector<std::string> myContigSet;
