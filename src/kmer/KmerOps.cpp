@@ -75,7 +75,8 @@ WriteReadNameMap(const char* outfilename, unordered_map<ReadId,string>& readName
 	if (!myoutputfile.is_open())
     {
 		std::cout << "Could not open " << outfilename << std::endl;
-		return -1;
+        assert(0&&"couln't open");
+		//return -1;
 	}
 
 	for(auto map_itr = readNameMap.begin(); map_itr != readNameMap.end(); map_itr++)
