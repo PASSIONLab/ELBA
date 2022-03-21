@@ -277,22 +277,35 @@ int64_t ReadExchange(FullyDistVec<int64_t, int64_t> Read2ProcAssignments,
     MPI_Comm_rank(World, &myrank);
     MPI_Comm_size(World, &nprocs);
 
-    std::vector<int64_t> read2procs = Read2ProcAssignments.GetLocVec();
-    uint64_t myoffset = Read2ProcAssignments.LengthUntil();
-    uint64_t num_locreads = read2procs.size();
+    std::vector<int64_t> read2procs = Read2ProcAssignments.GetLocVec(); /* local vector segment of distributed @Read2ProcAssignments,
+                                                                           mapping local read indices to their destination processes */
+    uint64_t myoffset = Read2ProcAssignments.LengthUntil(); /* global offset of @Read2ProcAssignments */
+    uint64_t num_locreads = read2procs.size(); /* number of reads stored on local processor */
 
-    uint64_t charbuf_totsend, read_totsend = 0;
+    uint64_t charbuf_totsend; /* will store total number of chars this processor will send */
+    uint64_t read_totsend = 0; /* will store total number of reads this processor will send */
 
-    std::vector<int> read_sendcounts(nprocs, 0);
-    std::vector<std::vector<uint64_t>> i_read_send_idxs(nprocs);
-    std::vector<std::vector<uint64_t>> i_read_send_lens(nprocs);
+    std::vector<int> read_sendcounts(nprocs, 0); /* sendcounts for read indices and read lengths (MPI_Alltoallv::sendcounts) */
+
+    /* In our MPI_Alltoallv call, we will have to store the reads we send (for both the char buffer
+     * and associated metadata) packed together by processor. Because the local reads we are sending
+     * are assigned more or less randomly, we have to first go through each local read index and
+     * determine exactly which processors are receivers of our local reads, so that we can then
+     * pack all reads of a particular processor together in the final MPI_Alltoallv send buffers */
+
+    std::vector<std::vector<uint64_t>> i_read_send_idxs(nprocs); /* intra-processor read global indices to send */
+    std::vector<std::vector<uint64_t>> i_read_send_lens(nprocs); /* intra-processor read lengths to send */
+
+    std::unordered_map<uint64_t, std::tuple<ushort, uint64_t>> lfd_info_cache; /* cache used read lengths and offsets for later */
 
     for (uint64_t i = 0; i < num_locreads; ++i) {
         int dest = read2procs[i];
+        /* dest == -1 means the read is not participating in contig creation */
         if (dest >= 0 && myrank != dest) {
             ushort readlen;
             uint64_t start_offset, end_offset;
             lfd->get_sequence(i, readlen, start_offset, end_offset);
+            lfd_info_cache[i] = std::make_tuple(readlen, start_offset);
             i_read_send_idxs[dest].push_back(i+myoffset);
             i_read_send_lens[dest].push_back(readlen);
             ++read_sendcounts[dest];
@@ -300,17 +313,20 @@ int64_t ReadExchange(FullyDistVec<int64_t, int64_t> Read2ProcAssignments,
         }
     }
 
-    std::vector<int> read_sdispls(nprocs, 0);
+    std::vector<int> read_sdispls(nprocs, 0); /* read index/length buffer processor send displacements (MPI_Alltoallv::sdispls) */
 
-    std::vector<uint64_t> read_send_idxs(read_totsend);
-    std::vector<uint64_t> read_send_lens(read_totsend);
+    std::vector<uint64_t> read_send_idxs(read_totsend); /* read index send buffer (MPI_Alltoallv::sendbuf) */
+    std::vector<uint64_t> read_send_lens(read_totsend); /* read length send buffer (MPI_Alltoallv::sendbuf) */
 
     std::partial_sum(read_sendcounts.begin(), read_sendcounts.end()-1, read_sdispls.begin()+1);
 
-    std::vector<int> charbuf_sendcounts(nprocs, 0);
-    std::vector<int> charbuf_sdispls(nprocs, 0);
+    std::vector<int> charbuf_sendcounts(nprocs, 0); /* sendcounts for packed char buffer (MPI_Alltoallv::sendcounts) */
+    std::vector<int> charbuf_sdispls(nprocs, 0); /* send displacements for packed char buffer (MPI_Alltoallv::sdispls) */
 
     charbuf_totsend = 0;
+
+    /* intra-processor read lengths/indices are ready to be copied into actual send buffers.
+     * loop jamming used also to calculate how many chars are being sent to each process */
     for (int i = 0; i < nprocs; ++i) {
         std::copy(i_read_send_idxs[i].begin(), i_read_send_idxs[i].end(), read_send_idxs.begin() + read_sdispls[i]);
         std::copy(i_read_send_lens[i].begin(), i_read_send_lens[i].end(), read_send_lens.begin() + read_sdispls[i]);
@@ -319,41 +335,47 @@ int64_t ReadExchange(FullyDistVec<int64_t, int64_t> Read2ProcAssignments,
         charbuf_totsend += rslen;
     }
 
+    /* TODO :: Can the above loop also include char buffer loading?? */
+
     std::partial_sum(charbuf_sendcounts.begin(), charbuf_sendcounts.end()-1, charbuf_sdispls.begin()+1);
 
-    std::vector<int> read_recvcounts(nprocs);
-    std::vector<int> read_rdispls(nprocs, 0);
+    std::vector<int> read_recvcounts(nprocs); /* recvcounts for read indices/lengths (MPI_Alltoallv::recvcounts) */
+    std::vector<int> read_rdispls(nprocs, 0); /* rdispls for read indices/lengths (MPI_Alltoallv::rdispls) */
 
-    std::vector<int> charbuf_recvcounts(nprocs);
-    std::vector<int> charbuf_rdispls(nprocs, 0);
+    std::vector<int> charbuf_recvcounts(nprocs); /* recvcounts for packed char buffer (MPI_Alltoallv::recvcounts) */
+    std::vector<int> charbuf_rdispls(nprocs, 0); /* rdispls for packed char buffer (MPI_Alltoalv::rdispls) */
 
+    /* MPI_Alltoalls so that each processor knows how much it is receiving and from whom */
     MPI_Alltoall(read_sendcounts.data(), 1, MPI_INT, read_recvcounts.data(), 1, MPI_INT, World);
     MPI_Alltoall(charbuf_sendcounts.data(), 1, MPI_INT, charbuf_recvcounts.data(), 1, MPI_INT, World);
 
-    uint64_t read_totrecv = std::accumulate(read_recvcounts.begin(), read_recvcounts.end(), static_cast<uint64_t>(0));
+    uint64_t read_totrecv = std::accumulate(read_recvcounts.begin(), read_recvcounts.end(), static_cast<uint64_t>(0)); /* total number of reads to receive on this processor */
     std::partial_sum(read_recvcounts.begin(), read_recvcounts.end()-1, read_rdispls.begin()+1);
 
-    uint64_t charbuf_totrecv = std::accumulate(charbuf_recvcounts.begin(), charbuf_recvcounts.end(), static_cast<uint64_t>(0));
+    uint64_t charbuf_totrecv = std::accumulate(charbuf_recvcounts.begin(), charbuf_recvcounts.end(), static_cast<uint64_t>(0)); /* total number of chars to receive on this processor */
     std::partial_sum(charbuf_recvcounts.begin(), charbuf_recvcounts.end()-1, charbuf_rdispls.begin()+1);
 
-    std::vector<uint64_t> read_recv_idxs(read_totrecv);
-    std::vector<uint64_t> read_recv_lens(read_totrecv);
+    std::vector<uint64_t> read_recv_idxs(read_totrecv); /* received read indices buffer (MPI_Alltoallv::recvbuf) */
+    std::vector<uint64_t> read_recv_lens(read_totrecv); /* received read lengths buffer (MPI_Alltoallv::recvbuf) */
 
-    MPI_Alltoallv(read_send_idxs.data(), read_sendcounts.data(), read_sdispls.data(), MPI_UINT64_T, read_recv_idxs.data(), read_recvcounts.data(), read_rdispls.data(), MPI_UINT64_T, MPI_COMM_WORLD);
-    MPI_Alltoallv(read_send_lens.data(), read_sendcounts.data(), read_sdispls.data(), MPI_UINT64_T, read_recv_lens.data(), read_recvcounts.data(), read_rdispls.data(), MPI_UINT64_T, MPI_COMM_WORLD);
+    /* MPI_Alltoallvs so that each processor receives the global read indices that are to be sent
+     * here, and the read lengths as well */
+    MPI_Alltoallv(read_send_idxs.data(), read_sendcounts.data(), read_sdispls.data(), MPI_UINT64_T, read_recv_idxs.data(), read_recvcounts.data(), read_rdispls.data(), MPI_UINT64_T, World);
+    MPI_Alltoallv(read_send_lens.data(), read_sendcounts.data(), read_sdispls.data(), MPI_UINT64_T, read_recv_lens.data(), read_recvcounts.data(), read_rdispls.data(), MPI_UINT64_T, World);
 
-    char *charbuf_send = new char[charbuf_totsend+1]();
+    char *charbuf_send = new char[charbuf_totsend+1](); /* char buffer to send all the reads (MPI_Alltoallv::sendbuf) */
     char *charbuf_send_ptr = charbuf_send;
 
     const char *lfd_buffer = lfd->buffer();
 
+    /* create the packed char buffer to send */
     for (int i = 0; i < nprocs; ++i) {
         std::vector<uint64_t>& my_read_send_idxs = i_read_send_idxs[i];
         for (auto itr = my_read_send_idxs.begin(); itr != my_read_send_idxs.end(); ++itr) {
-            ushort len;
-            uint64_t start_offset, end_offset;
-            lfd->get_sequence(*itr, len, start_offset, end_offset);
-            std::memcpy(charbuf_send_ptr, lfd_buffer + start_offset, len);
+            auto cached = lfd_info_cache[*itr];
+            ushort len = std::get<0>(cached);
+            uint64_t offset = std::get<1>(cached);
+            std::memcpy(charbuf_send_ptr, lfd_buffer + offset, len);
             charbuf_send_ptr += len;
         }
     }
