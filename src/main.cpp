@@ -378,32 +378,28 @@ int main(int argc, char **argv)
 
   std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> ContigCoords = LocalAssembly(ContigChains, LocalIdxs, myrank);
 
-  std::stringstream iss;
-  iss << "contigs_rank_" << myrank << ".txt";
+  char *charbuf;
+  std::vector<uint64_t> charbuf_read_idxs;
+  std::vector<uint64_t> charbuf_read_lengths;
+  std::vector<uint64_t> charbuf_read_offsets;
 
-  std::ofstream contig_file(iss.str());
+  int64_t ReadsReceived = ReadExchange(Read2ProcAssignments, dfd->lfd(), &charbuf, charbuf_read_idxs, charbuf_read_lengths, charbuf_read_offsets);
 
-  for (int i = 0; i < ContigCoords.size(); ++i) {
-    std::vector<std::tuple<int64_t, int64_t, int64_t>> contig = ContigCoords[i];
-    contig_file << "contig " << i << ":" << std::endl;
-    for (int j = 0; j < contig.size(); ++j) {
-        contig_file << std::get<0>(contig[j]) << "\t" << std::get<1>(contig[j]) << "\t" << std::get<2>(contig[j]) << std::endl;
-    }
-  }
+  //std::stringstream iss;
+  //iss << "contigs_rank_" << myrank << ".txt";
 
-  contig_file.close();
+  //std::ofstream contig_file(iss.str());
 
-  //std::vector<std::string> contigs = ReadExchange(LocalIdxs, dfd);
+  //for (int i = 0; i < ContigCoords.size(); ++i) {
+  //  std::vector<std::tuple<int64_t, int64_t, int64_t>> contig = ContigCoords[i];
+  //  contig_file << "contig " << i << ":" << std::endl;
+  //  for (int j = 0; j < contig.size(); ++j) {
+  //      contig_file << std::get<0>(contig[j]) << "\t" << std::get<1>(contig[j]) << "\t" << std::get<2>(contig[j]) << std::endl;
+  //  }
+  //}
 
-  iss.str("");
-  iss << "local_idxs_rank_" << myrank << ".txt";
+  //contig_file.close();
 
-  std::ofstream local_idxs_file(iss.str());
-  int i = 1;
-  for (auto itr = LocalIdxs.begin(); itr != LocalIdxs.end(); ++itr, ++i)
-    local_idxs_file << i << "\t" << *itr << std::endl;
-
-  local_idxs_file.close();
 
   // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
