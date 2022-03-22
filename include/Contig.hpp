@@ -16,6 +16,33 @@
 
 using namespace combblas;
 
+template <typename T>
+void write_object_to_file(T object, std::string prefix)
+{
+    int myrank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    std::stringstream filename;
+    filename << prefix << "_" << myrank << ".txt";
+    std::ofstream filestream(filename.str());
+    filestream << object << std::endl;
+    filestream.close();
+}
+
+template <typename T>
+void write_vector_to_file(const std::vector<T>& vec, std::string prefix)
+{
+    int myrank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    std::stringstream filename;
+    filename << prefix << "_" << myrank << ".txt";
+    std::ofstream filestream(filename.str());
+    for (auto itr = vec.begin(); itr != vec.end(); ++itr) {
+        filestream << *itr << ", ";
+    }
+    filestream << std::endl;
+    filestream.close();
+}
+
 FullyDistVec<int64_t, int64_t> GetContigAssignments
 (
     const SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>& OverlapGraph,
@@ -279,8 +306,25 @@ int64_t ReadExchange(FullyDistVec<int64_t, int64_t> Read2ProcAssignments,
 
     std::vector<int64_t> read2procs = Read2ProcAssignments.GetLocVec(); /* local vector segment of distributed @Read2ProcAssignments,
                                                                            mapping local read indices to their destination processes */
-    uint64_t myoffset = Read2ProcAssignments.LengthUntil(); /* global offset of @Read2ProcAssignments */
-    uint64_t num_locreads = read2procs.size(); /* number of reads stored on local processor */
+    //uint64_t myoffset = Read2ProcAssignments.LengthUntil(); /* global offset of @Read2ProcAssignments */
+    //uint64_t num_locreads = read2procs.size(); /* number of reads stored on local processor */
+
+    std::vector<int64_t> read2procs_global(Read2ProcAssignments.TotalLength());
+
+    std::vector<int> read2procs_recvcounts(nprocs);
+    std::vector<int> read2procs_displs(nprocs, 0);
+
+    int s = static_cast<int>(read2procs.size());
+    MPI_Allgather(&s, 1, MPI_INT, read2procs_recvcounts.data(),  1, MPI_INT, World);
+
+    std::partial_sum(read2procs_recvcounts.begin(), read2procs_recvcounts.end()-1, read2procs_displs.begin()+1);
+
+    MPI_Allgatherv(read2procs.data(), s, MPI_INT64_T, read2procs_global.data(), read2procs_recvcounts.data(), read2procs_displs.data(), MPI_INT64_T, World);
+
+    uint64_t num_locreads = lfd->local_count();
+    uint64_t myoffset = 0;
+
+    MPI_Exscan(&num_locreads, &myoffset, 1, MPI_UINT64_T, MPI_SUM, World);
 
     uint64_t charbuf_totsend; /* will store total number of chars this processor will send */
     uint64_t read_totsend = 0; /* will store total number of reads this processor will send */
@@ -299,7 +343,7 @@ int64_t ReadExchange(FullyDistVec<int64_t, int64_t> Read2ProcAssignments,
     std::unordered_map<uint64_t, std::tuple<ushort, uint64_t>> lfd_info_cache; /* cache used read lengths and offsets for later */
 
     for (uint64_t i = 0; i < num_locreads; ++i) {
-        int dest = read2procs[i];
+        int dest = read2procs_global[i+myoffset];
         /* dest == -1 means the read is not participating in contig creation */
         if (dest >= 0 && myrank != dest) {
             ushort readlen;
@@ -330,7 +374,7 @@ int64_t ReadExchange(FullyDistVec<int64_t, int64_t> Read2ProcAssignments,
     for (int i = 0; i < nprocs; ++i) {
         std::copy(i_read_send_idxs[i].begin(), i_read_send_idxs[i].end(), read_send_idxs.begin() + read_sdispls[i]);
         std::copy(i_read_send_lens[i].begin(), i_read_send_lens[i].end(), read_send_lens.begin() + read_sdispls[i]);
-        uint64_t rslen = std::accumulate(i_read_send_lens[i].begin(), i_read_send_lens[i].end(), static_cast<int>(0));
+        uint64_t rslen = std::accumulate(i_read_send_lens[i].begin(), i_read_send_lens[i].end(), static_cast<uint64_t>(0));
         charbuf_sendcounts[i] = rslen;
         charbuf_totsend += rslen;
     }
@@ -368,23 +412,20 @@ int64_t ReadExchange(FullyDistVec<int64_t, int64_t> Read2ProcAssignments,
 
     const char *lfd_buffer = lfd->buffer();
 
-    /* create the packed char buffer to send */
-    for (int i = 0; i < nprocs; ++i) {
-        std::vector<uint64_t>& my_read_send_idxs = i_read_send_idxs[i];
-        for (auto itr = my_read_send_idxs.begin(); itr != my_read_send_idxs.end(); ++itr) {
-            auto cached = lfd_info_cache[*itr];
-            ushort len = std::get<0>(cached);
-            uint64_t offset = std::get<1>(cached);
-            std::memcpy(charbuf_send_ptr, lfd_buffer + offset, len);
-            charbuf_send_ptr += len;
-        }
-    }
+    ushort len;
+    uint64_t offset;
 
-    charbuf_send_ptr = nullptr;
+    /* create the packed char buffer to send */
+    for (auto itr = read_send_idxs.begin(); itr != read_send_idxs.end(); ++itr) {
+        auto cached = lfd_info_cache[*itr - myoffset];
+        len = std::get<0>(cached), offset = std::get<1>(cached);
+        std::strncpy(charbuf_send_ptr, lfd_buffer + offset, len);
+        charbuf_send_ptr += len;
+    }
 
     char *charbuf_recv = new char[charbuf_totrecv+1]();
 
-    MPI_Alltoallv(charbuf_send, charbuf_sendcounts.data(), charbuf_sdispls.data(), MPI_CHAR, charbuf_recv, charbuf_recvcounts.data(), charbuf_rdispls.data(), MPI_CHAR, MPI_COMM_WORLD);
+    MPI_Alltoallv(charbuf_send, charbuf_sendcounts.data(), charbuf_sdispls.data(), MPI_CHAR, charbuf_recv, charbuf_recvcounts.data(), charbuf_rdispls.data(), MPI_CHAR, World);
 
     delete [] charbuf_send;
 
@@ -398,7 +439,7 @@ int64_t ReadExchange(FullyDistVec<int64_t, int64_t> Read2ProcAssignments,
 
     *charbuf = charbuf_recv;
     return read_totrecv;
-
 }
+
 
 #endif
