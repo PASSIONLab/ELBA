@@ -76,11 +76,6 @@ public:
 
   void wait();
 
-  uint64_t row_seq_start_idx;
-  uint64_t row_seq_end_idx;
-  uint64_t col_seq_start_idx;
-  uint64_t col_seq_end_idx;
-
 private:
   std::shared_ptr<TimePod> tp;
   TraceUtils tu;
@@ -95,10 +90,10 @@ private:
   std::vector<seqan::Dna5String *> row_seqs;
   std::vector<seqan::Dna5String *> col_seqs;
 
-  //uint64_t row_seq_start_idx;
-  //uint64_t row_seq_end_idx;
-  //uint64_t col_seq_start_idx;
-  //uint64_t col_seq_end_idx;
+  uint64_t row_seq_start_idx;
+  uint64_t row_seq_end_idx;
+  uint64_t col_seq_start_idx;
+  uint64_t col_seq_end_idx;
 
   /*! recv counts and buffers */
   int recv_nbrs_count;

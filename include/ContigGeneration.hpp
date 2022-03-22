@@ -29,8 +29,65 @@ typedef CSpMat<ReadOverlap>::MPI_DCCols DistStringGraph;
 typedef CSpMat<ReadOverlap>::CCols LocStringGraph;
 typedef FullyDistVec<IType, IType> DistAssignmentVec;
 
+struct ReadLocations;
+
 struct distinfo { MPI_Comm world; int myrank, nprocs; distinfo(std::shared_ptr<CommGrid> commgrid); };
 distinfo::distinfo(std::shared_ptr<CommGrid> commgrid) : world(commgrid->GetWorld()), myrank(commgrid->GetRank()), nprocs(commgrid->GetSize()) {}
+
+struct ReadLocations
+{
+public:
+    std::vector<IType> offsets;
+    std::vector<IType> numreads;
+
+    IType cached_left_val, cached_right_val;
+    int cached_index;
+
+    ReadLocations(const IType num_locreads, const distinfo& di)
+    {
+        IType myoffset = 0;
+        MPI_Exscan(&num_locreads, &myoffset, 1, MPIType<IType>(), MPI_SUM, di.world);
+
+        offsets.resize(di.nprocs);
+        numreads.resize(di.nprocs);
+
+        MPI_Allgather(&myoffset, 1, MPIType<IType>(), offsets.data(), 1, MPIType<IType>(), di.world);
+        MPI_Allgather(&num_locreads, 1, MPIType<IType>(), numreads.data(), 1, MPIType<IType>(), di.world);
+
+        cached_left_val = 0;
+        cached_right_val = offsets.back();
+        cached_index = -1;
+    }
+
+    int GetReadOwner(IType gidx)
+    {
+        if (cached_left_val <= gidx && gidx < cached_right_val)
+            return cached_index;
+
+        if (gidx < 0 || gidx >= offsets.back())
+            return -1;
+
+        int left, right, mid;
+        left = 0, right = offsets.size() - 1;
+
+        while (left < right) {
+            mid = (left + right) / 2;
+            if (offsets[mid] <= gidx && gidx < offsets[mid] + numreads[mid])
+                break;
+            else if (offsets[mid] < gidx)
+                left = mid + 1;
+            else if (offsets[mid] > gidx)
+                right = mid - 1;
+            else
+                break;
+        }
+        cached_left_val = offsets[mid];
+        cached_right_val = cached_left_val + numreads[mid];
+        cached_index = mid;
+
+        return cached_index;
+    }
+};
 
 IType
 GetRead2Contigs(DistStringGraph& G, DistAssignmentVec& Read2Contigs, distinfo& di);
@@ -38,11 +95,12 @@ GetRead2Contigs(DistStringGraph& G, DistAssignmentVec& Read2Contigs, distinfo& d
 DistAssignmentVec
 GetContigSizes(const DistAssignmentVec& Read2Contigs, const IType NumContigs, distinfo& di);
 
-DistAssignmentVec
-GetRead2Procs(DistAssignmentVec& Read2Contigs, DistAssignmentVec& ContigSizes, distinfo& di);
-
 std::vector<std::tuple<IType,IType>>
-GetAllContigSizesSorted(DistAssignmentVec& ContigSizes, IType minsize, distinfo& di);
+GetAllContigSizesSorted(DistAssignmentVec& ContigSizes, IType& NumUsedContigs, IType minsize, distinfo& di);
+
+std::vector<IType>
+GetLocalRead2Procs(DistAssignmentVec& Read2Contigs, std::vector<std::tuple<IType,IType>>& AllContigSizesSorted, const IType NumUsedContigs, ReadLocations& readlocs, distinfo& di);
+
 
 /* @func CreateContig   Assemble contigs from distributed string graph.
  *
@@ -63,6 +121,7 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     SpParHelper::Print(outs.str());
 
     distinfo di(G.getcommgrid());
+    ReadLocations readlocs(dfd->lfd()->local_count(), di);
 
     IType NumContigs;
     DistAssignmentVec Read2Contigs;
@@ -73,14 +132,14 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
 
     IType NumUsedContigs;
     std::vector<std::tuple<IType, IType>> AllContigSizesSorted;
-    DistAssignmentVec Read2Procs;
+    std::vector<IType> LocalRead2Procs;
+    std::vector<IType> AllContig2Procs;
 
-    AllContigSizesSorted = GetAllContigSizesSorted(ContigSizes, 3, di);
-    // Read2Procs  = GetRead2Procs(Read2Contigs, ContigSizes, di);
+    AllContigSizesSorted = GetAllContigSizesSorted(ContigSizes, NumUsedContigs, 3, di);
+    LocalRead2Procs      = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, readlocs, di);
 
     std::vector<IType> LocalContigReadIdxs;
-
-    LocStringGraph ContigChains = G.InducedSubgraphs2Procs(Read2Procs, LocalContigReadIdxs);
+    LocStringGraph ContigChains = G.InducedSubgraphs2Procs(DistAssignmentVec(LocalRead2Procs, G.getcommgrid()), LocalContigReadIdxs);
 
     ContigChains.Transpose();
 }
@@ -148,7 +207,7 @@ DistAssignmentVec GetContigSizes(const DistAssignmentVec& Read2Contigs, const IT
     return DistAssignmentVec(FillVecCC, Read2Contigs.getcommgrid());
 }
 
-std::vector<std::tuple<IType,IType>> GetAllContigSizesSorted(DistAssignmentVec& ContigSizes, IType minsize, distinfo& di)
+std::vector<std::tuple<IType,IType>> GetAllContigSizesSorted(DistAssignmentVec& ContigSizes, IType& NumUsedContigs, IType minsize, distinfo& di)
 {
     std::vector<std::tuple<IType, IType>> sendbuf;
 
@@ -168,11 +227,11 @@ std::vector<std::tuple<IType,IType>> GetAllContigSizesSorted(DistAssignmentVec& 
 
     std::partial_sum(recvcounts.begin(), recvcounts.end()-1, displs.begin()+1);
 
-    IType totalsize = std::accumulate(recvcounts.begin(), recvcounts.end(), static_cast<IType>(0));
+    NumUsedContigs = std::accumulate(recvcounts.begin(), recvcounts.end(), static_cast<IType>(0));
 
     /* assert */
 
-    std::vector<std::tuple<IType, IType>> result(totalsize);
+    std::vector<std::tuple<IType, IType>> result(NumUsedContigs);
     MPI_Allgatherv(sendbuf.data(), recvcounts[di.myrank], MPIType<std::tuple<IType,IType>>(), result.data(), recvcounts.data(), displs.data(), MPIType<std::tuple<IType,IType>>(), di.world);
 
     std::sort(result.begin(), result.end(),
@@ -182,10 +241,81 @@ std::vector<std::tuple<IType,IType>> GetAllContigSizesSorted(DistAssignmentVec& 
     return result;
 }
 
-DistAssignmentVec GetRead2Procs(DistAssignmentVec& Read2Contigs, DistAssignmentVec& ContigSizes, distinfo& di)
+
+/* @func GetLocalRead2Procs      determine the local read to processor assignments for load
+ *                               balancing contig generation.
+ *
+ * @param Read2Contigs           distributed read to contig id assignments.
+ * @param AllContigSizesSorted   global vector of (contig id, size) tuples, sorted by size.
+ * @param NumUsedContigs         number of contigs that will be generated.
+ * @param readlocs               read locations data structure for read owner query.
+ *
+ * @return local read to processor assignments */
+std::vector<IType> GetLocalRead2Procs(DistAssignmentVec& Read2Contigs, std::vector<std::tuple<IType,IType>>& AllContigSizesSorted, const IType NumUsedContigs, ReadLocations& readlocs, distinfo& di)
 {
+    std::vector<IType> AllContig2Procs(NumUsedContigs); /* maps all global 'small' contig ids to their destination processor (every rank has this same copy after MPI_Bcast below */
+    std::vector<IType> SmallToLargeMap(NumUsedContigs); /* maps compressed used contig ids (since NumUsedContigs << NumContigs) to distributed ContigIDs */
 
+    /* multiway number partitioning, greedy approach */
+    if (!di.myrank) {
+        std::vector<IType> sums(di.nprocs, 0);
+        std::vector<std::vector<IType>> partitions(di.nprocs);
+
+        for (IType i = 0; i < AllContigSizesSorted.size(); ++i) {
+            int where = std::distance(sums.begin(), std::min_element(sums.begin(), sums.end()));
+            sums[where] += std::get<1>(AllContigSizesSorted[i]);
+            SmallToLargeMap[i] = std::get<0>(AllContigSizesSorted[i]);
+            partitions[where].push_back(i);
+        }
+
+        for (int i = 0; i < di.nprocs; ++i) {
+            std::vector<IType> mypartition = partitions[i];
+            for (auto itr = mypartition.begin(); itr != mypartition.end(); ++itr)
+                AllContig2Procs[*itr] = i;
+        }
+    }
+
+    MPI_Bcast(AllContig2Procs.data(), NumUsedContigs, MPIType<IType>(), 0, di.world);
+    MPI_Bcast(SmallToLargeMap.data(), NumUsedContigs, MPIType<IType>(), 0, di.world);
+
+    std::unordered_map<IType,IType> LargeToSmallMap; /* maps all global 'large' contig ids to 'small' ids */
+    for (auto itr = SmallToLargeMap.begin(); itr != SmallToLargeMap.end(); ++itr)
+        LargeToSmallMap[*itr] = (itr - SmallToLargeMap.begin());
+
+    IType myoffset = Read2Contigs.LengthUntil();
+    IType mysize = Read2Contigs.LocArrSize();
+
+    std::vector<int> sendcounts(di.nprocs, 0);
+    std::vector<int> recvcounts(di.nprocs);
+
+    for (IType i = myoffset; i < myoffset + mysize; ++i) {
+        int owner = readlocs.GetReadOwner(i);
+        ++sendcounts[owner];
+    }
+
+    MPI_Alltoall(sendcounts.data(), 1, MPI_INT, recvcounts.data(), 1, MPI_INT, di.world);
+
+    std::vector<int> sdispls(di.nprocs, 0);
+    std::vector<int> rdispls(di.nprocs, 0);
+
+    std::partial_sum(sendcounts.begin(), sendcounts.end()-1, sdispls.begin()+1);
+    std::partial_sum(recvcounts.begin(), recvcounts.end()-1, rdispls.begin()+1);
+
+    IType totrecv = std::accumulate(recvcounts.begin(), recvcounts.end(), static_cast<IType>(0));
+
+    std::vector<IType> LocalRead2Contigs_combblas = Read2Contigs.GetLocVec();
+    std::vector<IType> LocalRead2Contigs(totrecv);
+
+    MPI_Alltoallv(LocalRead2Contigs_combblas.data(), sendcounts.data(), sdispls.data(), MPIType<IType>(), LocalRead2Contigs.data(), recvcounts.data(), rdispls.data(), MPIType<IType>(), di.world);
+
+    std::vector<IType> LocalRead2Procs(LocalRead2Contigs.size(), -1);
+
+    IType lengthuntil = readlocs.offsets[di.myrank];
+    for (auto itr = LocalRead2Contigs.begin(); itr != LocalRead2Contigs.end(); ++itr)
+       if (LargeToSmallMap.find(*itr) != LargeToSmallMap.end())
+           LocalRead2Procs[itr - LocalRead2Contigs.begin()] = AllContig2Procs[LargeToSmallMap[*itr]];
+
+    return LocalRead2Procs;
 }
-
 
 #endif
