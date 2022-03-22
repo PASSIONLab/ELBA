@@ -296,7 +296,8 @@ int64_t ReadExchange(FullyDistVec<int64_t, int64_t> Read2ProcAssignments,
                      char **charbuf,
                      std::vector<uint64_t>& charbuf_read_idxs,
                      std::vector<uint64_t>& charbuf_read_lengths,
-                     std::vector<uint64_t>& charbuf_read_offsets)
+                     std::vector<uint64_t>& charbuf_read_offsets,
+                     uint64_t& myoffset)
 {
     MPI_Comm World = Read2ProcAssignments.getcommgrid()->GetWorld();
 
@@ -322,7 +323,7 @@ int64_t ReadExchange(FullyDistVec<int64_t, int64_t> Read2ProcAssignments,
     MPI_Allgatherv(read2procs.data(), s, MPI_INT64_T, read2procs_global.data(), read2procs_recvcounts.data(), read2procs_displs.data(), MPI_INT64_T, World);
 
     uint64_t num_locreads = lfd->local_count();
-    uint64_t myoffset = 0;
+    myoffset = 0;
 
     MPI_Exscan(&num_locreads, &myoffset, 1, MPI_UINT64_T, MPI_SUM, World);
 
