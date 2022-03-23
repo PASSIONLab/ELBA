@@ -13,6 +13,34 @@
 #include "Utils.hpp"
 #include "CC.h"
 
+template <typename T>
+void write_object_to_file(T object, std::string prefix)
+{
+    int myrank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    std::stringstream filename;
+    filename << prefix << "_" << myrank << ".txt";
+    std::ofstream filestream(filename.str());
+    filestream << object << std::endl;
+    filestream.close();
+}
+
+template <typename T>
+void write_vector_to_file(const std::vector<T>& vec, std::string prefix)
+{
+    int myrank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    std::stringstream filename;
+    filename << prefix << "_" << myrank << ".txt";
+    std::ofstream filestream(filename.str());
+    filestream << "num elements" << vec.size() << "\n";
+    for (auto itr = vec.begin(); itr != vec.end(); ++itr) {
+        filestream << *itr << ", ";
+    }
+    filestream << std::endl;
+    filestream.close();
+}
+
 using namespace combblas;
 
 typedef int64_t IType; /* index type used in this file */
@@ -61,10 +89,31 @@ public:
 
     int GetReadOwner(IType gidx)
     {
+        if (gidx < 0 || gidx >= offsets.back() + numreads.back())
+            return -1;
+
+        if (cached_index != -1 && cached_left_val <= gidx && gidx < cached_right_val)
+            return cached_index;
+
+
+        for (IType i = 0; i < nprocs; ++i) {
+            if (offsets[i] <= gidx && gidx < offsets[i] + numreads[i]) {
+                cached_left_val = offsets[i];
+                cached_right_val = offsets[i] + numreads[i];
+                cached_index = i;
+                break;
+            }
+        }
+
+        return cached_index;
+    }
+
+    int GetReadOwnerWrong(IType gidx)
+    {
         if (cached_left_val <= gidx && gidx < cached_right_val)
             return cached_index;
 
-        if (gidx < 0 || gidx >= offsets.back())
+        if (gidx < 0 || gidx >= offsets[offsets.size()-1])
             return -1;
 
         int left, right, mid;
@@ -117,13 +166,13 @@ LocalAssembly(LocStringGraph& ContigChains, std::vector<IType>& LocalContigReadI
 std::vector<std::string>
 CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std::string& myoutput, TraceUtils tu)
 {
-    float balance = G.LoadImbalance();
-    int64_t nnz   = G.getnnz();
+    //float balance = G.LoadImbalance();
+    //int64_t nnz   = G.getnnz();
 
-    std::ostringstream outs;
-    outs << "CreateContig::LoadBalance: " << balance << std::endl;
-    outs << "CreateContig::nonzeros: " << nnz << std::endl;
-    SpParHelper::Print(outs.str());
+    //std::ostringstream outs;
+    //outs << "CreateContig::LoadBalance: " << balance << std::endl;
+    //outs << "CreateContig::nonzeros: " << nnz << std::endl;
+    //SpParHelper::Print(outs.str());
 
     DistReadInfo di(G.getcommgrid(), dfd->lfd());
 
@@ -142,8 +191,11 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     AllContigSizesSorted = GetAllContigSizesSorted(ContigSizes, NumUsedContigs, 3, di);
     LocalRead2Procs      = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, di);
 
+    DistAssignmentVec Read2Procs(LocalRead2Procs, G.getcommgrid());
+
     std::vector<IType> LocalContigReadIdxs;
-    LocStringGraph ContigChains = G.InducedSubgraphs2Procs(DistAssignmentVec(LocalRead2Procs, G.getcommgrid()), LocalContigReadIdxs);
+
+    LocStringGraph ContigChains = G.InducedSubgraphs2Procs(Read2Procs, LocalContigReadIdxs);
 
     ContigChains.Transpose();
 
@@ -152,7 +204,19 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
 
     ReadExchange(LocalRead2Procs, di, charbuf, charbuf_info);
 
+    if (!di.myrank) {
+        for (auto itr = charbuf_info.begin(); itr != charbuf_info.end(); ++itr) {
+            IType key = itr->first;
+            std::tuple<IType, ushort> val = itr->second;
+            IType charbuf_offset = std::get<0>(val);
+            ushort readlen = std::get<1>(val);
+            std::string readseq(charbuf + charbuf_offset, readlen);
+            std::cout << ">" << key << "\n" << readseq << std::endl;
+        }
+    }
+
     std::vector<std::string> contigs = LocalAssembly(ContigChains, LocalContigReadIdxs, charbuf, charbuf_info, di);
+    delete [] charbuf;
 
     return contigs;
 }
@@ -297,11 +361,13 @@ std::vector<IType> GetLocalRead2Procs(DistAssignmentVec& Read2Contigs, std::vect
     IType myoffset = Read2Contigs.LengthUntil();
     IType mysize = Read2Contigs.LocArrSize();
 
+    std::vector<IType> LocalRead2Contigs_combblas = Read2Contigs.GetLocVec();
+
     std::vector<int> sendcounts(di.nprocs, 0);
     std::vector<int> recvcounts(di.nprocs);
 
-    for (IType i = myoffset; i < myoffset + mysize; ++i) {
-        int owner = di.GetReadOwner(i);
+    for (IType i = 0; i < mysize; ++i) {
+        int owner = di.GetReadOwner(i+myoffset);
         ++sendcounts[owner];
     }
 
@@ -314,8 +380,6 @@ std::vector<IType> GetLocalRead2Procs(DistAssignmentVec& Read2Contigs, std::vect
     std::partial_sum(recvcounts.begin(), recvcounts.end()-1, rdispls.begin()+1);
 
     IType totrecv = std::accumulate(recvcounts.begin(), recvcounts.end(), static_cast<IType>(0));
-
-    std::vector<IType> LocalRead2Contigs_combblas = Read2Contigs.GetLocVec();
     std::vector<IType> LocalRead2Contigs(totrecv);
 
     MPI_Alltoallv(LocalRead2Contigs_combblas.data(), sendcounts.data(), sdispls.data(), MPIType<IType>(), LocalRead2Contigs.data(), recvcounts.data(), rdispls.data(), MPIType<IType>(), di.world);
@@ -342,11 +406,11 @@ void ReadExchange(std::vector<IType>& LocalRead2Procs, DistReadInfo& di, char *&
     std::tuple<IType, IType> *read_sendbuf, *read_recvbuf;
 
     std::vector<int> read_sendcounts (di.nprocs, 0);
-    std::vector<int> read_recvcounts (di.nprocs);
+    std::vector<int> read_recvcounts (di.nprocs   );
     std::vector<int> read_sdispls    (di.nprocs, 0);
     std::vector<int> read_rdispls    (di.nprocs, 0);
     std::vector<int> char_sendcounts (di.nprocs, 0);
-    std::vector<int> char_recvcounts (di.nprocs);
+    std::vector<int> char_recvcounts (di.nprocs   );
     std::vector<int> char_sdispls    (di.nprocs, 0);
     std::vector<int> char_rdispls    (di.nprocs, 0);
 
@@ -355,8 +419,10 @@ void ReadExchange(std::vector<IType>& LocalRead2Procs, DistReadInfo& di, char *&
     std::vector<std::vector<std::tuple<IType, IType>>> i_read_sendbuf(di.nprocs);
     std::unordered_map<IType, std::tuple<ushort, IType>> lfd_info_cache;
 
+    /* read_sendbuf is 'vector' of tuples (global read index, read length) */
+
     for (IType i = 0; i < num_locreads; ++i) {
-        int dest = LocalRead2Procs[i];
+        int dest = LocalRead2Procs[i]; /* dest == -1 means that the read is not in a contig */
         if (dest >= 0 && di.myrank != dest) {
             ushort readlen;
             uint64_t start_offset, end_offset;
@@ -393,7 +459,7 @@ void ReadExchange(std::vector<IType>& LocalRead2Procs, DistReadInfo& di, char *&
                   read_recvbuf, read_recvcounts.data(), read_rdispls.data(), MPIType<std::tuple<IType,IType>>(), di.world);
 
     char_send = new char[char_totsend+1]();
-    char_recv = new char[char_totrecv+1]();
+    char_recv = new char[char_totrecv+1](); /* allocated charbuf */
 
     ushort len;
     IType offset;
@@ -403,7 +469,7 @@ void ReadExchange(std::vector<IType>& LocalRead2Procs, DistReadInfo& di, char *&
     for (IType i = 0; i < read_totsend; ++i) {
         auto cached = lfd_info_cache[std::get<0>(read_sendbuf[i]) - myoffset];
         len = std::get<0>(cached), offset = std::get<1>(cached);
-        std::strncpy(char_send_ptr, lfd_buffer, len);
+        std::strncpy(char_send_ptr, lfd_buffer + offset, len);
         char_send_ptr += len;
     }
 
@@ -480,7 +546,7 @@ std::vector<std::string> LocalAssembly(LocStringGraph& ContigChains, std::vector
         contig_vector.push_back(std::make_tuple(i1last, (e.dir == 1 || e.dir == 3)? e.l[1] : 0, LocalContigReadIdxs[cur]));
         used_roots.insert(cur);
 
-        std::string contig;
+        std::string contig = "";
 
         for (IType i = 0; i < contig_vector.size(); ++i) {
 
@@ -508,7 +574,7 @@ std::vector<std::string> LocalAssembly(LocStringGraph& ContigChains, std::vector
                 contig.append(charbuf+read_offset+seq_start, seq_end-seq_start);
             }
         }
-
+        std::cout << contig << std::endl;
         contigs.push_back(contig);
     }
 
