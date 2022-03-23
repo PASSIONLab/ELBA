@@ -104,6 +104,9 @@ GetLocalRead2Procs(DistAssignmentVec& Read2Contigs, std::vector<std::tuple<IType
 void
 ReadExchange(std::vector<IType>& LocalRead2Procs, DistReadInfo& di, char *&charbuf, std::unordered_map<IType, std::tuple<IType, ushort>>& charbuf_info);
 
+std::vector<std::string>
+LocalAssembly(LocStringGraph& ContigChains, std::vector<IType>& LocalContigReadIdxs, const char *charbuf, std::unordered_map<IType, std::tuple<IType, ushort>> charbuf_info, DistReadInfo& di);
+
 /* @func CreateContig   Assemble contigs from distributed string graph.
  *
  * @param G             combblas distributed string graph.
@@ -148,6 +151,10 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     std::unordered_map<IType, std::tuple<IType, ushort>> charbuf_info;
 
     ReadExchange(LocalRead2Procs, di, charbuf, charbuf_info);
+
+    std::vector<std::string> contigs = LocalAssembly(ContigChains, LocalContigReadIdxs, charbuf, charbuf_info, di);
+
+    return contigs;
 }
 
 /* @func GetRead2Contigs       determines which reads are in which contigs.
@@ -415,6 +422,97 @@ void ReadExchange(std::vector<IType>& LocalRead2Procs, DistReadInfo& di, char *&
     delete [] read_recvbuf;
 
     charbuf = char_recv;
+}
+
+std::vector<std::string> LocalAssembly(LocStringGraph& ContigChains, std::vector<IType>& LocalContigReadIdxs, const char *charbuf, std::unordered_map<IType, std::tuple<IType, ushort>> charbuf_info, DistReadInfo& di)
+{
+    std::vector<std::string> contigs;
+
+    IType myoffset = di.offsets[di.myrank];
+    IType numreads = ContigChains.getnrow();
+    assert((numreads = static_cast<IType>(ContigChains.getncol())));
+    assert((numreads = static_cast<IType>(LocalContigReadIdxs.size())));
+
+    bool visited[numreads] = {0};
+    std::unordered_set<IType> used_roots;
+
+    auto csc = ContigChains.GetCSC();
+
+    for (IType v = 0; v < csc->n; ++v) {
+
+        if (csc->jc[v+1] - csc->jc[v] != 1 || used_roots.find(v) != used_roots.end())
+            continue;
+
+        std::vector<std::tuple<IType, IType, IType>> contig_vector;
+
+        IType cur = v;
+        IType end, next;
+        IType i1last = 0;
+
+        ReadOverlap e;
+
+        bool first = true;
+
+        while (true) {
+            visited[cur] = true;
+            next = csc->jc[cur];
+            end = csc->jc[cur+1];
+
+            while (next < end && visited[csc->ir[next]])
+                ++next;
+
+            if (next >= end)
+                break;
+
+            e = csc->num[next];
+
+            if (first) {
+                i1last = (e.dir == 0 || e.dir == 1)? 0 : e.l[0];
+                first = false;
+            }
+
+            contig_vector.push_back(std::make_tuple(i1last, e.coords[0], LocalContigReadIdxs[cur]));
+
+            i1last = e.coords[1];
+            cur = csc->ir[next];
+        }
+
+        contig_vector.push_back(std::make_tuple(i1last, (e.dir == 1 || e.dir == 3)? e.l[1] : 0, LocalContigReadIdxs[cur]));
+        used_roots.insert(cur);
+
+        std::string contig;
+
+        for (IType i = 0; i < contig_vector.size(); ++i) {
+
+            IType seq_start = std::get<0>(contig_vector[i]);
+            IType seq_end   = std::get<1>(contig_vector[i]);
+            IType idx       = std::get<2>(contig_vector[i]);
+
+            if (seq_start > seq_end) {
+                IType tmp = seq_start;
+                seq_start = seq_end;
+                seq_end = tmp;
+            }
+
+            auto segment_info_itr = charbuf_info.find(idx);
+            uint64_t read_offset, end_offset;
+            ushort readlen;
+
+            if (segment_info_itr == charbuf_info.end()) {
+                di.lfd->get_sequence(idx-myoffset, readlen, read_offset, end_offset);
+                contig.append(charbuf+read_offset+seq_start, seq_end-seq_start);
+            } else {
+                std::tuple<IType, ushort> val = segment_info_itr->second;
+                read_offset = std::get<0>(val);
+                readlen = std::get<1>(val);
+                contig.append(charbuf+read_offset+seq_start, seq_end-seq_start);
+            }
+        }
+
+        contigs.push_back(contig);
+    }
+
+    return contigs;
 }
 
 #endif

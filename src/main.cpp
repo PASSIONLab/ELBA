@@ -355,110 +355,33 @@ int main(int argc, char **argv)
   // CONTIG EXTRACTION                                                                //
   //////////////////////////////////////////////////////////////////////////////////////
 
-  tp->times["StartMain:CreateContig()"] = std::chrono::system_clock::now();
-  CreateContig(R, dfd, myoutput, tu);
-  tp->times["EndMain:CreateContig()"] = std::chrono::system_clock::now();
+  tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
-  //int64_t NumContigs;
-  //FullyDistVec<int64_t, int64_t> Branches, ContigSizes, Roots, ContigAssignments;
+  std::vector<std::string> myContigSet;
+  bool contigging = true;
 
-  ///* read idxs to contig ids map */
-  //ContigAssignments = GetContigAssignments(R, Branches, Roots, NumContigs);
-  //ContigAssignments.ParallelWrite("contig-assignments.txt", true);
+  if(contigging)
+  {
+       myContigSet = CreateContig(R, dfd, myoutput, tu);
+  }
 
-  ///* contig idxs to contig sizes map */
-  //ContigSizes = GetContigSizes(ContigAssignments, NumContigs);
-  //ContigSizes.ParallelWrite("contig-sizes.txt", true);
+  std::stringstream iss;
+  iss << "contigs_rank_" << myrank << ".fa";
+  std::ofstream contig_file(iss.str());
 
-  ///* read idxs to processors map */
-  //FullyDistVec<int64_t, int64_t> Read2ProcAssignments = GetReadAssignments(ContigAssignments, ContigSizes);
+  int64_t number_of_contigs = myContigSet.size();
+  int64_t contigs_offset = 0;
+  MPI_Exscan(&number_of_contigs, &contigs_offset, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
 
-  //Read2ProcAssignments.DebugPrint();
-  //Read2ProcAssignments.ParallelWrite("read-to-proc-assignments.txt", true);
+  for (int i = 0; i < myContigSet.size(); ++i) {
+   iss.str("");
+   iss << ">contig" << i+1+contigs_offset << "\n" << myContigSet[i];
+   contig_file << iss.str() << std::endl;
+  }
 
-  //std::vector<int64_t> LocalIdxs;
-  //SpCCols<int64_t, ReadOverlap> ContigChains = R.InducedSubgraphs2Procs(Read2ProcAssignments, LocalIdxs);
+  contig_file.close();
 
-  //ContigChains.Transpose();
-
-  //std::vector<std::vector<std::tuple<int64_t, int64_t, int64_t>>> ContigCoords = LocalAssembly(ContigChains, LocalIdxs, myrank);
-
-  //char *charbuf;
-  //std::vector<uint64_t> charbuf_read_idxs;
-  //std::vector<uint64_t> charbuf_read_lengths;
-  //std::vector<uint64_t> charbuf_read_offsets;
-
-  //FastaData *lfd = dfd->lfd();
-
-  //uint64_t myoffset;
-  //int64_t ReadsReceived = ReadExchange(Read2ProcAssignments, lfd, &charbuf, charbuf_read_idxs, charbuf_read_lengths, charbuf_read_offsets, myoffset);
-
-  //std::unordered_map<uint64_t, std::tuple<uint64_t, ushort>> charbuf_info;
-
-  //int64_t ii = 0;
-  //for (auto itr = charbuf_read_idxs.begin(); itr != charbuf_read_idxs.end(); ++itr, ++ii) {
-  //  charbuf_info[*itr] = std::make_tuple(charbuf_read_offsets[ii], charbuf_read_lengths[ii]);
-  //}
-
-  //std::stringstream iss;
-  //iss << "contigs_rank_" << myrank << ".fa";
-
-  //std::ofstream contig_file(iss.str());
-
-  //const char *buffer = lfd->buffer();
-
-  //int64_t number_of_contigs = ContigCoords.size();
-  //int64_t contigs_offset = 0;
-  //MPI_Exscan(&number_of_contigs, &contigs_offset, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
-
-
-  //for (int i = 0; i < ContigCoords.size(); ++i) {
-  //  std::vector<std::tuple<int64_t, int64_t, int64_t>> contig = ContigCoords[i];
-  //  std::string contig_seq = "";
-  //  for (int j = 0; j < contig.size(); ++j) {
-  //      int64_t i0 = std::get<0>(contig[j]);
-  //      int64_t i1 = std::get<1>(contig[j]);
-  //      int64_t idx = std::get<2>(contig[j]);
-
-  //      if (i0 > i1) {
-  //          int64_t tmp = i0;
-  //          i0 = i1;
-  //          i1 = tmp;
-  //      }
-
-  //      auto segment_info_itr = charbuf_info.find(idx);
-  //      uint64_t read_offset, end_offset;
-  //      ushort read_length;
-  //      if (segment_info_itr == charbuf_info.end()) {
-  //          lfd->get_sequence(idx-myoffset, read_length, read_offset, end_offset);
-  //          contig_seq.append(buffer+read_offset+i0, i1-i0);
-  //      } else {
-  //          std::tuple<uint64_t, ushort> val = (*segment_info_itr).second;
-  //          read_offset = std::get<0>(val);
-  //          read_length = std::get<1>(val);
-  //          contig_seq.append(charbuf+read_offset, read_length);
-  //      }
-  //  }
-  //  iss.str("");
-  //  iss << ">contig" << i+1+contigs_offset << "\n" << contig_seq;
-  //  contig_file << iss.str() << std::endl;
-  //}
-
-  //contig_file.close();
-
-  //delete[] charbuf;
-
-  // tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
-
-  // std::vector<std::string> myContigSet;
-  // bool contigging = true;
-
-  // if(contigging)
-  // {
-  //   myContigSet = CreateContig(B, myoutput, tu, B.seqptr(), dfd, seq_count);
-  // }
-
-  // tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
+  tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
 
   // //////////////////////////////////////////////////////////////////////////////////////
   // // SCAFFOLDING                                                                      //
