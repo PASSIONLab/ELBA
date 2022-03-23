@@ -101,6 +101,8 @@ GetAllContigSizesSorted(DistAssignmentVec& ContigSizes, IType& NumUsedContigs, I
 std::vector<IType>
 GetLocalRead2Procs(DistAssignmentVec& Read2Contigs, std::vector<std::tuple<IType,IType>>& AllContigSizesSorted, const IType NumUsedContigs, DistReadInfo& di);
 
+void
+ReadExchange(std::vector<IType>& LocalRead2Procs, DistReadInfo& di, char *&charbuf, std::unordered_map<IType, std::tuple<IType, ushort>>& charbuf_info);
 
 /* @func CreateContig   Assemble contigs from distributed string graph.
  *
@@ -141,6 +143,11 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     LocStringGraph ContigChains = G.InducedSubgraphs2Procs(DistAssignmentVec(LocalRead2Procs, G.getcommgrid()), LocalContigReadIdxs);
 
     ContigChains.Transpose();
+
+    char *charbuf;
+    std::unordered_map<IType, std::tuple<IType, ushort>> charbuf_info;
+
+    ReadExchange(LocalRead2Procs, di, charbuf, charbuf_info);
 }
 
 /* @func GetRead2Contigs       determines which reads are in which contigs.
@@ -316,6 +323,98 @@ std::vector<IType> GetLocalRead2Procs(DistAssignmentVec& Read2Contigs, std::vect
     return LocalRead2Procs;
 }
 
-// void ReadExchange(std::vector<IType>& LocalRead2Procs, )
+void ReadExchange(std::vector<IType>& LocalRead2Procs, DistReadInfo& di, char *&charbuf, std::unordered_map<IType, std::tuple<IType, ushort>>& charbuf_info)
+{
+    IType char_totsend = 0, char_totrecv;
+    IType read_totsend = 0, read_totrecv;
+
+    IType num_locreads = di.numreads[di.myrank];
+    IType myoffset     = di.offsets[di.myrank];
+
+    char *char_send, *char_recv;
+    std::tuple<IType, IType> *read_sendbuf, *read_recvbuf;
+
+    std::vector<int> read_sendcounts (di.nprocs, 0);
+    std::vector<int> read_recvcounts (di.nprocs);
+    std::vector<int> read_sdispls    (di.nprocs, 0);
+    std::vector<int> read_rdispls    (di.nprocs, 0);
+    std::vector<int> char_sendcounts (di.nprocs, 0);
+    std::vector<int> char_recvcounts (di.nprocs);
+    std::vector<int> char_sdispls    (di.nprocs, 0);
+    std::vector<int> char_rdispls    (di.nprocs, 0);
+
+    assert((num_locreads == static_cast<IType>(LocalRead2Procs.size())));
+
+    std::vector<std::vector<std::tuple<IType, IType>>> i_read_sendbuf(di.nprocs);
+    std::unordered_map<IType, std::tuple<ushort, IType>> lfd_info_cache;
+
+    for (IType i = 0; i < num_locreads; ++i) {
+        int dest = LocalRead2Procs[i];
+        if (dest >= 0 && di.myrank != dest) {
+            ushort readlen;
+            uint64_t start_offset, end_offset;
+            di.lfd->get_sequence(i, readlen, start_offset, end_offset);
+            lfd_info_cache[i] = std::make_tuple(readlen, start_offset);
+            i_read_sendbuf[dest].push_back(std::make_tuple(i+myoffset, readlen));
+            char_sendcounts[dest] += readlen;
+            char_totsend += readlen;
+            ++read_sendcounts[dest];
+            ++read_totsend;
+        }
+    }
+
+    read_sendbuf = new std::tuple<IType, IType>[read_totsend];
+
+    std::partial_sum(read_sendcounts.begin(), read_sendcounts.end()-1, read_sdispls.begin()+1);
+    std::partial_sum(char_sendcounts.begin(), char_sendcounts.end()-1, char_sdispls.begin()+1);
+
+    for (int i = 0; i < di.nprocs; ++i)
+        std::copy(i_read_sendbuf[i].begin(), i_read_sendbuf[i].end(), read_sendbuf + read_sdispls[i]);
+
+    MPI_Alltoall(read_sendcounts.data(), 1, MPI_INT, read_recvcounts.data(), 1, MPI_INT, di.world);
+    MPI_Alltoall(char_sendcounts.data(), 1, MPI_INT, char_recvcounts.data(), 1, MPI_INT, di.world);
+
+    read_totrecv = std::accumulate(read_recvcounts.begin(), read_recvcounts.end(), static_cast<IType>(0));
+    char_totrecv = std::accumulate(char_recvcounts.begin(), char_recvcounts.end(), static_cast<IType>(0));
+
+    std::partial_sum(read_recvcounts.begin(), read_recvcounts.end()-1, read_rdispls.begin()+1);
+    std::partial_sum(char_recvcounts.begin(), char_recvcounts.end()-1, char_rdispls.begin()+1);
+
+    read_recvbuf = new std::tuple<IType,IType>[read_totrecv];
+
+    MPI_Alltoallv(read_sendbuf, read_sendcounts.data(), read_sdispls.data(), MPIType<std::tuple<IType,IType>>(),
+                  read_recvbuf, read_recvcounts.data(), read_rdispls.data(), MPIType<std::tuple<IType,IType>>(), di.world);
+
+    char_send = new char[char_totsend+1]();
+    char_recv = new char[char_totrecv+1]();
+
+    ushort len;
+    IType offset;
+    const char *lfd_buffer = di.lfd->buffer();
+    char *char_send_ptr = char_send;
+
+    for (IType i = 0; i < read_totsend; ++i) {
+        auto cached = lfd_info_cache[std::get<0>(read_sendbuf[i]) - myoffset];
+        len = std::get<0>(cached), offset = std::get<1>(cached);
+        std::strncpy(char_send_ptr, lfd_buffer, len);
+        char_send_ptr += len;
+    }
+
+    MPI_Alltoallv(char_send, char_sendcounts.data(), char_sdispls.data(), MPI_CHAR, char_recv, char_recvcounts.data(), char_rdispls.data(), MPI_CHAR, di.world);
+
+    /* TODO: inefficient */
+    std::vector<IType> char_read_offsets(read_totrecv, 0);
+    for (IType i = 0; i < read_totrecv-1; ++i)
+        char_read_offsets[i+1] = char_read_offsets[i] + std::get<1>(read_recvbuf[i]);
+
+    for (IType i = 0; i < read_totrecv; ++i)
+        charbuf_info[std::get<0>(read_recvbuf[i])] = std::make_tuple(char_read_offsets[i], std::get<1>(read_recvbuf[i]));
+
+    delete [] char_send;
+    delete [] read_sendbuf;
+    delete [] read_recvbuf;
+
+    charbuf = char_recv;
+}
 
 #endif
