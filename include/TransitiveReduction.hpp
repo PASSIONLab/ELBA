@@ -51,20 +51,6 @@ struct PlusFuzzSRing : unary_function<ReadOverlap, ReadOverlap>
     }
 };
 
-//struct FlipReverseCoordinates : unary_function<ReadOverlap, ReadOverlap>
-//{
-//    ReadOverlap operator() (ReadOverlap& x) const
-//    {
-//        if (!x.rc) return x;
-//
-//        int swap = x.b[1];
-//        x.b[1] = x.l[1] - x.e[1];
-//        x.e[1] = x.l[1] - swap;
-//
-//        return x;
-//    }
-//};
-
 struct TransitiveSelection : binary_function<ReadOverlap, OverlapPath, bool>
 {
     bool operator() (const ReadOverlap& r, const OverlapPath& n) const
@@ -133,20 +119,8 @@ struct MinPlusSR
     }
 };
 
-//struct OverlapAdd : unary_function<ReadOverlap, ReadOverlap>
-//{
-//    ReadOverlap operator() (ReadOverlap& x) const
-//    {
-//        ReadOverlap out = x;
-//        out.sfx += static_cast<int64_t>(out.overlap * 0.05);
-//        return out;
-//    }
-//};
-
 void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>& R, TraceUtils tu)
 {
-
-    R.ParallelWriteMM("overlap-graph-tri.mm", true, ReadOverlapExtraHandler());
 
     SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> RT = R;
     RT.Transpose();
@@ -156,26 +130,18 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
 
     R.Prune(InvalidSRing(), true);
 
-    R.ParallelWriteMM("overlap-graph.mm", true, ReadOverlapExtraHandler());
-
     SpParMat<int64_t, OverlapPath, SpDCCols<int64_t, OverlapPath>> Nc = R;
     SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> T = R;
     T.Prune(ZeroPrune());
 
     int64_t prev, cur;
 
-    std::stringstream ss;
     int i = 1;
 
     SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> M = R;
     M.Apply(PlusFuzzSRing());
 
     do {
-        tu.print_str("Matrix R, i.e. AAt, mid transitive reduction: ");
-        R.PrintInfo();
-
-        ss.str("");
-        ss << i;
 
         prev = T.getnnz();
         SpParMat<int64_t, OverlapPath, SpDCCols<int64_t, OverlapPath>> N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, SpDCCols<int64_t, OverlapPath>>(Nc, R);
@@ -194,13 +160,10 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
         cur = T.getnnz();
 
     } while (i++ <= 5);
-    //} while (0);
-    //} while (prev != cur);
 
     R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), false, false);
     R.Prune(InvalidSRing());
 
-    //R.ParallelWriteMM("S.mm", true, ReadOverlapHandler());
     R.ParallelWriteMM("string-graph.mm", true, ReadOverlapExtraHandler());
 
     tu.print_str("Matrix R, i.e. AAt after transitive reduction: ");

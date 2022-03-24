@@ -173,13 +173,14 @@ AppendContig(std::string& contig, const char *buf, IType offset, ushort len, ITy
 std::vector<std::string>
 CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std::string& myoutput, TraceUtils tu)
 {
-    //float balance = G.LoadImbalance();
-    //int64_t nnz   = G.getnnz();
+    float balance = G.LoadImbalance();
+    int64_t nnz   = G.getnnz();
 
-    //std::ostringstream outs;
-    //outs << "CreateContig::LoadBalance: " << balance << std::endl;
-    //outs << "CreateContig::nonzeros: " << nnz << std::endl;
-    //SpParHelper::Print(outs.str());
+    std::ostringstream outs;
+    outs << "CreateContig::LoadBalance: " << balance << std::endl;
+    outs << "CreateContig::nonzeros: " << nnz << std::endl;
+    tu.print_str(outs.str());
+    outs.str("");
 
     DistReadInfo di(G.getcommgrid(), dfd->lfd());
 
@@ -190,13 +191,21 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     NumContigs  = GetRead2Contigs(G, Read2Contigs, di);
     ContigSizes = GetContigSizes(Read2Contigs, NumContigs, di);
 
+    IType max_contig_size = ContigSizes.Reduce(combblas::maximum<IType>(), static_cast<IType>(0));
+
+    outs << "CreateContig::NumContigs: " << NumContigs << std::endl;
+    outs << "CreateContig::MaxContigSize: " << max_contig_size << std::endl;
+    tu.print_str(outs.str());
+    outs.str("");
+
     IType NumUsedContigs;
     std::vector<std::tuple<IType, IType>> AllContigSizesSorted;
     std::vector<IType> LocalRead2Procs;
     std::vector<IType> AllContig2Procs;
 
     AllContigSizesSorted = GetAllContigSizesSorted(ContigSizes, NumUsedContigs, 3, di);
-    LocalRead2Procs      = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, di);
+
+    LocalRead2Procs = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, di);
 
     DistAssignmentVec Read2Procs(LocalRead2Procs, G.getcommgrid());
 
@@ -208,33 +217,6 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
 
     std::unordered_map<IType, std::tuple<IType, ushort>> charbuf_info;
     const char *charbuf = ReadExchange(LocalRead2Procs, charbuf_info, di);
-
-    //std::stringstream iss;
-    //iss << "read_info_" << di.myrank << ".txt";
-    //std::ofstream info_file(iss.str());
-
-    //IType nlocreads = di.numreads[di.myrank];
-    //IType vecoffset = di.offsets[di.myrank];
-
-    //const char *lfd_buffer = di.lfd->buffer();
-
-    //for (auto itr = LocalContigReadIdxs.begin(); itr != LocalContigReadIdxs.end(); ++itr) {
-    //    IType g_read_idx = *itr;
-    //    auto segment_info_itr = charbuf_info.find(g_read_idx);
-    //    uint64_t start_offset, end_offset;
-    //    ushort readlen;
-    //    if (segment_info_itr == charbuf_info.end()) {
-    //        di.lfd->get_sequence(*itr - vecoffset, readlen, start_offset, end_offset);
-    //        info_file << "gidx=" << g_read_idx+1 << " not in charbuf; readlen=" << readlen << ", lfd_buffer_offset=" << start_offset << std::endl;
-    //    } else {
-    //        std::tuple<IType, ushort> val = segment_info_itr->second;
-    //        start_offset = std::get<0>(val);
-    //        readlen = std::get<1>(val); 
-    //        info_file << "gidx=" << g_read_idx+1 << " is in charbuf; readlen=" << readlen << ", charbuffer_offset=" << start_offset << std::endl;
-    //    }
-
-    //}
-    //info_file.close();
 
     std::vector<std::string> contigs = LocalAssembly(ContigChains, LocalContigReadIdxs, charbuf, charbuf_info, di);
     delete [] charbuf;
