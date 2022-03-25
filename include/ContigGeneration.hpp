@@ -553,7 +553,7 @@ const char * ReadExchange(std::vector<IType>& LocalRead2Procs, std::unordered_ma
     std::cout << "DEBUG: p[" << di.myrank << "] sending   " << char_totsend << " bytes (ReadExchange)" << std::endl;
     std::cout << "DEBUG: p[" << di.myrank << "] receiving " << char_totrecv << " bytes (ReadExchange)" << std::endl;
 
-    assert((read_totrecv < std::numeric_limits<int>::max()));
+    assert((char_totsend < std::numeric_limits<int>::max()));
     assert((char_totrecv < std::numeric_limits<int>::max()));
 
     std::partial_sum(read_recvcounts.begin(), read_recvcounts.end()-1, read_rdispls.begin()+1);
