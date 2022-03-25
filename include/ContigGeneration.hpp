@@ -202,10 +202,6 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     std::vector<IType> AllContig2Procs;
 
     AllContigSizesSorted = GetAllContigSizesSorted(ContigSizes, NumUsedContigs, 3, di);
-<<<<<<< HEAD
-    LocalRead2Procs      = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, di);
-    tu.print_str("after GetLocalRead2Procs\n");
-=======
 
     outs << "CreateContig::NumContigs: " << NumUsedContigs << std::endl;
     outs << "CreateContig::MaxContigSize: " << max_contig_size << std::endl;
@@ -213,7 +209,6 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     outs.str("");
 
     LocalRead2Procs = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, di);
->>>>>>> 9616d215ee2cddbbcef16e7e3a9533188c2543b5
 
     DistAssignmentVec Read2Procs(LocalRead2Procs, G.getcommgrid());
     tu.print_str("after Read2Procs\n");
