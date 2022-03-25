@@ -141,6 +141,9 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
     SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> M = R;
     M.Apply(PlusFuzzSRing());
 
+    tu.print_str("Matrix R, i.e. AAt before transitive reduction: ");
+    R.PrintInfo();
+
     do {
 
         prev = T.getnnz();

@@ -193,17 +193,17 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
 
     IType max_contig_size = ContigSizes.Reduce(combblas::maximum<IType>(), static_cast<IType>(0));
 
-    outs << "CreateContig::NumContigs: " << NumContigs << std::endl;
-    outs << "CreateContig::MaxContigSize: " << max_contig_size << std::endl;
-    tu.print_str(outs.str());
-    outs.str("");
-
     IType NumUsedContigs;
     std::vector<std::tuple<IType, IType>> AllContigSizesSorted;
     std::vector<IType> LocalRead2Procs;
     std::vector<IType> AllContig2Procs;
 
     AllContigSizesSorted = GetAllContigSizesSorted(ContigSizes, NumUsedContigs, 3, di);
+
+    outs << "CreateContig::NumContigs: " << NumUsedContigs << std::endl;
+    outs << "CreateContig::MaxContigSize: " << max_contig_size << std::endl;
+    tu.print_str(outs.str());
+    outs.str("");
 
     LocalRead2Procs = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, di);
 
@@ -373,6 +373,8 @@ std::vector<IType> ImposeMyReadDistribution(DistAssignmentVec& assignments, Dist
     std::partial_sum(recvcounts.begin(), recvcounts.end()-1, rdispls.begin()+1);
 
     IType totrecv = std::accumulate(recvcounts.begin(), recvcounts.end(), static_cast<IType>(0));
+
+    assert((totrecv < std::numeric_limits<int>::max()));
 
     std::vector<IType> new_vector(totrecv);
 
@@ -547,6 +549,12 @@ const char * ReadExchange(std::vector<IType>& LocalRead2Procs, std::unordered_ma
 
     read_totrecv = std::accumulate(read_recvcounts.begin(), read_recvcounts.end(), static_cast<IType>(0));
     char_totrecv = std::accumulate(char_recvcounts.begin(), char_recvcounts.end(), static_cast<IType>(0));
+
+    std::cout << "DEBUG: p[" << di.myrank << "] sending   " << char_totsend << " bytes (ReadExchange)" << std::endl;
+    std::cout << "DEBUG: p[" << di.myrank << "] receiving " << char_totrecv << " bytes (ReadExchange)" << std::endl;
+
+    assert((read_totrecv < std::numeric_limits<int>::max()));
+    assert((char_totrecv < std::numeric_limits<int>::max()));
 
     std::partial_sum(read_recvcounts.begin(), read_recvcounts.end()-1, read_rdispls.begin()+1);
     std::partial_sum(char_recvcounts.begin(), char_recvcounts.end()-1, char_rdispls.begin()+1);
