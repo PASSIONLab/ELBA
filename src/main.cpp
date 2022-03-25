@@ -370,8 +370,10 @@ int main(int argc, char **argv)
     myContigSet = CreateContig(R, dfd, myoutput, tu);
   }
 
+  tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
+
   std::stringstream iss;
-  iss << "contigs_rank_" << myrank << ".fa";
+  iss << myoutput << ".contigs_rank_" << myrank << ".fa";
   std::ofstream contig_file(iss.str());
 
   int64_t number_of_contigs = myContigSet.size();
@@ -386,8 +388,6 @@ int main(int argc, char **argv)
   }
 
   contig_file.close();
-
-  tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
 
   // //////////////////////////////////////////////////////////////////////////////////////
   // // SCAFFOLDING                                                                      //

@@ -22,6 +22,7 @@ struct TimePod {
                            "Main:DfdWait()",
                            "Dfd:MPI_Waitall(seqs)",
                            "Main:DprAlign()",
+                          //  "Main:DprParallelWriteMM()",
                            "Main:TransitiveReduction()",
                            "Main:ExtractContig()"
   };
