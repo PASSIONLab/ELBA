@@ -188,7 +188,10 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     DistAssignmentVec ContigSizes;
 
     NumContigs  = GetRead2Contigs(G, Read2Contigs, di);
+    tu.print_str("after GetRead2Contigs\n");
+
     ContigSizes = GetContigSizes(Read2Contigs, NumContigs, di);
+    tu.print_str("after GetContigSizes\n");
 
     IType NumUsedContigs;
     std::vector<std::tuple<IType, IType>> AllContigSizesSorted;
@@ -197,17 +200,22 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
 
     AllContigSizesSorted = GetAllContigSizesSorted(ContigSizes, NumUsedContigs, 3, di);
     LocalRead2Procs      = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, di);
+    tu.print_str("after GetLocalRead2Procs\n");
 
     DistAssignmentVec Read2Procs(LocalRead2Procs, G.getcommgrid());
+    tu.print_str("after Read2Procs\n");
 
     std::vector<IType> LocalContigReadIdxs;
 
     LocStringGraph ContigChains = G.InducedSubgraphs2Procs(Read2Procs, LocalContigReadIdxs);
+    tu.print_str("after InducedSubgraphs2Procs\n");
 
     ContigChains.Transpose();
+    tu.print_str("after Transpose\n");
 
     std::unordered_map<IType, std::tuple<IType, ushort>> charbuf_info;
     const char *charbuf = ReadExchange(LocalRead2Procs, charbuf_info, di);
+    tu.print_str("after ReadExchange\n");
 
     //std::stringstream iss;
     //iss << "read_info_" << di.myrank << ".txt";
@@ -237,6 +245,7 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     //info_file.close();
 
     std::vector<std::string> contigs = LocalAssembly(ContigChains, LocalContigReadIdxs, charbuf, charbuf_info, di);
+    tu.print_str("after LocalAssembly\n");
     delete [] charbuf;
 
     return contigs;

@@ -351,6 +351,11 @@ int main(int argc, char **argv)
   stringm += ".stringmatrix.mm";
   B.ParallelWriteMM(stringm, true, dibella::CkOutputMMHandler());
 
+  if(is_print_rank)
+  {
+    std::cout << "Transitive Reduction is done and okay!" << std::endl;
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////
   // CONTIG EXTRACTION                                                                //
   //////////////////////////////////////////////////////////////////////////////////////
@@ -362,7 +367,7 @@ int main(int argc, char **argv)
 
   if(contigging)
   {
-       myContigSet = CreateContig(R, dfd, myoutput, tu);
+    myContigSet = CreateContig(R, dfd, myoutput, tu);
   }
 
   std::stringstream iss;
@@ -373,10 +378,11 @@ int main(int argc, char **argv)
   int64_t contigs_offset = 0;
   MPI_Exscan(&number_of_contigs, &contigs_offset, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
 
-  for (int i = 0; i < myContigSet.size(); ++i) {
-   iss.str("");
-   iss << ">contig" << i+1+contigs_offset << "\n" << myContigSet[i];
-   contig_file << iss.str() << std::endl;
+  for (int i = 0; i < myContigSet.size(); ++i) 
+  {
+    iss.str("");
+    iss << ">contig" << i+1+contigs_offset << "\n" << myContigSet[i];
+    contig_file << iss.str() << std::endl;
   }
 
   contig_file.close();
