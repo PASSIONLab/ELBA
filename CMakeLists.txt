@@ -5,11 +5,11 @@ set(CMAKE_CXX_STANDARD 14)
 add_subdirectory($ENV{BLOOM_HOME})
 
 include_directories(
-	$ENV{SEQAN_HOME}/include 
+	$ENV{SEQAN_HOME}/include
 	$ENV{COMBBLAS_HOME}/CombBLAS/install/include)
 	# possibly add path to boost library (not necessary on Cori, just type 'module load boost')
 link_directories(
-    $ENV{COMBBLAS_HOME}/CombBLAS/install/lib 
+    $ENV{COMBBLAS_HOME}/CombBLAS/install/lib
     $ENV{BLOOM_HOME}/build)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -94,6 +94,10 @@ set(MAX_KMER_SIZE 32
 set(DELTACHERNOFF 0.1
     CACHE STRING "Delta Chernoff's bound")
 
+set(FUZZ 1000
+    CACHE STRING "Fuzz Value for Transitive Transitive Reduction")
+
+
 target_compile_definitions(
   dibella
   PRIVATE
@@ -101,6 +105,7 @@ target_compile_definitions(
     -DDELTACHERNOFF=${DELTACHERNOFF}
     -DLOWER_KMER_FREQ=${LOWER_KMER_FREQ}
     -DUPPER_KMER_FREQ=${UPPER_KMER_FREQ}
+    -DFUZZ=${FUZZ}
 )
 
 target_link_libraries(dibella PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC)

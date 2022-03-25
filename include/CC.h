@@ -1361,7 +1361,7 @@ namespace combblas {
         // isolated vertices are marked as converged
         NT NullBValue;
         FullyDistVec<int64_t, NT> degree = A.Reduce(Column, plus<NT>(), NullBValue, [](NT val) { return val; }); // printf("%d\n", val.overhang); 
-        stars.EWiseApply(degree, [](short isStar, NT degree) { return degree.overhang == 0? CONVERGED: isStar; }); // printf("--%d\n", degree.overhang); 
+        stars.EWiseApply(degree, [](short isStar, NT degree) { return (degree == 0)? CONVERGED : isStar; }); // printf("--%d\n", degree.overhang); 
         
         int nthreads = 1;
 #ifdef THREADED

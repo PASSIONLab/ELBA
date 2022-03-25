@@ -5,7 +5,7 @@
 uint minOverlapLen = 5000;
 uint maxOverhang = 25;
 
-void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
+void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap,
 	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
@@ -25,7 +25,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 
 	unsigned short int minLeft  = min(begpV, begpH);
 	unsigned short int minRight = min(rlenV - endpV, rlenH - endpH);
-	
+
 	int64_t seqV = ai.seq_v_g_idx;
 	int64_t seqH = ai.seq_h_g_idx;
 
@@ -38,26 +38,35 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	// @GGGG-TODO: identify chimeric sequences
 	bool contained = false;
 	bool chimeric  = false;
-	
-	// Reserve length/position if rc [x]
-	if(ai.rc)
-	{
-		uint tmp = begpH;
-		begpH = rlenH - endpH;
-		endpH = rlenH - tmp;
-	}
 
-    if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
-	{ 
-		ContainedSeqMyThread.push_back(seqH); // Push back global index
-		contained = true;
-	}
-    else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
-	{
-		ContainedSeqMyThread.push_back(seqV); // Push back global index
-		contained = true;
-	}
-	
+	// Reserve length/position if rc [x]
+
+	//if(ai.rc)
+	//{
+	//	uint tmp = begpH;
+	//	begpH = rlenH - endpH;
+	//	endpH = rlenH - tmp;
+	//}
+
+    //if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
+	//{
+	//	ContainedSeqMyThread.push_back(seqH); // Push back global index
+	//	contained = true;
+	//}
+    //else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
+	//{
+	//	ContainedSeqMyThread.push_back(seqV); // Push back global index
+	//	contained = true;
+	//}
+
+    if (rlenH <= rlenV && begpH <= maxOverhang && rlenH-endpH <= maxOverhang) {
+        ContainedSeqMyThread.push_back(seqH);
+        contained = true;
+    } else if (rlenV <= rlenH && begpV <= maxOverhang && rlenV-endpV <= maxOverhang) {
+        ContainedSeqMyThread.push_back(seqV);
+        contained = true;
+    }
+
 	if(!contained)
 	{
 		// If noAlign is false, set passed to false if the score isn't good enough
@@ -66,56 +75,8 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			if((float)ai.xscore < myThr || overlap < minOverlapLen) passed = false;
 			else passed = true;
 		}
+	}
 
-		if(passed)
-		{
-			uint32_t direction, directionT;
-			uint32_t suffix, suffixT;
-				
-			// !reverse complement
-			if(!ai.rc)
-			{
-				if(begpV > begpH)
-				{
-					direction  = 1;
-					directionT = 2;
-
-                    			suffix = rlenH - endpH;
-                    			suffixT = begpV;
-				}	
-				else
-				{
-					direction  = 2;
-					directionT = 1;
-
-                    			suffix = begpH;
-                    			suffixT = rlenV - endpV;
-				} 
-			}
-			else
-			{
-				if((begpV > 0) && (begpH > 0) && (rlenV-endpV == 0) && (rlenH-endpH == 0))
-				{
-					direction  = 0;
-					directionT = 0;
-
-					suffix  = begpH;
-					suffixT = begpV;
-				}
-				else
-				{
-					direction  = 3;
-					directionT = 3;
-
-					suffix  = rlenH - endpH;
-					suffixT = rlenV - endpV;
-				}
-			}
-			overhang  = suffix  << 2 | direction;
-			overhangT = suffixT << 2 | directionT;
-		} // if(passed)
-	} // if(!contained)
-		
 #else
 	if(ai.xscore >= FIXEDTHR)
 		passed = true;
@@ -160,11 +121,11 @@ void SeedExtendXdrop::apply(
     	// seed creation params are:
     	// horizontal seed start offset, vertical seed start offset, length
     	TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
-	
+
 	// GGGG: for reference -->
 	// 	seqan::Dna5String *seq_v = dfd->row_seq(l_row_idx);  seqV (from row)
 	// 	seqan::Dna5String *seq_h = dfd->col_seq(l_col_idx);  seqH (from col)
-	  
+
 	seedV = infix(*seqV, beginPositionV(seed), endPositionV(seed)); // seed on argA == row == seqV
 	seedH = infix(*seqH, beginPositionH(seed), endPositionH(seed)); // seed on argB == col == seqH
 
@@ -213,7 +174,7 @@ void SeedExtendXdrop::apply(
 		assignSource(row(align, 1), infix(*seqV, beginPositionV(seed),
 										endPositionV(seed)));
 	#endif
-	} 
+	}
 
 	/*! Note. This aligns the extended seeds globally, NOT the original
 	* two sequences.
@@ -238,7 +199,7 @@ void SeedExtendXdrop::apply(
 
     	ai.seq_h_length = length(*seqH); // col
     	ai.seq_v_length = length(*seqV); // row
-	
+
     	ai.seed = seed;
     	ai.seq_h_seed_length = static_cast<ushort>(seed._endPositionH -
     	                                           seed._beginPositionH);
@@ -297,7 +258,7 @@ SeedExtendXdrop::apply_batch
 
 	uint64_t npairs = seqan::length(seqsh);
 	setNumThreads(exec_policy, numThreads);
-	
+
 	lfs << "processing batch of size " << npairs << " with " << numThreads << " threads " << std::endl;
 
 	// for multiple seeds we store the seed with the highest identity
@@ -317,7 +278,7 @@ SeedExtendXdrop::apply_batch
 		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsv_ex;
 		resize(seqsh_ex, npairs, seqan::Exact{});
 		resize(seqsv_ex, npairs, seqan::Exact{});
-		
+
 	// extend the current seed and form a new gaps object
 	#pragma omp parallel for
 		for (uint64_t i = 0; i < npairs; ++i)
@@ -367,7 +328,7 @@ SeedExtendXdrop::apply_batch
 				setEndPositionH(seed, LocalSeedHOffset + seed_length);
 				setEndPositionV(seed, LocalSeedVOffset + seed_length);
 
-				if(!noAlign) 
+				if(!noAlign)
 				{
 					/* Perform match extension */
 					start_time = std::chrono::system_clock::now();
@@ -393,11 +354,11 @@ SeedExtendXdrop::apply_batch
 			else
 			{
 				strands[i] = false;
-				if(!noAlign) 
+				if(!noAlign)
 				{
 					start_time = std::chrono::system_clock::now();
 					xscores[i] = extendSeed(seed, seqan::source(seqsh[i]), seqan::source(seqsv[i]), seqan::EXTEND_BOTH, scoring_scheme,
-							xdrop, (int)k, 
+							xdrop, (int)k,
 							seqan::GappedXDrop());
 					end_time = std::chrono::system_clock::now();
 					add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
@@ -440,12 +401,12 @@ SeedExtendXdrop::apply_batch
 		start_time = std::chrono::system_clock::now();
 		// alignment
 		globalAlignment(exec_policy, seqsh_ex, seqsv_ex, scoring_scheme);
-		
+
 		end_time = std::chrono::system_clock::now();
     	add_time("XA:global_alignment", (ms_t(end_time - start_time)).count());
 	#endif
 		start_time = std::chrono::system_clock::now();
-		
+
 		// Compute stats
 		if (count == 0)	// overwrite in the first seed
 		{
@@ -467,7 +428,7 @@ SeedExtendXdrop::apply_batch
 
 				// GGGG: global idx over here to use in the FullDistVect for removing contained vertices/seqs
 				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
-    				ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
+                ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
 		}
 		else
@@ -480,7 +441,7 @@ SeedExtendXdrop::apply_batch
 				seqan::AlignmentStats stats;
 				computeAlignmentStats(stats, seqsh_ex[i], seqsv_ex[i],
 									  scoring_scheme);
-		
+
 				if (stats.alignmentIdentity > ai[i].stats.alignmentIdentity)
 				{
 					ai[i].stats				= stats;
@@ -511,7 +472,7 @@ SeedExtendXdrop::apply_batch
 	auto start_time = std::chrono::system_clock::now();
 
 	std::vector<std::vector<int64_t>> ContainedSeqPerThread(numThreads);
-	
+
 	// TODO@GGGG: reproduce and fix segfault
 	// for(int t = 0; t < numThreads; t++)
 	// 	ContainedSeqPerThread[t].resize(std::ceil(nreads/numThreads));
@@ -545,6 +506,7 @@ SeedExtendXdrop::apply_batch
 				cks->lenv 	= ai[i].seq_v_length;
 				cks->lenh 	= ai[i].seq_h_length;
 				cks->score  = ai[i].xscore;
+                cks->rc     = ai[i].rc;
 				cks->passed = passed;	// keep this
 			}
 		}
@@ -556,7 +518,7 @@ SeedExtendXdrop::apply_batch
 		readcount += ContainedSeqPerThread[t].size();
 	}
 
-	unsigned int readssofar = 0; 
+	unsigned int readssofar = 0;
 	ContainedSeqPerBatch.resize(readcount);
 
 	// Concatenate per-thread result
