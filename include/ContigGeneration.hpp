@@ -206,7 +206,7 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     std::vector<IType> LocalRead2Procs;
     std::vector<IType> AllContig2Procs;
 
-    AllContigSizesSorted = GetAllContigSizesSorted(ContigSizes, NumUsedContigs, 3, di);
+    AllContigSizesSorted = GetAllContigSizesSorted(ContigSizes, NumUsedContigs, 2, di);
 
     outs << "CreateContig::NumContigs: " << NumUsedContigs << std::endl;
     outs << "CreateContig::MaxContigSize: " << max_contig_size << std::endl;
@@ -562,9 +562,6 @@ const char * ReadExchange(std::vector<IType>& LocalRead2Procs, std::unordered_ma
 
     read_totrecv = std::accumulate(read_recvcounts.begin(), read_recvcounts.end(), static_cast<IType>(0));
     char_totrecv = std::accumulate(char_recvcounts.begin(), char_recvcounts.end(), static_cast<IType>(0));
-
-    assert((char_totsend < std::numeric_limits<int>::max()));
-    assert((char_totrecv < std::numeric_limits<int>::max()));
 
     std::partial_sum(read_recvcounts.begin(), read_recvcounts.end()-1, read_rdispls.begin()+1);
     std::partial_sum(char_recvcounts.begin(), char_recvcounts.end()-1, char_rdispls.begin()+1);
