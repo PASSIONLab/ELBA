@@ -737,7 +737,11 @@ namespace combblas {
         IT maxInd = ind.Reduce(maximum<IT>(), (IT) 0 ) ;
         if(maxInd >= globallen)
         {
-            std::cout << "At least one requested index is larger than the global length" << std::endl;
+            
+            //std::cout << "At least one requested index is larger than the global length" << std::endl;
+            std::stringstream iss;
+            iss << "maxInd = " << maxInd << " >= " << globallen << " = globallen";
+            std::cout << iss.str() << std::endl;
             return FullyDistSpVec<IT,NT>(ind.getcommgrid());
         }
         
@@ -879,7 +883,10 @@ namespace combblas {
         IT maxInd = ind.Reduce(maximum<IT>(), (IT) 0 ) ;
         if(maxInd >= globallen)
         {
-            std::cout << "At least one requested index is larger than the global length" << std::endl;
+            //std::cout << "At least one requested index is larger than the global length" << std::endl;
+            std::stringstream iss;
+            iss << "maxInd = " << maxInd << " >= " << globallen << " = globallen";
+            std::cout << iss.str() << std::endl;
             return FullyDistSpVec<IT,NT>(ind.getcommgrid());
         }
         
