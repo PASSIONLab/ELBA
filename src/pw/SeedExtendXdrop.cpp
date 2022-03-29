@@ -468,6 +468,7 @@ SeedExtendXdrop::apply_batch
 	delete [] seedlens;
 	delete [] xscores;
 	delete [] strands;
+    delete [] seeds;
 
 	auto start_time = std::chrono::system_clock::now();
 

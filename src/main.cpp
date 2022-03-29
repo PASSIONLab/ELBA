@@ -143,7 +143,9 @@ int main(int argc, char **argv)
   }
   else
   {
-    char* buf = new char[job_name_length];
+    char* buf = new char[job_name_length+1];
+    buf[job_name_length] = 0;
+
     MPI_Bcast(buf, job_name_length, MPI_CHAR, 0, MPI_COMM_WORLD);
     std::string s(buf);
     job_name = s;

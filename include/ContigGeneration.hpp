@@ -243,14 +243,6 @@ IType GetRead2Contigs(DistStringGraph& G, DistAssignmentVec& Read2Contigs, DistR
     A.PruneFull(Branches, Branches);
     tu.print_str("GetRead2Contigs :: Pruned branching points\n");
 
-    //D2 = A;
-    //DistAssignmentVec degs2(D2.getcommgrid());
-
-    //D2.Reduce(degs2, Row, std::plus<IType>(), static_cast<IType>(0));
-    //tu.print_str("Recalculated vertex degree counts post pruning\n");
-
-    A.ParallelWriteMM("CC-breaker.mm", true);
-
     IType NumContigs;
     Read2Contigs = CC(A, NumContigs);
     iss.str("");
@@ -593,7 +585,6 @@ const char * ReadExchange(std::vector<IType>& LocalRead2Procs, std::unordered_ma
 
     MPI_Alltoallv_str(char_send, char_sendcounts, char_sdispls, char_recv, char_recvcounts, char_rdispls, di.world);
     tu.print_str("ReadExchange :: Completed custom all-to-all using derived datatypes and Isend/Irecv calls\n");
-    // MPI_Alltoallv(char_send, char_sendcounts.data(), char_sdispls.data(), MPI_CHAR, char_recv, char_recvcounts.data(), char_rdispls.data(), MPI_CHAR, di.world);
 
     /* TODO: inefficient */
     std::vector<IType> char_read_offsets(read_totrecv, 0);
@@ -632,10 +623,15 @@ std::vector<std::string> LocalAssembly(LocStringGraph& ContigChains, std::vector
     assert((numreads = static_cast<IType>(ContigChains.getncol())));
     assert((numreads = static_cast<IType>(LocalContigReadIdxs.size())));
 
-    bool visited[numreads] = {0};
-    std::unordered_set<IType> used_roots;
-
     auto csc = ContigChains.GetCSC();
+
+    if (!csc)
+        return std::vector<std::string>();
+
+    assert((numreads>=2));
+
+    bool *visited = new bool[numreads]();
+    std::unordered_set<IType> used_roots;
 
     for (IType v = 0; v < csc->n; ++v) {
 
@@ -702,6 +698,8 @@ std::vector<std::string> LocalAssembly(LocStringGraph& ContigChains, std::vector
         }
         contigs.push_back(contig);
     }
+
+    delete [] visited;
 
     return contigs;
 }
