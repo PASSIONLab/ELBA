@@ -86,7 +86,7 @@ struct ReadOverlap
 
     operator bool() const { return true; } /* for T = R in transitive reduction */
 
-    operator int64_t() const { return (is_invalid())? 0 : 1; }
+    //operator int64_t() const { return (is_invalid())? 0 : 1; }
 
     friend bool operator==(const ReadOverlap& lhs, const ReadOverlap& rhs)
     {
@@ -149,7 +149,7 @@ struct ReadOverlapExtraHandler
     template <typename c, typename t>
     void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
     {
-        os << e.dir << "\t" << static_cast<int>(e.transpose) << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
+        os << e.dir << "\t" << e.sfx << "\t" << e.dirT << "\t" << e.sfxT << "\t" << static_cast<int>(e.transpose) << "\t" << static_cast<int>(e.rc) << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
     }
 };
 

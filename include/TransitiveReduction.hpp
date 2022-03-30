@@ -34,7 +34,13 @@ struct TransposeSRing : unary_function <ReadOverlap, ReadOverlap>
         xT.l[0] = x.l[1];
         xT.l[1] = x.l[0];
 
+        xT.rc = x.rc;
         xT.transpose = !x.transpose;
+
+        xT.sfx  = x.sfxT;
+        xT.sfxT = x.sfx;
+        xT.dir  = x.dirT;
+        xT.dirT = x.dir;
 
         return xT;
     }
@@ -129,7 +135,7 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
 
     if (!(RT == R)) R += RT; /* symmetricize if necessary (????) */
 
-    // R.Prune(InvalidSRing(), true);
+    R.ParallelWriteMM("overlap-graph.mm", true, ReadOverlapExtraHandler());
 
     /* implicitly will call OverlapPath(const ReadOverlap& e) constructor */
     SpParMat<int64_t, OverlapPath, SpDCCols<int64_t, OverlapPath>> Nc = R;
@@ -142,17 +148,20 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
 
     int64_t prev, cur;
 
-    int i = 1;
-
     SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> M = R;
     M.Apply(PlusFuzzSRing());
 
     tu.print_str("Matrix R, i.e. AAt before transitive reduction: ");
     R.PrintInfo();
 
-    do {
+    //bool check_phase = false;
+    int check_phase_counter = 0;
 
+    do {
+        tu.print_str("Matrix T: ");
+        T.PrintInfo();
         prev = T.getnnz();
+
         SpParMat<int64_t, OverlapPath, SpDCCols<int64_t, OverlapPath>> N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, SpDCCols<int64_t, OverlapPath>>(Nc, R);
         N.Prune(InvalidSRing(), true);
         Nc = N;
@@ -168,7 +177,10 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
         T = EWiseApply<bool, SpDCCols<int64_t, bool>>(Tc, I, [](bool x, bool y) { return !(x && y); }, true, false);
         cur = T.getnnz();
 
-    } while (i++ <= 15);
+        if (check_phase_counter > 0 || cur == prev)
+            check_phase_counter++;
+
+    } while (check_phase_counter < 1);
 
     R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), false, false);
     R.Prune(InvalidSRing());
