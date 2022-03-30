@@ -121,14 +121,23 @@ struct MinPlusSR
 
 void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>& R, TraceUtils tu)
 {
-
+    tu.print_str("R1: "); R.PrintInfo();
+    R.ParallelWriteMM("R1.mm", true,  ReadOverlapExtraHandler());
     SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> RT = R;
     RT.Transpose();
     RT.Apply(TransposeSRing());
+    RT.ParallelWriteMM("RT.mm", true, ReadOverlapExtraHandler());
 
-    if (!(RT == R)) R += RT;
+    if (!(RT == R)) {
+        tu.print_str("RT != R\n");
+        R += RT;
+    }
 
+    R.ParallelWriteMM("R2.mm", true, ReadOverlapExtraHandler());
+    tu.print_str("R2: "); R.PrintInfo();
     R.Prune(InvalidSRing(), true);
+    R.ParallelWriteMM("R3.mm", true, ReadOverlapExtraHandler());
+    tu.print_str("R3: "); R.PrintInfo();
 
     SpParMat<int64_t, OverlapPath, SpDCCols<int64_t, OverlapPath>> Nc = R;
     SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> T = R;
@@ -144,9 +153,13 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
     tu.print_str("Matrix R, i.e. AAt before transitive reduction: ");
     R.PrintInfo();
 
+    tu.print_str("M: "); M.PrintInfo();
+
     do {
 
         prev = T.getnnz();
+        tu.print_str("Matrix T current round: ");
+        T.PrintInfo();
         SpParMat<int64_t, OverlapPath, SpDCCols<int64_t, OverlapPath>> N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, SpDCCols<int64_t, OverlapPath>>(Nc, R);
         N.Prune(InvalidSRing(), true);
         Nc = N;
@@ -166,6 +179,13 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
 
     R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), false, false);
     R.Prune(InvalidSRing());
+
+    //RT = R;
+    //RT.Transpose();
+    //
+    //if (!(RT == R)) {
+
+    //}
 
     R.ParallelWriteMM("string-graph.mm", true, ReadOverlapExtraHandler());
 

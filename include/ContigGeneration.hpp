@@ -67,12 +67,12 @@ public:
     MPI_Comm world;
     int myrank, nprocs;
 
-    const FastaData *lfd;
+    FastaData *lfd;
     std::vector<IType> offsets, numreads;
     IType cached_left_val, cached_right_val;
     int cached_index;
 
-    DistReadInfo(std::shared_ptr<CommGrid> commgrid, const FastaData *lfd)
+    DistReadInfo(std::shared_ptr<CommGrid> commgrid, FastaData *lfd)
         : commgrid(commgrid), world(commgrid->GetWorld()), myrank(commgrid->GetRank()), nprocs(commgrid->GetSize()), lfd(lfd)
     {
         IType nlocreads = lfd->local_count();
@@ -240,8 +240,12 @@ IType GetRead2Contigs(DistStringGraph& G, DistAssignmentVec& Read2Contigs, DistR
     iss << "GetRead2Contigs :: Found " << numbranches << " branching points\n";
     tu.print_str(iss.str());
 
+    Branches.ParallelWrite("Branches.txt", true);
+
     A.PruneFull(Branches, Branches);
     tu.print_str("GetRead2Contigs :: Pruned branching points\n");
+
+    A.ParallelWriteMM("A.mm", true);
 
     IType NumContigs;
     Read2Contigs = CC(A, NumContigs);
@@ -753,10 +757,8 @@ int MPI_Alltoallv_str(const char *sendbuf, const std::vector<IType>& sendcounts,
 
     MPI_Request *reqs = new MPI_Request[2*nprocs];
 
-    void *buf;
-
     for (int i = 0; i < nprocs; ++i) {
-        buf = recvbuf + rdispls[i];
+        void *buf = recvbuf + rdispls[i];
         MPI_Count recvcount = recvcounts[i];
         if (recvcount <= max_int) {
             MPI_Irecv(buf, static_cast<int>(recvcount), MPI_CHAR, i, 0, comm, &reqs[i]);
@@ -779,7 +781,7 @@ int MPI_Alltoallv_str(const char *sendbuf, const std::vector<IType>& sendcounts,
 
     for (int j = myrank; j < (nprocs+myrank); ++j) {
         int i = j%nprocs;
-        buf = sendbuf + sdispls[i];
+        const void *buf = sendbuf + sdispls[i];
         MPI_Count sendcount = sendcounts[i];
         if (sendcount <= max_int) {
             MPI_Isend(buf, static_cast<int>(sendcount), MPI_CHAR, i, 0, comm, &reqs[i+nprocs]);
