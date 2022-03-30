@@ -54,9 +54,11 @@ struct CSpMat
     typedef SpCCols<IType, NT> CCols;
     typedef SpDCCols<IType, NT> DCCols;
     typedef SpParMat<IType, NT, DCCols> MPI_DCCols;
+    typedef SpParMat<IType, NT, CCols> MPI_CCols;
 };
 
 typedef CSpMat<ReadOverlap>::MPI_DCCols DistStringGraph;
+typedef CSpMat<ReadOverlap>::DCCols LocDCCStringGraph;
 typedef CSpMat<ReadOverlap>::CCols LocStringGraph;
 typedef FullyDistVec<IType, IType> DistAssignmentVec;
 
@@ -191,8 +193,10 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
 
     std::vector<IType> LocalContigReadIdxs;
 
-    LocStringGraph ContigChains = G.InducedSubgraphs2Procs(Read2Procs, LocalContigReadIdxs);
+    LocDCCStringGraph ContigChainsDCC = G.InducedSubgraphs2Procs(Read2Procs, LocalContigReadIdxs);
     tu.print_str("CreateContig :: after InducedSubgraphs2Procs\n");
+
+    LocStringGraph ContigChains(ContigChainsDCC);
 
     ContigChains.Transpose();
     tu.print_str("CreateContig :: after Transpose\n");

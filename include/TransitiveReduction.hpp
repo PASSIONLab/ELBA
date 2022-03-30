@@ -128,6 +128,7 @@ struct MinPlusSR
 
 void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>& R, TraceUtils tu)
 {
+    R.ParallelWriteMM("overlap-graph-triu.mm", true, ReadOverlapExtraHandler());
 
     SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> RT = R; /* copies everything */
     RT.Transpose();
@@ -176,6 +177,7 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
 
         T = EWiseApply<bool, SpDCCols<int64_t, bool>>(Tc, I, [](bool x, bool y) { return !(x && y); }, true, false);
         cur = T.getnnz();
+        break;
 
         if (check_phase_counter > 0 || cur == prev)
             check_phase_counter++;

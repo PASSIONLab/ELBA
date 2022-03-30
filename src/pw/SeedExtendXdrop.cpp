@@ -76,7 +76,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
             if (!ai.rc) {
                 if (begpV > begpH) {
                     dir = 1; dirT = 2;
-                    sfx = rlenH - endpV;
+                    sfx = rlenH - endpH;
                     sfxT = begpV;
                 } else {
                     dir = 2; dirT = 1;
