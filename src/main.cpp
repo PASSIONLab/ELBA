@@ -25,8 +25,6 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "../include/kmer/KmerOps.hpp"
 #include "../include/kmer/KmerIntersectSR.hpp"
 #include "../include/Utils.hpp"
-#include "../include/TransitiveReductionSR.hpp"
-/* #include "../include/Contig.hpp" */
 #include "../include/ContigGeneration.hpp"
 #include "../include/ReadOverlap.hpp"
 #include "../include/TransitiveReduction.hpp"
@@ -333,6 +331,7 @@ int main(int argc, char **argv)
   // TRANSITIVE REDUCTION                                                             //
   //////////////////////////////////////////////////////////////////////////////////////
 
+  /* Implicitly wil call ReadOverlap(const CommonKmers& cks) constructor (ReadOverlap.hpp:43) */
   SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> R = B;
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
@@ -344,52 +343,52 @@ int main(int argc, char **argv)
   }
 
   R.Apply(Tupleize());
-  R.ParallelWriteMM("tuples.mm", true, TupleHandler());
+  //R.ParallelWriteMM("tuples.mm", true, TupleHandler());
 
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
   // Output intermediate matrix post-alignment
-  std::string stringm = myoutput;
-  stringm += ".stringmatrix.mm";
-  B.ParallelWriteMM(stringm, true, dibella::CkOutputMMHandler());
+  //std::string stringm = myoutput;
+  //stringm += ".stringmatrix.mm";
+  //B.ParallelWriteMM(stringm, true, dibella::CkOutputMMHandler());
 
-  if(is_print_rank)
-  {
-    std::cout << "Transitive Reduction is done and okay!" << std::endl;
-  }
+  //if(is_print_rank)
+  //{
+  //  std::cout << "Transitive Reduction is done and okay!" << std::endl;
+  //}
 
-  //////////////////////////////////////////////////////////////////////////////////////
-  // CONTIG EXTRACTION                                                                //
-  //////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////
+  //// CONTIG EXTRACTION                                                                //
+  ////////////////////////////////////////////////////////////////////////////////////////
 
-  tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
+  //tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
 
-  std::vector<std::string> myContigSet;
-  bool contigging = true;
+  //std::vector<std::string> myContigSet;
+  //bool contigging = true;
 
-  if(contigging)
-  {
-    myContigSet = CreateContig(R, dfd, myoutput, tu);
-  }
+  //if(contigging)
+  //{
+  //  myContigSet = CreateContig(R, dfd, myoutput, tu);
+  //}
 
-  tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
+  //tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
 
-  std::stringstream iss;
-  iss << myoutput << ".contigs_rank_" << myrank << ".fa";
-  std::ofstream contig_file(iss.str());
+  //std::stringstream iss;
+  //iss << myoutput << ".contigs_rank_" << myrank << ".fa";
+  //std::ofstream contig_file(iss.str());
 
-  int64_t number_of_contigs = myContigSet.size();
-  int64_t contigs_offset = 0;
-  MPI_Exscan(&number_of_contigs, &contigs_offset, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
+  //int64_t number_of_contigs = myContigSet.size();
+  //int64_t contigs_offset = 0;
+  //MPI_Exscan(&number_of_contigs, &contigs_offset, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
 
-  for (int i = 0; i < myContigSet.size(); ++i) 
-  {
-    iss.str("");
-    iss << ">contig" << i+1+contigs_offset << "\n" << myContigSet[i];
-    contig_file << iss.str() << std::endl;
-  }
+  //for (int i = 0; i < myContigSet.size(); ++i)
+  //{
+  //  iss.str("");
+  //  iss << ">contig" << i+1+contigs_offset << "\n" << myContigSet[i];
+  //  contig_file << iss.str() << std::endl;
+  //}
 
-  contig_file.close();
+  //contig_file.close();
 
   // //////////////////////////////////////////////////////////////////////////////////////
   // // SCAFFOLDING                                                                      //

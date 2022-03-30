@@ -17,7 +17,7 @@
 
 struct InvalidSRing : unary_function<ReadOverlap, ReadOverlap>
 {
-    bool operator() (const ReadOverlap& x) { return !x.isvalid(); }
+    bool operator() (const ReadOverlap& x) { return x.is_invalid(); }
 };
 
 struct TransposeSRing : unary_function <ReadOverlap, ReadOverlap>
@@ -34,7 +34,7 @@ struct TransposeSRing : unary_function <ReadOverlap, ReadOverlap>
         xT.l[0] = x.l[1];
         xT.l[1] = x.l[0];
 
-        xT.refix(1);
+        xT.transpose = !x.transpose;
 
         return xT;
     }
@@ -46,6 +46,7 @@ struct PlusFuzzSRing : unary_function<ReadOverlap, ReadOverlap>
     {
         ReadOverlap fuzzed = x;
         fuzzed.sfx += FUZZ;
+        fuzzed.sfxT += FUZZ;
 
         return fuzzed;
     }
@@ -122,17 +123,22 @@ struct MinPlusSR
 void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>& R, TraceUtils tu)
 {
 
-    SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> RT = R;
+    SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> RT = R; /* copies everything */
     RT.Transpose();
-    RT.Apply(TransposeSRing());
+    RT.Apply(TransposeSRing()); /* flips all the coordinates */
 
-    if (!(RT == R)) R += RT;
+    if (!(RT == R)) R += RT; /* symmetricize if necessary (????) */
 
-    R.Prune(InvalidSRing(), true);
+    // R.Prune(InvalidSRing(), true);
 
+    /* implicitly will call OverlapPath(const ReadOverlap& e) constructor */
     SpParMat<int64_t, OverlapPath, SpDCCols<int64_t, OverlapPath>> Nc = R;
+
+    /* calls operator bool() from ReadOverlap, always returns true (so hopefully will just fill out
+     * nonzeros in boolean matrix */
     SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> T = R;
-    T.Prune(ZeroPrune());
+
+    T.Prune(ZeroPrune()); /* what does this accomplish (????) */
 
     int64_t prev, cur;
 
