@@ -14,8 +14,8 @@ public:
                   ushort seed_length, int xdrop, int seed_count);
 
   void
-  PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOveralap, 
-          uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqPerProc);
+  PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOveralap,
+          int& dir, int& dirT, int& sfx, int& sfxT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqPerProc);
 
   void
   apply(uint64_t l_col_idx, uint64_t g_col_idx,
@@ -36,7 +36,8 @@ public:
               ushort k,
               uint64_t nreads,
               std::vector<int64_t>& ContainedSeqPerProc,
-              float ratioScoreOverlap = 0.99,    // GGGG: Precomputed for error rate = 15% and default scoring matrix (1,-1,-1) (0.445 for CLR, 0.99 for CCS)
+              //float ratioScoreOverlap = 0.99,    // GGGG: Precomputed for error rate = 15% and default scoring matrix (1,-1,-1) (0.445 for CLR, 0.99 for CCS)
+              float ratioScoreOverlap = 0.445,    // GGGG: Precomputed for error rate = 15% and default scoring matrix (1,-1,-1) (0.445 for CLR, 0.99 for CCS)
               int debugThr = 50) override;      // GGGG: Fixed threshold, this is convenient only for debugging
 
 private:

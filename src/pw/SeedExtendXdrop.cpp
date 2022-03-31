@@ -6,7 +6,7 @@ uint minOverlapLen = 5000;
 uint maxOverhang = 25;
 
 void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap,
-	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
+	int& dir, int& dirT, int& sfx, int& sfxT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -39,25 +39,21 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	bool contained = false;
 	bool chimeric  = false;
 
-	// Reserve length/position if rc [x]
+	// reverse length/position if rc [x]
 
-	//if(ai.rc)
-	//{
-	//	uint tmp = begpH;
-	//	begpH = rlenH - endpH;
-	//	endpH = rlenH - tmp;
-	//}
+    if (ai.rc) {
+        uint tmp = begpH;
+        begpH = rlenH - endpH;
+        endpH = rlenH - tmp;
+    }
 
-    //if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
-	//{
-	//	ContainedSeqMyThread.push_back(seqH); // Push back global index
-	//	contained = true;
-	//}
-    //else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
-	//{
-	//	ContainedSeqMyThread.push_back(seqV); // Push back global index
-	//	contained = true;
-	//}
+    //if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH)) {
+    //    ContainedSeqMyThread.push_back(seqH);
+    //    contained = true;
+    //} else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV)) {
+    //    ContainedSeqMyThread.push_back(seqV);
+    //    contained = true;
+    //}
 
     if (rlenH <= rlenV && begpH <= maxOverhang && rlenH-endpH <= maxOverhang) {
         ContainedSeqMyThread.push_back(seqH);
@@ -75,7 +71,31 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 			if((float)ai.xscore < myThr || overlap < minOverlapLen) passed = false;
 			else passed = true;
 		}
-	}
+
+        if (passed) {
+            if (!ai.rc) {
+                if (begpV > begpH) {
+                    dir = 1; dirT = 2;
+                    sfx = rlenH - endpH;
+                    sfxT = begpV;
+                } else {
+                    dir = 2; dirT = 1;
+                    sfx = begpH;
+                    sfxT = rlenV - endpV;
+                }
+            } else {
+                if ((begpV > 0) && (begpH > 0) && (rlenV-endpV == 0) && (rlenH-endpH == 0)) {
+                    dir = dirT = 0;
+                    sfx = begpH;
+                    sfxT = begpV;
+                } else {
+                    dir = dirT = 3;
+                    sfx = rlenH - endpH;
+                    sfxT = rlenV - endpV;
+                }
+            }
+        }
+    }
 
 #else
 	if(ai.xscore >= FIXEDTHR)
@@ -494,7 +514,7 @@ SeedExtendXdrop::apply_batch
 			// GGGG: in PostAlignDecision() we can mark as contained sequences as removable in ContainedSeqPerBatch and their local contained edges
 			// GGGG: ContainedSeqPerBatch global indexes of contained sequences
 
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->dir, cks->dirT, cks->sfx, cks->sfxT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
 
 			if (passed)
 			{
