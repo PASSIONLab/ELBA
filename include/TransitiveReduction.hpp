@@ -157,10 +157,11 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
 
     //bool check_phase = false;
     int check_phase_counter = 0;
+    int full_counter = 0;
 
     do {
-        tu.print_str("Matrix T: ");
-        T.PrintInfo();
+        //tu.print_str("Matrix T: ");
+        //T.PrintInfo();
         prev = T.getnnz();
 
         SpParMat<int64_t, OverlapPath, SpDCCols<int64_t, OverlapPath>> N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, SpDCCols<int64_t, OverlapPath>>(Nc, R);
@@ -177,12 +178,18 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
 
         T = EWiseApply<bool, SpDCCols<int64_t, bool>>(Tc, I, [](bool x, bool y) { return !(x && y); }, true, false);
         cur = T.getnnz();
-        break;
 
-        if (check_phase_counter > 0 || cur == prev)
+        if (check_phase_counter > 0 || (prev-cur)<=(100))
             check_phase_counter++;
 
-    } while (check_phase_counter < 1);
+        full_counter++;
+
+    } while (check_phase_counter < 5 && full_counter < 10);
+
+    std::stringstream iss;
+    iss << "Transitive Reduction did " << full_counter << " iterations\n";
+
+    tu.print_str(iss.str());
 
     R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), false, false);
     R.Prune(InvalidSRing());
