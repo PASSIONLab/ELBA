@@ -22,7 +22,8 @@ else()
   set(libc "")
 endif()
 
-set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
+#set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O2 -g -fsanitize=address -fno-omit-frame-pointer -DSEQAN_ENABLE_DEBUG=0 -mavx2 ")
+set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2 ")
 
 find_package(MPI REQUIRED)
 find_package(OpenMP REQUIRED)
@@ -77,9 +78,9 @@ add_executable(dibella
         src/kmer/KmerOps.cpp
         src/kmer/Kmer.cpp
         include/kmer/Kmer.hpp
-        include/TransitiveReductionSR.hpp
+        include/TransitiveReduction.hpp
         include/CC.h
-        include/Contig.hpp
+        include/ContigGeneration.hpp
 	)
 
 set(LOWER_KMER_FREQ 20

@@ -36,7 +36,7 @@ DistributedFastaData::~DistributedFastaData() {
     delete[](recv_nbrs_buffs);
   }
   delete[](recv_nbrs_buff_lengths);
-  delete (fd->buffer());
+  delete[](fd->buffer());
   delete (fd);
   delete[](l_seq_counts);
   delete[](g_seq_offsets);

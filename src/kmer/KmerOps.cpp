@@ -1045,7 +1045,8 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
 
   /* Initialize readNameMap for storing ReadID -> names/tags of reads */
   /* GGGG: define ReadId type */
-  std::unordered_map<ReadId, std::string>* readNameMap = new std::unordered_map<ReadId, std::string>();
+
+  std::unordered_map<ReadId, std::string> readNameMap;
 
   /*! GGGG: I don't what the original one, I want the new one with consecutive entries; also I only need the first one; it's gonna be incremented later in ParseNPack */
   uint64_t GlobalReadOffset = dfd->g_seq_offsets[parops->world_proc_rank];  
@@ -1056,7 +1057,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
   /*! GGGG: let's extract the function (I'll separate later once I understood what's going on) */
   /*! GGGG: functions in KmerCounter.cpp */
   /*  Determine final hash-table entries using bloom filter */
-  int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, *readNameMap, k);//, readids);
+  int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, readNameMap, k);//, readids);
 
   tp->times["EndKmerOp:GenerateA:FirstPass()"] = std::chrono::system_clock::now();
 
@@ -1109,7 +1110,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
   tp->times["StartKmerOp:GenerateA:SecondPass()"] = std::chrono::system_clock::now();
 
   /* Second pass */
-  ProcessFiles(lfd, 2, cardinality, myReadStartIndex, *readNameMap, k);//, readids);
+  ProcessFiles(lfd, 2, cardinality, myReadStartIndex, readNameMap, k);//, readids);
 
   tp->times["EndKmerOp:GenerateA:SecondPass()"] = std::chrono::system_clock::now();
 
