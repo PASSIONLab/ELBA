@@ -14,34 +14,6 @@
 #include "Utils.hpp"
 #include "CC.h"
 
-template <typename T>
-void write_object_to_file(T object, std::string prefix)
-{
-    int myrank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-    std::stringstream filename;
-    filename << prefix << "_" << myrank << ".txt";
-    std::ofstream filestream(filename.str());
-    filestream << object << std::endl;
-    filestream.close();
-}
-
-template <typename T>
-void write_vector_to_file(const std::vector<T>& vec, std::string prefix)
-{
-    int myrank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-    std::stringstream filename;
-    filename << prefix << "_" << myrank << ".txt";
-    std::ofstream filestream(filename.str());
-    filestream << "num elements" << vec.size() << "\n";
-    for (auto itr = vec.begin(); itr != vec.end(); ++itr) {
-        filestream << *itr << ", ";
-    }
-    filestream << std::endl;
-    filestream.close();
-}
-
 using namespace combblas;
 
 typedef int64_t IType; /* index type used in this file */
@@ -74,8 +46,7 @@ public:
     IType cached_left_val, cached_right_val;
     int cached_index;
 
-    DistReadInfo(std::shared_ptr<CommGrid> commgrid, FastaData *lfd)
-        : commgrid(commgrid), world(commgrid->GetWorld()), myrank(commgrid->GetRank()), nprocs(commgrid->GetSize()), lfd(lfd)
+    DistReadInfo(std::shared_ptr<CommGrid> commgrid, FastaData *lfd) : commgrid(commgrid), world(commgrid->GetWorld()), myrank(commgrid->GetRank()), nprocs(commgrid->GetSize()), lfd(lfd)
     {
         IType nlocreads = lfd->local_count();
         IType vecoffset = 0;
@@ -197,12 +168,6 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
 
     LocDCCStringGraph ContigChainsDCC = G.InducedSubgraphs2Procs(Read2Procs, LocalContigReadIdxs);
     tu.print_str("CreateContig :: after InducedSubgraphs2Procs\n");
-
-    std::vector<IType> loc_used_reads(LocalContigReadIdxs.size());
-    std::transform(LocalContigReadIdxs.begin(), LocalContigReadIdxs.end(), loc_used_reads.begin(), [](IType a) { return a + 1; } );
-
-    FullyDistVec<IType, IType> used_reads(loc_used_reads, G.getcommgrid());
-    used_reads.ParallelWrite("used_reads.txt", true, false);
 
     LocStringGraph ContigChains(ContigChainsDCC);
 

@@ -28,7 +28,6 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "../include/ContigGeneration.hpp"
 #include "../include/ReadOverlap.hpp"
 #include "../include/TransitiveReduction.hpp"
-// #include "Assembly.cpp"
 
 #include "seqan/score/score_matrix_data.h"
 

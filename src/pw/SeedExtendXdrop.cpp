@@ -47,14 +47,6 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
         endpH = rlenH - tmp;
     }
 
-    //if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH)) {
-    //    ContainedSeqMyThread.push_back(seqH);
-    //    contained = true;
-    //} else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV)) {
-    //    ContainedSeqMyThread.push_back(seqV);
-    //    contained = true;
-    //}
-
     if (rlenH <= rlenV && begpH <= maxOverhang && rlenH-endpH <= maxOverhang) {
         ContainedSeqMyThread.push_back(seqH);
         contained = true;

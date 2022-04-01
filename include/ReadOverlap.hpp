@@ -86,8 +86,6 @@ struct ReadOverlap
 
     operator bool() const { return true; } /* for T = R in transitive reduction */
 
-    //operator int64_t() const { return (is_invalid())? 0 : 1; }
-
     friend bool operator==(const ReadOverlap& lhs, const ReadOverlap& rhs)
     {
         return (lhs.sfx == rhs.sfx && lhs.dir == rhs.dir);
