@@ -29,15 +29,15 @@ struct ReadOverlap
     bool transpose, rc;
 
     ReadOverlap() : sfx(0), dir(-1), transpose(false) {}
-    ReadOverlap(const ReadOverlap& lhs)
-        : sfx(lhs.sfx), sfxT(lhs.sfxT), dir(lhs.dir), dirT(lhs.dirT), transpose(transpose), rc(rc)
+    ReadOverlap(const ReadOverlap& rhs)
+        : sfx(rhs.sfx), sfxT(rhs.sfxT), dir(rhs.dir), dirT(rhs.dirT), transpose(rhs.transpose), rc(rhs.rc)
     {
-        b[0] = lhs.b[0]; b[1] = lhs.b[1];
-        e[0] = lhs.e[0]; e[1] = lhs.e[1];
-        l[0] = lhs.l[0]; l[1] = lhs.l[1];
+        b[0] = rhs.b[0]; b[1] = rhs.b[1];
+        e[0] = rhs.e[0]; e[1] = rhs.e[1];
+        l[0] = rhs.l[0]; l[1] = rhs.l[1];
 
-        coords[0] = lhs.coords[0];
-        coords[1] = lhs.coords[1];
+        coords[0] = rhs.coords[0];
+        coords[1] = rhs.coords[1];
     }
 
     ReadOverlap(const CommonKmers& cks) : transpose(false)
@@ -151,6 +151,16 @@ struct ReadOverlapExtraHandler
     {
         os << e.dir << "\t" << e.sfx << "\t" << e.dirT << "\t" << e.sfxT << "\t" << static_cast<int>(e.transpose) << "\t" << static_cast<int>(e.rc) << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
     }
+};
+
+struct ReadOverlapCheckHandler
+{
+    template <typename c, typename t>
+    void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
+    {
+        os << e.dir << "\t" << static_cast<int>(e.transpose) << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
+    }
+
 };
 
 #endif

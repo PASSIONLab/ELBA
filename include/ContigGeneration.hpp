@@ -169,6 +169,8 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     NumContigs  = GetRead2Contigs(G, Read2Contigs, di, tu);
     tu.print_str("CreateContig :: after GetRead2Contigs\n");
 
+    Read2Contigs.ParallelWrite("contig-assignment.txt", true);
+
     ContigSizes = GetContigSizes(Read2Contigs, NumContigs, di);
     tu.print_str("CreateContig :: after GetContigSizes\n");
 
@@ -195,6 +197,12 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
 
     LocDCCStringGraph ContigChainsDCC = G.InducedSubgraphs2Procs(Read2Procs, LocalContigReadIdxs);
     tu.print_str("CreateContig :: after InducedSubgraphs2Procs\n");
+
+    std::vector<IType> loc_used_reads(LocalContigReadIdxs.size());
+    std::transform(LocalContigReadIdxs.begin(), LocalContigReadIdxs.end(), loc_used_reads.begin(), [](IType a) { return a + 1; } );
+
+    FullyDistVec<IType, IType> used_reads(loc_used_reads, G.getcommgrid());
+    used_reads.ParallelWrite("used_reads.txt", true, false);
 
     LocStringGraph ContigChains(ContigChainsDCC);
 
@@ -244,12 +252,8 @@ IType GetRead2Contigs(DistStringGraph& G, DistAssignmentVec& Read2Contigs, DistR
     iss << "GetRead2Contigs :: Found " << numbranches << " branching points\n";
     tu.print_str(iss.str());
 
-    Branches.ParallelWrite("Branches.txt", true);
-
     A.PruneFull(Branches, Branches);
     tu.print_str("GetRead2Contigs :: Pruned branching points\n");
-
-    A.ParallelWriteMM("A.mm", true);
 
     IType NumContigs;
     Read2Contigs = CC(A, NumContigs);

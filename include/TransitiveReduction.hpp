@@ -179,12 +179,12 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
         T = EWiseApply<bool, SpDCCols<int64_t, bool>>(Tc, I, [](bool x, bool y) { return !(x && y); }, true, false);
         cur = T.getnnz();
 
-        if (check_phase_counter > 0 || (prev-cur)<=(100))
+        if (check_phase_counter > 0 || (prev-cur)<=(1000))
             check_phase_counter++;
 
         full_counter++;
 
-    } while (check_phase_counter < 5 && full_counter < 10);
+    } while (check_phase_counter < 5 && full_counter < 15);
 
     std::stringstream iss;
     iss << "Transitive Reduction did " << full_counter << " iterations\n";
@@ -194,7 +194,9 @@ void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOv
     R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), false, false);
     R.Prune(InvalidSRing());
 
-    R.ParallelWriteMM("string-graph.mm", true, ReadOverlapExtraHandler());
+    R.ParallelWriteMM("string-graph-extra.mm", true, ReadOverlapExtraHandler());
+    R.ParallelWriteMM("string-graph.mm", true, ReadOverlapCheckHandler());
+    
 
     tu.print_str("Matrix R, i.e. AAt after transitive reduction: ");
     R.PrintInfo();
