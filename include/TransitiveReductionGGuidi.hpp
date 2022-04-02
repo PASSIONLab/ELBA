@@ -146,8 +146,9 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     PSpMat<OverlapPath>::MPI_DCCols P = R; /* P is a copy of R now but it is going to be the "power" matrix to be updated over and over */
 
     /* create an empty boolean matrix using the same proc grid as R */
-    PSpMat<bool>::MPI_DCCols T(R.getcommgrid()); /* T is going to store transitive edges to be removed from R in the end */
-
+    PSpMat<bool>::MPI_DCCols T = R; //(R.getcommgrid()); /* T is going to store transitive edges to be removed from R in the end */
+    T.Prune(ZeroPrune()); /* empty T GGGG: there's gonna be a better way, ask Oguz */    
+    
     /* create a copy of R and add a FUZZ constant to it so it's more robust to error in the sequences/alignment */ 
     PSpMat<ReadOverlap>::MPI_DCCols F = R;
     F.Apply(PlusFuzzSRing());
