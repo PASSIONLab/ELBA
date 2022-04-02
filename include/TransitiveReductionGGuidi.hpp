@@ -168,13 +168,13 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     do
     {
         prev = T.getnnz();
-
+        std::cout << prev << " prev" << std::endl;
         /* Computer N (neighbor matrix)
          * N = P*R
          */
         PSpMat<OverlapPath>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, PSpMat<OverlapPath>::DCCols>(P, R);
         // N.Prune(InvalidSRing(), true); // GGGG this is sketchy to me, let's discuss it
-
+        std::cout << N.getnnz() << " N.getnnz()" << std::endl;
         P = N;
 
         OverlapPath id;
@@ -184,7 +184,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
             I would call this semiring something like "GreaterThenTR", but that's minor.
             */
         PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, SpDCCols<int64_t, bool>>(F, N, TransitiveSelection(), false, id);
-        
+        std::cout << I.getnnz() << " I.getnnz()" << std::endl;        
         /* GGGG: have no idea why this stuff is happening here
             to make sure every transitive edge is correctly removed in the upper/lower triangular entry, too
             this would happen naturally on an error-free dataset 
@@ -206,8 +206,8 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
             */
 
         I = EWiseApply<bool, SpDCCols<int64_t, bool>>(I, IT, [](bool x, bool y) { if(y) return y; else return x;}, isLogicalNot, bId); 
-        I.EWiseMult(IT, false); // GGGG: this operation doesn't make sense to me, missing something? (see comment right above)
-
+        // I.EWiseMult(IT, false); // GGGG: this operation doesn't make sense to me, missing something? (see comment right above)
+        std::cout << I.getnnz() << " I.getnnz() post I/IT" << std::endl; 
         /* GGGG: this should be an OR on T and I, not a NAND on T and not-I;
 
            this semiring uses NAND and the logical negation of I, why? It's unnecessarily complicated, why not using OR on the original I and T?
@@ -216,7 +216,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         */
         T = EWiseApply<bool, SpDCCols<int64_t, bool>>(T, I, [](bool x, bool y) { return (x || y); }, isLogicalNot, bId); 
         cur = T.getnnz();
-
+        std::cout << T.getnnz() << " cur T.getnnz()" << std::endl; 
         /* GGGG:
             (prev - cur) < 100 means that there are less than 100 nonzeros of difference between T at timestep i and T at timestep i-1
             check_phase_counter is inizialied to 0
