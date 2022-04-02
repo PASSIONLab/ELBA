@@ -128,10 +128,10 @@ struct MinPlusSR
 /* TR main function */
 #define MAXITER 15
 
-void TransitiveReductionOld(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
+void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 {
 
-    PSpMat<ReadOverlap>::MPI_DCCols RT = B; /* copies everything */
+    PSpMat<ReadOverlap>::MPI_DCCols RT = R; /* copies everything */
     RT.Transpose();
     RT.Apply(TransposeSRing()); /* flips all the coordinates */
 
@@ -155,10 +155,13 @@ void TransitiveReductionOld(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     tu.print_str("Matrix R, i.e. AAt post alignment and before transitive reduction: ");
     R.PrintInfo();
 
-    uint nnz, prev;
+    uint cur, prev;
 
     uint count = 0;     
     uint countidle = 0; 
+    
+    bool isLogicalNot = false;
+    bool bId = false;
 
     /* Gonna iterate on T until there are no more transitive edges to remove */
     do
@@ -200,9 +203,7 @@ void TransitiveReductionOld(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 
             where bind2nd would store 1 in I[i, j] if IT[i, j] is 1 and do nothing otherwise (i.e., if I[i, j] is 1, it's gonna stay that way even if IT[i, j] is 0)
             */
-        bool isLogicalNot = false;
-        bool bId = false;
-        
+
         I = EWiseApply<bool, SpDCCols<int64_t, bool>>(I, IT, [](bool x, bool y) { if(y) return y; else return x;}, isLogicalNot, bId); 
         I.EWiseMult(IT, false); // GGGG: this operation doesn't make sense to me, missing something? (see comment right above)
 
@@ -250,9 +251,6 @@ void TransitiveReductionOld(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     std::stringstream iss;
     iss << "the transitive reduction did " << count << " iterations\n";
     tu.print_str(iss.str());
-
-    bool isLogicalNot = false;
-    bool bId = false;
 
     R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), isLogicalNot, bId);
     R.Prune(InvalidSRing());
