@@ -200,14 +200,19 @@ void TransitiveReductionOld(PSpMat<ReadOverlap>::MPI_DCCols& B, TraceUtils tu)
 
             where bind2nd would store 1 in I[i, j] if IT[i, j] is 1 and do nothing otherwise (i.e., if I[i, j] is 1, it's gonna stay that way even if IT[i, j] is 0)
             */
+        bool isLogicalNot = false;
+        bool bId = false;
+        I = EWiseApply<bool, SpDCCols<int64_t, bool>>(I, IT, [](bool x, bool y) { if(y) return y; else return x;}, isLogicalNot, bId); 
         I.EWiseMult(IT, false); // GGGG: this operation doesn't make sense to me, missing something? (see comment right above)
 
-        bool isLogicalNot = true;
+        bool isLogicalNot = false;
         bool bId = false;
 
-        /* GGGG: this semiring/lambda does NAND, right? But shouldn't this only return 0 if both are 0? I'm not sure I understand why we are returning 0 where they are both 1? 
-           If T(i,j) = 1 and I(i,j) = 1 why the resulting T(i,j) should be 0? Don't we wanna remove that?
-           this should be an OR, not a NAND: return (x || y);
+        /* GGGG: this should be an OR on T and I, not a NAND on T and not-I;
+
+           this semiring uses NAND and the logical negation of I, why? It's unnecessarily complicated, why not using OR on the original I and T?
+           OR on T(i,j) and I(i,j) would return 0 only if both T(i,j) and I(i,j) are 0s which is what it's supposed to happen.
+           NAND on T(i,j) and not-I(i,j) would return 0 when T(i,j) = 1 and not-I(i,j) = 1 (that is I(i,j) is 0) which is wrong because we want T(i,j) to remain 1 if it was 1, even it I(i,j) was zero in this iteration.
         */
         T = EWiseApply<bool, SpDCCols<int64_t, bool>>(T, I, [](bool x, bool y) { return (x || y); }, isLogicalNot, bId); 
         cur = T.getnnz();
