@@ -171,7 +171,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         /* Computer N (neighbor matrix)
          * N = P*R
          */
-        PSpMat<dibella::CommonKmers>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, PSpMat<OverlapPath>::DCCols>(P, R);
+        PSpMat<OverlapPath>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, PSpMat<OverlapPath>::DCCols>(P, R);
         // N.Prune(InvalidSRing(), true); // GGGG this is sketchy to me, let's discuss it
 
         P = N;
