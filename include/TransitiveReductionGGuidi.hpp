@@ -128,7 +128,7 @@ struct MinPlusSR
 /* TR main function */
 #define MAXITER 15
 
-void TransitiveReductionOld(PSpMat<ReadOverlap>::MPI_DCCols& B, TraceUtils tu)
+void TransitiveReductionOld(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 {
 
     PSpMat<ReadOverlap>::MPI_DCCols RT = B; /* copies everything */
@@ -202,11 +202,9 @@ void TransitiveReductionOld(PSpMat<ReadOverlap>::MPI_DCCols& B, TraceUtils tu)
             */
         bool isLogicalNot = false;
         bool bId = false;
+        
         I = EWiseApply<bool, SpDCCols<int64_t, bool>>(I, IT, [](bool x, bool y) { if(y) return y; else return x;}, isLogicalNot, bId); 
         I.EWiseMult(IT, false); // GGGG: this operation doesn't make sense to me, missing something? (see comment right above)
-
-        bool isLogicalNot = false;
-        bool bId = false;
 
         /* GGGG: this should be an OR on T and I, not a NAND on T and not-I;
 
@@ -246,7 +244,7 @@ void TransitiveReductionOld(PSpMat<ReadOverlap>::MPI_DCCols& B, TraceUtils tu)
 
         count++; // GGGG: this just keeps track of the total number of iterations but doesn't do anything about the termination condition
 
-    } while (countidle < MAXITER)
+    } while (countidle < MAXITER);
     // } while (check_phase_counter < 5 && full_counter < 10); 
 
     std::stringstream iss;
