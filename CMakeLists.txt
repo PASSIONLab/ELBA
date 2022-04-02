@@ -92,7 +92,7 @@ set(UPPER_KMER_FREQ 30
 set(MAX_KMER_SIZE 32
     CACHE STRING "Longest k-mer length")
 
-set(DELTACHERNOFF 0.1
+set(DELTACHERNOFF 0.9
     CACHE STRING "Delta Chernoff's bound")
 
 set(FUZZ 1000
