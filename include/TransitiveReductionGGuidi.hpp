@@ -69,6 +69,14 @@ struct TransitiveSelection : binary_function<ReadOverlap, OverlapPath, bool>
     }
 };
 
+struct BoolOR : binary_function<bool, bool, bool>
+{
+    bool operator() (const bool& x, const bool& y) const
+    {
+        return x || y;
+    }
+};
+
 struct TransitiveRemoval : binary_function<ReadOverlap, bool, ReadOverlap>
 {
     ReadOverlap operator() (ReadOverlap& x, const bool& y)
@@ -78,8 +86,9 @@ struct TransitiveRemoval : binary_function<ReadOverlap, bool, ReadOverlap>
     }
 };
 
-struct ZeroPrune { bool operator() (const bool& x) { return false; } };
-struct BoolPrune { bool operator() (const bool& x) { return !x; } };
+// struct ZeroPrune { bool operator() (const bool& x) { return false; } }; /* GGGG very unclear what this is doing, doesn't really make sense to me */
+struct ZeroPrune  { bool operator() (const bool& x) { /* If something is a nonzero inherited from R, just prune it! */ return true; } }; 
+struct BoolPrune  { bool operator() (const bool& x) { return !x; } };
 
 OverlapPath opmin(const OverlapPath& e1, const OverlapPath& e2)
 {
@@ -148,6 +157,10 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     /* create an empty boolean matrix using the same proc grid as R */
     PSpMat<bool>::MPI_DCCols T = R; //(R.getcommgrid()); /* T is going to store transitive edges to be removed from R in the end */
     T.Prune(ZeroPrune()); /* empty T GGGG: there's gonna be a better way, ask Oguz */    
+
+    // GGGG: now it's zero after fixing the ZeroPrune function
+    // std::cout << "T.getnnz() before TR: " << T.getnnz() << std::endl;
+    // exit(0);
     
     /* create a copy of R and add a FUZZ constant to it so it's more robust to error in the sequences/alignment */ 
     PSpMat<ReadOverlap>::MPI_DCCols F = R;
@@ -167,14 +180,20 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     /* Gonna iterate on T until there are no more transitive edges to remove */
     do
     {
-        prev = T.getnnz();
-        std::cout << prev << " prev" << std::endl;
+        prev = T.getnnz();      
+    #ifdef PDEBUG
+        std::cout << prev << " prev" << std::endl; 
+    #endif
         /* Computer N (neighbor matrix)
          * N = P*R
          */
         PSpMat<OverlapPath>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, PSpMat<OverlapPath>::DCCols>(P, R);
-        // N.Prune(InvalidSRing(), true); // GGGG this is sketchy to me, let's discuss it
-        std::cout << N.getnnz() << " N.getnnz()" << std::endl;
+
+        N.Prune(InvalidSRing(), true); // GGGG: this is sketchy to me but let's discuss it
+    #ifdef PDEBUG
+        N.PrintInfo();  
+    #endif
+
         P = N;
 
         OverlapPath id;
@@ -184,7 +203,12 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
             I would call this semiring something like "GreaterThenTR", but that's minor.
             */
         PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, SpDCCols<int64_t, bool>>(F, N, TransitiveSelection(), false, id);
-        std::cout << I.getnnz() << " I.getnnz()" << std::endl;        
+
+        I.Prune(BoolPrune(), true); /* GGGG: probably not needed */
+    #ifdef PDEBUG
+        I.PrintInfo();  
+    #endif
+
         /* GGGG: have no idea why this stuff is happening here
             to make sure every transitive edge is correctly removed in the upper/lower triangular entry, too
             this would happen naturally on an error-free dataset 
@@ -193,45 +217,27 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         /* I has some 1 entries, now IT has them, too */
         PSpMat<bool>::MPI_DCCols IT = I;
         /* IT is not transpose, so IT has some 1 entries != from the 1 entries of I */
+
         IT.Transpose();
 
-        /* GGGG: if you element-wise multiply an entry that is set to an entry in I times an entry set to 1 in IT but 0 in I, isn't the entry in I staying 0 rather becoming 1? 
-            Don't you want to do somethine like:
-        
-            bool isLogicalNot = false;
-            bool bId = false;
-            I = EWiseApply<bool, SpDCCols<int64_t, bool>>(I, IT, bind2nd, isLogicalNot, bId); 
+        if (!(IT == I)) /* symmetricize */
+        {
+            I += IT;
+        }    
 
-            where bind2nd would store 1 in I[i, j] if IT[i, j] is 1 and do nothing otherwise (i.e., if I[i, j] is 1, it's gonna stay that way even if IT[i, j] is 0)
-            */
+        I.Prune(BoolPrune(), true); /* GGGG: probably not needed */
+    #ifdef PDEBUG
+        I.PrintInfo();  
+    #endif
 
-        I = EWiseApply<bool, SpDCCols<int64_t, bool>>(I, IT, [](bool x, bool y) { if(y) return y; else return x;}, isLogicalNot, bId); 
-        // I.EWiseMult(IT, false); // GGGG: this operation doesn't make sense to me, missing something? (see comment right above)
-        std::cout << I.getnnz() << " I.getnnz() post I/IT" << std::endl; 
-        /* GGGG: this should be an OR on T and I, not a NAND on T and not-I;
-
-           this semiring uses NAND and the logical negation of I, why? It's unnecessarily complicated, why not using OR on the original I and T?
-           OR on T(i,j) and I(i,j) would return 0 only if both T(i,j) and I(i,j) are 0s which is what it's supposed to happen.
-           NAND on T(i,j) and not-I(i,j) would return 0 when T(i,j) = 1 and not-I(i,j) = 1 (that is I(i,j) is 0) which is wrong because we want T(i,j) to remain 1 if it was 1, even it I(i,j) was zero in this iteration.
-        */
-        T = EWiseApply<bool, SpDCCols<int64_t, bool>>(T, I, [](bool x, bool y) { return (x || y); }, isLogicalNot, bId); 
+        T += I;
+        // T = EWiseApply<bool, SpDCCols<int64_t, bool>>(T, I, [](bool x, bool y) { return (x || y); }, isLogicalNot, bId); 
+        T.Prune(BoolPrune(), true);
         cur = T.getnnz();
-        std::cout << T.getnnz() << " cur T.getnnz()" << std::endl; 
-        /* GGGG:
-            (prev - cur) < 100 means that there are less than 100 nonzeros of difference between T at timestep i and T at timestep i-1
-            check_phase_counter is inizialied to 0
-            if there are less than 100 differences, then increment check_phase_counter by 1
-            once we increment it the first time, then it keeps incrementing until it reaches 5 and the do-while loop is gonna stop,
-            if we don't trigger the (prev - cur) < 100 condition, the do-while loop will stop regardless after 10 iterations.     
-            */
 
-        /* GGGG: this is probably unnecessarily complicated, let's do something like 'if nonzeros in T don't change for X iterations, then stop' */
-        // if (check_phase_counter > 0 || (prev - cur) < 100)
-        // {
-        //     check_phase_counter++;
-        // }
-
-        // full_counter++;
+    #ifdef PDEBUG
+        T.PrintInfo();  
+    #endif
 
         /* GGGG: if nonzeros in T don't change for MAXITER iterations, then exit the loop 
             If in the test run this creates isses, e.g. it doesn't terminate, let's put a stricter exit condition */
@@ -250,9 +256,14 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     // } while (check_phase_counter < 5 && full_counter < 10); 
 
     std::stringstream iss;
-    iss << "the transitive reduction did " << count << " iterations\n";
+    iss << "TR took " << count << " iteration to complete!\n";
     tu.print_str(iss.str());
 
+    #ifdef PDEBUG
+        T.PrintInfo();  
+    #endif
+
+    /* GGGG: this is not working as expected! */
     R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), isLogicalNot, bId);
     R.Prune(InvalidSRing());
 
@@ -260,6 +271,8 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 
     tu.print_str("Matrix S, i.e. AAt post transitive reduction: ");
     R.PrintInfo();
+
+    exit(0);
 }
 
 #endif
