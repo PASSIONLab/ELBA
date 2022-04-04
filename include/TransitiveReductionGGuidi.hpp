@@ -81,7 +81,7 @@ struct TransitiveRemoval : binary_function<ReadOverlap, bool, ReadOverlap>
 {
     ReadOverlap operator() (ReadOverlap& x, const bool& y)
     {
-        if (!y) x.dir = -1;
+        if (y) x.dir = -1; /* GGGG: This used to be !y and is wrong, we want to removed stuff from R that is set to true in T, not to false */
         return x;
     }
 };
@@ -156,11 +156,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 
     /* create an empty boolean matrix using the same proc grid as R */
     PSpMat<bool>::MPI_DCCols T = R; //(R.getcommgrid()); /* T is going to store transitive edges to be removed from R in the end */
-    T.Prune(ZeroPrune()); /* empty T GGGG: there's gonna be a better way, ask Oguz */    
-
-    // GGGG: now it's zero after fixing the ZeroPrune function
-    // std::cout << "T.getnnz() before TR: " << T.getnnz() << std::endl;
-    // exit(0);
+    T.Prune(ZeroPrune()); /* GGGG: there's a better way, TODO for myself */    
     
     /* create a copy of R and add a FUZZ constant to it so it's more robust to error in the sequences/alignment */ 
     PSpMat<ReadOverlap>::MPI_DCCols F = R;
@@ -209,8 +205,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         I.PrintInfo();  
     #endif
 
-        /* GGGG: have no idea why this stuff is happening here
-            to make sure every transitive edge is correctly removed in the upper/lower triangular entry, too
+        /* GGGG: make sure every transitive edge is correctly removed in the upper/lower triangular entry, too
             this would happen naturally on an error-free dataset 
             */
 
@@ -230,9 +225,9 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         I.PrintInfo();  
     #endif
 
-        T += I;
-        // T = EWiseApply<bool, SpDCCols<int64_t, bool>>(T, I, [](bool x, bool y) { return (x || y); }, isLogicalNot, bId); 
-        T.Prune(BoolPrune(), true);
+        T += I; /* GGGG: add new transitive edges to T */
+
+        T.Prune(BoolPrune(), true);  /* GGGG: probably not needed */
         cur = T.getnnz();
 
     #ifdef PDEBUG
@@ -253,18 +248,19 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         count++; // GGGG: this just keeps track of the total number of iterations but doesn't do anything about the termination condition
 
     } while (countidle < MAXITER);
-    // } while (check_phase_counter < 5 && full_counter < 10); 
 
     std::stringstream iss;
     iss << "TR took " << count << " iteration to complete!\n";
     tu.print_str(iss.str());
 
-    #ifdef PDEBUG
-        T.PrintInfo();  
-    #endif
+    // #ifdef PDEBUG
+    T.PrintInfo();  
+    // #endif
 
-    /* GGGG: this is not working as expected! */
+    /* GGGG: this is not working as expected! there was a problem in the semiring but it's not fully fixed */
+    R.PrintInfo();
     R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), isLogicalNot, bId);
+    R.PrintInfo();
     R.Prune(InvalidSRing());
 
     R.ParallelWriteMM("string-graph.mm", true, ReadOverlapExtraHandler());
