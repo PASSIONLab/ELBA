@@ -50,7 +50,7 @@ struct PlusFuzzSRing : unary_function<ReadOverlap, ReadOverlap>
     ReadOverlap operator() (ReadOverlap& x) const
     {
         ReadOverlap fuzzed = x;
-        fuzzed.sfx += FUZZ;
+        fuzzed.sfx  += FUZZ;
         fuzzed.sfxT += FUZZ;
 
         return fuzzed;
@@ -69,24 +69,21 @@ struct TransitiveSelection : binary_function<ReadOverlap, OverlapPath, bool>
     }
 };
 
-struct BoolOR : binary_function<bool, bool, bool>
-{
-    bool operator() (const bool& x, const bool& y) const
-    {
-        return x || y;
-    }
-};
-
 struct TransitiveRemoval : binary_function<ReadOverlap, bool, ReadOverlap>
 {
     ReadOverlap operator() (ReadOverlap& x, const bool& y)
     {
-        if (y) x.dir = -1; /* GGGG: This used to be !y and is wrong, we want to removed stuff from R that is set to true in T, not to false */
+        if (!y) 
+        {
+            x.dir = -1; /* GGGG: This used to be !y and is wrong, we want to removed stuff from R that is set to true in T, not to false */
+        }
+
+        if(y) std::cout << "meow?" << std::endl;
+
         return x;
     }
 };
 
-// struct ZeroPrune { bool operator() (const bool& x) { return false; } }; /* GGGG very unclear what this is doing, doesn't really make sense to me */
 struct ZeroPrune  { bool operator() (const bool& x) { /* If something is a nonzero inherited from R, just prune it! */ return true; } }; 
 struct BoolPrune  { bool operator() (const bool& x) { return !x; } };
 
@@ -253,19 +250,25 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     iss << "TR took " << count << " iteration to complete!\n";
     tu.print_str(iss.str());
 
-    // #ifdef PDEBUG
+#ifdef PDEBUG
     T.PrintInfo();  
-    // #endif
+#endif
 
     /* GGGG: this is not working as expected! there was a problem in the semiring but it's not fully fixed */
     R.PrintInfo();
+    isLogicalNot = true;
     R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), isLogicalNot, bId);
+    
+    tu.print_str("Matrix S, i.e. AAt post transitive reduction---BEFORE InvalidSRing Prune: ");
     R.PrintInfo();
-    R.Prune(InvalidSRing());
 
-    R.ParallelWriteMM("string-graph.mm", true, ReadOverlapExtraHandler());
+    R.ParallelWriteMM("string-graph-before-prune.mm", true, ReadOverlapExtraHandler());
 
-    tu.print_str("Matrix S, i.e. AAt post transitive reduction: ");
+    R.Prune(InvalidSRing(), true);
+
+    R.ParallelWriteMM("string-graph-after-prune.mm", true, ReadOverlapExtraHandler());
+
+    tu.print_str("Matrix S, i.e. AAt post transitive reduction---AFTER InvalidSRing Prune: ");
     R.PrintInfo();
 
     exit(0);
