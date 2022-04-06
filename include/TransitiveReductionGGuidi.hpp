@@ -14,6 +14,12 @@
 #include <string>
 #include <sstream>
 
+/* TR main function */
+// #define BECONSERVATIVE
+#ifdef BECONSERVATIVE
+#define MAXITER 5
+#endif
+
 struct InvalidSRing : unary_function<ReadOverlap, ReadOverlap>
 {
     bool operator() (const ReadOverlap& x) { return x.is_invalid(); }
@@ -129,9 +135,6 @@ struct MinPlusSR
     }
 };
 
-/* TR main function */
-#define MAXITER 15
-
 void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 {
 
@@ -159,6 +162,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 
     tu.print_str("Matrix R, i.e. AAt post alignment and before transitive reduction: ");
     R.PrintInfo();
+    tu.print_str("\n");
 
     uint cur, prev;
 
@@ -167,6 +171,8 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     
     bool isLogicalNot = false;
     bool bId = false;
+
+    double timePR = 0, timeI = 0, timeT = 0, timeTR = 0;
 
     /* Gonna iterate on T until there are no more transitive edges to remove */
     do
@@ -178,14 +184,17 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         /* Computer N (neighbor matrix)
          * N = P*R
          */
+        double start = MPI_Wtime();
         PSpMat<OverlapPath>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, PSpMat<OverlapPath>::DCCols>(P, R);
 
-        N.Prune(InvalidSRing(), true); // GGGG: this is sketchy to me but let's discuss it
+        N.Prune(InvalidSRing(), true); /* GGGG: let's discuss this */
+
     #ifdef PDEBUG
         N.PrintInfo();  
     #endif
 
         P = N;
+        timePR += MPI_Wtime() - start;
 
         OverlapPath id;
 
@@ -193,11 +202,14 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
             mark true edges that should be removed from R eventually because transitive.
             I would call this semiring something like "GreaterThenTR", but that's minor.
             */
+        start = MPI_Wtime();
         PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, SpDCCols<int64_t, bool>>(F, N, TransitiveSelection(), false, id);
 
-        I.Prune(BoolPrune(), true); /* GGGG: probably not needed */
+        I.Prune(BoolPrune(), true); /* GGGG: this is needed to remove entries in N that were smaller than F and thus resulted in an actual 0 in F */
+        
     #ifdef PDEBUG
         I.PrintInfo();  
+        tu.print_str("\n");
     #endif
 
         /* GGGG: make sure every transitive edge is correctly removed in the upper/lower triangular entry, too
@@ -206,31 +218,33 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 
         /* I has some 1 entries, now IT has them, too */
         PSpMat<bool>::MPI_DCCols IT = I;
-        /* IT is not transpose, so IT has some 1 entries != from the 1 entries of I */
 
         IT.Transpose();
 
         if (!(IT == I)) /* symmetricize */
         {
             I += IT;
-        }    
+        }  
 
-        I.Prune(BoolPrune(), true); /* GGGG: probably not needed */
+        timeI += MPI_Wtime() - start;
     #ifdef PDEBUG
         I.PrintInfo();  
     #endif
 
+        start = MPI_Wtime();
         T += I; /* GGGG: add new transitive edges to T */
 
-        T.Prune(BoolPrune(), true);  /* GGGG: probably not needed */
         cur = T.getnnz();
+        timeT += MPI_Wtime() - start;
 
     #ifdef PDEBUG
         T.PrintInfo();  
+        tu.print_str("\n");
     #endif
 
         /* GGGG: if nonzeros in T don't change for MAXITER iterations, then exit the loop 
             If in the test run this creates isses, e.g. it doesn't terminate, let's put a stricter exit condition */
+    #ifdef BECONSERVATIVE
         if(cur == prev)
         {
             countidle++; 
@@ -239,10 +253,15 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         {
             countidle = 0; // GGGG: reset the counter if cur != prev in this iteration but countidle > 0
         }
+    #endif
 
         count++; // GGGG: this just keeps track of the total number of iterations but doesn't do anything about the termination condition
 
+#ifdef BECONSERVATIVE
     } while (countidle < MAXITER);
+#else
+    } while (cur != prev);
+#endif
 
     std::stringstream iss;
     iss << "TR took " << count << " iteration to complete!\n";
@@ -255,6 +274,8 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 
     /* GGGG: this is not working as expected! there was a problem in the semiring but it's not fully fixed */
     R.PrintInfo();
+
+    double start = MPI_Wtime();
     isLogicalNot = true; /* GGGG: I want the ones to be removed to be set to false, so I use the logical negation */ 
     bId = true; /* GGGG: this is critical, if this would be false, everything that would survive the EWIseApply would have dir == -1 as well and it's wrong
                     A non-transitive edge should keep its original direction! */
@@ -268,13 +289,28 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 #endif
 
     R.Prune(InvalidSRing(), true);
-
-    R.ParallelWriteMM("string-matrix-after-tr.mm", true, ReadOverlapExtraHandler());
+    timeTR += MPI_Wtime() - start;
 
     tu.print_str("Matrix S, i.e. AAt post transitive reduction---AFTER InvalidSRing Prune: ");
     R.PrintInfo();
 
-    // exit(0);
+ #ifdef PDEBUG
+    R.ParallelWriteMM("string-matrix-after-tr.mm", true, ReadOverlapExtraHandler());
+    double maxtimePR, maxtimeI, maxtimeT, maxtimeTR;
+
+    MPI_Reduce(&timePR, &maxtimePR, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&timeI,  &maxtimeI,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&timeT,  &maxtimeT,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&timeTR, &maxtimeTR, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    std::stringstream tiss;
+    tiss << "TransitiveReduction:TimePR (matmul) = "        << maxtimePR << "\n";
+    tiss << "TransitiveReduction:TimeI  (element-wise) = "  <<  maxtimeI << "\n";
+    tiss << "TransitiveReduction:TimeT  (element-wise) = "  <<  maxtimeT << "\n";
+    tiss << "TransitiveReduction:TimeTR (element-wise) = "  << maxtimeTR << "\n";
+    tu.print_str(tiss.str());
+ #endif
+ 
 }
 
 #endif
