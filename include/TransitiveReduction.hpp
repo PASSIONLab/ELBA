@@ -16,7 +16,8 @@
 
 /* TR main function */
 // #define BECONSERVATIVE
-#ifdef BECONSERVATIVE
+#define TIMINGTR
+#ifdef  BECONSERVATIVE
 #define MAXITER 5
 #endif
 
@@ -264,7 +265,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 #endif
 
     std::stringstream iss;
-    iss << "TR took " << count << " iteration to complete!\n";
+    iss << "TR took " << count << " iteration to complete!";
     tu.print_str(iss.str());
 
 #ifdef PDEBUG
@@ -294,7 +295,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     tu.print_str("Matrix S, i.e. AAt post transitive reduction---AFTER InvalidSRing Prune: ");
     R.PrintInfo();
 
- #ifdef PDEBUG
+ #ifdef TIMINGTR
     R.ParallelWriteMM("string-matrix-after-tr.mm", true, ReadOverlapExtraHandler());
     double maxtimePR, maxtimeI, maxtimeT, maxtimeTR;
 
