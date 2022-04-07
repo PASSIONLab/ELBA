@@ -591,6 +591,7 @@ const char * ReadExchange(std::vector<IType>& LocalRead2Procs, std::unordered_ma
  * @returns vector of completed contigs */
 std::vector<std::string> LocalAssembly(LocStringGraph& ContigChains, std::vector<IType>& LocalContigReadIdxs, const char *charbuf, std::unordered_map<IType, std::tuple<IType, ushort>> charbuf_info, DistReadInfo& di)
 {
+    /* local fasta buffer for sequences already on my processor */
     const char *lfd_buffer = di.lfd->buffer();
 
     std::vector<std::string> contigs;
@@ -607,14 +608,23 @@ std::vector<std::string> LocalAssembly(LocStringGraph& ContigChains, std::vector
 
     assert((numreads>=2));
 
-    bool *visited = new bool[numreads]();
-    std::unordered_set<IType> used_roots;
+    bool *visited = new bool[numreads](); /* vector of visited reads */
+    std::unordered_set<IType> used_roots; /* because there are two roots per contig, and we only
+                                             want to use one each, record the which ones have been
+                                             used so we avoid two traversals per contig */
 
+    /* we loop through each vertex searching for roots */
     for (IType v = 0; v < csc->n; ++v) {
 
+        /* @jc is the column pointer vector. Because roots are defined as
+         * as vertices of degree 1, we check whether the column size is 1,
+         * and if so, whether this root has already been traversed by a
+         * previous contig */
         if (csc->jc[v+1] - csc->jc[v] != 1 || used_roots.find(v) != used_roots.end())
             continue;
 
+        /* for each read that participates in a contig, we store the start and end indices
+         * of the correct substring as well as the gobal read index */
         std::vector<std::tuple<IType, IType, IType>> contig_vector;
 
         IType cur = v;
