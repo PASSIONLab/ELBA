@@ -1218,7 +1218,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
     PSpMat<PosInRead>::MPI_DCCols A(nrows, ncols, drows, dcols, dvals, false);
     tp->times["EndKmerOp:GenerateA:SpMatA()"]   = std::chrono::system_clock::now();
    
-//delete totkmers;
+    free(totkmers);
     return A;
   }
 }
