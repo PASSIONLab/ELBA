@@ -324,6 +324,9 @@ void DistributedFastaData::collect_grid_seqs() {
   MPI_Waitall(recv_nbrs_count, recv_nbrs_buff_lengths_reqs, recv_stats);
   MPI_Waitall(to_nbrs_count, to_nbrs_send_reqs, send_stats);
 
+  //delete [] recv_stats; Gabe TODO check if this changes results
+  //delete [] send_stats; Gabe TODO check if this changes results
+
 #ifndef NDEBUG
   {
     std::string title = "My recv neighbors (excludes me) buff lengths";
