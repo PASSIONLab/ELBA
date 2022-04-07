@@ -76,9 +76,9 @@ struct TransitiveSelection : binary_function<ReadOverlap, OverlapPath, bool>
     }
 };
 
-struct TransitiveRemoval : binary_function<ReadOverlap, bool, ReadOverlap>
+struct TransitiveRemoval : binary_function<ReadOverlap, int, ReadOverlap>
 {
-    ReadOverlap operator() (ReadOverlap& x, const bool& y)
+    ReadOverlap operator() (ReadOverlap& x, const int& y)
     {
         if (!y) 
         {
@@ -154,8 +154,16 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     PSpMat<OverlapPath>::MPI_DCCols P = R; /* P is a copy of R now but it is going to be the "power" matrix to be updated over and over */
 
     /* create an empty boolean matrix using the same proc grid as R */
-    PSpMat<bool>::MPI_DCCols T = R; //(R.getcommgrid()); /* T is going to store transitive edges to be removed from R in the end */
-    T.Prune(ZeroPrune()); /* GGGG: there's a better way, TODO for myself */    
+    //PSpMat<bool>::MPI_DCCols T = R; //(R.getcommgrid()); /* T is going to store transitive edges to be removed from R in the end */
+    //T.Prune(ZeroPrune()); /* GGGG: there's a better way, TODO for myself */    
+
+    int64_t nrow = R.getnrow();
+    int64_t ncol = R.getncol();
+
+    assert((nrow == ncol));
+
+    FullyDistVec<int64_t, int64_t> initvec(R.getcommgrid(), nrow, static_cast<int64_t>(0));
+    PSpMat<int>::MPI_DCCols T(nrow, ncol, initvec, initvec, static_cast<int>(0), false);
     
     /* create a copy of R and add a FUZZ constant to it so it's more robust to error in the sequences/alignment */ 
     PSpMat<ReadOverlap>::MPI_DCCols F = R;
@@ -280,7 +288,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     isLogicalNot = true; /* GGGG: I want the ones to be removed to be set to false, so I use the logical negation */ 
     bId = true; /* GGGG: this is critical, if this would be false, everything that would survive the EWIseApply would have dir == -1 as well and it's wrong
                     A non-transitive edge should keep its original direction! */
-    R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), isLogicalNot, bId);
+    R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), isLogicalNot, static_cast<int>(1));
 
 #ifdef PDEBUG   
     tu.print_str("Matrix S, i.e. AAt post transitive reduction---BEFORE InvalidSRing Prune: ");
