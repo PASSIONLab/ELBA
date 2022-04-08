@@ -218,23 +218,23 @@ int main(int argc, char **argv)
   Alphabet alph(alph_t);
 
   tp->times["StartMain:GenerateA()"] = std::chrono::system_clock::now();
-  PSpMat<PosInRead>::MPI_DCCols A =
+  PSpMat<PosInRead>::MPI_DCCols Amat =
       dibella::KmerOps::GenerateA(
           seq_count, dfd, klength, kstride,
           alph, parops, tp);
 
   tu.print_str("Matrix A: ");
-  tu.print_str("\nLoad imbalance: " + std::to_string(A.LoadImbalance()) + "\n");
+  tu.print_str("\nLoad imbalance: " + std::to_string(Amat.LoadImbalance()) + "\n");
 
   tp->times["EndMain:GenerateA()"] = std::chrono::system_clock::now();
 
-  A.PrintInfo();
+  Amat.PrintInfo();
 
-  auto At = A;
+  auto ATmat = Amat;
   tp->times["StartMain:At()"] = tp->times["EndMain:GenerateA()"];
-  At.Transpose();
+  ATmat.Transpose();
   tu.print_str("Matrix At: ");
-  At.PrintInfo();
+  ATmat.PrintInfo();
   tp->times["EndMain:At()"] = std::chrono::system_clock::now();
 
   //////////////////////////////////////////////////////////////////////////////////////
@@ -244,18 +244,18 @@ int main(int argc, char **argv)
   tp->times["StartMain:AAt()"] = std::chrono::system_clock::now();
 
   // @GGGG-TODO: check vector version (new one stack error)
-  PSpMat<dibella::CommonKmers>::MPI_DCCols B = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);
+  PSpMat<dibella::CommonKmers>::MPI_DCCols Bmat = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(Amat, ATmat);
 
   tp->times["EndMain:AAt()"] = std::chrono::system_clock::now();
 
   // @GGGG-TODO: remove proc_log_stream
   tu.print_str(
       "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
-      + std::to_string(B.getnnz() - seq_count)
-      + "\nLoad imbalance: " + std::to_string(B.LoadImbalance()) + "\n");
+      + std::to_string(Bmat.getnnz() - seq_count)
+      + "\nLoad imbalance: " + std::to_string(Bmat.LoadImbalance()) + "\n");
 
   tu.print_str("Matrix B, i.e AAt: ");
-  B.PrintInfo();
+  Bmat.PrintInfo();
 
   /*! Wait until sequence exchange is complete */
   tp->times["StartMain:DfdWait()"] = std::chrono::system_clock::now();
@@ -282,7 +282,7 @@ int main(int argc, char **argv)
   uint64_t row_offset = gr_row_idx * avg_rows_in_grid;  // first row in this process
   uint64_t col_offset = gr_col_idx * avg_cols_in_grid;	// first col in this process
 
-  DistributedPairwiseRunner dpr(dfd, B.seqptr(), &B, afreq, row_offset, col_offset, parops);
+  DistributedPairwiseRunner dpr(dfd, Bmat.seqptr(), &Bmat, afreq, row_offset, col_offset, parops);
 
   double mytime = MPI_Wtime();
   tp->times["StartMain:DprAlign()"] = std::chrono::system_clock::now();
@@ -294,7 +294,7 @@ int main(int argc, char **argv)
   // Output intermediate matrix post-alignment
   std::string candidatem = myoutput;
   candidatem += ".candidatematrix.mm";
-  B.ParallelWriteMM(candidatem, true, dibella::CkOutputMMHandler());
+  Bmat.ParallelWriteMM(candidatem, true, dibella::CkOutputMMHandler());
 
   if(xdropAlign)
   {
@@ -324,14 +324,14 @@ int main(int argc, char **argv)
   // Output intermediate matrix post-alignment
   std::string postalignment = myoutput;
   postalignment += ".resultmatrix.mm";
-  B.ParallelWriteMM(postalignment, true, dibella::CkOutputHandler());
+  Bmat.ParallelWriteMM(postalignment, true, dibella::CkOutputHandler());
 
   //////////////////////////////////////////////////////////////////////////////////////
   // TRANSITIVE REDUCTION                                                             //
   //////////////////////////////////////////////////////////////////////////////////////
 
   /* Implicitly wil call ReadOverlap(const CommonKmers& cks) constructor (ReadOverlap.hpp:43) */
-  SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> R = B;
+  SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> R = Bmat;
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
@@ -349,7 +349,7 @@ int main(int argc, char **argv)
   // Output intermediate matrix post-alignment
   //std::string stringm = myoutput;
   //stringm += ".stringmatrix.mm";
-  //B.ParallelWriteMM(stringm, true, dibella::CkOutputMMHandler());
+  //Bmat.ParallelWriteMM(stringm, true, dibella::CkOutputMMHandler());
 
   if(is_print_rank)
   {
@@ -411,7 +411,7 @@ int main(int argc, char **argv)
   myoutput += ".mm";
 
   double start = MPI_Wtime();
-	B.ParallelWriteMM(myoutput, true, dibella::CkOutputMMHandler());
+	Bmat.ParallelWriteMM(myoutput, true, dibella::CkOutputMMHandler());
 	double ppend = MPI_Wtime() - start;
 
 	tu.print_str("ParallelWriteMM " + std::to_string(ppend)+ "\n");
@@ -700,3 +700,4 @@ std::string get_padding(ushort count, std::string prefix) {
   }
   return pad;
 }
+
