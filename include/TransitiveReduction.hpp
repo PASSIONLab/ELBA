@@ -14,8 +14,8 @@
 #include <string>
 #include <sstream>
 
-#define SETITER 5
-#define PDEBUG
+//#define SETITER 5
+//#define PDEBUG
 
 /* TR main function */
 // #define BECONSERVATIVE
@@ -190,8 +190,6 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     int myrank;
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
-    T.ParallelWriteMM("T1.mm", true);
-
     /* Gonna iterate on T until there are no more transitive edges to remove */
     do
     {
@@ -331,6 +329,8 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     tiss << "TransitiveReduction:TimeTR (element-wise) = "  << maxtimeTR << "\n";
     tu.print_str(tiss.str());
  #endif
+
+    R.ParallelWriteMM("string-coords.mm", true, ReadOverlapCoordsHandler());
  
 }
 
