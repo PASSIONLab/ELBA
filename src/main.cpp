@@ -120,20 +120,35 @@ int ckthr = 1;
 bool aln_score_thr = false; // GGGG: Currently not used
 
 std::shared_ptr<DistributedFastaData>
-ParallelFastaParser(const char *input_file, const char *idx_map_file, const std::shared_ptr<ParallelOps>& parops, const std::shared_ptr<TimePod>& tp, TraceUtils& tu);
+ParallelFastaParser(const char*                         input_file,
+                    const char*                         idx_map_file,
+                    const std::shared_ptr<ParallelOps>& parops,
+                    const std::shared_ptr<TimePod>&     tp,
+                    TraceUtils&                         tu);
 
 void
-GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd, PSpMat<PosInRead>::MPI_DCCols*& Amat, PSpMat<PosInRead>::MPI_DCCols*& ATmat, const std::shared_ptr<ParallelOps>& parops, const std::shared_ptr<TimePod>& tp, TraceUtils& tu);
+GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd,
+                         PSpMat<PosInRead>::MPI_DCCols*&       Amat,
+                         PSpMat<PosInRead>::MPI_DCCols*&       ATmat,
+                         const std::shared_ptr<ParallelOps>&   parops,
+                         const std::shared_ptr<TimePod>&       tp,
+                         TraceUtils&                           tu);
 
 void
-OverlapDetection(std::shared_ptr<DistributedFastaData> dfd,
+OverlapDetection(std::shared_ptr<DistributedFastaData>      dfd,
                  PSpMat<dibella::CommonKmers>::MPI_DCCols*& Bmat,
-                 PSpMat<PosInRead>::MPI_DCCols* Amat,
-                 PSpMat<PosInRead>::MPI_DCCols* ATmat,
-                 const std::shared_ptr<TimePod>& tp, TraceUtils& tu);
+                 PSpMat<PosInRead>::MPI_DCCols*             Amat,
+                 PSpMat<PosInRead>::MPI_DCCols*             ATmat,
+                 const std::shared_ptr<TimePod>&            tp,
+                 TraceUtils&                                tu);
 
 void
-PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<dibella::CommonKmers>::MPI_DCCols* Bmat, PSpMat<ReadOverlap>::MPI_DCCols*& Rmat, const std::shared_ptr<ParallelOps>& parops, const std::shared_ptr<TimePod>& tp, TraceUtils& tu);
+PairwiseAlignment(std::shared_ptr<DistributedFastaData>     dfd,
+                  PSpMat<dibella::CommonKmers>::MPI_DCCols* Bmat,
+                  PSpMat<ReadOverlap>::MPI_DCCols*&         Rmat,
+                  const std::shared_ptr<ParallelOps>&       parops,
+                  const std::shared_ptr<TimePod>&           tp,
+                  TraceUtils&                               tu);
 
 int main(int argc, char **argv)
 {
@@ -262,7 +277,7 @@ int main(int argc, char **argv)
 
   if(contigging)
   {
-    myContigSet = CreateContig(*Rmat, dfd, myoutput, tu);
+    myContigSet = CreateContig(*Rmat, dfd, myoutput, tp, tu);
   }
 
   tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
