@@ -214,9 +214,20 @@ int main(int argc, char **argv)
   // PIPELINE                                                                         //
   //////////////////////////////////////////////////////////////////////////////////////
 
+  /* allocates dfd  (shared ptr) */
   dfd = ParallelFastaParser(input_file.c_str(), idx_map_file.c_str(), parops, tp, tu);
+
+  /* allocates Amat
+   * allocates ATmat */
   GenerateKmerByReadMatrix(dfd, Amat, ATmat, parops, tp, tu);
+
+  /* allocates Bmat
+   * deletes Amat
+   * deletes ATmat */
   OverlapDetection(dfd, Bmat, Amat, ATmat, tp, tu);
+
+  /* allocates Rmat
+   * deletes Bmat */
   PairwiseAlignment(dfd, Bmat, Rmat, parops, tp, tu);
 
   //////////////////////////////////////////////////////////////////////////////////////
@@ -255,6 +266,8 @@ int main(int argc, char **argv)
   }
 
   tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
+
+  delete Rmat;
 
   std::stringstream iss;
   iss << myoutput << ".contigs_rank_" << myrank << ".fa";
