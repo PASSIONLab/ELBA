@@ -14,6 +14,9 @@
 #include <string>
 #include <sstream>
 
+//#define SETITER 5
+//#define PDEBUG
+
 /* TR main function */
 // #define BECONSERVATIVE
 #define TIMINGTR
@@ -138,6 +141,7 @@ struct MinPlusSR
 
 void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 {
+    R.ParallelWriteMM("overlap-coords.mm", true, ReadOverlapCoordsHandler());
 
     PSpMat<ReadOverlap>::MPI_DCCols RT = R; /* copies everything */
     RT.Transpose();
@@ -148,7 +152,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         R += RT;
     }    
 
-    R.ParallelWriteMM("overlap-graph-symmetric.mm", true, ReadOverlapExtraHandler());
+    R.ParallelWriteMM("overlap-graph.mm", true, ReadOverlapGraphHandler());
 
     /* implicitly will call OverlapPath(const ReadOverlap& e) constructor */
     PSpMat<OverlapPath>::MPI_DCCols P = R; /* P is a copy of R now but it is going to be the "power" matrix to be updated over and over */
@@ -184,6 +188,9 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 
     double timePR = 0, timeI = 0, timeT = 0, timeTR = 0;
 
+    int myrank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+
     /* Gonna iterate on T until there are no more transitive edges to remove */
     // do
     // {
@@ -191,7 +198,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     {
         prev = T.getnnz();      
     #ifdef PDEBUG
-        std::cout << prev << " prev" << std::endl; 
+        if (!myrank) std::cout << prev << " prev" << std::endl; 
     #endif
         /* Computer N (neighbor matrix)
          * N = P*R
@@ -205,6 +212,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         tu.print_str("N.Prune()\n");
 
     #ifdef PDEBUG
+        if (!myrank) std::cout << "N info: " << std::endl;
         N.PrintInfo();  
     #endif
 
@@ -277,7 +285,9 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 
         count++; // GGGG: this just keeps track of the total number of iterations but doesn't do anything about the termination condition
 
-#ifdef BECONSERVATIVE
+#ifdef SETITER
+    } while (count < SETITER);
+#elif defined(BECONSERVATIVE)
     } while (countidle < MAXITER);
 #else
     } // while (cur != prev);
@@ -315,7 +325,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     R.PrintInfo();
 
  #ifdef TIMINGTR
-    R.ParallelWriteMM("string-matrix-after-tr.mm", true, ReadOverlapExtraHandler());
+    R.ParallelWriteMM("string-matrix.mm", true, ReadOverlapCoordsHandler());
     double maxtimePR, maxtimeI, maxtimeT, maxtimeTR;
 
     MPI_Reduce(&timePR, &maxtimePR, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -330,6 +340,8 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     tiss << "TransitiveReduction:TimeTR (element-wise) = "  << maxtimeTR << "\n";
     tu.print_str(tiss.str());
  #endif
+
+    R.ParallelWriteMM("string-coords.mm", true, ReadOverlapCoordsHandler());
  
 }
 

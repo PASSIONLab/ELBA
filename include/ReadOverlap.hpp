@@ -151,14 +151,23 @@ struct ReadOverlapExtraHandler
     }
 };
 
-struct ReadOverlapCheckHandler
+struct ReadOverlapGraphHandler
 {
     template <typename c, typename t>
     void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
     {
-        os << e.dir << "\t" << static_cast<int>(e.transpose) << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
+        os << static_cast<int>(e.transpose) << "\t" << e.dir << "\t" << e.sfx << "\t" << e.sfxT << "\t" << static_cast<int>(e.rc) << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[0] << "\t" << e.l[1];
     }
 
+};
+
+struct ReadOverlapCoordsHandler
+{
+    template <typename c, typename t>
+    void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
+    {
+        os << static_cast<int>(e.rc) << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[0] << "\t" << e.l[1];
+    }
 };
 
 #endif
