@@ -45,6 +45,10 @@ using namespace combblas;
 /*! Type definitions */
 typedef dibella::KmerIntersect<PosInRead, dibella::CommonKmers> KmerIntersectSR_t;
 
+/* GGGG: ugly way of freeing memory */
+struct UglyPruneA  { bool operator() (const PosInRead& x) { return true; } }; 
+struct UglyPruneB  { bool operator() (const dibella::CommonKmers& x) { return true; } }; 
+
 /*! Function signatures */
 int parse_args(int argc, char **argv);
 
@@ -265,6 +269,13 @@ int main(int argc, char **argv)
   }
   tp->times["EndMain:DfdWait()"] = std::chrono::system_clock::now();
 
+  Amat.Prune(UglyPruneA());
+  ATmat.Prune(UglyPruneA());
+
+  tu.print_str("A and AT after UglyPruneA():\n");
+  Amat.PrintInfo();
+  ATmat.PrintInfo();
+
   //////////////////////////////////////////////////////////////////////////////////////
   // PAIRWISE ALIGNMENT                                                               //
   //////////////////////////////////////////////////////////////////////////////////////
@@ -332,6 +343,10 @@ int main(int argc, char **argv)
 
   /* Implicitly wil call ReadOverlap(const CommonKmers& cks) constructor (ReadOverlap.hpp:43) */
   SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> R = Bmat;
+  
+  Bmat.Prune(UglyPruneB());
+  tu.print_str("B after UglyPruneA():\n");
+  Bmat.PrintInfo();
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
@@ -346,7 +361,7 @@ int main(int argc, char **argv)
 
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
-  // Output intermediate matrix post-alignment
+  //Output intermediate matrix post-alignment
   //std::string stringm = myoutput;
   //stringm += ".stringmatrix.mm";
   //Bmat.ParallelWriteMM(stringm, true, dibella::CkOutputMMHandler());

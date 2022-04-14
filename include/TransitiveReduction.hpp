@@ -152,6 +152,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 
     /* implicitly will call OverlapPath(const ReadOverlap& e) constructor */
     PSpMat<OverlapPath>::MPI_DCCols P = R; /* P is a copy of R now but it is going to be the "power" matrix to be updated over and over */
+    PSpMat<OverlapPath>::MPI_DCCols Rstationary = R; /* P is a copy of R now but it is going to be the "power" matrix to be updated over and over */
 
     /* create an empty boolean matrix using the same proc grid as R */
     //PSpMat<bool>::MPI_DCCols T = R; //(R.getcommgrid()); /* T is going to store transitive edges to be removed from R in the end */
@@ -184,7 +185,9 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     double timePR = 0, timeI = 0, timeT = 0, timeTR = 0;
 
     /* Gonna iterate on T until there are no more transitive edges to remove */
-    do
+    // do
+    // {
+    for (int iter = 0; iter < 2; iter++)
     {
         prev = T.getnnz();      
     #ifdef PDEBUG
@@ -193,16 +196,20 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         /* Computer N (neighbor matrix)
          * N = P*R
          */
+        tu.print_str("N?\n");
         double start = MPI_Wtime();
-        PSpMat<OverlapPath>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, PSpMat<OverlapPath>::DCCols>(P, R);
+        PSpMat<OverlapPath>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, PSpMat<OverlapPath>::DCCols>(P, Rstationary);
+        tu.print_str("N = PR\n");
 
         N.Prune(InvalidSRing(), true); /* GGGG: let's discuss this */
+        tu.print_str("N.Prune()\n");
 
     #ifdef PDEBUG
         N.PrintInfo();  
     #endif
 
         P = N;
+        tu.print_str("P = N\n");
         timePR += MPI_Wtime() - start;
 
         OverlapPath id;
@@ -213,8 +220,10 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
             */
         start = MPI_Wtime();
         PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, SpDCCols<int64_t, bool>>(F, N, TransitiveSelection(), false, id);
+        tu.print_str("I = FN\n");
 
         I.Prune(BoolPrune(), true); /* GGGG: this is needed to remove entries in N that were smaller than F and thus resulted in an actual 0 in F */
+        tu.print_str("I.Prune()\n");
         
     #ifdef PDEBUG
         I.PrintInfo();  
@@ -233,6 +242,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         if (!(IT == I)) /* symmetricize */
         {
             I += IT;
+            tu.print_str("I += IT\n");
         }  
 
         timeI += MPI_Wtime() - start;
@@ -242,6 +252,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 
         start = MPI_Wtime();
         T += I; /* GGGG: add new transitive edges to T */
+        tu.print_str("T += I\n");
 
         cur = T.getnnz();
         timeT += MPI_Wtime() - start;
@@ -269,7 +280,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 #ifdef BECONSERVATIVE
     } while (countidle < MAXITER);
 #else
-    } while (cur != prev);
+    } // while (cur != prev);
 #endif
 
     std::stringstream iss;
