@@ -221,6 +221,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         /* Computer N (neighbor matrix)
          * N = P*R
          */
+        //tu.print_str("N?\n");
         double start = MPI_Wtime();
         /* TODO replace OverlapPath */
         PSpMat<ReadOverlap>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR, ReadOverlap, PSpMat<ReadOverlap>::DCCols>(P, R);
@@ -241,6 +242,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     #endif
 
         P = N;
+        //tu.print_str("P = N\n");
         timePR += MPI_Wtime() - start;
 
         /* TODO replace OverlapPath */
@@ -279,6 +281,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         if (!(IT == I)) /* symmetricize */
         {
             I += IT;
+            //tu.print_str("I += IT\n");
         }  
         //I.ParallelWriteMM(iss.str() + "post-symmetricize.mtx", true);
 
@@ -323,7 +326,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 #elif defined(BECONSERVATIVE)
     } while (countidle < MAXITER);
 #else
-    } while (cur != prev);
+    }  while (cur != prev);
 #endif
 
     iss.str("");
