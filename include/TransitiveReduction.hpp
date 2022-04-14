@@ -14,8 +14,8 @@
 #include <string>
 #include <sstream>
 
-//#define SETITER 5
-#define PDEBUG
+//#define SETITER 2
+//#define PDEBUG
 
 /* TR main function */
 // #define BECONSERVATIVE
@@ -224,13 +224,16 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         double start = MPI_Wtime();
         /* TODO replace OverlapPath */
         PSpMat<ReadOverlap>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR, ReadOverlap, PSpMat<ReadOverlap>::DCCols>(P, R);
+        //tu.print_str("N = P +.* R\n");
 
         iss.str("");
         iss << "N" << (count+1) << "-";
 
-        N.ParallelWriteMM(iss.str() + "pre-prune.mtx", true, ReadOverlapPathHandler());
+        //N.ParallelWriteMM(iss.str() + "pre-prune.mtx", true, ReadOverlapPathHandler());
         N.Prune(NoPathSRing(), true); /* GRGR changed */ /* GGGG: let's discuss this */
-        N.ParallelWriteMM(iss.str() + "post-prune.mtx", true, ReadOverlapPathHandler());
+        //N.ParallelWriteMM(iss.str() + "post-prune.mtx", true, ReadOverlapPathHandler());
+
+        //tu.print_str("N.Prune(NoPathSRing())\n");
 
     #ifdef PDEBUG
         if (!myrank) std::cout << "N info: " << std::endl;
@@ -251,11 +254,13 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         iss.str("");
         start = MPI_Wtime();
         PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, SpDCCols<int64_t, bool>>(F, N, TransitiveSelection(), false, id);
+        //tu.print_str("I = (F >= N)\n");
         iss << "I" << (count+1) << "-";
 
-        I.ParallelWriteMM(iss.str() + "pre-prune.mtx", true);
+        //I.ParallelWriteMM(iss.str() + "pre-prune.mtx", true);
         I.Prune(BoolPrune(), true); /* GGGG: this is needed to remove entries in N that were smaller than F and thus resulted in an actual 0 in F */
-        I.ParallelWriteMM(iss.str() + "post-prune.mtx", true);
+        //tu.print_str("I.Prune(BoolPrine())\n");
+        //I.ParallelWriteMM(iss.str() + "post-prune.mtx", true);
         
     #ifdef PDEBUG
         I.PrintInfo();  
@@ -275,7 +280,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         {
             I += IT;
         }  
-        I.ParallelWriteMM(iss.str() + "post-symmetricize.mtx", true);
+        //I.ParallelWriteMM(iss.str() + "post-symmetricize.mtx", true);
 
         timeI += MPI_Wtime() - start;
     #ifdef PDEBUG
@@ -287,14 +292,15 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         iss << "T" << (count+1) << "-";
         start = MPI_Wtime();
         T += I; /* GGGG: add new transitive edges to T */
-        T.ParallelWriteMM(iss.str() + "added-edges.mtx", true);
+        //tu.print_str("T += I\n");
+        //T.ParallelWriteMM(iss.str() + "added-edges.mtx", true);
 
         cur = T.getnnz();
         timeT += MPI_Wtime() - start;
 
     #ifdef PDEBUG
         T.PrintInfo();  
-        tu.print_str("\n");
+        //tu.print_str("\n");
     #endif
 
         /* GGGG: if nonzeros in T don't change for MAXITER iterations, then exit the loop 
