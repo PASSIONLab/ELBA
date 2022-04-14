@@ -11,25 +11,29 @@ using namespace dibella;
 static constexpr int MAX_INT = std::numeric_limits<int>::max();
 extern int xdrop;
 
-struct ReadOverlap;
-
 /* TODO replace OverlapPath */
-struct OverlapPath
-{
-    int sfx[4];
-    bool transpose;
-    OverlapPath() : transpose(false) { setinf(); }
-    OverlapPath(const ReadOverlap& e);
-    void setinf();
-};
+//struct OverlapPath
+//{
+//    int sfx[4];
+//    bool transpose;
+//    OverlapPath() : transpose(false) { setinf(); }
+//    OverlapPath(const ReadOverlap& e);
+//    void setinf();
+//};
 
 struct ReadOverlap
 {
     int sfx, sfxT, dir, dirT;
-    int b[2], e[2], l[2], coords[2];
+    int b[2], e[2], l[2], coords[2], sfxpath[4];
     bool transpose, rc;
 
-    ReadOverlap() : sfx(0), dir(-1), transpose(false) {}
+    void SetPathInf() { sfxpath[0] = sfxpath[1] = sfxpath[2] = sfxpath[3] = MAX_INT; }
+
+    ReadOverlap() : sfx(0), dir(-1), transpose(false)
+    {
+        SetPathInf();
+    }
+
     ReadOverlap(const ReadOverlap& rhs)
         : sfx(rhs.sfx), sfxT(rhs.sfxT), dir(rhs.dir), dirT(rhs.dirT), transpose(rhs.transpose), rc(rhs.rc)
     {
@@ -39,6 +43,9 @@ struct ReadOverlap
 
         coords[0] = rhs.coords[0];
         coords[1] = rhs.coords[1];
+
+        for (int i = 0; i < 4; ++i)
+            sfxpath[i] = rhs.sfxpath[i]; 
     }
 
     ReadOverlap(const CommonKmers& cks) : transpose(false)
@@ -53,25 +60,29 @@ struct ReadOverlap
         sfxT = cks.sfxT;
         dir  = cks.dir;
         dirT = cks.dirT;
+
+        SetPathInf();
+
+        sfxpath[dir] = sfx;
     }
 
     /* TODO replace OverlapPath */
-    ReadOverlap(const OverlapPath& e) : transpose(e.transpose)
-    {
-        int c = 0;
-        for (int i = 0; i < 4; ++i) {
-            if (e.sfx[i] < MAX_INT) {
-                sfx = e.sfx[i];
-                dir = i;
-                c++;
-            }
-        }
+    //ReadOverlap(const OverlapPath& e) : transpose(e.transpose)
+    //{
+    //    int c = 0;
+    //    for (int i = 0; i < 4; ++i) {
+    //        if (e.sfx[i] < MAX_INT) {
+    //            sfx = e.sfx[i];
+    //            dir = i;
+    //            c++;
+    //        }
+    //    }
 
-        if (c != 1) {
-            sfx = 0;
-            dir = -1;
-        }
-    }
+    //    if (c != 1) {
+    //        sfx = 0;
+    //        dir = -1;
+    //    }
+    //}
 
     bool is_invalid() const { return (dir == -1); }
 
@@ -101,16 +112,16 @@ struct ReadOverlap
 };
 
 /* TODO replace OverlapPath */
-OverlapPath::OverlapPath(const ReadOverlap& e) : transpose(e.transpose)
-{
-    setinf();
-
-    if (!e.is_invalid())
-        sfx[e.dir] = e.sfx;
-}
+//OverlapPath::OverlapPath(const ReadOverlap& e) : transpose(e.transpose)
+//{
+//    setinf();
+//
+//    if (!e.is_invalid())
+//        sfx[e.dir] = e.sfx;
+//}
 
 /* TODO replace OverlapPath */
-void OverlapPath::setinf() { sfx[0] = sfx[1] = sfx[2] = sfx[3] = MAX_INT; }
+//void OverlapPath::setinf() { sfx[0] = sfx[1] = sfx[2] = sfx[3] = MAX_INT; }
 
 int intplus(int a, int b)
 {
@@ -143,6 +154,15 @@ struct Tupleize : unary_function<ReadOverlap, ReadOverlap>
                 break;
         }
         return out;
+    }
+};
+
+struct ReadOverlapPathHandler
+{
+    template <typename c, typename t>
+    void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
+    {
+        os << e.dir << "\t" << e.sfx << "\t" << e.sfxpath[0] << "\t" << e.sfxpath[1] << "\t" << e.sfxpath[2] << "\t" << e.sfxpath[3];
     }
 };
 

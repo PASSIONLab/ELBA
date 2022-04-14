@@ -15,7 +15,7 @@
 #include <sstream>
 
 //#define SETITER 5
-//#define PDEBUG
+#define PDEBUG
 
 /* TR main function */
 // #define BECONSERVATIVE
@@ -27,6 +27,18 @@
 struct InvalidSRing : unary_function<ReadOverlap, ReadOverlap>
 {
     bool operator() (const ReadOverlap& x) { return x.is_invalid(); }
+};
+
+struct NoPathSRing : unary_function<ReadOverlap, ReadOverlap>
+{
+    bool operator() (const ReadOverlap& x)
+    {
+        for (int i = 0; i < 4; ++i)
+            if (x.sfxpath[i] < std::numeric_limits<int>::max())
+                return false;
+
+        return true;
+    }
 };
 
 struct TransposeSRing : unary_function <ReadOverlap, ReadOverlap>
@@ -68,15 +80,15 @@ struct PlusFuzzSRing : unary_function<ReadOverlap, ReadOverlap>
 };
 
 /* TODO replace OverlapPath */
-struct TransitiveSelection : binary_function<ReadOverlap, OverlapPath, bool>
+struct TransitiveSelection : binary_function<ReadOverlap, ReadOverlap, bool>
 {
-    bool operator() (const ReadOverlap& r, const OverlapPath& n) const
+    bool operator() (const ReadOverlap& r, const ReadOverlap& n) const
     {
         int dir = r.dir;
 
         if (dir == -1) return false;
 
-        return (r.sfx >= n.sfx[dir]);
+        return (r.sfx >= n.sfxpath[dir]);
     }
 };
 
@@ -97,12 +109,12 @@ struct ZeroPrune  { bool operator() (const bool& x) { /* If something is a nonze
 struct BoolPrune  { bool operator() (const bool& x) { return !x; } };
 
 /* TODO replace OverlapPath */
-OverlapPath opmin(const OverlapPath& e1, const OverlapPath& e2)
+ReadOverlap opmin(const ReadOverlap& e1, const ReadOverlap& e2)
 {
-    OverlapPath e = OverlapPath();
+    ReadOverlap e = ReadOverlap();
 
     for (int i = 0; i < 4; ++i)
-        e.sfx[i] = std::min(e1.sfx[i], e2.sfx[i]);
+        e.sfxpath[i] = std::min(e1.sfxpath[i], e2.sfxpath[i]);
 
     return e;
 }
@@ -110,20 +122,20 @@ OverlapPath opmin(const OverlapPath& e1, const OverlapPath& e2)
 struct MinPlusSR
 {
     /* TODO replace OverlapPath */
-    static OverlapPath id() { return OverlapPath(); }
+    static ReadOverlap id() { return ReadOverlap(); }
     static bool returnedSAID() { return false; }
     static MPI_Op mpi_op() { return MPI_MIN; }
 
     /* TODO replace OverlapPath */
-    static OverlapPath add(const OverlapPath& e1, const OverlapPath& e2)
+    static ReadOverlap add(const ReadOverlap& e1, const ReadOverlap& e2)
     {
         return opmin(e1, e2);
     }
 
     /* TODO replace OverlapPath */
-    static OverlapPath multiply(const ReadOverlap& e1, const ReadOverlap& e2)
+    static ReadOverlap multiply(const ReadOverlap& e1, const ReadOverlap& e2)
     {
-        OverlapPath e = OverlapPath();
+        ReadOverlap e = ReadOverlap();
 
         int t1, t2, h1, h2;
 
@@ -133,13 +145,13 @@ struct MinPlusSR
         if (t2 == h1)
             return e;
 
-        e.sfx[2*t1 + h2] = e1.sfx + e2.sfx;
+        e.sfxpath[2*t1 + h2] = e1.sfx + e2.sfx;
 
         return e;
     }
 
     /* TODO replace OverlapPath */
-    static void axpy(ReadOverlap a, const ReadOverlap& x, OverlapPath& y)
+    static void axpy(ReadOverlap a, const ReadOverlap& x, ReadOverlap& y)
     {
         y = opmin(y, multiply(a, x));
     }
@@ -162,7 +174,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 
     /* TODO replace OverlapPath */
     /* implicitly will call OverlapPath(const ReadOverlap& e) constructor */
-    PSpMat<OverlapPath>::MPI_DCCols P = R; /* P is a copy of R now but it is going to be the "power" matrix to be updated over and over */
+    PSpMat<ReadOverlap>::MPI_DCCols P = R; /* P is a copy of R now but it is going to be the "power" matrix to be updated over and over */
 
     /* create an empty boolean matrix using the same proc grid as R */
     //PSpMat<bool>::MPI_DCCols T = R; //(R.getcommgrid()); /* T is going to store transitive edges to be removed from R in the end */
@@ -197,6 +209,8 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     int myrank;
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
+    std::stringstream iss;
+
     /* Gonna iterate on T until there are no more transitive edges to remove */
     do
     {
@@ -209,9 +223,14 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
          */
         double start = MPI_Wtime();
         /* TODO replace OverlapPath */
-        PSpMat<OverlapPath>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, PSpMat<OverlapPath>::DCCols>(P, R);
+        PSpMat<ReadOverlap>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR, ReadOverlap, PSpMat<ReadOverlap>::DCCols>(P, R);
 
-        N.Prune(InvalidSRing(), true); /* GGGG: let's discuss this */
+        iss.str("");
+        iss << "N" << (count+1) << "-";
+
+        N.ParallelWriteMM(iss.str() + "pre-prune.mtx", true, ReadOverlapPathHandler());
+        N.Prune(NoPathSRing(), true); /* GRGR changed */ /* GGGG: let's discuss this */
+        N.ParallelWriteMM(iss.str() + "post-prune.mtx", true, ReadOverlapPathHandler());
 
     #ifdef PDEBUG
         if (!myrank) std::cout << "N info: " << std::endl;
@@ -222,16 +241,21 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         timePR += MPI_Wtime() - start;
 
         /* TODO replace OverlapPath */
-        OverlapPath id;
+        ReadOverlap id;
 
         /* GGGG: Ii is going to be true is the Ni dir entry corresponding to the Ri dir entry is non-zero, that is
             mark true edges that should be removed from R eventually because transitive.
             I would call this semiring something like "GreaterThenTR", but that's minor.
             */
+
+        iss.str("");
         start = MPI_Wtime();
         PSpMat<bool>::MPI_DCCols I = EWiseApply<bool, SpDCCols<int64_t, bool>>(F, N, TransitiveSelection(), false, id);
+        iss << "I" << (count+1) << "-";
 
+        I.ParallelWriteMM(iss.str() + "pre-prune.mtx", true);
         I.Prune(BoolPrune(), true); /* GGGG: this is needed to remove entries in N that were smaller than F and thus resulted in an actual 0 in F */
+        I.ParallelWriteMM(iss.str() + "post-prune.mtx", true);
         
     #ifdef PDEBUG
         I.PrintInfo();  
@@ -251,14 +275,19 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         {
             I += IT;
         }  
+        I.ParallelWriteMM(iss.str() + "post-symmetricize.mtx", true);
 
         timeI += MPI_Wtime() - start;
     #ifdef PDEBUG
         I.PrintInfo();  
     #endif
 
+
+        iss.str("");
+        iss << "T" << (count+1) << "-";
         start = MPI_Wtime();
         T += I; /* GGGG: add new transitive edges to T */
+        T.ParallelWriteMM(iss.str() + "added-edges.mtx", true);
 
         cur = T.getnnz();
         timeT += MPI_Wtime() - start;
@@ -291,7 +320,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     } while (cur != prev);
 #endif
 
-    std::stringstream iss;
+    iss.str("");
     iss << "TR took " << count << " iteration to complete!";
     tu.print_str(iss.str());
 
