@@ -67,6 +67,7 @@ struct PlusFuzzSRing : unary_function<ReadOverlap, ReadOverlap>
     }
 };
 
+/* TODO replace OverlapPath */
 struct TransitiveSelection : binary_function<ReadOverlap, OverlapPath, bool>
 {
     bool operator() (const ReadOverlap& r, const OverlapPath& n) const
@@ -95,6 +96,7 @@ struct TransitiveRemoval : binary_function<ReadOverlap, int, ReadOverlap>
 struct ZeroPrune  { bool operator() (const bool& x) { /* If something is a nonzero inherited from R, just prune it! */ return true; } }; 
 struct BoolPrune  { bool operator() (const bool& x) { return !x; } };
 
+/* TODO replace OverlapPath */
 OverlapPath opmin(const OverlapPath& e1, const OverlapPath& e2)
 {
     OverlapPath e = OverlapPath();
@@ -107,15 +109,18 @@ OverlapPath opmin(const OverlapPath& e1, const OverlapPath& e2)
 
 struct MinPlusSR
 {
+    /* TODO replace OverlapPath */
     static OverlapPath id() { return OverlapPath(); }
     static bool returnedSAID() { return false; }
     static MPI_Op mpi_op() { return MPI_MIN; }
 
+    /* TODO replace OverlapPath */
     static OverlapPath add(const OverlapPath& e1, const OverlapPath& e2)
     {
         return opmin(e1, e2);
     }
 
+    /* TODO replace OverlapPath */
     static OverlapPath multiply(const ReadOverlap& e1, const ReadOverlap& e2)
     {
         OverlapPath e = OverlapPath();
@@ -133,6 +138,7 @@ struct MinPlusSR
         return e;
     }
 
+    /* TODO replace OverlapPath */
     static void axpy(ReadOverlap a, const ReadOverlap& x, OverlapPath& y)
     {
         y = opmin(y, multiply(a, x));
@@ -154,6 +160,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 
     R.ParallelWriteMM("overlap-graph.mm", true, ReadOverlapGraphHandler());
 
+    /* TODO replace OverlapPath */
     /* implicitly will call OverlapPath(const ReadOverlap& e) constructor */
     PSpMat<OverlapPath>::MPI_DCCols P = R; /* P is a copy of R now but it is going to be the "power" matrix to be updated over and over */
 
@@ -201,6 +208,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
          * N = P*R
          */
         double start = MPI_Wtime();
+        /* TODO replace OverlapPath */
         PSpMat<OverlapPath>::MPI_DCCols N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, PSpMat<OverlapPath>::DCCols>(P, R);
 
         N.Prune(InvalidSRing(), true); /* GGGG: let's discuss this */
@@ -213,6 +221,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         P = N;
         timePR += MPI_Wtime() - start;
 
+        /* TODO replace OverlapPath */
         OverlapPath id;
 
         /* GGGG: Ii is going to be true is the Ni dir entry corresponding to the Ri dir entry is non-zero, that is

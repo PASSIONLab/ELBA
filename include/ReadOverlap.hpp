@@ -13,6 +13,7 @@ extern int xdrop;
 
 struct ReadOverlap;
 
+/* TODO replace OverlapPath */
 struct OverlapPath
 {
     int sfx[4];
@@ -54,6 +55,7 @@ struct ReadOverlap
         dirT = cks.dirT;
     }
 
+    /* TODO replace OverlapPath */
     ReadOverlap(const OverlapPath& e) : transpose(e.transpose)
     {
         int c = 0;
@@ -98,6 +100,7 @@ struct ReadOverlap
     }
 };
 
+/* TODO replace OverlapPath */
 OverlapPath::OverlapPath(const ReadOverlap& e) : transpose(e.transpose)
 {
     setinf();
@@ -106,6 +109,7 @@ OverlapPath::OverlapPath(const ReadOverlap& e) : transpose(e.transpose)
         sfx[e.dir] = e.sfx;
 }
 
+/* TODO replace OverlapPath */
 void OverlapPath::setinf() { sfx[0] = sfx[1] = sfx[2] = sfx[3] = MAX_INT; }
 
 int intplus(int a, int b)
