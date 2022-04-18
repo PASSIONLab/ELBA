@@ -284,6 +284,8 @@ int main(int argc, char **argv)
 
   delete Rmat;
 
+
+  tp->times["StartMain:WriteContigs()"] = std::chrono::system_clock::now();
   std::stringstream iss;
   iss << myoutput << ".contigs_rank_" << myrank << ".fa";
   std::ofstream contig_file(iss.str());
@@ -300,6 +302,7 @@ int main(int argc, char **argv)
   }
 
   contig_file.close();
+  tp->times["EndMain:WriteContigs()"] = std::chrono::system_clock::now();
 
   // //////////////////////////////////////////////////////////////////////////////////////
   // // SCAFFOLDING                                                                      //
