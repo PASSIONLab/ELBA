@@ -284,24 +284,30 @@ int main(int argc, char **argv)
 
   delete Rmat;
 
-
   tp->times["StartMain:WriteContigs()"] = std::chrono::system_clock::now();
-  std::stringstream iss;
-  iss << myoutput << ".contigs_rank_" << myrank << ".fa";
-  std::ofstream contig_file(iss.str());
+
+  std::stringstream contig_filename;
+  contig_filename << myoutput << ".contigs_rank_" << myrank << ".fa";
 
   int64_t number_of_contigs = myContigSet.size();
   int64_t contigs_offset = 0;
   MPI_Exscan(&number_of_contigs, &contigs_offset, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
 
-  for (int i = 0; i < myContigSet.size(); ++i)
-  {
-    iss.str("");
-    iss << ">contig" << i+1+contigs_offset << "\n" << myContigSet[i];
-    contig_file << iss.str() << std::endl;
-  }
+  std::stringstream contig_filecontents;
 
-  contig_file.close();
+  for (int i = 0; i < myContigSet.size(); ++i)
+    contig_filecontents << ">contig" << i+1+contigs_offset << "\n" << myContigSet[i] << "\n";
+
+  MPI_File cfh;
+  MPI_File_open(MPI_COMM_WORLD, "elba.contigs.fa", MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &cfh);
+
+  std::string cfs = contig_filecontents.str();
+  const char *strout = cfs.c_str();
+
+  MPI_Offset count = strlen(strout);
+  MPI_File_write_ordered(cfh, strout, count, MPI_CHAR, MPI_STATUS_IGNORE);
+  MPI_File_close(&cfh);
+
   tp->times["EndMain:WriteContigs()"] = std::chrono::system_clock::now();
 
   // //////////////////////////////////////////////////////////////////////////////////////
