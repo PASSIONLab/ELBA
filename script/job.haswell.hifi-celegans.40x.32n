@@ -1,0 +1,18 @@
+#!/bin/bash
+
+#SBATCH -N 32
+#SBATCH -C haswell
+#SBATCH -q debug
+#SBATCH -J ELBA.hifi-celegans40x.haswell.32n
+#SBATCH --error=ELBA.hifi-celegans40x.haswell.32n.%j.err
+#SBATCH --output=ELBA.hifi-celegans40x.haswell.32n.%j.out
+#SBATCH --mail-user=gabe.h.raulet@gmail.com
+#SBATCH --mail-type=ALL
+#SBATCH --switches=1
+#SBATCH -t 30
+
+export OMP_NUM_THREADS=1
+export OMP_PLACES=threads
+export OMP_PROC_BIND=spread
+
+srun -n 1024 -c 2 --cpu_bind=cores ./elba_hifi_overlapping_celegans40x -i ../celegans_hifi_sim.40x.fa -k 31 --idxmap 32.idxmap -c 275699 --alph dna --af ELBA.hifi-celegans40x.haswell.32.result -s 1 -O 100000 --afreq 100000 --xa 15
