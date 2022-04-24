@@ -1,5 +1,5 @@
-# diBELLA 2D
-## Parallel String Graph Construction and Transitive Reduction for De Novo Genome Assembly
+# ELBA
+## Parallel String Graph Construction, Transitive Reduction, and Contig Generation for De Novo Genome Assembly
 
 ## Prerequisites
 
