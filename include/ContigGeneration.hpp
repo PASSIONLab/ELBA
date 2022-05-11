@@ -208,6 +208,7 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
 
     tp->times["StartCreateContig:LocalAssembly()"] = std::chrono::system_clock::now();
     std::vector<std::string> contigs = LocalAssembly(ContigChains, LocalContigReadIdxs, charbuf, charbuf_info, di);
+    MPI_Barrier(di.world);
     tp->times["EndCreateContig:LocalAssembly()"] = std::chrono::system_clock::now();
     tu.print_str("CreateContig :: after LocalAssembly\n");
     delete [] charbuf;

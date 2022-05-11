@@ -159,8 +159,6 @@ struct MinPlusSR
 
 void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
 {
-    R.ParallelWriteMM("overlap-coords.mm", true, ReadOverlapCoordsHandler());
-
     PSpMat<ReadOverlap>::MPI_DCCols RT = R; /* copies everything */
     RT.Transpose();
     RT.Apply(TransposeSRing()); /* flips all the coordinates */
@@ -170,7 +168,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         R += RT;
     }    
 
-    R.ParallelWriteMM("overlap-graph.mm", true, ReadOverlapGraphHandler());
+    R.ParallelWriteMM("elba-overlap-graph.mm", true, ReadOverlapGraphHandler());
 
     /* TODO replace OverlapPath */
     /* implicitly will call OverlapPath(const ReadOverlap& e) constructor */
@@ -361,7 +359,6 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     R.PrintInfo();
 
  #ifdef TIMINGTR
-    R.ParallelWriteMM("string-matrix.mm", true, ReadOverlapCoordsHandler());
     double maxtimePR, maxtimeI, maxtimeT, maxtimeTR;
 
     MPI_Reduce(&timePR, &maxtimePR, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -377,7 +374,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     tu.print_str(tiss.str());
  #endif
 
-    R.ParallelWriteMM("string-coords.mm", true, ReadOverlapCoordsHandler());
+    R.ParallelWriteMM("elba-string-graph.mm", true, ReadOverlapGraphHandler());
  
 }
 
