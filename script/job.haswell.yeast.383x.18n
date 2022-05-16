@@ -1,0 +1,18 @@
+#!/bin/bash
+
+#SBATCH -N 18
+#SBATCH -C haswell
+#SBATCH -q debug
+#SBATCH -J ELBA.yeast.haswell.18n
+#SBATCH --error=ELBA.yeast.haswell.18n.%j.err
+#SBATCH --output=ELBA.yeast.haswell.18n.%j.out
+#SBATCH --mail-user=gabe.h.raulet@gmail.com
+#SBATCH --mail-type=ALL
+#SBATCH --switches=1
+#SBATCH -t 30
+
+export OMP_NUM_THREADS=1
+export OMP_PLACES=threads
+export OMP_PROC_BIND=spread
+
+srun -n 576 -c 2 --cpu_bind=cores ./elba_yeast_overlapping -i $READS/SC22/budding_yeasts.fa -k 31 --idxmap 18.idxmap -c 227298 --alph dna --af ELBA.budding_yeasts.haswell.18.result -s 1 -O 100000 --afreq 100000 --xa 15

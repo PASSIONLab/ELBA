@@ -1,0 +1,18 @@
+#!/bin/bash
+
+#SBATCH -N 50
+#SBATCH -C haswell
+#SBATCH -q debug
+#SBATCH -J ELBA.rice30x.haswell.50n
+#SBATCH --error=ELBA.rice30x.haswell.50n.%j.err
+#SBATCH --output=ELBA.rice30x.haswell.50n.%j.out
+#SBATCH --mail-user=gabe.h.raulet@gmail.com
+#SBATCH --mail-type=ALL
+#SBATCH --switches=1
+#SBATCH -t 30
+
+export OMP_NUM_THREADS=1
+export OMP_PLACES=threads
+export OMP_PROC_BIND=spread
+
+srun -n 1600 -c 2 --cpu_bind=cores ./elba_rice30x -i $READS/SC22/rice_hifi_30x.fa -k 31 --idxmap 50.idxmap -c 638244 --alph dna --af ELBA.rice_30x.haswell.50.result -s 1 -O 100000 --afreq 100000 --xa 15
