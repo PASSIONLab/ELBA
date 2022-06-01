@@ -202,6 +202,122 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
     return contigs;
 }
 
+struct KTipsSR
+{
+    static IType id() { return static_cast<IType>(0); }
+    static bool returnedSAID() { return false; }
+    static MPI_Op mpi_op() { return MPI_LOR; }
+    static IType add(const IType& arg1, const IType& arg2) { return (arg1 || arg2); }
+    static IType multiply(const IType& arg1, const IType& arg2) { return (arg1 && arg2); }
+    static void axpy(IType a, const IType& x, IType& y) { y = add(y, multiply(a, x)); }
+};
+
+template <class IT, class NT, class DER>
+FullyDistVec<IT,IT> LastNzRowIdxPerCol(const SpParMat<IT,NT,DER>& A)
+{
+    std::shared_ptr<CommGrid> grid = A.getcommgrid();
+    int myrank = grid->GetRank();
+    int myproccol = grid->GetRankInProcRow();
+    int myprocrow = grid->GetRankInProcCol();
+
+    MPI_Comm ColWorld = grid->GetColWorld();
+
+    IT total_rows = A.getnrow();
+    IT total_cols = A.getncol();
+
+    int procrows = grid->GetGridRows();
+    int proccols = grid->GetGridCols();
+
+    IT rows_perproc = total_rows / procrows;
+    IT cols_perproc = total_cols / proccols;
+
+    IT row_offset = myprocrow * rows_perproc;
+    IT col_offset = myproccol * cols_perproc;
+
+    DER *spSeq = A.seqptr();
+
+    IT localcols = spSeq->getncol();
+    std::vector<IT> local_colidx(localcols, static_cast<IT>(-1));
+
+    for (auto colit = spSeq->begcol(); colit != spSeq->endcol(); ++colit)
+    {
+        auto nzit = spSeq->begnz(colit);
+        if (nzit != spSeq->endnz(colit))
+            local_colidx[colit.colid()] = nzit.rowid() + row_offset;
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, local_colidx.data(), static_cast<int>(localcols), MPIType<IT>(), MPI_MAX, ColWorld);
+
+    std::vector<IT> fillarr;
+
+    if (!myprocrow)
+        for (auto itr = local_colidx.begin(); itr != local_colidx.end(); ++itr)
+            fillarr.push_back(*itr);
+
+    return FullyDistVec<IT,IT>(fillarr, grid);
+}
+
+IType KTipsRemoval(SpParMat<IType,IType,SpDCCols<IType,IType>>& A, const FullyDistVec<IType,IType>& degrees, const IType l, TraceUtils& tu)
+{
+    FullyDistSpVec<IType,IType> R = degrees.Find(std::bind2nd(std::equal_to<IType>(), static_cast<IType>(1)));
+
+    FullyDistVec<IType,IType> *ri = new FullyDistVec<IType,IType>(A.getcommgrid());
+    FullyDistVec<IType,IType> *ci = new FullyDistVec<IType,IType>(A.getcommgrid());
+
+    *ri = R.FindInds([](IType arg1) { return true; });
+    ci->iota(R.getnnz(), static_cast<IType>(0));
+
+    SpParMat<IType,IType,SpDCCols<IType,IType>> F0(A.getnrow(), R.getnnz(), *ri, *ci, static_cast<IType>(1), false);
+
+    delete ri;
+    delete ci;
+
+    SpParMat<IType,IType,SpDCCols<IType,IType>> F1 = PSpGEMM<KTipsSR>(A, F0);
+    SpParMat<IType,IType,SpDCCols<IType,IType>> V = F0;
+    V += F1;
+
+    FullyDistVec<IType,IType> TipSources(A.getcommgrid(), F0.getncol(), static_cast<IType>(-1));
+    FullyDistVec<IType,IType> TipDests(A.getcommgrid(), F0.getncol(), static_cast<IType>(-1));
+
+    for (IType k = 0; k < l; ++k)
+    {
+        SpParMat<IType,IType,SpDCCols<IType,IType>> F2 = PSpGEMM<KTipsSR>(A, F1);
+        F2.SetDifference(V);
+        V += F2;
+
+        FullyDistVec<IType,IType> Ns = F2.Reduce(Column, std::plus<IType>(), static_cast<IType>(0));
+
+        FullyDistSpVec<IType,IType> Tc = Ns.Find(std::bind2nd(std::greater_equal<IType>(), static_cast<IType>(2)));
+        FullyDistSpVec<IType,IType> Td = Ns.Find(std::bind2nd(std::not_equal_to<IType>(), static_cast<IType>(1)));
+
+        FullyDistVec<IType, IType> C0 = LastNzRowIdxPerCol(F0);
+        FullyDistVec<IType, IType> C1 = LastNzRowIdxPerCol(F1);
+
+        FullyDistSpVec<IType,IType> kSources = C0.GGet(Tc, [](const IType arg1, const IType arg2) { return arg2; }, static_cast<IType>(-1));
+        FullyDistSpVec<IType,IType> kDests = C1.GGet(Tc, [](const IType arg1, const IType arg2) { return arg2; }, static_cast<IType>(-1));
+
+        TipSources.Set(kSources);
+        TipDests.Set(kDests);
+
+        F1.PruneColumnByIndex(Td);
+        F2.PruneColumnByIndex(Td);
+
+        F0 = F1;
+        F1 = F2;
+    }
+
+    FullyDistVec<IType,IType> where = TipSources.FindInds([](int a) { return a != -1; });
+    IType num_ktip_edges = where.TotalLength();
+    std::ostringstream oss;
+    oss << "KTipsRemoval :: Found " << num_ktip_edges << " k-tip edges\n";
+    tu.print_str(oss.str());
+
+    A.Prune(TipSources, TipDests);
+    A.Prune(TipDests, TipSources);
+
+    return num_ktip_edges;
+}
+
 /* @func GetRead2Contigs       determines which reads belong to which which contigs.
  *
  * @param G                    distributed string graph.
@@ -220,16 +336,33 @@ IType GetRead2Contigs(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G
     SpParMat<IType,IType,SpDCCols<IType,IType>> A = G;
     tu.print_str("GetRead2Contigs :: Created IType copy of string graph for vertex degree computations\n");
 
-    SpParMat<IType,bool,SpDCCols<IType,bool>> D1;
+    SpParMat<IType,bool,SpDCCols<IType,bool>> D1, D2;
     FullyDistVec<IType,IType> Branches;
 
-    D1 = A;
-    FullyDistVec<IType,IType> degs1(D1.getcommgrid());
+    FullyDistVec<IType,IType> degs1(A.getcommgrid());
+    FullyDistVec<IType,IType> degs2(A.getcommgrid());
 
-    D1.Reduce(degs1, Row, std::plus<IType>(), static_cast<IType>(0));
     tu.print_str("GetRead2Contigs :: Calculated vertex degrees\n");
 
-    Branches = degs1.FindInds(bind2nd(std::greater<IType>(), 2));
+    A.ParallelWriteMM("overlap-graph.mm", false);
+
+    IType ktip_edges_removed;
+    do
+    {
+        D1 = A;
+        D1.Reduce(degs1, Row, std::plus<IType>(), static_cast<IType>(0));
+        ktip_edges_removed = KTipsRemoval(A, degs1, 15, tu);
+    } while (ktip_edges_removed > 0);
+
+    A.ParallelWriteMM("overlap-graph-trimmed.mm", false);
+
+    tu.print_str("GetRead2Contigs :: Removed k-tips\n");
+
+    D2 = A;
+    D2.Reduce(degs2, Row, std::plus<IType>(), static_cast<IType>(0));
+    tu.print_str("GetRead2Contigs :: Recalculate vertex degrees after k-tips removed\n");
+
+    Branches = degs2.FindInds(bind2nd(std::greater<IType>(), 2));
     IType numbranches = Branches.TotalLength();
     iss << "GetRead2Contigs :: Found " << numbranches << " branching points\n";
     tu.print_str(iss.str());
@@ -311,9 +444,9 @@ std::vector<std::tuple<IType,IType>> GetAllContigSizesSorted(FullyDistVec<IType,
 
     NumUsedContigs = std::accumulate(recvcounts.begin(), recvcounts.end(), static_cast<IType>(0));
 
-    std::stringstream iss;
-    iss << "GetAllContigSizesSorted :: Found " << NumUsedContigs << " connected components with size >= 2\n";
-    tu.print_str(iss.str());
+    std::ostringstream outs;
+    outs << "GetAllContigSizesSorted :: Found " << NumUsedContigs << " connected components with size >= 2\n";
+    tu.print_str(outs.str());
 
     std::vector<std::tuple<IType, IType>> result(NumUsedContigs);
     MPI_Allgatherv(sendbuf.data(), recvcounts[di.myrank], MPIType<std::tuple<IType,IType>>(), result.data(), recvcounts.data(), displs.data(), MPIType<std::tuple<IType,IType>>(), di.world);
