@@ -20,20 +20,6 @@ typedef int64_t IType; /* index type used in this file */
 
 constexpr MPI_Count max_int = std::numeric_limits<int>::max();
 
-template <typename NT>
-struct CSpMat
-{
-    typedef SpCCols<IType, NT> CCols;
-    typedef SpDCCols<IType, NT> DCCols;
-    typedef SpParMat<IType, NT, DCCols> MPI_DCCols;
-    typedef SpParMat<IType, NT, CCols> MPI_CCols;
-};
-
-typedef CSpMat<ReadOverlap>::MPI_DCCols DistStringGraph;
-typedef CSpMat<ReadOverlap>::DCCols LocDCCStringGraph;
-typedef CSpMat<ReadOverlap>::CCols LocStringGraph;
-typedef FullyDistVec<IType, IType> DistAssignmentVec;
-
 struct DistReadInfo
 {
 public:
@@ -87,25 +73,25 @@ public:
 
 
 IType
-GetRead2Contigs(DistStringGraph&   G,
-                DistAssignmentVec& Read2Contigs,
-                DistReadInfo&      di,
-                TraceUtils&        tu);
+GetRead2Contigs(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G,
+                FullyDistVec<IType,IType>&                               Read2Contigs,
+                DistReadInfo&                                            di,
+                TraceUtils&                                              tu);
 
-DistAssignmentVec
-GetContigSizes(const DistAssignmentVec& Read2Contigs,
-               const IType              NumContigs,
-               DistReadInfo&            di);
+FullyDistVec<IType,IType>
+GetContigSizes(const FullyDistVec<IType,IType>& Read2Contigs,
+               const IType                      NumContigs,
+               DistReadInfo&                    di);
 
 std::vector<std::tuple<IType,IType>>
-GetAllContigSizesSorted(DistAssignmentVec& ContigSizes,
-                        IType&             NumUsedContigs,
-                        IType              minsize,
-                        DistReadInfo&      di,
-                        TraceUtils&        tu);
+GetAllContigSizesSorted(FullyDistVec<IType,IType>& ContigSizes,
+                        IType&                     NumUsedContigs,
+                        IType                      minsize,
+                        DistReadInfo&              di,
+                        TraceUtils&                tu);
 
 std::vector<IType>
-GetLocalRead2Procs(DistAssignmentVec&                    Read2Contigs,
+GetLocalRead2Procs(FullyDistVec<IType,IType>&            Read2Contigs,
                    std::vector<std::tuple<IType,IType>>& AllContigSizesSorted,
                    const IType                           NumUsedContigs,
                    DistReadInfo&                         di,
@@ -118,14 +104,14 @@ ReadExchange(std::vector<IType>&                                   LocalRead2Pro
              TraceUtils&                                           tu);
 
 std::vector<std::string>
-LocalAssembly(LocStringGraph&                                      ContigChains,
+LocalAssembly(SpCCols<IType,ReadOverlap>&                          ContigChains,
               std::vector<IType>&                                  LocalContigReadIdxs,
               const char*                                          charbuf,
               std::unordered_map<IType, std::tuple<IType, ushort>> charbuf_info,
               DistReadInfo&                                        di);
 
 std::vector<IType>
-ImposeMyReadDistribution(DistAssignmentVec& assignments, DistReadInfo& di);
+ImposeMyReadDistribution(FullyDistVec<IType,IType>& assignments, DistReadInfo& di);
 
 void
 AppendContig(std::string& contig, const char *buf, IType offset, ushort len, IType start, IType end);
@@ -142,7 +128,7 @@ MPI_Alltoallv_str(const char *sendbuf, const std::vector<IType>& sendcounts, con
  * @return vector<string> of contigs.
  */
 std::vector<std::string>
-CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std::string& myoutput, const std::shared_ptr<TimePod>& tp, TraceUtils& tu)
+CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::shared_ptr<DistributedFastaData> dfd, std::string& myoutput, const std::shared_ptr<TimePod>& tp, TraceUtils& tu)
 {
     float balance = G.LoadImbalance();
     int64_t nnz   = G.getnnz();
@@ -155,8 +141,8 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     DistReadInfo di(G.getcommgrid(), dfd->lfd());
 
     IType NumContigs;
-    DistAssignmentVec Read2Contigs;
-    DistAssignmentVec ContigSizes;
+    FullyDistVec<IType,IType> Read2Contigs;
+    FullyDistVec<IType,IType> ContigSizes;
 
     tp->times["StartCreateContig:GetRead2Contigs()"] = std::chrono::system_clock::now();
     NumContigs  = GetRead2Contigs(G, Read2Contigs, di, tu);
@@ -186,17 +172,17 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
     tu.print_str(outs.str());
     outs.str("");
 
-    DistAssignmentVec Read2Procs(LocalRead2Procs, G.getcommgrid());
+    FullyDistVec<IType,IType> Read2Procs(LocalRead2Procs, G.getcommgrid());
     tu.print_str("CreateContig :: Created distributed assignments vector\n");
 
     std::vector<IType> LocalContigReadIdxs;
 
     tp->times["StartCreateContig:InducedSubgraphs2Procs()"] = std::chrono::system_clock::now();
-    LocDCCStringGraph ContigChainsDCC = G.InducedSubgraphs2Procs(Read2Procs, LocalContigReadIdxs);
+    SpDCCols<IType,ReadOverlap> ContigChainsDCC = G.InducedSubgraphs2Procs(Read2Procs, LocalContigReadIdxs);
     tp->times["EndCreateContig:InducedSubgraphs2Procs()"] = std::chrono::system_clock::now();
     tu.print_str("CreateContig :: after InducedSubgraphs2Procs\n");
 
-    LocStringGraph ContigChains(ContigChainsDCC);
+    SpCCols<IType,ReadOverlap> ContigChains(ContigChainsDCC);
 
     ContigChains.Transpose();
 
@@ -228,17 +214,17 @@ CreateContig(DistStringGraph& G, std::shared_ptr<DistributedFastaData> dfd, std:
  * which gives us a distributed vector assigning each vertex to a contig.
  *
  * @return number of contigs */
-IType GetRead2Contigs(DistStringGraph& G, DistAssignmentVec& Read2Contigs, DistReadInfo& di, TraceUtils& tu)
+IType GetRead2Contigs(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, FullyDistVec<IType,IType>& Read2Contigs, DistReadInfo& di, TraceUtils& tu)
 {
     std::stringstream iss;
-    CSpMat<IType>::MPI_DCCols A = G;
+    SpParMat<IType,IType,SpDCCols<IType,IType>> A = G;
     tu.print_str("GetRead2Contigs :: Created IType copy of string graph for vertex degree computations\n");
 
-    CSpMat<bool>::MPI_DCCols D1; //, D2;
-    DistAssignmentVec Branches;
+    SpParMat<IType,bool,SpDCCols<IType,bool>> D1;
+    FullyDistVec<IType,IType> Branches;
 
     D1 = A;
-    DistAssignmentVec degs1(D1.getcommgrid());
+    FullyDistVec<IType,IType> degs1(D1.getcommgrid());
 
     D1.Reduce(degs1, Row, std::plus<IType>(), static_cast<IType>(0));
     tu.print_str("GetRead2Contigs :: Calculated vertex degrees\n");
@@ -266,7 +252,7 @@ IType GetRead2Contigs(DistStringGraph& G, DistAssignmentVec& Read2Contigs, DistR
  * @param NumContigs        total number of contigs.
  *
  * @return distributed vector of contig sizes */
-DistAssignmentVec GetContigSizes(const DistAssignmentVec& Read2Contigs, const IType NumContigs, DistReadInfo& di)
+FullyDistVec<IType,IType> GetContigSizes(const FullyDistVec<IType,IType>& Read2Contigs, const IType NumContigs, DistReadInfo& di)
 {
     std::vector<IType> LocalCCSizes(NumContigs, 0);
     std::vector<IType> LocalCC = Read2Contigs.GetLocVec();
@@ -288,7 +274,7 @@ DistAssignmentVec GetContigSizes(const DistAssignmentVec& Read2Contigs, const IT
 
     MPI_Reduce_scatter(LocalCCSizes.data(), FillVecCC.data(), recvcounts.data(), MPIType<IType>(), MPI_SUM, di.world);
 
-    return DistAssignmentVec(FillVecCC, Read2Contigs.getcommgrid());
+    return FullyDistVec<IType,IType>(FillVecCC, Read2Contigs.getcommgrid());
 }
 /* @func GetAllContigSizesSorted
  *
@@ -303,7 +289,7 @@ DistAssignmentVec GetContigSizes(const DistAssignmentVec& Read2Contigs, const IT
  * vector by contig-size and returns the result.
  *
  * @return */
-std::vector<std::tuple<IType,IType>> GetAllContigSizesSorted(DistAssignmentVec& ContigSizes, IType& NumUsedContigs, IType minsize, DistReadInfo& di, TraceUtils& tu)
+std::vector<std::tuple<IType,IType>> GetAllContigSizesSorted(FullyDistVec<IType,IType>& ContigSizes, IType& NumUsedContigs, IType minsize, DistReadInfo& di, TraceUtils& tu)
 {
     std::vector<std::tuple<IType, IType>> sendbuf;
 
@@ -351,7 +337,7 @@ std::vector<std::tuple<IType,IType>> GetAllContigSizesSorted(DistAssignmentVec& 
  *
  * @return redistributed local section of assignments vector.
  */
-std::vector<IType> ImposeMyReadDistribution(DistAssignmentVec& assignments, DistReadInfo& di)
+std::vector<IType> ImposeMyReadDistribution(FullyDistVec<IType,IType>& assignments, DistReadInfo& di)
 {
     IType orig_offset = assignments.LengthUntil();
     IType orig_size = assignments.LocArrSize();
@@ -418,7 +404,7 @@ std::vector<IType> ImposeMyReadDistribution(DistAssignmentVec& assignments, Dist
  * contig partititioning, determine where our local reads are supposed to go.
  *
  * @return local read to processor assignments */
-std::vector<IType> GetLocalRead2Procs(DistAssignmentVec& Read2Contigs, std::vector<std::tuple<IType,IType>>& AllContigSizesSorted, const IType NumUsedContigs, DistReadInfo& di, TraceUtils& tu)
+std::vector<IType> GetLocalRead2Procs(FullyDistVec<IType,IType>& Read2Contigs, std::vector<std::tuple<IType,IType>>& AllContigSizesSorted, const IType NumUsedContigs, DistReadInfo& di, TraceUtils& tu)
 {
     assert((NumUsedContigs == static_cast<IType>(AllContigSizesSorted.size())));
 
@@ -620,7 +606,7 @@ const char * ReadExchange(std::vector<IType>& LocalRead2Procs, std::unordered_ma
  * @description
  *
  * @returns vector of completed contigs */
-std::vector<std::string> LocalAssembly(LocStringGraph& ContigChains, std::vector<IType>& LocalContigReadIdxs, const char *charbuf, std::unordered_map<IType, std::tuple<IType, ushort>> charbuf_info, DistReadInfo& di)
+std::vector<std::string> LocalAssembly(SpCCols<IType,ReadOverlap>& ContigChains, std::vector<IType>& LocalContigReadIdxs, const char *charbuf, std::unordered_map<IType, std::tuple<IType, ushort>> charbuf_info, DistReadInfo& di)
 {
     /* local fasta buffer for sequences already on my processor */
     const char *lfd_buffer = di.lfd->buffer();
