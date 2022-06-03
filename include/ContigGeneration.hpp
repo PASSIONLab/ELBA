@@ -344,7 +344,7 @@ IType GetRead2Contigs(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G
 
     tu.print_str("GetRead2Contigs :: Calculated vertex degrees\n");
 
-    A.ParallelWriteMM("overlap-graph.mm", false);
+    A.ParallelWriteMM("overlap-graph.mtx", true);
 
     IType ktip_edges_removed;
     do
@@ -354,7 +354,7 @@ IType GetRead2Contigs(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G
         ktip_edges_removed = KTipsRemoval(A, degs1, 15, tu);
     } while (ktip_edges_removed > 0);
 
-    A.ParallelWriteMM("overlap-graph-trimmed.mm", false);
+    A.ParallelWriteMM("overlap-graph-trimmed.mtx", true);
 
     tu.print_str("GetRead2Contigs :: Removed k-tips\n");
 
