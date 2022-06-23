@@ -157,41 +157,15 @@ struct Tupleize : unary_function<ReadOverlap, ReadOverlap>
     }
 };
 
-struct ReadOverlapPathHandler
-{
-    template <typename c, typename t>
-    void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
-    {
-        os << e.dir << "\t" << e.sfx << "\t" << e.sfxpath[0] << "\t" << e.sfxpath[1] << "\t" << e.sfxpath[2] << "\t" << e.sfxpath[3];
-    }
-};
-
-struct ReadOverlapExtraHandler
-{
-    template <typename c, typename t>
-    void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
-    {
-        os << e.dir << "\t" << e.sfx << "\t" << e.dirT << "\t" << e.sfxT << "\t" << static_cast<int>(e.transpose) << "\t" << static_cast<int>(e.rc) << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
-    }
-};
-
 struct ReadOverlapGraphHandler
 {
     template <typename c, typename t>
     void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
     {
-        os << e.dir << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[1];
+        os << e.l[0] << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[1] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.dir << "\t" << e.dirT << "\t" << e.sfx << "\t" << e.sfxT;
     }
 
 };
 
-struct ReadOverlapCoordsHandler
-{
-    template <typename c, typename t>
-    void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
-    {
-        os << static_cast<int>(e.rc) << "\t" << e.dir << "\t" << e.dirT << "\t" << e.sfx << "\t" << e.sfxT << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.l[0] << "\t" << e.l[1];
-    }
-};
 
 #endif

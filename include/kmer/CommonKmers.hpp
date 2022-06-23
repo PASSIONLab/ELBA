@@ -46,17 +46,12 @@ namespace dibella {
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
 #endif
 
-    CommonKmers() : count(1), passed(false), dir(-1) {
-    }
-    explicit
-	CommonKmers(ushort count) :
-		count(count), passed(false), dir(-1) {
-    }
+    CommonKmers() : count(1), passed(false), dir(-1) {}
 
-	CommonKmers (bool passed, uint32_t score) :
-		passed(passed),
-		score(score) {
-	}
+    explicit
+	CommonKmers(ushort count) : count(count), passed(false), dir(-1) {}
+
+	CommonKmers (bool passed, uint32_t score) : passed(passed), score(score) {}
 
 	operator bool() const { return (dir != -1); }
 
@@ -219,5 +214,14 @@ namespace dibella {
     };
 
 }
+
+struct CommonKmersGraphHandler
+{
+    template <typename c, typename t>
+    void save(std::basic_ostream<c,t>& os, const dibella::CommonKmers& v, int64_t row, int64_t col)
+    {
+        os << v.passed << "\t" << v.lenv << "\t" << v.lenh << "\t" << v.score << "\t" << v.rc;
+    }
+};
 
 #endif //DIBELLA_COMMONKMERS_HPP
