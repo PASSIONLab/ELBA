@@ -308,6 +308,7 @@ int main(int argc, char **argv)
   MPI_File_write_ordered(cfh, strout, count, MPI_CHAR, MPI_STATUS_IGNORE);
   MPI_File_close(&cfh);
 
+  MPI_Barrier(MPI_COMM_WORLD);
   tp->times["EndMain:WriteContigs()"] = std::chrono::system_clock::now();
 
   // //////////////////////////////////////////////////////////////////////////////////////

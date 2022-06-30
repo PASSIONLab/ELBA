@@ -149,8 +149,6 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
     tp->times["EndCreateContig:GetRead2Contigs()"] = std::chrono::system_clock::now();
     tu.print_str("CreateContig :: after GetRead2Contigs\n");
 
-    Read2Contigs.ParallelWrite("contig-assignment.txt", true);
-
     tp->times["StartCreateContig:GetRead2ProcAssignments()"] = std::chrono::system_clock::now();
     ContigSizes = GetContigSizes(Read2Contigs, NumContigs, di);
 
@@ -164,7 +162,6 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
 
 
     LocalRead2Procs = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, di, tu);
-    tp->times["EndCreateContig:GetRead2ProcAssignments()"] = std::chrono::system_clock::now();
 
     IType max_contig_size = ContigSizes.Reduce(combblas::maximum<IType>(), static_cast<IType>(0));
     outs << "CreateContig::NumContigs: " << NumUsedContigs << std::endl;
@@ -173,6 +170,7 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
     outs.str("");
 
     FullyDistVec<IType,IType> Read2Procs(LocalRead2Procs, G.getcommgrid());
+    tp->times["EndCreateContig:GetRead2ProcAssignments()"] = std::chrono::system_clock::now();
     tu.print_str("CreateContig :: Created distributed assignments vector\n");
 
     std::vector<IType> LocalContigReadIdxs;
@@ -182,9 +180,10 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
     tp->times["EndCreateContig:InducedSubgraphs2Procs()"] = std::chrono::system_clock::now();
     tu.print_str("CreateContig :: after InducedSubgraphs2Procs\n");
 
+    tp->times["StartCreateContig:BuildContigChains()"] = std::chrono::system_clock::now();
     SpCCols<IType,ReadOverlap> ContigChains(ContigChainsDCC);
-
     ContigChains.Transpose();
+    tp->times["EndCreateContig:BuildContigChains()"] = std::chrono::system_clock::now();
 
     std::unordered_map<IType, std::tuple<IType, ushort>> charbuf_info;
     tp->times["StartCreateContig:ReadExchange()"] = std::chrono::system_clock::now();
@@ -193,9 +192,20 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
     tu.print_str("CreateContig :: after ReadExchange\n");
 
     tp->times["StartCreateContig:LocalAssembly()"] = std::chrono::system_clock::now();
+    double duration = MPI_Wtime();
     std::vector<std::string> contigs = LocalAssembly(ContigChains, LocalContigReadIdxs, charbuf, charbuf_info, di);
-    MPI_Barrier(di.world);
+    duration = MPI_Wtime() - duration;
     tp->times["EndCreateContig:LocalAssembly()"] = std::chrono::system_clock::now();
+
+    double maxtime;
+    MPI_Barrier(di.world);
+    MPI_Reduce(&duration, &maxtime, 1, MPI_DOUBLE, MPI_MAX, 0, di.world);
+
+    if (!di.myrank)
+    {
+        std::cout << "LocalAssembly() time = " << maxtime << std::endl;
+    }
+
     tu.print_str("CreateContig :: after LocalAssembly\n");
     delete [] charbuf;
 
@@ -344,19 +354,19 @@ IType GetRead2Contigs(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G
 
     tu.print_str("GetRead2Contigs :: Calculated vertex degrees\n");
 
-    A.ParallelWriteMM("overlap-graph.mtx", true);
+    //A.ParallelWriteMM("overlap-graph.mtx", true);
 
-    IType ktip_edges_removed;
-    do
-    {
-        D1 = A;
-        D1.Reduce(degs1, Row, std::plus<IType>(), static_cast<IType>(0));
-        ktip_edges_removed = KTipsRemoval(A, degs1, 15, tu);
-    } while (ktip_edges_removed > 0);
+    ////IType ktip_edges_removed;
+    ////do
+    ////{
+    ////    D1 = A;
+    ////    D1.Reduce(degs1, Row, std::plus<IType>(), static_cast<IType>(0));
+    ////    ktip_edges_removed = KTipsRemoval(A, degs1, 15, tu);
+    ////} while (ktip_edges_removed > 0);
 
-    A.ParallelWriteMM("overlap-graph-trimmed.mtx", true);
+    //////A.ParallelWriteMM("overlap-graph-trimmed.mtx", true);
 
-    tu.print_str("GetRead2Contigs :: Removed k-tips\n");
+    ////tu.print_str("GetRead2Contigs :: Removed k-tips\n");
 
     D2 = A;
     D2.Reduce(degs2, Row, std::plus<IType>(), static_cast<IType>(0));
