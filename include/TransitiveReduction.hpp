@@ -168,7 +168,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         R += RT;
     }    
 
-    R.ParallelWriteMM("overlap.mtx", false, ReadOverlapGraphHandler());
+    R.ParallelWriteMM("overlap.mtx", true, ReadOverlapGraphHandler());
 
     /* TODO replace OverlapPath */
     /* implicitly will call OverlapPath(const ReadOverlap& e) constructor */
@@ -374,7 +374,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     tu.print_str(tiss.str());
  #endif
 
-    R.ParallelWriteMM("string.mtx", false, ReadOverlapGraphHandler());
+    R.ParallelWriteMM("string.mtx", true, ReadOverlapGraphHandler());
 }
 
 #endif

@@ -2,7 +2,7 @@
 
 #include "../../include/pw/SeedExtendXdrop.hpp"
 
-uint minOverlapLen = 5000;
+uint minOverlapLen = 2000;
 uint maxOverhang = 25;
 
 void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap,

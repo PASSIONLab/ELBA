@@ -149,9 +149,10 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
     tp->times["EndCreateContig:GetRead2Contigs()"] = std::chrono::system_clock::now();
     tu.print_str("CreateContig :: after GetRead2Contigs\n");
 
+    Read2Contigs.ParallelWrite("contig-assignment", true);
+
     tp->times["StartCreateContig:GetRead2ProcAssignments()"] = std::chrono::system_clock::now();
     ContigSizes = GetContigSizes(Read2Contigs, NumContigs, di);
-
 
     IType NumUsedContigs;
     std::vector<std::tuple<IType, IType>> AllContigSizesSorted;
@@ -160,6 +161,16 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
 
     AllContigSizesSorted = GetAllContigSizesSorted(ContigSizes, NumUsedContigs, 2, di, tu);
 
+    if (!di.myrank)
+    {
+        std::cout << std::endl;
+        std::cout << "AllContigSizesSorted:" << std::endl;
+        for (auto itr = AllContigSizesSorted.begin(); itr != AllContigSizesSorted.end(); ++itr)
+        {
+            std::cout << std::get<0>(*itr) << "\t" << std::get<1>(*itr) << std::endl;
+        }
+        std::cout << std::endl;
+    }
 
     LocalRead2Procs = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, di, tu);
 
@@ -571,6 +582,14 @@ std::vector<IType> GetLocalRead2Procs(FullyDistVec<IType,IType>& Read2Contigs, s
             for (auto itr = mypartition.begin(); itr != mypartition.end(); ++itr)
                 AllContig2Procs[*itr] = i;
         }
+
+        std::cout << std::endl;
+        std::cout << "SmallToLargeMap:" << std::endl;
+        for (IType i = 0; i < SmallToLargeMap.size(); ++i)
+        {
+            std::cout << i << "\t" << SmallToLargeMap[i] << std::endl;
+        }
+        std::cout << std::endl;
     }
 
     tu.print_str("GetLocalRead2Procs :: Root process finished multiway partitioning for contig load-balancing\n");
