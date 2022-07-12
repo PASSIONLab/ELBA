@@ -112,6 +112,7 @@ You need to use a perfect square number of processes to match our 2D decompositi
 To cite our work or to know more about our methods, please refer to:
 
 > Giulia Guidi, Oguz Selvitopi, Marquita Ellis, Leonid Oliker, Katherine Yelick, Aydın Buluç. [Parallel String Graph Construction and Transitive Reduction for De Novo Genome Assembly](https://arxiv.org/pdf/2010.10055.pdf). Proceedings of the IPDPS, 2021.
+
 > Giulia Guidi, Gabriel Raulet, Daniel Rokhsar, Leonid Oliker, Katherine Yelick, Aydın Buluç. [Distributed-Memory Parallel Contig Generation for De Novo
 Long-Read Genome Assembly](https://arxiv.org/pdf/2207.04350.pdf). Proceedings of the ICPP, 2022.
 
