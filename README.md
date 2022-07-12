@@ -117,7 +117,7 @@ Long-Read Genome Assembly](https://arxiv.org/pdf/2207.04350.pdf). Proceedings of
 
 Further design choices and results in terms of accuracy can be found here:
 
-> Giulia Guidi, Marquita Ellis, Daniel Rokhsar, Katherine Yelick, Aydın Buluç. [BELLA: Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper](https://www.biorxiv.org/content/10.1101/464420v5.full.pdf). bioRxiv 464420; doi: https://doi.org/10.1101/464420.
+> Giulia Guidi, Marquita Ellis, Daniel Rokhsar, Katherine Yelick, Aydın Buluç. [BELLA: Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper](https://drive.google.com/file/d/132i0RAKyIIWk_BEl1jpf9R_V5eVkKkxT/view). bioRxiv 464420; doi: https://doi.org/10.1101/464420. Proceedings of the SIAM ACDA, 2021.
 
 # Copyright
 
