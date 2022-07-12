@@ -4,7 +4,7 @@
 ## Prerequisites
 
 1. Operating System.
-  * diBELLA is tested and known to work on the following operating systems.
+  * ELBA is tested and known to work on the following operating systems.
     *  SUSE Linux Enterprise Server 15.
     *  Ubuntu 14.10.
     *  MacOS.
@@ -40,8 +40,8 @@
   ```
   * This is a header only library, so there's no need to build it.
 
-# Build diBELLA
-To build diBELLA, you can use the following commands:
+# Build ELBA
+To build ELBA, you can use the following commands:
   ```
     mkdir build_release
     cd build_release
@@ -61,9 +61,9 @@ You can change the defaul setting at compile time when building using the follow
 cmake -DLOWER_KMER_FREQ=<new-lower-bound> -DUPPER_KMER_FREQ=<new-upper-bound> .. 
 ```
 
-# Run diBELLA
+# Run ELBA
 
-You can run diBELLA in parallel by specifying the number of processes to the mpirun or mpiexec command. The number of processes must be perfect square value.
+You can run ELBA in parallel by specifying the number of processes to the mpirun or mpiexec command. The number of processes must be perfect square value.
 
 ## Input data samples
 A few input data sets can be downloaded [here](https://portal.nersc.gov/project/m1982/dibella.2d/inputs/). If you have your own FASTQs, you can convert them into FASTAs using [seqtk](https://github.com/lh3/seqtk):
@@ -112,6 +112,8 @@ You need to use a perfect square number of processes to match our 2D decompositi
 To cite our work or to know more about our methods, please refer to:
 
 > Giulia Guidi, Oguz Selvitopi, Marquita Ellis, Leonid Oliker, Katherine Yelick, Aydın Buluç. [Parallel String Graph Construction and Transitive Reduction for De Novo Genome Assembly](https://arxiv.org/pdf/2010.10055.pdf). Proceedings of the IPDPS, 2021.
+> Giulia Guidi, Gabriel Raulet, Daniel Rokhsar, Leonid Oliker, Katherine Yelick, Aydın Buluç. [Distributed-Memory Parallel Contig Generation for De Novo
+Long-Read Genome Assembly](https://arxiv.org/pdf/2207.04350.pdf). Proceedings of the ICPP, 2022.
 
 Further design choices and results in terms of accuracy can be found here:
 
