@@ -163,13 +163,15 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
 
     if (!di.myrank)
     {
-        std::cout << std::endl;
-        std::cout << "AllContigSizesSorted:" << std::endl;
+        std::ofstream file;
+        file.open("contig_sizes.txt");
+
+        file << "large_contig_id\tcontig_size" << std::endl;
         for (auto itr = AllContigSizesSorted.begin(); itr != AllContigSizesSorted.end(); ++itr)
         {
-            std::cout << std::get<0>(*itr) << "\t" << std::get<1>(*itr) << std::endl;
+            file << std::get<0>(*itr) << "\t" << std::get<1>(*itr) << std::endl;
         }
-        std::cout << std::endl;
+        file.close();
     }
 
     LocalRead2Procs = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, di, tu);
@@ -357,27 +359,25 @@ IType GetRead2Contigs(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G
     SpParMat<IType,IType,SpDCCols<IType,IType>> A = G;
     tu.print_str("GetRead2Contigs :: Created IType copy of string graph for vertex degree computations\n");
 
-    SpParMat<IType,bool,SpDCCols<IType,bool>> D1, D2;
+    SpParMat<IType,bool,SpDCCols<IType,bool>> D2;
     FullyDistVec<IType,IType> Branches;
 
-    FullyDistVec<IType,IType> degs1(A.getcommgrid());
     FullyDistVec<IType,IType> degs2(A.getcommgrid());
 
     tu.print_str("GetRead2Contigs :: Calculated vertex degrees\n");
 
-    //A.ParallelWriteMM("overlap-graph.mtx", true);
+    IType ktip_edges_removed;
+    do
+    {
+        SpParMat<IType,bool,SpDCCols<IType,bool>> D1 = A;
+        FullyDistVec<IType,IType> degs1(A.getcommgrid());
+        D1.Reduce(degs1, Row, std::plus<IType>(), static_cast<IType>(0));
+        ktip_edges_removed = KTipsRemoval(A, degs1, 5, tu);
+    } while (ktip_edges_removed > 0);
 
-    ////IType ktip_edges_removed;
-    ////do
-    ////{
-    ////    D1 = A;
-    ////    D1.Reduce(degs1, Row, std::plus<IType>(), static_cast<IType>(0));
-    ////    ktip_edges_removed = KTipsRemoval(A, degs1, 15, tu);
-    ////} while (ktip_edges_removed > 0);
+    A.ParallelWriteMM("post_tip_removal.mtx", false);
 
-    //////A.ParallelWriteMM("overlap-graph-trimmed.mtx", true);
-
-    ////tu.print_str("GetRead2Contigs :: Removed k-tips\n");
+    tu.print_str("GetRead2Contigs :: Removed k-tips\n");
 
     D2 = A;
     D2.Reduce(degs2, Row, std::plus<IType>(), static_cast<IType>(0));
@@ -583,13 +583,12 @@ std::vector<IType> GetLocalRead2Procs(FullyDistVec<IType,IType>& Read2Contigs, s
                 AllContig2Procs[*itr] = i;
         }
 
-        std::cout << std::endl;
-        std::cout << "SmallToLargeMap:" << std::endl;
+        std::ofstream file;
+        file.open("small_to_large_map.txt");
+        file << "small_idx\tlarge_idx" << std::endl;
         for (IType i = 0; i < SmallToLargeMap.size(); ++i)
-        {
-            std::cout << i << "\t" << SmallToLargeMap[i] << std::endl;
-        }
-        std::cout << std::endl;
+            file << i << "\t" << SmallToLargeMap[i] << std::endl;
+        file.close();
     }
 
     tu.print_str("GetLocalRead2Procs :: Root process finished multiway partitioning for contig load-balancing\n");
@@ -770,6 +769,9 @@ const char * ReadExchange(std::vector<IType>& LocalRead2Procs, std::unordered_ma
  * @returns vector of completed contigs */
 std::vector<std::string> LocalAssembly(SpCCols<IType,ReadOverlap>& ContigChains, std::vector<IType>& LocalContigReadIdxs, const char *charbuf, std::unordered_map<IType, std::tuple<IType, ushort>> charbuf_info, DistReadInfo& di)
 {
+    int myrank;
+    MPI_Comm_rank(di.world, &myrank);
+
     /* local fasta buffer for sequences already on my processor */
     const char *lfd_buffer = di.lfd->buffer();
 
@@ -792,9 +794,11 @@ std::vector<std::string> LocalAssembly(SpCCols<IType,ReadOverlap>& ContigChains,
                                              want to use one each, record the which ones have been
                                              used so we avoid two traversals per contig */
 
-    /* we loop through each vertex searching for roots */
-    for (IType v = 0; v < csc->n; ++v) {
+    IType contig_id = 0;
 
+    /* we loop through each vertex searching for roots */
+    for (IType v = 0; v < csc->n; ++v)
+    {
         /* @jc is the column pointer vector. Because roots are defined as
          * as vertices of degree 1, we check whether the column size is 1,
          * and if so, whether this root has already been traversed by a
@@ -832,13 +836,13 @@ std::vector<std::string> LocalAssembly(SpCCols<IType,ReadOverlap>& ContigChains,
                 first = false;
             }
 
-            contig_vector.push_back(std::make_tuple(i1last, e.coords[0], LocalContigReadIdxs[cur]));
+            contig_vector.emplace_back(i1last, e.coords[0], LocalContigReadIdxs[cur]);
 
             i1last = e.coords[1];
             cur = csc->ir[next];
         }
 
-        contig_vector.push_back(std::make_tuple(i1last, (e.dir == 1 || e.dir == 3)? e.l[1] : 0, LocalContigReadIdxs[cur]));
+        contig_vector.emplace_back(i1last, (e.dir == 1 || e.dir == 3)? e.l[1] : 0, LocalContigReadIdxs[cur]);
         used_roots.insert(cur);
 
         std::string contig = "";
@@ -848,6 +852,8 @@ std::vector<std::string> LocalAssembly(SpCCols<IType,ReadOverlap>& ContigChains,
             IType seq_start = std::get<0>(contig_vector[i]);
             IType seq_end   = std::get<1>(contig_vector[i]);
             IType idx       = std::get<2>(contig_vector[i]);
+
+            std::cout << "LLL\t" << myrank << "\t" << contig_id << "\t" << i << "\t" << idx << "\t" << seq_start << "\t" << seq_end << std::endl;
 
             auto segment_info_itr = charbuf_info.find(idx);
             uint64_t read_offset, end_offset;
@@ -862,7 +868,9 @@ std::vector<std::string> LocalAssembly(SpCCols<IType,ReadOverlap>& ContigChains,
                 AppendContig(contig, charbuf, read_offset, readlen, seq_start, seq_end);
             }
         }
+        std::cout << std::endl;
         contigs.push_back(contig);
+        contig_id++;
     }
 
     delete [] visited;

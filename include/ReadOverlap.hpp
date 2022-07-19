@@ -26,16 +26,17 @@ struct ReadOverlap
     int sfx, sfxT, dir, dirT;
     int b[2], e[2], l[2], coords[2], sfxpath[4];
     bool transpose, rc;
+    int score;
 
     void SetPathInf() { sfxpath[0] = sfxpath[1] = sfxpath[2] = sfxpath[3] = MAX_INT; }
 
-    ReadOverlap() : sfx(0), dir(-1), transpose(false)
+    ReadOverlap() : sfx(0), dir(-1), score(-1), transpose(false)
     {
         SetPathInf();
     }
 
     ReadOverlap(const ReadOverlap& rhs)
-        : sfx(rhs.sfx), sfxT(rhs.sfxT), dir(rhs.dir), dirT(rhs.dirT), transpose(rhs.transpose), rc(rhs.rc)
+        : sfx(rhs.sfx), sfxT(rhs.sfxT), dir(rhs.dir), dirT(rhs.dirT), transpose(rhs.transpose), rc(rhs.rc), score(rhs.score)
     {
         b[0] = rhs.b[0]; b[1] = rhs.b[1];
         e[0] = rhs.e[0]; e[1] = rhs.e[1];
@@ -48,7 +49,7 @@ struct ReadOverlap
             sfxpath[i] = rhs.sfxpath[i]; 
     }
 
-    ReadOverlap(const CommonKmers& cks) : transpose(false)
+    ReadOverlap(const CommonKmers& cks) : transpose(false), score(static_cast<int>(cks.score))
     {
         b[0] = cks.first.first;  b[1] = cks.second.first;
         e[0] = cks.first.second; e[1] = cks.second.second;
@@ -65,24 +66,6 @@ struct ReadOverlap
 
         sfxpath[dir] = sfx;
     }
-
-    /* TODO replace OverlapPath */
-    //ReadOverlap(const OverlapPath& e) : transpose(e.transpose)
-    //{
-    //    int c = 0;
-    //    for (int i = 0; i < 4; ++i) {
-    //        if (e.sfx[i] < MAX_INT) {
-    //            sfx = e.sfx[i];
-    //            dir = i;
-    //            c++;
-    //        }
-    //    }
-
-    //    if (c != 1) {
-    //        sfx = 0;
-    //        dir = -1;
-    //    }
-    //}
 
     bool is_invalid() const { return (dir == -1); }
 
@@ -110,18 +93,6 @@ struct ReadOverlap
         return myobj;
     }
 };
-
-/* TODO replace OverlapPath */
-//OverlapPath::OverlapPath(const ReadOverlap& e) : transpose(e.transpose)
-//{
-//    setinf();
-//
-//    if (!e.is_invalid())
-//        sfx[e.dir] = e.sfx;
-//}
-
-/* TODO replace OverlapPath */
-//void OverlapPath::setinf() { sfx[0] = sfx[1] = sfx[2] = sfx[3] = MAX_INT; }
 
 int intplus(int a, int b)
 {
@@ -162,9 +133,8 @@ struct ReadOverlapGraphHandler
     template <typename c, typename t>
     void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
     {
-        os << e.l[0] << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[1] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.dir << "\t" << e.sfx;
+        os << e.score << "\t" << e.l[0] << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[1] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.dir << "\t" << e.sfx;
     }
-
 };
 
 
