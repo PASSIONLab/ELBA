@@ -772,6 +772,11 @@ std::vector<std::string> LocalAssembly(SpCCols<IType,ReadOverlap>& ContigChains,
     int myrank;
     MPI_Comm_rank(di.world, &myrank);
 
+    std::ofstream contiglog;
+    std::stringstream contiglog_name;
+    contiglog_name << "contiglog_rank" << myrank << ".txt";
+    contiglog.open(contiglog_name.str());
+
     /* local fasta buffer for sequences already on my processor */
     const char *lfd_buffer = di.lfd->buffer();
 
@@ -853,7 +858,7 @@ std::vector<std::string> LocalAssembly(SpCCols<IType,ReadOverlap>& ContigChains,
             IType seq_end   = std::get<1>(contig_vector[i]);
             IType idx       = std::get<2>(contig_vector[i]);
 
-            std::cout << "LLL\t" << myrank << "\t" << contig_id << "\t" << i << "\t" << idx << "\t" << seq_start << "\t" << seq_end << std::endl;
+            contiglog << myrank << "\t" << contig_id << "\t" << i << "\t" << idx << "\t" << seq_start << "\t" << seq_end << std::endl;
 
             auto segment_info_itr = charbuf_info.find(idx);
             uint64_t read_offset, end_offset;
@@ -868,10 +873,12 @@ std::vector<std::string> LocalAssembly(SpCCols<IType,ReadOverlap>& ContigChains,
                 AppendContig(contig, charbuf, read_offset, readlen, seq_start, seq_end);
             }
         }
-        std::cout << std::endl;
+        contiglog << std::endl;
         contigs.push_back(contig);
         contig_id++;
     }
+
+    contiglog.close();
 
     delete [] visited;
 
@@ -924,6 +931,11 @@ int MPI_Alltoallv_str(const char *sendbuf, const std::vector<IType>& sendcounts,
     int nprocs, myrank;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
+
+    if (!myrank)
+    {
+        std::cout << "MPI_Alltoallv_str was called!!" << std::endl;
+    }
 
     MPI_Request *reqs = new MPI_Request[2*nprocs];
 

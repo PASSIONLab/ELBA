@@ -349,7 +349,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     tu.print_str("Matrix S, i.e. AAt post transitive reduction---BEFORE InvalidSRing Prune: ");
     R.PrintInfo();
 
-    R.ParallelWriteMM("string-graph-before-prune.mm", true, ReadOverlapExtraHandler());
+    //R.ParallelWriteMM("string-graph-before-prune.mm", true, ReadOverlapExtraHandler());
 #endif
 
     R.Prune(InvalidSRing(), true);

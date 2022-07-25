@@ -220,7 +220,7 @@ struct CommonKmersGraphHandler
     template <typename c, typename t>
     void save(std::basic_ostream<c,t>& os, const dibella::CommonKmers& v, int64_t row, int64_t col)
     {
-        os << v.passed << "\t" << v.lenv << "\t" << v.lenh << "\t" << v.score << "\t" << v.rc;
+        os << v.score << "\t" << v.lenv << "\t" << v.lenh << "\t" << v.rc;
     }
 };
 

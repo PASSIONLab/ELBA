@@ -11,16 +11,6 @@ using namespace dibella;
 static constexpr int MAX_INT = std::numeric_limits<int>::max();
 extern int xdrop;
 
-/* TODO replace OverlapPath */
-//struct OverlapPath
-//{
-//    int sfx[4];
-//    bool transpose;
-//    OverlapPath() : transpose(false) { setinf(); }
-//    OverlapPath(const ReadOverlap& e);
-//    void setinf();
-//};
-
 struct ReadOverlap
 {
     int sfx, sfxT, dir, dirT;

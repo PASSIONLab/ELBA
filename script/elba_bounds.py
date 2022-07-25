@@ -35,7 +35,17 @@ def main(d, e, k, minprob):
 
     u = m + 1
 
-    print("lower = {}, upper = {}".format(l, u))
+    sys.stdout.write("lower = {}, upper = {}\n".format(l, u))
+    sys.stdout.flush()
 
 if __name__ == "__main__":
-    main(int(sys.argv[1]), float(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4]))
+    if len(sys.argv) != 5:
+        sys.stderr.write("usage: python {} <depth> <error rate> <k-mer length>  <min probability>\n".format(sys.argv[0]))
+        sys.stderr.flush()
+        sys.exit(-1)
+
+    depth = int(sys.argv[1])
+    error_rate = float(sys.argv[2])
+    kmer_length = int(sys.argv[3])
+    minprob = float(sys.argv[4])
+    main(depth, error_rate, kmer_length, minprob)

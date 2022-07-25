@@ -524,9 +524,20 @@ DistributedPairwiseRunner::run_batch
 
 	tu.print_str("\t* nnz before pruning " + std::to_string(gmat->getnnz()) + "\n");
 
+    //PSpMat<ReadOverlap>::MPI_DCCols* Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*gmat);
+    //Rmat->ParallelWriteMM("pre_alignment_pruning.mtx", true, ReadOverlapGraphHandler());
+    //delete Rmat;
+
+    //gmat->ParallelWriteMM("pre_alignment_pruning.mtx", true, CommonKmersGraphHandler());
+
 	// Prune pairs that do not meet score criteria
 	auto elim_score = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
 	gmat->Prune(elim_score); 
+
+    //Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*gmat);
+    //Rmat->ParallelWriteMM("post_alignment_pruning.mtx", true, ReadOverlapGraphHandler());
+    //delete Rmat;
+    //gmat->ParallelWriteMM("post_alignment_pruning.mtx", true, CommonKmersGraphHandler());
 
 	// GGGG: if noAlign == true, we remove only the contained overlaps as they are not useful for transitive reduction (next prune)
 	tu.print_str("\t* nnz after 1st pruning (score) " + std::to_string(gmat->getnnz()) + "\n");
@@ -535,6 +546,11 @@ DistributedPairwiseRunner::run_batch
 
 	// Prune pairs involving contained seqs
 	gmat->PruneFull(toerase, toerase);
+
+    //Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*gmat);
+    //Rmat->ParallelWriteMM("post_containment_pruning.mtx", true, ReadOverlapGraphHandler());
+    //delete Rmat;
+    //gmat->ParallelWriteMM("post_containment_pruning.mtx", true, CommonKmersGraphHandler());
 
 	tu.print_str("\t* nnz after 2nd pruning (contained) " + std::to_string(gmat->getnnz()) + "\n");
 	
