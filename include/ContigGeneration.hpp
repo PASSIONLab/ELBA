@@ -149,7 +149,7 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
     tp->times["EndCreateContig:GetRead2Contigs()"] = std::chrono::system_clock::now();
     tu.print_str("CreateContig :: after GetRead2Contigs\n");
 
-    Read2Contigs.ParallelWrite("contig-assignment", true);
+    //Read2Contigs.ParallelWrite("contig-assignment", true);
 
     tp->times["StartCreateContig:GetRead2ProcAssignments()"] = std::chrono::system_clock::now();
     ContigSizes = GetContigSizes(Read2Contigs, NumContigs, di);
@@ -164,14 +164,14 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
     if (!di.myrank)
     {
         std::ofstream file;
-        file.open("contig_sizes.txt");
+        //file.open("contig_sizes.txt");
 
-        file << "large_contig_id\tcontig_size" << std::endl;
+        //file << "large_contig_id\tcontig_size" << std::endl;
         for (auto itr = AllContigSizesSorted.begin(); itr != AllContigSizesSorted.end(); ++itr)
         {
-            file << std::get<0>(*itr) << "\t" << std::get<1>(*itr) << std::endl;
+            //file << std::get<0>(*itr) << "\t" << std::get<1>(*itr) << std::endl;
         }
-        file.close();
+        //file.close();
     }
 
     LocalRead2Procs = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, di, tu);
@@ -375,7 +375,7 @@ IType GetRead2Contigs(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G
         ktip_edges_removed = KTipsRemoval(A, degs1, 5, tu);
     } while (ktip_edges_removed > 0);
 
-    A.ParallelWriteMM("post_tip_removal.mtx", false);
+    //A.ParallelWriteMM("post_tip_removal.mtx", false);
 
     tu.print_str("GetRead2Contigs :: Removed k-tips\n");
 
@@ -584,11 +584,11 @@ std::vector<IType> GetLocalRead2Procs(FullyDistVec<IType,IType>& Read2Contigs, s
         }
 
         std::ofstream file;
-        file.open("small_to_large_map.txt");
-        file << "small_idx\tlarge_idx" << std::endl;
-        for (IType i = 0; i < SmallToLargeMap.size(); ++i)
-            file << i << "\t" << SmallToLargeMap[i] << std::endl;
-        file.close();
+        //file.open("small_to_large_map.txt");
+        //file << "small_idx\tlarge_idx" << std::endl;
+        //for (IType i = 0; i < SmallToLargeMap.size(); ++i)
+        //    file << i << "\t" << SmallToLargeMap[i] << std::endl;
+        //file.close();
     }
 
     tu.print_str("GetLocalRead2Procs :: Root process finished multiway partitioning for contig load-balancing\n");
@@ -775,7 +775,7 @@ std::vector<std::string> LocalAssembly(SpCCols<IType,ReadOverlap>& ContigChains,
     std::ofstream contiglog;
     std::stringstream contiglog_name;
     contiglog_name << "contiglog_rank" << myrank << ".txt";
-    contiglog.open(contiglog_name.str());
+    //contiglog.open(contiglog_name.str());
 
     /* local fasta buffer for sequences already on my processor */
     const char *lfd_buffer = di.lfd->buffer();
@@ -858,7 +858,7 @@ std::vector<std::string> LocalAssembly(SpCCols<IType,ReadOverlap>& ContigChains,
             IType seq_end   = std::get<1>(contig_vector[i]);
             IType idx       = std::get<2>(contig_vector[i]);
 
-            contiglog << myrank << "\t" << contig_id << "\t" << i << "\t" << idx << "\t" << seq_start << "\t" << seq_end << std::endl;
+            //contiglog << myrank << "\t" << contig_id << "\t" << i << "\t" << idx << "\t" << seq_start << "\t" << seq_end << std::endl;
 
             auto segment_info_itr = charbuf_info.find(idx);
             uint64_t read_offset, end_offset;
@@ -873,12 +873,12 @@ std::vector<std::string> LocalAssembly(SpCCols<IType,ReadOverlap>& ContigChains,
                 AppendContig(contig, charbuf, read_offset, readlen, seq_start, seq_end);
             }
         }
-        contiglog << std::endl;
+        //contiglog << std::endl;
         contigs.push_back(contig);
         contig_id++;
     }
 
-    contiglog.close();
+    //contiglog.close();
 
     delete [] visited;
 

@@ -752,7 +752,7 @@ void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<dibella
 
   Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*Bmat);
 
-  Rmat->ParallelWriteMM("alignment.mtx", true, ReadOverlapGraphHandler());
+  //Rmat->ParallelWriteMM("alignment.mtx", true, ReadOverlapGraphHandler());
 
   delete Bmat;
 }
