@@ -225,7 +225,7 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
     return contigs;
 }
 
-struct KTipsSR
+struct MSBFS_SR
 {
     static IType id() { return static_cast<IType>(0); }
     static bool returnedSAID() { return false; }
@@ -280,48 +280,96 @@ FullyDistVec<IT,IT> LastNzRowIdxPerCol(const SpParMat<IT,NT,DER>& A)
     return FullyDistVec<IT,IT>(fillarr, grid);
 }
 
+IType RemoveBridgeVertices(SpParMat<IType,IType,SpDCCols<IType,IType>>& A)
+{
+    FullyDistVec<IType,IType> D = A.Reduce(Column, std::plus<IType>(), static_cast<IType>(0));
+    FullyDistSpVec<IType,IType> B = D.Find(std::bind2nd(std::equal_to<IType>(), static_cast<IType>(3)));
+
+
+    FullyDistVec<IType,IType> *ri = new FullyDistVec<IType,IType>(A.getcommgrid());
+    FullyDistVec<IType,IType> *ci = new FullyDistVec<IType,IType>(A.getcommgrid());
+
+    *ri = B.FindInds([](IType arg1) { return true; });
+    ci->iota(B.getnnz(), static_cast<IType>(0));
+
+    SpParMat<IType,IType,SpDCCols<IType,IType>> F(A.getnrow(), B.getnnz(), *ri, *ci, static_cast<IType>(1), false);
+
+    delete ri;
+    delete ci;
+
+    SpParMat<IType,IType,SpDCCols<IType,IType>> N = PSpGEMM<MSBFS_SR>(A,F);
+
+    FullyDistVec<IType,IType> counts = N.Reduce(Row, std::plus<IType>(), static_cast<IType>(0));
+
+    FullyDistVec<IType,IType> bridges = counts.FindInds(std::bind2nd(std::equal_to<IType>(), static_cast<IType>(2)));
+    bridges.ParallelWrite("bridges.txt", false);
+
+    A.PruneFull(bridges, bridges);
+    return bridges.TotalLength();
+}
+
 IType KTipsRemoval(SpParMat<IType,IType,SpDCCols<IType,IType>>& A, const FullyDistVec<IType,IType>& degrees, const IType l, TraceUtils& tu)
 {
+    /* Store root vertices as a distributed sparse vector */
     FullyDistSpVec<IType,IType> R = degrees.Find(std::bind2nd(std::equal_to<IType>(), static_cast<IType>(1)));
 
     FullyDistVec<IType,IType> *ri = new FullyDistVec<IType,IType>(A.getcommgrid());
     FullyDistVec<IType,IType> *ci = new FullyDistVec<IType,IType>(A.getcommgrid());
 
-    *ri = R.FindInds([](IType arg1) { return true; });
-    ci->iota(R.getnnz(), static_cast<IType>(0));
+    *ri = R.FindInds([](IType arg1) { return true; }); /* Dense vector with root vertices (rows of frontier matrix) */
+    ci->iota(R.getnnz(), static_cast<IType>(0));       /* Dense vector labelling root vertices [0..|roots|-1] (columns of frontier matrix) */
 
+    /* Construct frontier matrix */
     SpParMat<IType,IType,SpDCCols<IType,IType>> F0(A.getnrow(), R.getnnz(), *ri, *ci, static_cast<IType>(1), false);
 
     delete ri;
     delete ci;
 
-    SpParMat<IType,IType,SpDCCols<IType,IType>> F1 = PSpGEMM<KTipsSR>(A, F0);
+    /* Do one-hop from each root vertex, and record visited vertices in V */
+    SpParMat<IType,IType,SpDCCols<IType,IType>> F1 = PSpGEMM<MSBFS_SR>(A, F0); /* F1 <- A*F0 */
     SpParMat<IType,IType,SpDCCols<IType,IType>> V = F0;
-    V += F1;
+    V += F1; /* V <- F0 + F1 */
 
-    FullyDistVec<IType,IType> TipSources(A.getcommgrid(), F0.getncol(), static_cast<IType>(-1));
-    FullyDistVec<IType,IType> TipDests(A.getcommgrid(), F0.getncol(), static_cast<IType>(-1));
+    /* k-tip edges (u,v) will be stored in vectors where: */
+    FullyDistVec<IType,IType> TipSources(A.getcommgrid(), F0.getncol(), static_cast<IType>(-1)); /* stores u of (u,v) */
+    FullyDistVec<IType,IType> TipDests(A.getcommgrid(), F0.getncol(), static_cast<IType>(-1));   /* stores v of (u,v) */
 
+    /* l-limited multiple-source breadth first search, starting from the one-hop neighbors of root vertices */
     for (IType k = 0; k < l; ++k)
     {
-        SpParMat<IType,IType,SpDCCols<IType,IType>> F2 = PSpGEMM<KTipsSR>(A, F1);
-        F2.SetDifference(V);
-        V += F2;
+        /* kth step */
+        SpParMat<IType,IType,SpDCCols<IType,IType>> F2 = PSpGEMM<MSBFS_SR>(A, F1); /* F2 <- A*F1 */
+        F2.SetDifference(V); /* F2 <- F2 \ V */
+        V += F2; /* V <- V + F2 */
 
+        /* Count the number of neighbors visited from each current MS-BFS column */
         FullyDistVec<IType,IType> Ns = F2.Reduce(Column, std::plus<IType>(), static_cast<IType>(0));
 
+        /* Tc <- columns that visited 2 or more vertices */
         FullyDistSpVec<IType,IType> Tc = Ns.Find(std::bind2nd(std::greater_equal<IType>(), static_cast<IType>(2)));
+
+        /* Td <- columns that visted n vertices, where n != 1 */
         FullyDistSpVec<IType,IType> Td = Ns.Find(std::bind2nd(std::not_equal_to<IType>(), static_cast<IType>(1)));
 
+        /* For each column j in the F0 matrix, there is <= 1 row i for which F0(i,j) != 0. Let
+         * C0(j) = -1 if F0(:,j) is all zeros, and otherwise let C0(j) = i where i is the row
+         * for which F0(i,j) != 0. Do the same thing for the F1 matrix. The idea here is that
+         * if we hit a branch vertex in the F1 matrix, then the corresponding column of the 
+         * F2 matrix will have more than one nonzero (which will be recorded by Tc) and then the
+         * l-tip edge that we want to remove will have its source vertex in the F0 matrix and its
+         * destination vertex in the F1 matrix. */
         FullyDistVec<IType, IType> C0 = LastNzRowIdxPerCol(F0);
         FullyDistVec<IType, IType> C1 = LastNzRowIdxPerCol(F1);
 
+        /* Retrieve all k-tip edge source/dest pairs */
         FullyDistSpVec<IType,IType> kSources = C0.GGet(Tc, [](const IType arg1, const IType arg2) { return arg2; }, static_cast<IType>(-1));
         FullyDistSpVec<IType,IType> kDests = C1.GGet(Tc, [](const IType arg1, const IType arg2) { return arg2; }, static_cast<IType>(-1));
-
         TipSources.Set(kSources);
         TipDests.Set(kDests);
 
+        /* Zero out the columns of F1 and F2 for which the kth iteration found either a branch vertex or a root vertex.
+         * Those columns can no longer find k-tip. THis will also maintain the invariant that the F0 and F1 matrices have
+         * <= 1  nonzero per column (we reassign F0 and F1 as the final step of this loop) */
         F1.PruneColumnByIndex(Td);
         F2.PruneColumnByIndex(Td);
 
@@ -331,9 +379,6 @@ IType KTipsRemoval(SpParMat<IType,IType,SpDCCols<IType,IType>>& A, const FullyDi
 
     FullyDistVec<IType,IType> where = TipSources.FindInds([](int a) { return a != -1; });
     IType num_ktip_edges = where.TotalLength();
-    std::ostringstream oss;
-    oss << "KTipsRemoval :: Found " << num_ktip_edges << " k-tip edges\n";
-    tu.print_str(oss.str());
 
     A.Prune(TipSources, TipDests);
     A.Prune(TipDests, TipSources);
@@ -373,15 +418,21 @@ IType GetRead2Contigs(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G
         FullyDistVec<IType,IType> degs1(A.getcommgrid());
         D1.Reduce(degs1, Row, std::plus<IType>(), static_cast<IType>(0));
         ktip_edges_removed = KTipsRemoval(A, degs1, 1, tu);
+        std::ostringstream oss;
+        oss << "GetRead2Contigs :: Found " << ktip_edges_removed  << " k-tip edges\n";
+        tu.print_str(oss.str());
     } while (ktip_edges_removed > 0);
-
-    //A.ParallelWriteMM("post_tip_removal.mtx", false);
 
     tu.print_str("GetRead2Contigs :: Removed k-tips\n");
 
+    IType bridge_vertices_removed = RemoveBridgeVertices(A);
+    std::ostringstream oss;
+    oss << "GetRead2Contigs :: Removed " << bridge_vertices_removed << " bridge vertices\n";
+    tu.print_str(oss.str());
+
     D2 = A;
     D2.Reduce(degs2, Row, std::plus<IType>(), static_cast<IType>(0));
-    tu.print_str("GetRead2Contigs :: Recalculate vertex degrees after k-tips removed\n");
+    tu.print_str("GetRead2Contigs :: Recalculate vertex degrees after k-tips and bridge vertices removed\n");
 
     Branches = degs2.FindInds(bind2nd(std::greater<IType>(), 2));
     IType numbranches = Branches.TotalLength();
