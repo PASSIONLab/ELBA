@@ -8,7 +8,7 @@
 
 struct TimePod {
   std::unordered_map<std::string, ticks_t> times;
-  std::string names[22] = {"Main",
+  std::string names[23] = {"Main",
                            "Main:newDFD()",
                            "Dfd:PfrReadFasta()",
                            "Dfd:newFD()",
@@ -27,6 +27,7 @@ struct TimePod {
                            "CreateContig:GetRead2Contigs()",
                            "CreateContig:GetRead2ProcAssignments()",
                            "CreateContig:InducedSubgraphs2Procs()",
+                           "CreateContig:BuildContigChains()",
                            "CreateContig:ReadExchange()",
                            "CreateContig:LocalAssembly()",
                            "Main:WriteContigs()"

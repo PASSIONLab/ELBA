@@ -1,9 +1,9 @@
 // Created by Saliya Ekanayake on 2019-07-05 and modified by Giulia Guidi on 09/01/2020.
 
 #include "../../include/pw/SeedExtendXdrop.hpp"
+#include <unordered_set>
 
 uint minOverlapLen = 5000;
-uint maxOverhang = 25;
 
 void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap,
 	int& dir, int& dirT, int& sfx, int& sfxT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
@@ -39,52 +39,35 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	bool contained = false;
 	bool chimeric  = false;
 
-	// reverse length/position if rc [x]
-
-    if (ai.rc) {
-        uint tmp = begpH;
-        begpH = rlenH - endpH;
-        endpH = rlenH - tmp;
-    }
-
-    if (rlenH <= rlenV && begpH <= maxOverhang && rlenH-endpH <= maxOverhang) {
-        ContainedSeqMyThread.push_back(seqH);
-        contained = true;
-    } else if (rlenV <= rlenH && begpV <= maxOverhang && rlenV-endpV <= maxOverhang) {
+    if (begpV <= begpH && (rlenV - endpV) <= (rlenH - endpH))
+    {
         ContainedSeqMyThread.push_back(seqV);
         contained = true;
     }
+    else if (begpV >= begpH && (rlenV - endpV) >= (rlenH - endpH))
+    {
+        ContainedSeqMyThread.push_back(seqH);
+        contained = true;
+    }
+    else if (!noAlign)
+    {
+        passed = ((float)ai.xscore >= myThr && overlap >= minOverlapLen);
 
-	if(!contained)
-	{
-		// If noAlign is false, set passed to false if the score isn't good enough
-		if(!noAlign)
-		{
-			if((float)ai.xscore < myThr || overlap < minOverlapLen) passed = false;
-			else passed = true;
-		}
-
-        if (passed) {
-            if (!ai.rc) {
-                if (begpV > begpH) {
-                    dir = 1; dirT = 2;
-                    sfx = rlenH - endpH;
-                    sfxT = begpV;
-                } else {
-                    dir = 2; dirT = 1;
-                    sfx = begpH;
-                    sfxT = rlenV - endpV;
-                }
-            } else {
-                if ((begpV > 0) && (begpH > 0) && (rlenV-endpV == 0) && (rlenH-endpH == 0)) {
-                    dir = dirT = 0;
-                    sfx = begpH;
-                    sfxT = begpV;
-                } else {
-                    dir = dirT = 3;
-                    sfx = rlenH - endpH;
-                    sfxT = rlenV - endpV;
-                }
+        if (passed)
+        {
+            if (begpV > begpH)
+            {
+                dir  = ai.rc? 0 : 1;
+                dirT = ai.rc? 0 : 2;
+                sfx  = ((rlenH - endpH) - (rlenV - endpV));
+                sfxT = begpV - begpH;
+            }
+            else
+            {
+                dir  = ai.rc? 3 : 2;
+                dirT = ai.rc? 3 : 1;
+                sfx  = begpH - begpV;
+                sfxT = ((rlenV - endpV) - (rlenH - endpH));
             }
         }
     }

@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.11)
 project(dibella)
 set(CMAKE_CXX_STANDARD 14)
 
+if (POLICY CMP0074)
+    cmake_policy(SET CMP0074 NEW)
+endif()
+
 add_subdirectory($ENV{BLOOM_HOME})
 
 include_directories(
@@ -22,8 +26,9 @@ else()
   set(libc "")
 endif()
 
-#set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O3 -g -fsanitize=address -fno-omit-frame-pointer -DSEQAN_ENABLE_DEBUG=0 -mavx2")
-set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
+#set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -fpermissive -w -O1 -g -fsanitize=address -fno-omit-frame-pointer -DSEQAN_ENABLE_DEBUG=0 -mavx2")
+#set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
+set(CMAKE_CXX_FLAGS_RELEASE "-std=c++14 -w -O3 -DSEQAN_ENABLE_DEBUG=0 -mavx2")
 
 find_package(MPI REQUIRED)
 find_package(OpenMP REQUIRED)

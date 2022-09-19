@@ -168,7 +168,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
         R += RT;
     }    
 
-    R.ParallelWriteMM("elba-overlap-graph.mm", true, ReadOverlapGraphHandler());
+    R.ParallelWriteMM("overlap.mtx", true, ReadOverlapGraphHandler());
 
     /* TODO replace OverlapPath */
     /* implicitly will call OverlapPath(const ReadOverlap& e) constructor */
@@ -349,7 +349,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     tu.print_str("Matrix S, i.e. AAt post transitive reduction---BEFORE InvalidSRing Prune: ");
     R.PrintInfo();
 
-    R.ParallelWriteMM("string-graph-before-prune.mm", true, ReadOverlapExtraHandler());
+    //R.ParallelWriteMM("string-graph-before-prune.mm", true, ReadOverlapExtraHandler());
 #endif
 
     R.Prune(InvalidSRing(), true);
@@ -374,8 +374,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     tu.print_str(tiss.str());
  #endif
 
-    R.ParallelWriteMM("elba-string-graph.mm", true, ReadOverlapGraphHandler());
- 
+    R.ParallelWriteMM("string.mtx", true, ReadOverlapGraphHandler());
 }
 
 #endif
