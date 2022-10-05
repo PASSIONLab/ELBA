@@ -24,5 +24,5 @@ cd build_release
 cmake ..
 make -j8
 
-echo "diBELLA 2D installation completed."
+echo "ELBA installation completed."
 echo ""
