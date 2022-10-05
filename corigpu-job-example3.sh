@@ -12,4 +12,4 @@
 
 export OMP_NUM_THREAD=40
 export SLURM_CPU_BIND="cores"
-srun -n 16 /global/cscratch1/sd/gguidi/ELBA-GPU/ELBA/build_release/./dibella -i /global/cscratch1/sd/gguidi/ELBA-GPU/ELBA/ecoli_hifi_29x.fasta -k 31 --idxmap ecoli.hifi.idxmap -c 8605 --alph dna --af ecoli.hifi.result -s 1 -O 100000 --afreq 100000 --xa 15
+srun -n 16 /global/cscratch1/sd/gguidi/ELBA-GPU/ELBA/build_release/./elba -i /global/cscratch1/sd/gguidi/ELBA-GPU/ELBA/ecoli_hifi_29x.fasta -k 31 --idxmap ecoli.hifi.idxmap -c 8605 --alph dna --af ecoli.hifi.result -s 1 -O 100000 --afreq 100000 --xa 15
