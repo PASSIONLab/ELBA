@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(dibella)
+project(elba)
 set(CMAKE_CXX_STANDARD 14)
 
 if (POLICY CMP0074)
@@ -35,7 +35,7 @@ find_package(OpenMP REQUIRED)
 
 find_package(ZLIB)
 
-add_executable(dibella
+add_executable(elba
         src/Alphabet.cpp
         include/Alphabet.hpp
         src/Constants.cpp
@@ -105,7 +105,7 @@ set(FUZZ 1000
 
 
 target_compile_definitions(
-  dibella
+  elba
   PRIVATE
     -DMAX_KMER_SIZE=${MAX_KMER_SIZE}
     -DDELTACHERNOFF=${DELTACHERNOFF}
@@ -114,20 +114,20 @@ target_compile_definitions(
     -DFUZZ=${FUZZ}
 )
 
-target_link_libraries(dibella PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC)
+target_link_libraries(elba PUBLIC ZLIB::ZLIB CombBLAS GraphGenlib Usortlib MURMURHASH LIBBLOOM-NOUPC)
 
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
-    target_link_libraries(dibella PUBLIC ${MPI_LIBRARIES})
+    target_link_libraries(elba PUBLIC ${MPI_LIBRARIES})
 endif()
 
 if(OPENMP_FOUND OR OpenMP_CXX_FOUND)
     # Set THREADED if OpenMP is found
-    target_compile_definitions(dibella PUBLIC THREADED)
+    target_compile_definitions(elba PUBLIC THREADED)
     if(TARGET OpenMP::OpenMP_CXX)
-        target_link_libraries(dibella PUBLIC OpenMP::OpenMP_CXX)
+        target_link_libraries(elba PUBLIC OpenMP::OpenMP_CXX)
     else()
-        target_compile_options(dibella PUBLIC "${OpenMP_CXX_FLAGS}")
-        target_link_libraries(dibella PUBLIC "${OpenMP_CXX_FLAGS}")
+        target_compile_options(elba PUBLIC "${OpenMP_CXX_FLAGS}")
+        target_link_libraries(elba PUBLIC "${OpenMP_CXX_FLAGS}")
     endif()
 endif()
