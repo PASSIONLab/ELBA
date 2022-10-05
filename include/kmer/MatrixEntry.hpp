@@ -4,7 +4,7 @@
 #define DIBELLA_MATRIXENTRY_HPP
 
 // #include "../Types.hpp"
-// namespace dibella{
+// namespace elba{
 //   struct MatrixEntry
 //   {
 //     short cost;

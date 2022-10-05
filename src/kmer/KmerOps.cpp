@@ -57,7 +57,7 @@ using namespace std;
 // WriteReadNameMap                        //
 ///////////////////////////////////////////// 
 
-namespace dibella
+namespace elba
 {
 
 /*
@@ -691,7 +691,7 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     int exchangeAndCountPass = pass;
 
     /* communication 
-    MAX_ALLTOALL_MEM communication buffer initial size tuned for dibella 
+    MAX_ALLTOALL_MEM communication buffer initial size tuned for elba 
     It's tunable if needed */
     Buffer scratch1 = initBuffer(MAX_ALLTOALL_MEM);
     Buffer scratch2 = initBuffer(MAX_ALLTOALL_MEM);

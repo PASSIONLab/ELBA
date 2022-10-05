@@ -5,7 +5,7 @@
 
 #include "Types.hpp"
 
-namespace dibella{
+namespace elba{
 
   struct Penalty{
     Penalty(char base_char);

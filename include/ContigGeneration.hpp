@@ -538,7 +538,7 @@ std::vector<std::tuple<IType,IType>> GetAllContigSizesSorted(FullyDistVec<IType,
  *
  * @description
  * Takes a combblas distributed assignments vector and returns the local section
- * of the vector redistributed according to the read distribution of diBELLA.
+ * of the vector redistributed according to the read distribution of ELBA.
  *
  * @return redistributed local section of assignments vector.
  */

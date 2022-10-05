@@ -62,7 +62,7 @@ struct ReadOverlap
         }
     }
 
-    ReadOverlap(const dibella::CommonKmers& cks)
+    ReadOverlap(const elba::CommonKmers& cks)
     {
         b[0] = cks.first.first;  b[1] = cks.second.first;
         e[0] = cks.first.second; e[1] = cks.second.second;

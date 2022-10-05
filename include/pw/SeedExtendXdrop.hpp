@@ -22,7 +22,7 @@ public:
         uint64_t l_row_idx, uint64_t g_row_idx,
         seqan::Dna5String *seq_h, seqan::Dna5String *seq_v,
         ushort k,
-        dibella::CommonKmers &cks, std::stringstream& ss) override;
+        elba::CommonKmers &cks, std::stringstream& ss) override;
 
   void
   apply_batch(seqan::StringSet<seqan::Gaps<seqan::Dna5String>> &seqsh,
@@ -30,7 +30,7 @@ public:
 			        uint64_t *lids,
 			        uint64_t col_offset,
 			        uint64_t row_offset,
-              PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
+              PSpMat<elba::CommonKmers>::ref_tuples *mattuples,
               std::ofstream &lfs,
               const bool noAlign,
               ushort k,

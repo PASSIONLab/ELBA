@@ -9,8 +9,8 @@
 
 DistributedPairwiseRunner::DistributedPairwiseRunner(
     const std::shared_ptr<DistributedFastaData> dfd,
-    PSpMat<dibella::CommonKmers>::DCCols * localmat,
-	PSpMat<dibella::CommonKmers>::MPI_DCCols * glmat,
+    PSpMat<elba::CommonKmers>::DCCols * localmat,
+	PSpMat<elba::CommonKmers>::MPI_DCCols * glmat,
     int afreq,
     uint64_t rowoffset, uint64_t coloffset,
     const std::shared_ptr<ParallelOps> &parops)
@@ -62,7 +62,7 @@ void DistributedPairwiseRunner::write_overlaps(const char *file)
 	      continue;
 	    }
 
-	    dibella::CommonKmers cks = nzit.value();
+	    elba::CommonKmers cks = nzit.value();
 	    if (cks.count > l_max_common_kmers)
 		{
 	      l_max_common_kmers = cks.count;
@@ -118,7 +118,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 
   std::atomic<uint64_t> line_count(0);
   uint64_t nalignments = 0;
-  PSpMat<dibella::CommonKmers>::Tuples mattuples(*spSeq);
+  PSpMat<elba::CommonKmers>::Tuples mattuples(*spSeq);
   
   #pragma omp parallel for reduction(+:nalignments)
   for(uint64_t i=0; i< local_nnz_count; i++)
@@ -156,7 +156,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 		continue;
 	}
 
-	dibella::CommonKmers cks = mattuples.numvalue(i);
+	elba::CommonKmers cks = mattuples.numvalue(i);
 
 	int myThread = 0;
 #ifdef THREADED
@@ -220,10 +220,10 @@ DistributedPairwiseRunner::run_batch
 	int			batch_idx		= 0;
 	uint64_t	nalignments		= 0;
 
-	// PSpMat<dibella::CommonKmers>::Tuples mattuples(*spSeq);
+	// PSpMat<elba::CommonKmers>::Tuples mattuples(*spSeq);
 	// @TODO threaded
-	PSpMat<dibella::CommonKmers>::ref_tuples *mattuples =
-		new PSpMat<dibella::CommonKmers>::ref_tuples[local_nnz_count];
+	PSpMat<elba::CommonKmers>::ref_tuples *mattuples =
+		new PSpMat<elba::CommonKmers>::ref_tuples[local_nnz_count];
 
 	uint64_t z = 0;
 	auto dcsc = spSeq->GetDCSC();
@@ -291,7 +291,7 @@ DistributedPairwiseRunner::run_batch
 
 				assert(l_row_idx >= 0 && l_col_idx >= 0 && g_col_idx >= 0 && g_row_idx >= 0);
 
-				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
+				elba::CommonKmers *cks = std::get<2>(mattuples[i]);
 
 				if ((cks->count >= ckthr) 	 	&& 
 					(l_col_idx >= l_row_idx) 	&&
@@ -349,7 +349,7 @@ DistributedPairwiseRunner::run_batch
 
 				assert(l_row_idx >= 0 && l_col_idx >= 0 && g_col_idx >= 0 && g_row_idx >= 0);
 
-				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
+				elba::CommonKmers *cks = std::get<2>(mattuples[i]);
 
 			//	if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
@@ -531,7 +531,7 @@ DistributedPairwiseRunner::run_batch
     //gmat->ParallelWriteMM("pre_alignment_pruning.mtx", true, CommonKmersGraphHandler());
 
 	// Prune pairs that do not meet score criteria
-	auto elim_score = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
+	auto elim_score = [] (elba::CommonKmers &ck) { return ck.passed == false; };
 	gmat->Prune(elim_score); 
 
     //Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*gmat);

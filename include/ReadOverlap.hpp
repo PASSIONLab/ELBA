@@ -6,7 +6,7 @@
 #include <iostream>
 #include "kmer/CommonKmers.hpp"
 
-using namespace dibella;
+using namespace elba;
 
 static constexpr int MAX_INT = std::numeric_limits<int>::max();
 extern int xdrop;

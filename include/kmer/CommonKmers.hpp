@@ -9,7 +9,7 @@
 // for benchmarking
 #define EXTRA
 
-namespace dibella {
+namespace elba {
   struct CommonKmers {
     /*! The number of common kmers between two sequences.
      * The maximum could be floor((l-k)/s)+1, where
@@ -162,7 +162,7 @@ namespace dibella {
 	{
 		template <typename c, typename t>
 		void save(std::basic_ostream<c,t> &os,
-				const dibella::CommonKmers &v,
+				const elba::CommonKmers &v,
 				uint64_t row,
 				uint64_t col)
 		{
@@ -190,7 +190,7 @@ namespace dibella {
     {
         template <typename c, typename t>
         void save(std::basic_ostream<c,t> &os,
-                        const dibella::CommonKmers &v,
+                        const elba::CommonKmers &v,
                         uint64_t row,
                         uint64_t col)
         {
@@ -218,7 +218,7 @@ namespace dibella {
 struct CommonKmersGraphHandler
 {
     template <typename c, typename t>
-    void save(std::basic_ostream<c,t>& os, const dibella::CommonKmers& v, int64_t row, int64_t col)
+    void save(std::basic_ostream<c,t>& os, const elba::CommonKmers& v, int64_t row, int64_t col)
     {
         os << v.score << "\t" << v.lenv << "\t" << v.lenh << "\t" << v.rc;
     }

@@ -43,7 +43,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 using namespace combblas;
 
 /*! Type definitions */
-typedef dibella::KmerIntersect<PosInRead, dibella::CommonKmers> KmerIntersectSR_t;
+typedef elba::KmerIntersect<PosInRead, elba::CommonKmers> KmerIntersectSR_t;
 
 /*! Function signatures */
 int parse_args(int argc, char **argv);
@@ -108,7 +108,7 @@ std::string print_str;
 int seed_count = 2;
 
 /*! Logging information */
-std::string job_name = "dibella";
+std::string job_name = "elba";
 std::string proc_log_file;
 std::ofstream proc_log_stream;
 int log_freq;
@@ -136,7 +136,7 @@ GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd,
 
 void
 OverlapDetection(std::shared_ptr<DistributedFastaData>      dfd,
-                 PSpMat<dibella::CommonKmers>::MPI_DCCols*& Bmat,
+                 PSpMat<elba::CommonKmers>::MPI_DCCols*& Bmat,
                  PSpMat<PosInRead>::MPI_DCCols*             Amat,
                  PSpMat<PosInRead>::MPI_DCCols*             ATmat,
                  const std::shared_ptr<TimePod>&            tp,
@@ -144,7 +144,7 @@ OverlapDetection(std::shared_ptr<DistributedFastaData>      dfd,
 
 void
 PairwiseAlignment(std::shared_ptr<DistributedFastaData>     dfd,
-                  PSpMat<dibella::CommonKmers>::MPI_DCCols* Bmat,
+                  PSpMat<elba::CommonKmers>::MPI_DCCols* Bmat,
                   PSpMat<ReadOverlap>::MPI_DCCols*&         Rmat,
                   const std::shared_ptr<ParallelOps>&       parops,
                   const std::shared_ptr<TimePod>&           tp,
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
   std::shared_ptr<DistributedFastaData> dfd;
 
   PSpMat<PosInRead>::MPI_DCCols *Amat, *ATmat;
-  PSpMat<dibella::CommonKmers>::MPI_DCCols *Bmat;
+  PSpMat<elba::CommonKmers>::MPI_DCCols *Bmat;
   PSpMat<ReadOverlap>::MPI_DCCols *Rmat;
 
   //////////////////////////////////////////////////////////////////////////////////////
@@ -640,7 +640,7 @@ void GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd, PSpMat<
 
     tp->times["StartMain:GenerateA()"] = std::chrono::system_clock::now();
 
-    Amat = new PSpMat<PosInRead>::MPI_DCCols(dibella::KmerOps::GenerateA(seq_count, dfd, klength, kstride, alph, parops, tp));
+    Amat = new PSpMat<PosInRead>::MPI_DCCols(elba::KmerOps::GenerateA(seq_count, dfd, klength, kstride, alph, parops, tp));
 
     tu.print_str("Matrix A: ");
     tu.print_str("\nLoad imbalance: " + std::to_string(Amat->LoadImbalance()) + "\n");
@@ -658,7 +658,7 @@ void GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd, PSpMat<
 }
 
 void OverlapDetection(std::shared_ptr<DistributedFastaData> dfd,
-                      PSpMat<dibella::CommonKmers>::MPI_DCCols*& Bmat,
+                      PSpMat<elba::CommonKmers>::MPI_DCCols*& Bmat,
                       PSpMat<PosInRead>::MPI_DCCols* Amat,
                       PSpMat<PosInRead>::MPI_DCCols* ATmat,
                       const std::shared_ptr<TimePod>& tp, TraceUtils& tu)
@@ -666,7 +666,7 @@ void OverlapDetection(std::shared_ptr<DistributedFastaData> dfd,
     tp->times["StartMain:AAt()"] = std::chrono::system_clock::now();
 
     // @GGGG-TODO: check vector version (new one stack error)
-    Bmat = new PSpMat<dibella::CommonKmers>::MPI_DCCols(Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(*Amat, *ATmat));
+    Bmat = new PSpMat<elba::CommonKmers>::MPI_DCCols(Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, elba::CommonKmers, PSpMat<elba::CommonKmers>::DCCols>(*Amat, *ATmat));
 
     delete Amat;
     delete ATmat;
@@ -691,7 +691,7 @@ void OverlapDetection(std::shared_ptr<DistributedFastaData> dfd,
     tp->times["EndMain:DfdWait()"] = std::chrono::system_clock::now();
 }
 
-void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<dibella::CommonKmers>::MPI_DCCols* Bmat, PSpMat<ReadOverlap>::MPI_DCCols*& Rmat, const std::shared_ptr<ParallelOps>& parops, const std::shared_ptr<TimePod>& tp, TraceUtils& tu)
+void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<elba::CommonKmers>::MPI_DCCols* Bmat, PSpMat<ReadOverlap>::MPI_DCCols*& Rmat, const std::shared_ptr<ParallelOps>& parops, const std::shared_ptr<TimePod>& tp, TraceUtils& tu)
 {
   uint64_t n_rows, n_cols;
   n_rows = n_cols = dfd->global_count();
@@ -718,7 +718,7 @@ void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<dibella
   // Output intermediate matrix post-alignment
   //std::string candidatem = myoutput;
   //candidatem += ".candidatematrix.mm";
-  //Bmat->ParallelWriteMM(candidatem, true, dibella::CkOutputMMHandler());
+  //Bmat->ParallelWriteMM(candidatem, true, elba::CkOutputMMHandler());
 
   if(xdropAlign)
   {
@@ -748,7 +748,7 @@ void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<dibella
   // Output intermediate matrix post-alignment
   //std::string postalignment = myoutput;
   //postalignment += ".resultmatrix.mm";
-  //Bmat->ParallelWriteMM(postalignment, true, dibella::CkOutputHandler());
+  //Bmat->ParallelWriteMM(postalignment, true, elba::CkOutputHandler());
 
   Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*Bmat);
 

@@ -14,7 +14,7 @@ void FullAligner::apply(
     uint64_t l_row_idx, uint64_t g_row_idx,
     seqan::Dna5String *seq_h, seqan::Dna5String *seq_v,
 	ushort k,
-    dibella::CommonKmers &cks, std::stringstream &ss) {
+    elba::CommonKmers &cks, std::stringstream &ss) {
 
   seqan::Align<seqan::Dna5String> align;
   resize(rows(align), 2);
@@ -76,7 +76,7 @@ FullAligner::apply_batch
 	uint64_t *lids,
 	uint64_t col_offset,
 	uint64_t row_offset,
-    PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
+    PSpMat<elba::CommonKmers>::ref_tuples *mattuples,
     std::ofstream &lfs,
 	const bool noAlign,
 	ushort k,
@@ -133,7 +133,7 @@ FullAligner::apply_batch
 						 (alen_minus_gapopens / len_seqv)) >= ratioScoreOverlap &&
 				stats.alignmentIdentity >= debugThr)
 			{
-				dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
+				elba::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 				cks->score = (float)stats.alignmentIdentity / 100.0f;
 				cks->passed = true;	// keep this
 			}
