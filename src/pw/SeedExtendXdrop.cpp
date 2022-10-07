@@ -39,7 +39,7 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	bool contained = false;
 	bool chimeric  = false;
 
-    if (begpV <= begpH && (rlenV - endpV) <= (rlenH - endpH))
+	if (begpV <= begpH && (rlenV - endpV) <= (rlenH - endpH))
     {
         ContainedSeqMyThread.push_back(seqV);
         contained = true;
@@ -103,9 +103,9 @@ void SeedExtendXdrop::apply(
 	// 	res.second.second 	= arg2.first.second;	// Kmer 2 on argB
 
    	// argA (see KmerIntersectSR.hpp) == row == seqV
-    	ushort LocalSeedVOffset = (count == 0) ? cks.first.first : cks.second.first;
+    ushort LocalSeedVOffset = (count == 0) ? cks.first.first : cks.second.first;
 	// argB (see KmerIntersectSR.hpp) == col == seqH
-    	ushort LocalSeedHOffset = (count == 0) ? cks.first.second : cks.second.second;
+    ushort LocalSeedHOffset = (count == 0) ? cks.first.second : cks.second.second;
 
 	seqan::Dna5String seedV; // seed on arg1 == row == seqV
 	seqan::Dna5String seedH; // seed on arg2 == col == seqH
@@ -113,9 +113,9 @@ void SeedExtendXdrop::apply(
 	auto start_time = std::chrono::system_clock::now();
 	auto end_time   = std::chrono::system_clock::now();
 
-    	// seed creation params are:
-    	// horizontal seed start offset, vertical seed start offset, length
-    	TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
+    // seed creation params are:
+    // horizontal seed start offset, vertical seed start offset, length
+    TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
 
 	// GGGG: for reference -->
 	// 	seqan::Dna5String *seq_v = dfd->row_seq(l_row_idx);  seqV (from row)
@@ -304,6 +304,12 @@ SeedExtendXdrop::apply_batch
 			seedV = infix(seqan::source(seqsv[i]), beginPositionV(seed), endPositionV(seed)); // seed on argA == row == seqV
 			seedH = infix(seqan::source(seqsh[i]), beginPositionH(seed), endPositionH(seed)); // seed on argB == col == seqH
 
+			cks->seqV  = seqan::source(seqsv[i]); // this is Dna5
+			cks->seqH  = seqan::source(seqsh[i]); // this is Dna5
+
+			cks->seedposV = beginPositionV(seed); // this is Dna5
+			cks->seedposH = beginPositionH(seed); // this is Dna5
+
 			seqan::Dna5StringReverseComplement twin(seedH);
 
 		#ifdef STATS
@@ -491,6 +497,8 @@ SeedExtendXdrop::apply_batch
 
 			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->dir, cks->dirT, cks->sfx, cks->sfxT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
 
+			// if(!noAlign)
+			// {
 			if (passed)
 			{
 				// GGGG: store updated seed start/end position in the CommonKmers pairs (the semantics of these pairs change wrt the original semantics but that's okay)
@@ -502,9 +510,18 @@ SeedExtendXdrop::apply_batch
 				cks->lenv 	= ai[i].seq_v_length;
 				cks->lenh 	= ai[i].seq_h_length;
 				cks->score  = ai[i].xscore;
-                cks->rc     = ai[i].rc;
+				cks->rc     = ai[i].rc;
 				cks->passed = passed;	// keep this
 			}
+			// }
+			// else
+			// {
+			// 	cks->lenv 	= ai[i].seq_v_length;
+			// 	cks->lenh 	= ai[i].seq_h_length;
+			// 	cks->score  = ai[i].xscore;
+            //     cks->rc     = ai[i].rc;
+			// 	cks->passed = passed;	// keep this
+			// }
 		}
 	}
 

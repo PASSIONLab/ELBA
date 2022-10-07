@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-09-03.
 
-#ifndef DIBELLA_FULLALIGNER_HPP
-#define DIBELLA_FULLALIGNER_HPP
+#ifndef ELBA_FULLALIGNER_HPP
+#define ELBA_FULLALIGNER_HPP
 
 #include "PairwiseFunction.hpp"
 #include "../AlignmentInfo.hpp"
@@ -39,4 +39,4 @@ private:
 
 };
 
-#endif //DIBELLA_FULLALIGNER_HPP
+#endif //ELBA_FULLALIGNER_HPP

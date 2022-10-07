@@ -1,10 +1,11 @@
 // Created by Saliya Ekanayake on 10/15/19 and modified by Giulia Guidi on 08/19/20.
 
-#ifndef DIBELLA_COMMONKMERS_HPP
-#define DIBELLA_COMMONKMERS_HPP
+#ifndef ELBA_COMMONKMERS_HPP
+#define ELBA_COMMONKMERS_HPP
 
 #include "../Types.hpp"
 #include "../Defines.hpp"
+// #include "../DistributedPairwiseRunner.hpp"
 
 // for benchmarking
 #define EXTRA
@@ -31,6 +32,10 @@ namespace elba {
 
 #ifdef EXTRA
 	uint32_t overlap;
+	seqan::Dna5String seqV; // row
+	seqan::Dna5String seqH; // col
+	PosInRead seedposV;
+	PosInRead seedposH;
 #endif
 
     /*! The position within the sequence, which is
@@ -158,6 +163,23 @@ namespace elba {
 
 	};
 
+	// GGGG: this output format is used to generate the input file for testing IPU-based sequence x-drop alignment by Luk Burchard
+	struct CkOutputHandlerIPU
+	{
+		template <typename c, typename t>
+		void save(std::basic_ostream<c,t> &os,
+				const elba::CommonKmers &nonzero,
+				uint64_t row,
+				uint64_t col) 
+		{
+			if(!nonzero.rc) // not reverse complement
+			{
+				// LOGAN's input format: seq1 seed1 seq2 seed2 (only sequences on the same strand rn)
+				os << nonzero.seqV << "\t" << nonzero.seedposV << "\t" << nonzero.seqH << "\t" <<  nonzero.seedposH;
+			}
+		}
+	};
+
 	struct CkOutputHandler
 	{
 		template <typename c, typename t>
@@ -166,20 +188,7 @@ namespace elba {
 				uint64_t row,
 				uint64_t col)
 		{
-			// GGGG: we need the overhand value to create input in graph dot for comparison
-			// int dir = v.overhang & 3;
-			// int rc  = 0;
-			// if(dir == 0 || dir == 3) rc = 1;
-
 			// direction, rc, overhang, begV, endV, begH, endH (OverlapLen and others computed in python script during translation)
-			// os << dir << "\t" << rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t"
-				// << v.second.first << "\t" <<
-				// #ifdef EXTRA
-				// v.second.second  << "\t"  << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
-				// #else
-				// v.second.second;
-				// #endif
-
             os << v.dir << "\t" << static_cast<int>(v.rc) << "\t" << v.first.first << "\t" << v.first.second << "\t" << v.second.first << "\t" << v.second.second << "\t"
                << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
 
@@ -195,9 +204,6 @@ namespace elba {
                         uint64_t col)
         {
 			os << v.dir << "\t" << v.sfx;
-			// os;
-			// std::string val = std::to_string(len) + "\t" + std::to_string(dir);
-			// os << val;
         }
     };
 
@@ -224,4 +230,4 @@ struct CommonKmersGraphHandler
     }
 };
 
-#endif //DIBELLA_COMMONKMERS_HPP
+#endif //ELBA_COMMONKMERS_HPP

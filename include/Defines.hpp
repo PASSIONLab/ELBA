@@ -1,5 +1,5 @@
-#ifndef _DIBELLA_DEFINES_H_
-#define _DIBELLA_DEFINES_H_
+#ifndef _ELBA_DEFINES_H_
+#define _ELBA_DEFINES_H_
 
 #include <stdlib.h> 
 #include <array>
@@ -127,4 +127,4 @@ inline std::ostream & operator<<(std::ostream & str, const ReadOverlapPair& pair
         }                                           \
     } while (0)
 
-#endif /* _DIBELLA_DEFINES_H_ */
+#endif /* _ELBA_DEFINES_H_ */

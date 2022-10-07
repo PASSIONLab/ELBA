@@ -37,7 +37,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #define TWOSEED
 //#define TRIL
 //#define TRIU
-//#define DIBELLA_DEBUG
+//#define ELBA_DEBUG
 
 /*! Namespace declarations */
 using namespace combblas;
@@ -689,6 +689,7 @@ void OverlapDetection(std::shared_ptr<DistributedFastaData> dfd,
       dfd->wait();
     }
     tp->times["EndMain:DfdWait()"] = std::chrono::system_clock::now();
+    
 }
 
 void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<elba::CommonKmers>::MPI_DCCols* Bmat, PSpMat<ReadOverlap>::MPI_DCCols*& Rmat, const std::shared_ptr<ParallelOps>& parops, const std::shared_ptr<TimePod>& tp, TraceUtils& tu)
@@ -746,13 +747,14 @@ void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<elba::C
   }
 
   // Output intermediate matrix post-alignment
-  //std::string postalignment = myoutput;
-  //postalignment += ".resultmatrix.mm";
-  //Bmat->ParallelWriteMM(postalignment, true, elba::CkOutputHandler());
+  // GGGG: print for IPU, no alignment is performed
+  std::string postovd = myoutput;
+  postovd += ".ipuinputmatrix.align.mm";
+  Bmat->ParallelWriteMM(postovd, true, elba::CkOutputHandlerIPU());
+
+  exit(0);
 
   Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*Bmat);
-
-  //Rmat->ParallelWriteMM("alignment.mtx", true, ReadOverlapGraphHandler());
 
   delete Bmat;
 }

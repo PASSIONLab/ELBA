@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-07-10.
 
-#ifndef DIBELLA_OVERLAPFINDER_HPP
-#define DIBELLA_OVERLAPFINDER_HPP
+#ifndef ELBA_OVERLAPFINDER_HPP
+#define ELBA_OVERLAPFINDER_HPP
 
 #include "PairwiseFunction.hpp"
 
@@ -22,4 +22,4 @@ private:
   uint64_t local_nnz_count;
 };
 
-#endif //DIBELLA_OVERLAPFINDER_HPP
+#endif //ELBA_OVERLAPFINDER_HPP
