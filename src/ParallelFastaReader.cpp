@@ -62,7 +62,7 @@ void ParallelFastaReader::read_fasta(const char *file, uint64_t overlap, int ran
 
   // std::cout << "ChunkSize " << l_chunk_size << " rank " << rank << std::endl; 
 
-  buff = static_cast<char*>(malloc((l_chunk_size + 1)*sizeof(char)));
+  buff = new char[l_chunk_size+1];
 
   /* everyone reads in their part */
 

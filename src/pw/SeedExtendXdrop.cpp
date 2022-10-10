@@ -1,12 +1,12 @@
 // Created by Saliya Ekanayake on 2019-07-05 and modified by Giulia Guidi on 09/01/2020.
 
 #include "../../include/pw/SeedExtendXdrop.hpp"
+#include <unordered_set>
 
 uint minOverlapLen = 5000;
-uint maxOverhang = 25;
 
 void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, float& ratioScoreOverlap,
-	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
+	int& dir, int& dirT, int& sfx, int& sfxT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
 {
 	auto maxseed = ai.seed;	// returns a seqan:Seed object
 
@@ -39,82 +39,114 @@ void SeedExtendXdrop::PostAlignDecision(const AlignmentInfo& ai, bool& passed, f
 	bool contained = false;
 	bool chimeric  = false;
 
-	// Reserve length/position if rc [x]
-	if(ai.rc)
+	if (begpV <= begpH && (rlenV - endpV) <= (rlenH - endpH))
 	{
-		uint tmp = begpH;
-		begpH = rlenH - endpH;
-		endpH = rlenH - tmp;
+	    ContainedSeqMyThread.push_back(seqV);
+	    contained = true;
+	}
+	else if (begpV >= begpH && (rlenV - endpV) >= (rlenH - endpH))
+	{
+	    ContainedSeqMyThread.push_back(seqH);
+	    contained = true;
+	}
+	else if (!noAlign)
+	{
+	    passed = ((float)ai.xscore >= myThr && overlap >= minOverlapLen);
+
+	    if (passed)
+	    {
+	        if (begpV > begpH)
+	        {
+	            dir  = ai.rc? 0 : 1;
+	            dirT = ai.rc? 0 : 2;
+	            sfx  = ((rlenH - endpH) - (rlenV - endpV));
+	            sfxT = begpV - begpH;
+	        }
+	        else
+	        {
+	            dir  = ai.rc? 3 : 2;
+	            dirT = ai.rc? 3 : 1;
+	            sfx  = begpH - begpV;
+	            sfxT = ((rlenV - endpV) - (rlenH - endpH));
+	        }
+	    }
 	}
 
-    if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
-	{
-		ContainedSeqMyThread.push_back(seqH); // Push back global index
-		contained = true;
-	}
-    else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
-	{
-		ContainedSeqMyThread.push_back(seqV); // Push back global index
-		contained = true;
-	}
+	// if(ai.rc)
+	// {
+	// 	uint tmp = begpH;
+	// 	begpH = rlenH - endpH;
+	// 	endpH = rlenH - tmp;
+	// }
 
-	if(!contained)
-	{
-		// If noAlign is false, set passed to false if the score isn't good enough
-		if(!noAlign)
-		{
-			if((float)ai.xscore < myThr || overlap < minOverlapLen) passed = false;
-			else passed = true;
-		}
+    // if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
+	// {
+	// 	ContainedSeqMyThread.push_back(seqH); // Push back global index
+	// 	contained = true;
+	// }
+    // else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
+	// {
+	// 	ContainedSeqMyThread.push_back(seqV); // Push back global index
+	// 	contained = true;
+	// }
 
-		if(passed)
-		{
-			uint32_t direction, directionT;
-			uint32_t suffix, suffixT;
+	// if(!contained)
+	// {
+	// 	// If noAlign is false, set passed to false if the score isn't good enough
+	// 	if(!noAlign)
+	// 	{
+	// 		if((float)ai.xscore < myThr || overlap < minOverlapLen) passed = false;
+	// 		else passed = true;
+	// 	}
 
-			// !reverse complement
-			if(!ai.rc)
-			{
-				if(begpV > begpH)
-				{
-					direction  = 1;
-					directionT = 2;
+	// 	if(passed)
+	// 	{
+	// 		uint32_t direction, directionT;
+	// 		uint32_t suffix, suffixT;
 
-					suffix = rlenH - endpH;
-					suffixT = begpV;
-				}
-				else
-				{
-					direction  = 2;
-					directionT = 1;
+	// 		// !reverse complement
+	// 		if(!ai.rc)
+	// 		{
+	// 			if(begpV > begpH)
+	// 			{
+	// 				direction  = 1;
+	// 				directionT = 2;
 
-					suffix = begpH;
-					suffixT = rlenV - endpV;
-				}
-			}
-			else
-			{
-				if((begpV > 0) && (begpH > 0) && (rlenV-endpV == 0) && (rlenH-endpH == 0))
-				{
-					direction  = 0;
-					directionT = 0;
+	// 				suffix = rlenH - endpH;
+	// 				suffixT = begpV;
+	// 			}
+	// 			else
+	// 			{
+	// 				direction  = 2;
+	// 				directionT = 1;
 
-					suffix  = begpH;
-					suffixT = begpV;
-				}
-				else
-				{
-					direction  = 3;
-					directionT = 3;
+	// 				suffix = begpH;
+	// 				suffixT = rlenV - endpV;
+	// 			}
+	// 		}
+	// 		else
+	// 		{
+	// 			if((begpV > 0) && (begpH > 0) && (rlenV-endpV == 0) && (rlenH-endpH == 0))
+	// 			{
+	// 				direction  = 0;
+	// 				directionT = 0;
 
-					suffix  = rlenH - endpH;
-					suffixT = rlenV - endpV;
-				}
-			}
-			overhang  = suffix  << 2 | direction;
-			overhangT = suffixT << 2 | directionT;
-		} // if(passed)
-	} // if(!contained)
+	// 				suffix  = begpH;
+	// 				suffixT = begpV;
+	// 			}
+	// 			else
+	// 			{
+	// 				direction  = 3;
+	// 				directionT = 3;
+
+	// 				suffix  = rlenH - endpH;
+	// 				suffixT = rlenV - endpV;
+	// 			}
+	// 		}
+	// 		overhang  = suffix  << 2 | direction;
+	// 		overhangT = suffixT << 2 | directionT;
+	// 	} // if(passed)
+	// } // if(!contained)
 
 #else
 	if(ai.xscore >= FIXEDTHR)
@@ -200,25 +232,16 @@ void SeedExtendXdrop::apply(
 		add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
 	} 
 
-    /*! Note. This aligns the extended seeds globally, NOT the original
-     * two sequences.
-     *
-     * It seems kind of a waste to have to do the alignment
-     * again after xdrop seed extension but that's the only
-     * way to get the alignment info in SeqAn.
-     * See https://seqan.readthedocs.io/en/master/Tutorial/Algorithms/SeedExtension.html
-     */
+    ai.seq_h_length = length(*seqH); // col
+    ai.seq_v_length = length(*seqV); // row
 
-    	ai.seq_h_length = length(*seqH); // col
-    	ai.seq_v_length = length(*seqV); // row
-
-    	ai.seed = seed;
-    	ai.seq_h_seed_length = static_cast<ushort>(seed._endPositionH -
-    	                                           seed._beginPositionH);
-    	ai.seq_v_seed_length = static_cast<ushort>(seed._endPositionV -
-                                               seed._beginPositionV);
-    	ai.seq_h_g_idx = g_col_idx;
-    	ai.seq_v_g_idx = g_row_idx;
+    ai.seed = seed;
+    ai.seq_h_seed_length = static_cast<ushort>(seed._endPositionH -
+                                               seed._beginPositionH);
+    ai.seq_v_seed_length = static_cast<ushort>(seed._endPositionV -
+                                           	   seed._beginPositionV);
+    ai.seq_h_g_idx = g_col_idx;
+    ai.seq_v_g_idx = g_row_idx;
   }
 }
 
@@ -418,6 +441,7 @@ SeedExtendXdrop::apply_batch
 	delete [] seedlens;
 	delete [] xscores;
 	delete [] strands;
+	delete [] seeds;
 
 	auto start_time = std::chrono::system_clock::now();
 
@@ -443,7 +467,7 @@ SeedExtendXdrop::apply_batch
 			// GGGG: in PostAlignDecision() we can mark as contained sequences as removable in ContainedSeqPerBatch and their local contained edges
 			// GGGG: ContainedSeqPerBatch global indexes of contained sequences
 
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->dir, cks->dirT, cks->sfx, cks->sfxT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
 
 			if (passed)
 			{
