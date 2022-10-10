@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-07-05.
 
-#ifndef DIBELLA_SEEDEXTENDXDROP_HPP
-#define DIBELLA_SEEDEXTENDXDROP_HPP
+#ifndef ELBA_SEEDEXTENDXDROP_HPP
+#define ELBA_SEEDEXTENDXDROP_HPP
 
 #include "PairwiseFunction.hpp"
 #include "../AlignmentInfo.hpp"
@@ -46,4 +46,4 @@ private:
   int seed_count;
 };
 
-#endif //DIBELLA_SEEDEXTENDXDROP_HPP
+#endif //ELBA_SEEDEXTENDXDROP_HPP

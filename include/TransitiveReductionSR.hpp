@@ -284,7 +284,7 @@ void TransitiveReductionOld(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUt
 
     B.ParallelWriteMM("result-matrix-symmetric.mm", true, dibella::CkOutputMMHandler());
 
-// #ifdef DIBELLA_DEBUG
+// #ifdef ELBA_DEBUG
     // tu.print_str("Matrix B += BT: ");
     // B.PrintInfo();
     // B.ParallelWriteMM("result-matrix-symmetric.mm", true, dibella::CkOutputMMHandler());
@@ -308,7 +308,7 @@ void TransitiveReductionOld(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUt
 
         C.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
 
-    #ifdef DIBELLA_DEBUG
+    #ifdef ELBA_DEBUG
         tu.print_str("Matrix C = B^2: ");
         C.PrintInfo();
 	    C.ParallelWriteMM("matrixB2.mm", true, dibella::CkOutputMMHandler());
@@ -324,7 +324,7 @@ void TransitiveReductionOld(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUt
         F.DimApply(Row, vA, Bind2ndSR_t());
 
         timeC += MPI_Wtime() - start;
-    #ifdef DIBELLA_DEBUG
+    #ifdef ELBA_DEBUG
         tu.print_str("Matrix F = B + FUZZ: ");
         F.PrintInfo();
 	    F.ParallelWriteMM("matrixF.mm", true, dibella::CkOutputMMHandler());
@@ -340,7 +340,7 @@ void TransitiveReductionOld(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUt
         I.Prune(ZeroUnaryOp<bool>(), true);
 
         timeI += MPI_Wtime() - start;
-    #ifdef DIBELLA_DEBUG
+    #ifdef ELBA_DEBUG
         tu.print_str("Matrix I = F >= B: ");
         I.PrintInfo();
 	    I.ParallelWriteMM("matrixI.mm", true, dibella::CkOutputMMHandlerBool());
@@ -357,7 +357,7 @@ void TransitiveReductionOld(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUt
         B.Prune(ZeroOverhangSR<dibella::CommonKmers>(), true);
         timeA += MPI_Wtime() - start;
 
-    #ifdef DIBELLA_DEBUG
+    #ifdef ELBA_DEBUG
         tu.print_str("Matrix B = B .* not(I): ");
         B.PrintInfo();
     #endif
@@ -374,7 +374,7 @@ void TransitiveReductionOld(PSpMat<dibella::CommonKmers>::MPI_DCCols& B, TraceUt
     // B.PrintInfo();
     // B.ParallelWriteMM("ecoli-double-strand-two-pruned-bt.mm", true, dibella::CkOutputMMHandler());
 
- #ifdef DIBELLA_DEBUG
+ #ifdef ELBA_DEBUG
     B.ParallelWriteMM("matrixS.mm", true, dibella::CkOutputMMHandler());
 
     double maxtimeA2, maxtimeC, maxtimeI, maxtimeA;

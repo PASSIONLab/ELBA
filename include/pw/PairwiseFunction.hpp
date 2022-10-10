@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-07-05.
 
-#ifndef DIBELLA_PAIRWISEFUNCTION_HPP
-#define DIBELLA_PAIRWISEFUNCTION_HPP
+#ifndef ELBA_PAIRWISEFUNCTION_HPP
+#define ELBA_PAIRWISEFUNCTION_HPP
 
 #include <unordered_map>
 #include <string>
@@ -56,4 +56,4 @@ private:
   std::vector<double>		times[MAX_THD];
 };
 
-#endif //DIBELLA_PAIRWISEFUNCTION_HPP
+#endif //ELBA_PAIRWISEFUNCTION_HPP

@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-07-23.
 
-#ifndef DIBELLA_SCOREMAT_HPP
-#define DIBELLA_SCOREMAT_HPP
+#ifndef ELBA_SCOREMAT_HPP
+#define ELBA_SCOREMAT_HPP
 
 #include "Types.hpp"
 
@@ -133,4 +133,4 @@ namespace dibella{
     };
   };
 }
-#endif //DIBELLA_SCOREMAT_HPP
+#endif //ELBA_SCOREMAT_HPP

@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 10/15/19 and modified by Giulia Guidi on 08/19/20.
 
-#ifndef DIBELLA_COMMONKMERS_HPP
-#define DIBELLA_COMMONKMERS_HPP
+#ifndef ELBA_COMMONKMERS_HPP
+#define ELBA_COMMONKMERS_HPP
 
 #include "../Types.hpp"
 #include "../Defines.hpp"
@@ -224,4 +224,4 @@ namespace dibella {
 
 }
 
-#endif //DIBELLA_COMMONKMERS_HPP
+#endif //ELBA_COMMONKMERS_HPP

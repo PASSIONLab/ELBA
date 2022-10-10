@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 10/17/19.
 
-#ifndef DIBELLA_KMER_HPP
-#define DIBELLA_KMER_HPP
+#ifndef ELBA_KMER_HPP
+#define ELBA_KMER_HPP
 
 #include <stdio.h>
 #include <stdint.h>
@@ -436,4 +436,4 @@ typedef VectorMap<Kmer::MERARR, KmerCountType, std::hash<Kmer::MERARR>, std::les
 //     }
 // };
 
-#endif //DIBELLA_KMER_HPP
+#endif //ELBA_KMER_HPP

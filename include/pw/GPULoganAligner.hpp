@@ -1,7 +1,7 @@
 /* Created by Giulia Guidi on 4/14/2021 */
 
-#ifndef DIBELLA_GPULOGAN_HPP
-#define DIBELLA_GPULOGAN_HPP
+#ifndef ELBA_GPULOGAN_HPP
+#define ELBA_GPULOGAN_HPP
 
 #include "PairwiseFunction.hpp"
 #include "../AlignmentInfo.hpp"
@@ -42,4 +42,4 @@ private:
   int seed_count;
 };
 
-#endif //DIBELLA_GPULOGAN_HPP
+#endif //ELBA_GPULOGAN_HPP

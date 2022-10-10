@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef DIBELLA_KMEROPS_HPP
-#define DIBELLA_KMEROPS_HPP
+#ifndef ELBA_KMEROPS_HPP
+#define ELBA_KMEROPS_HPP
 
 #include <unordered_set>
 #include "MatrixEntry.hpp"
@@ -82,4 +82,4 @@ namespace dibella {
   };
 }
 
-#endif // DIBELLA_KMEROPS_HPP
+#endif // ELBA_KMEROPS_HPP

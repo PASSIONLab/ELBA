@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 10/15/19 and modified by Giulia Guidi on 08/19/20.
 
-#ifndef DIBELLA_KMERINTERSECTSR_HPP
-#define DIBELLA_KMERINTERSECTSR_HPP
+#ifndef ELBA_KMERINTERSECTSR_HPP
+#define ELBA_KMERINTERSECTSR_HPP
 
 #include "../ParallelOps.hpp"
 #include "../Defines.hpp"
@@ -107,4 +107,4 @@ namespace dibella {
     }
   };
 }
-#endif //DIBELLA_KMERINTERSECTSR_HPP
+#endif //ELBA_KMERINTERSECTSR_HPP
