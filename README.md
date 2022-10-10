@@ -75,7 +75,7 @@ A few input data sets can be downloaded [here](https://portal.nersc.gov/project/
 A tiny example `ecsample-sub1.fa` can be found in this repository.
 
 ## Ready to run
-The parameters and options of diBELLA are as follows:
+The parameters and options of ELBA are as follows:
 - ```-i <string>```: Input FASTA file.
 - ```-c <integer>```: Number of sequences in the FASTA file.
 - ```--sc <integer>```: Seed count. ```[default: 2]```
@@ -92,11 +92,11 @@ The parameters and options of diBELLA are as follows:
 - ```--xa <integer>```: X-drop alignment with the indicated drop value.
 - ```--of <string>```: Overlap file.
 - ```--af <string>```: Output file to write alignment information. 
-- ```--idxmap <string>```: Output file for input sequences to ids used in diBELLA.
+- ```--idxmap <string>```: Output file for input sequences to ids used in ELBA.
 - ```--alph <dna|protein>```: Alphabet.
 
 ## Run test program
-You can run the test dataset ```ecsample-sub1.fa``` as follows on one node (it's too small to run on multiple nodes), this command runs diBELLA using x-drop alignment and ```x = 5```:
+You can run the test dataset ```ecsample-sub1.fa``` as follows on one node (it's too small to run on multiple nodes), this command runs ELBA using x-drop alignment and ```x = 5```:
 ```
 export OMP_NUM_THREADS=1
 mpirun -np 1 ./elba -i /path/to/ecsample-sub1.fa -k 17 --idxmap elba-test -c 135 --alph dna --of overlap-test --af alignment-test -s 1 -O 100000 --afreq 100000 --xa 5
