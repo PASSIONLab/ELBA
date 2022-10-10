@@ -15,63 +15,34 @@
 #include <string>
 #include <sstream>
 
-#ifndef FUZZ
-#define FUZZ 1000
-#endif
-
-int intplus(int a, int b)
+struct InvalidSRing : unary_function<ReadOverlap, ReadOverlap>
 {
-    if (a == MAX_INT || b == MAX_INT) return MAX_INT;
-    return a + b;
-}
+    bool operator() (const ReadOverlap& x) { return x.is_invalid(); }
+};
 
-ReadOverlap omin(const ReadOverlap& u, const ReadOverlap& v)
+struct TransposeSRing : unary_function <ReadOverlap, ReadOverlap>
 {
-        ReadOverlap uxv = ReadOverlap();
-
-        uxv.sfx[0] = std::min(u.sfx[0], v.sfx[0]);
-        uxv.sfx[1] = std::min(u.sfx[1], v.sfx[1]);
-        uxv.sfx[2] = std::min(u.sfx[2], v.sfx[2]);
-        uxv.sfx[3] = std::min(u.sfx[3], v.sfx[3]);
-
-        return uxv;
-}
-
-struct MinPlusSR
-{
-    static ReadOverlap id() { return ReadOverlap(); }
-    static bool returnedSAID() { return false; } /* what does this do? */
-    static MPI_Op mpi_op() { return MPI_MIN; }   /* what does this do? */
-
-    static ReadOverlap add(const ReadOverlap& u, const ReadOverlap& v)
+    ReadOverlap operator() (const ReadOverlap& x) const
     {
-        return omin(u, v);
-    }
+        ReadOverlap xT = x;
 
-    static ReadOverlap multiply(const ReadOverlap& u, const ReadOverlap& v)
-    {
-        ReadOverlap uxv = ReadOverlap();
+        xT.b[0] = x.l[1] - x.e[1];
+        xT.e[0] = x.l[1] - x.b[1];
+        xT.b[1] = x.l[0] - x.e[0];
+        xT.e[1] = x.l[0] - x.b[0];
 
-        int udir = u.direction();
+        xT.l[0] = x.l[1];
+        xT.l[1] = x.l[0];
 
-        if (udir&1) {
-            uxv.sfx[0] = intplus(u.sfx[1], v.sfx[0]); /* >------>  >------< */
-            uxv.sfx[1] = intplus(u.sfx[1], v.sfx[1]); /* >------>  >------> */
-            uxv.sfx[2] = intplus(u.sfx[3], v.sfx[0]); /* <------>  >------< */
-            uxv.sfx[3] = intplus(u.sfx[3], v.sfx[1]); /* <------>  >------> */
-        } else {
-            uxv.sfx[0] = intplus(u.sfx[0], v.sfx[2]);
-            uxv.sfx[1] = intplus(u.sfx[0], v.sfx[3]);
-            uxv.sfx[2] = intplus(u.sfx[2], v.sfx[2]);
-            uxv.sfx[3] = intplus(u.sfx[2], v.sfx[3]);
-        }
+        xT.rc = x.rc;
+        xT.transpose = !x.transpose;
 
-        return uxv;
-    }
+        xT.sfx  = x.sfxT;
+        xT.sfxT = x.sfx;
+        xT.dir  = x.dirT;
+        xT.dirT = x.dir;
 
-    static void axpy(ReadOverlap a, const ReadOverlap& x, ReadOverlap& y)
-    {
-        y = omin(y, multiply(a, x));
+        return xT;
     }
 };
 
@@ -80,20 +51,22 @@ struct PlusFuzzSRing : unary_function<ReadOverlap, ReadOverlap>
     ReadOverlap operator() (ReadOverlap& x) const
     {
         ReadOverlap fuzzed = x;
-
-        for (int i = 0; i < 4; ++i)
-            fuzzed.sfx[i] = intplus(fuzzed.sfx[i], FUZZ);
+        fuzzed.sfx += FUZZ;
+        fuzzed.sfxT += FUZZ;
 
         return fuzzed;
     }
 };
 
-struct TransitiveSelection : binary_function<ReadOverlap, ReadOverlap, bool>
+struct TransitiveSelection : binary_function<ReadOverlap, OverlapPath, bool>
 {
-    bool operator() (const ReadOverlap& x, const ReadOverlap& y) const
+    bool operator() (const ReadOverlap& r, const OverlapPath& n) const
     {
-        int xdir = x.direction();
-        return (x.sfx[xdir] >= y.sfx[xdir]);
+        int dir = r.dir;
+
+        if (dir == -1) return false;
+
+        return (r.sfx >= n.sfx[dir]);
     }
 };
 
@@ -101,51 +74,130 @@ struct TransitiveRemoval : binary_function<ReadOverlap, bool, ReadOverlap>
 {
     ReadOverlap operator() (ReadOverlap& x, const bool& y)
     {
-        if (!y) x.valid = 0;
+        if (!y) x.dir = -1;
         return x;
     }
 };
 
-void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>& R)
+struct ZeroPrune { bool operator() (const bool& x) { return false; } };
+struct BoolPrune { bool operator() (const bool& x) { return !x; } };
+
+OverlapPath opmin(const OverlapPath& e1, const OverlapPath& e2)
 {
-    SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> RT = R;
-    RT.Transpose();
-    RT.Apply(TransposeSRing());
+    OverlapPath e = OverlapPath();
 
-    if (!(RT == R)) R += RT;
+    for (int i = 0; i < 4; ++i)
+        e.sfx[i] = std::min(e1.sfx[i], e2.sfx[i]);
 
-    R.Prune(InvalidSRing(), true);
-
-    R.ParallelWriteMM("R.mm", true, ReadOverlapHandler());
-
-    int nnz, prev;
-    do {
-
-        prev = R.getnnz();
-
-        SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> Rc = R;
-        SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> N = Mult_AnXBn_DoubleBuff<MinPlusSR, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, Rc);
-
-        N.Prune(InvalidSRing(), true);
-
-        SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> M = R;
-
-        M.Apply(PlusFuzzSRing());
-
-        ReadOverlap id;
-
-        SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> I = EWiseApply<bool, SpDCCols<int64_t, bool>>(M, N, TransitiveSelection(), false, id);
-
-        R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, I, TransitiveRemoval(), true, true);
-
-        R.Prune(InvalidSRing(), true);
-
-        nnz = R.getnnz();
-
-    } while (nnz != prev);
-
-    R.ParallelWriteMM("S.mm", true, ReadOverlapMMHandler());
+    return e;
 }
 
+struct MinPlusSR
+{
+    static OverlapPath id() { return OverlapPath(); }
+    static bool returnedSAID() { return false; }
+    static MPI_Op mpi_op() { return MPI_MIN; }
+
+    static OverlapPath add(const OverlapPath& e1, const OverlapPath& e2)
+    {
+        return opmin(e1, e2);
+    }
+
+    static OverlapPath multiply(const ReadOverlap& e1, const ReadOverlap& e2)
+    {
+        OverlapPath e = OverlapPath();
+
+        int t1, t2, h1, h2;
+
+        if (!e1.arrows(t1, h1) || !e2.arrows(t2, h2))
+            return e;
+
+        if (t2 == h1)
+            return e;
+
+        e.sfx[2*t1 + h2] = e1.sfx + e2.sfx;
+
+        return e;
+    }
+
+    static void axpy(ReadOverlap a, const ReadOverlap& x, OverlapPath& y)
+    {
+        y = opmin(y, multiply(a, x));
+    }
+};
+
+void TransitiveReduction(SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>>& R, TraceUtils tu)
+{
+    R.ParallelWriteMM("overlap-graph-triu.mm", true, ReadOverlapExtraHandler());
+
+    SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> RT = R; /* copies everything */
+    RT.Transpose();
+    RT.Apply(TransposeSRing()); /* flips all the coordinates */
+
+    if (!(RT == R)) R += RT; /* symmetricize if necessary (????) */
+
+    R.ParallelWriteMM("overlap-graph.mm", true, ReadOverlapExtraHandler());
+
+    /* implicitly will call OverlapPath(const ReadOverlap& e) constructor */
+    SpParMat<int64_t, OverlapPath, SpDCCols<int64_t, OverlapPath>> Nc = R;
+
+    /* calls operator bool() from ReadOverlap, always returns true (so hopefully will just fill out
+     * nonzeros in boolean matrix */
+    SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> T = R;
+
+    T.Prune(ZeroPrune()); /* what does this accomplish (????) */
+
+    int64_t prev, cur;
+
+    SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> M = R;
+    M.Apply(PlusFuzzSRing());
+
+    tu.print_str("Matrix R, i.e. AAt before transitive reduction: ");
+    R.PrintInfo();
+
+    //bool check_phase = false;
+    int check_phase_counter = 0;
+    int full_counter = 0;
+
+    do {
+        //tu.print_str("Matrix T: ");
+        //T.PrintInfo();
+        prev = T.getnnz();
+
+        SpParMat<int64_t, OverlapPath, SpDCCols<int64_t, OverlapPath>> N = Mult_AnXBn_DoubleBuff<MinPlusSR, OverlapPath, SpDCCols<int64_t, OverlapPath>>(Nc, R);
+        N.Prune(InvalidSRing(), true);
+        Nc = N;
+
+        OverlapPath id;
+        SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> I = EWiseApply<bool, SpDCCols<int64_t, bool>>(M, N, TransitiveSelection(), false, id);
+        SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> It = I;
+        It.Transpose();
+
+        I.EWiseMult(It, false);
+        SpParMat<int64_t, bool, SpDCCols<int64_t, bool>> Tc = T;
+
+        T = EWiseApply<bool, SpDCCols<int64_t, bool>>(Tc, I, [](bool x, bool y) { return !(x && y); }, true, false);
+        cur = T.getnnz();
+
+        if (check_phase_counter > 0 || (prev-cur)<=(100))
+            check_phase_counter++;
+
+        full_counter++;
+
+    } while (check_phase_counter < 5 && full_counter < 10);
+
+    std::stringstream iss;
+    iss << "Transitive Reduction did " << full_counter << " iterations\n";
+
+    tu.print_str(iss.str());
+
+    R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), false, false);
+    R.Prune(InvalidSRing());
+
+    R.ParallelWriteMM("string-graph.mm", true, ReadOverlapExtraHandler());
+
+    tu.print_str("Matrix R, i.e. AAt after transitive reduction: ");
+    R.PrintInfo();
+}
 
 #endif

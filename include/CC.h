@@ -1350,20 +1350,21 @@ namespace combblas {
     FullyDistVec<IT, IT> CC(SpParMat<IT,NT,DER>& A, IT& nCC)
     {
         IT nrows = A.getnrow();
+        // A.AddLoops(1); // GRGR: needed for isolated vertices: not needed anymore
 
         FullyDistVec<IT,IT> parent(A.getcommgrid());
-        parent.iota(nrows, 0);  // parent(i)=i initially
+        parent.iota(nrows, 0);    // parent(i)=i initially
 
         FullyDistVec<IT, short> stars(A.getcommgrid(), nrows, STAR); // initially every vertex belongs to a star
         int iteration = 1;
         std::ostringstream outs;
         
         // isolated vertices are marked as converged
-        NT NullBValue;
-        FullyDistVec<int64_t, NT> degree = A.Reduce(Column, plus<NT>(), NullBValue, [](NT val) { return val; }); // printf("%d\n", val.overhang); 
-        stars.EWiseApply(degree, [](short isStar, NT degree) { return degree.overhang == 0? CONVERGED: isStar; }); // printf("--%d\n", degree.overhang); 
+        FullyDistVec<int64_t,double> degree = A.Reduce(Column, plus<double>(), 0.0, [](double val){return 1.0;}); // printf("%d\n", val.overhang); 
+        stars.EWiseApply(degree, [](short isStar, double degree){return degree == 0.0? CONVERGED: isStar;}); // printf("--%d\n", degree.overhang); 
         
         int nthreads = 1;
+
 #ifdef THREADED
 #pragma omp parallel
         {
@@ -1477,7 +1478,7 @@ namespace combblas {
         FullyDistVec<IT, IT> cc(parent.getcommgrid());
         nCC = LabelCC(parent, cc);
     
-        //Correctness(A, cc, nCC, parent);
+        // Correctness(A, cc, nCC, parent);
         
         return cc;
     }
