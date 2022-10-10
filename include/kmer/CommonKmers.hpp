@@ -23,13 +23,9 @@ namespace elba {
 
 	uint32_t score; /* Used for storing alignment score */
 
-	/*! GGGG: this is either the suffix or prefix entry need for the transitive reduction
-	 *	StringMatrixEntry econdes both direction and overhang length for both strands */
-	// std::vector<uint32_t> overhang(2, 0);
-	uint32_t overhang;
-	uint32_t overhangT;
+    int dir, dirT, sfx, sfxT;
 
-    int rc;
+    bool rc;
 	uint32_t lenv;
 	uint32_t lenh;
 
@@ -50,19 +46,16 @@ namespace elba {
 	std::vector<std::pair<PosInRead, PosInRead>> pos;
 #endif
 
-    CommonKmers() : count(1), passed(false), overhang(0) {
-    }
+    CommonKmers() : count(1), passed(false), dir(-1) {}
+
     explicit
-	CommonKmers(ushort count) :
-		count(count), passed(false), overhang(0) {
-    }
+	CommonKmers(ushort count) : count(count), passed(false), dir(-1) {}
 
-	CommonKmers (bool passed, uint32_t score) :
-		passed(passed),
-		score(score) {
-	}
+	CommonKmers (bool passed, uint32_t score) : passed(passed), score(score) {}
 
-	operator bool() const { return overhang; };
+	operator bool() const { return (dir != -1); }
+
+    bool is_invalid() const { return (dir == -1); }
 
     // Overload + operator to add two CommonKmers objects
 	// Used for: B += BT (TransitiveReductionSR.hpp)
@@ -78,7 +71,7 @@ namespace elba {
 	// Used for: if(!(BT == B)) (TransitiveReductionSR.hpp)
 	friend bool operator==(const CommonKmers& lhs, const CommonKmers& rhs)
 	{
-		if(lhs.overhang == rhs.overhang) return true;
+		if(lhs.dir == rhs.dir && lhs.sfx == rhs.sfx) return true;
 		else return false;
 	}
 
@@ -169,14 +162,14 @@ namespace elba {
 	{
 		template <typename c, typename t>
 		void save(std::basic_ostream<c,t> &os,
-				const dibella::CommonKmers &v,
+				const elba::CommonKmers &v,
 				uint64_t row,
 				uint64_t col)
 		{
 			// GGGG: we need the overhand value to create input in graph dot for comparison
-			int dir = v.overhang & 3;
-			int rc  = 0;
-			if(dir == 0 || dir == 3) rc = 1;
+			// int dir = v.overhang & 3;
+			// int rc  = 0;
+			// if(dir == 0 || dir == 3) rc = 1;
 
 			// direction, rc, overhang, begV, endV, begH, endH (OverlapLen and others computed in python script during translation)
 			// os << dir << "\t" << rc << "\t" << v.overhang << "\t" << v.first.first << "\t" << v.first.second << "\t"
@@ -187,7 +180,7 @@ namespace elba {
 				// v.second.second;
 				// #endif
 
-            os << dir << "\t" << rc << "\t" << v.first.first << "\t" << v.first.second << "\t" << v.second.first << "\t" << v.second.second << "\t"
+            os << v.dir << "\t" << static_cast<int>(v.rc) << "\t" << v.first.first << "\t" << v.first.second << "\t" << v.second.first << "\t" << v.second.second << "\t"
                << v.lenv << "\t" << v.lenh << "\t" << v.overlap;
 
 		}
@@ -197,13 +190,11 @@ namespace elba {
     {
         template <typename c, typename t>
         void save(std::basic_ostream<c,t> &os,
-                        const dibella::CommonKmers &v,
+                        const elba::CommonKmers &v,
                         uint64_t row,
                         uint64_t col)
         {
-			int dir = v.overhang  & 3;
-			int len = v.overhang >> 2;
-			os << dir << "\t" << len;
+			os << v.dir << "\t" << v.sfx;
 			// os;
 			// std::string val = std::to_string(len) + "\t" + std::to_string(dir);
 			// os << val;
@@ -223,5 +214,14 @@ namespace elba {
     };
 
 }
+
+struct CommonKmersGraphHandler
+{
+    template <typename c, typename t>
+    void save(std::basic_ostream<c,t>& os, const elba::CommonKmers& v, int64_t row, int64_t col)
+    {
+        os << v.score << "\t" << v.lenv << "\t" << v.lenh << "\t" << v.rc;
+    }
+};
 
 #endif //ELBA_COMMONKMERS_HPP
