@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-07-10 and modified by Giulia Guidi on 08/31/2020.
 
-#ifndef DIBELLA_ALIGNMENTINFO_HPP
-#define DIBELLA_ALIGNMENTINFO_HPP
+#ifndef ELBA_ALIGNMENTINFO_HPP
+#define ELBA_ALIGNMENTINFO_HPP
 
 #include <seqan/align.h>
 #include "Types.hpp"
@@ -27,4 +27,4 @@ struct AlignmentInfo
   uint64_t seq_v_g_idx;
 };
 
-#endif //DIBELLA_ALIGNMENTINFO_HPP
+#endif //ELBA_ALIGNMENTINFO_HPP

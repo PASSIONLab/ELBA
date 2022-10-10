@@ -37,7 +37,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #define TWOSEED
 //#define TRIL
 //#define TRIU
-//#define DIBELLA_DEBUG
+//#define ELBA_DEBUG
 
 /*! Namespace declarations */
 using namespace combblas;
