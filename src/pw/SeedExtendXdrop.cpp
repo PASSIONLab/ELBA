@@ -168,81 +168,7 @@ void SeedExtendXdrop::apply(
     seqan::Dna5String *seqH, seqan::Dna5String *seqV, ushort k,
     elba::CommonKmers &cks, std::stringstream& ss)
 {
-  AlignmentInfo ai;
-
-  for (int count = 0; count < seed_count; ++count)
-  {
-	// In KmerIntersectSR.hpp we have (where res == cks):
-	// 	res.first.first 	= arg1.first.first;	// Kmer 1 on argA
-	// 	res.first.second 	= arg1.first.second;	// Kmer 2 on argA
-	// 	res.second.first 	= arg2.first.first;	// Kmer 1 on argB
-	// 	res.second.second 	= arg2.first.second;	// Kmer 2 on argB
-
-    // argA (see KmerIntersectSR.hpp) == row == seqV
-    ushort LocalSeedVOffset = (count == 0) ? cks.first.first : cks.second.first;
-	// argB (see KmerIntersectSR.hpp) == col == seqH
-    ushort LocalSeedHOffset = (count == 0) ? cks.first.second : cks.second.second;
-
-	seqan::Dna5String seedV; // seed on arg1 == row == seqV
-	seqan::Dna5String seedH; // seed on arg2 == col == seqH
-
-	auto start_time = std::chrono::system_clock::now();
-	auto end_time   = std::chrono::system_clock::now();
-
-    // seed creation params are:
-    // horizontal seed start offset, vertical seed start offset, length
-    TSeed seed(LocalSeedHOffset, LocalSeedVOffset, seed_length);
-
-	// GGGG: for reference -->
-	// seqan::Dna5String *seq_v = dfd->row_seq(l_row_idx);  seqV (from row)
-	// seqan::Dna5String *seq_h = dfd->col_seq(l_col_idx);  seqH (from col)
-
-	seedV = infix(*seqV, beginPositionV(seed), endPositionV(seed)); // seed on argA == row == seqV
-	seedH = infix(*seqH, beginPositionH(seed), endPositionH(seed)); // seed on argB == col == seqH
-
-	seqan::Dna5StringReverseComplement twin(seedH);
-
-	seqan::Align<seqan::Dna5String> align;
-	resize(rows(align), 2);
-
-	if(twin == seedV)
-	{
-		ai.rc = true;
-		seqan::Dna5String twinseqH = *seqH;
-		seqan::Dna5StringReverseComplement twinRead(twinseqH);
-		LocalSeedHOffset = length(twinseqH) - LocalSeedHOffset - seed_length;
-
-		setBeginPositionH(seed, LocalSeedHOffset);
-		setBeginPositionV(seed, LocalSeedVOffset);
-		setEndPositionH(seed, LocalSeedHOffset + seed_length);
-		setEndPositionV(seed, LocalSeedVOffset + seed_length);
-
-		/* Perform match extension */
-		start_time = std::chrono::system_clock::now();
-		ai.xscore  = extendSeed(seed, twinseqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, (int)k, seqan::GappedXDrop());
-		end_time   = std::chrono::system_clock::now();
-		add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
-	}
-	else
-	{
-		ai.rc = false;
-		start_time = std::chrono::system_clock::now();
-		ai.xscore = extendSeed(seed, *seqH, *seqV, seqan::EXTEND_BOTH, scoring_scheme, xdrop, (int)k, seqan::GappedXDrop());
-		end_time = std::chrono::system_clock::now();
-		add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
-	} 
-
-    ai.seq_h_length = length(*seqH); // col
-    ai.seq_v_length = length(*seqV); // row
-
-    ai.seed = seed;
-    ai.seq_h_seed_length = static_cast<ushort>(seed._endPositionH -
-                                               seed._beginPositionH);
-    ai.seq_v_seed_length = static_cast<ushort>(seed._endPositionV -
-                                           	   seed._beginPositionV);
-    ai.seq_h_g_idx = g_col_idx;
-    ai.seq_v_g_idx = g_row_idx;
-  }
+    // ...
 }
 
 // @NOTE This is hard-coded to the number of seeds being <= 2
@@ -386,14 +312,6 @@ SeedExtendXdrop::apply_batch
 		auto end_time = std::chrono::system_clock::now();
     	add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
 
-	#ifdef STATS
-		start_time = std::chrono::system_clock::now();
-		// alignment
-		globalAlignment(exec_policy, seqsh_ex, seqsv_ex, scoring_scheme);
-
-		end_time = std::chrono::system_clock::now();
-    	add_time("XA:global_alignment", (ms_t(end_time - start_time)).count());
-	#endif
 		start_time = std::chrono::system_clock::now();
 
 		// Compute stats

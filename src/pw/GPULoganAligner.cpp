@@ -39,8 +39,8 @@ reversecomplement(const std::string& seq) {
 	return cpyseq;
 }
 
-void PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
-	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
+void GPULoganAligner::PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioScoreOveralap,
+        int& dir, int& dirT, int& sfx, int& sfxT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqPerProc);
 {
 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the seqVs (vertical/horizonral direction)
 	// these four return seqan:Tposition objects
@@ -71,82 +71,115 @@ void PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioS
 	bool contained = false;
 	bool chimeric  = false;
 
-	// Reserve length/position if rc [x]
-	if(ai.rc)
+	if (begpV <= begpH && (rlenV - endpV) <= (rlenH - endpH))
 	{
-		uint tmp = begpH;
-		begpH = rlenH - endpH;
-		endpH = rlenH - tmp;
+	    ContainedSeqMyThread.push_back(seqV);
+	    contained = true;
+	}
+	else if (begpV >= begpH && (rlenV - endpV) >= (rlenH - endpH))
+	{
+	    ContainedSeqMyThread.push_back(seqH);
+	    contained = true;
+	}
+	else if (!noAlign)
+	{
+	    passed = ((float)ai.xscore >= myThr && overlap >= minOverlapLen);
+
+	    if (passed)
+	    {
+	        if (begpV > begpH)
+	        {
+	            dir  = ai.rc? 0 : 1;
+	            dirT = ai.rc? 0 : 2;
+	            sfx  = ((rlenH - endpH) - (rlenV - endpV));
+	            sfxT = begpV - begpH;
+	        }
+	        else
+	        {
+	            dir  = ai.rc? 3 : 2;
+	            dirT = ai.rc? 3 : 1;
+	            sfx  = begpH - begpV;
+	            sfxT = ((rlenV - endpV) - (rlenH - endpH));
+	        }
+	    }
 	}
 
-    if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
-	{
-		ContainedSeqMyThread.push_back(seqH); // Push back global index
-		contained = true;
-	}
-    else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
-	{
-		ContainedSeqMyThread.push_back(seqV); // Push back global index
-		contained = true;
-	}
+	// // Reserve length/position if rc [x]
+	// if(ai.rc)
+	// {
+	// 	uint tmp = begpH;
+	// 	begpH = rlenH - endpH;
+	// 	endpH = rlenH - tmp;
+	// }
 
-	if(!contained)
-	{
-		// If noAlign is false, set passed to false if the score isn't good enough
-		if(!noAlign)
-		{
-			if((float)ai.xscore < myThr || overlap < minOverlapLenL) passed = false;
-			else passed = true;
-		}
+    // if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
+	// {
+	// 	ContainedSeqMyThread.push_back(seqH); // Push back global index
+	// 	contained = true;
+	// }
+    // else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
+	// {
+	// 	ContainedSeqMyThread.push_back(seqV); // Push back global index
+	// 	contained = true;
+	// }
 
-		if(passed)
-		{
-			uint32_t direction, directionT;
-			uint32_t suffix, suffixT;
+	// if(!contained)
+	// {
+	// 	// If noAlign is false, set passed to false if the score isn't good enough
+	// 	if(!noAlign)
+	// 	{
+	// 		if((float)ai.xscore < myThr || overlap < minOverlapLenL) passed = false;
+	// 		else passed = true;
+	// 	}
 
-			// !reverse complement
-			if(!ai.rc)
-			{
-				if(begpV > begpH)
-				{
-					direction  = 1;
-					directionT = 2;
+	// 	if(passed)
+	// 	{
+	// 		uint32_t direction, directionT;
+	// 		uint32_t suffix, suffixT;
 
-					suffix = rlenH - endpH;
-					suffixT = begpV;
-				}
-				else
-				{
-					direction  = 2;
-					directionT = 1;
+	// 		// !reverse complement
+	// 		if(!ai.rc)
+	// 		{
+	// 			if(begpV > begpH)
+	// 			{
+	// 				direction  = 1;
+	// 				directionT = 2;
 
-					suffix = begpH;
-					suffixT = rlenV - endpV;
-				}
-			}
-			else
-			{
-				if((begpV > 0) && (begpH > 0) && (rlenV-endpV == 0) && (rlenH-endpH == 0))
-				{
-					direction  = 0;
-					directionT = 0;
+	// 				suffix = rlenH - endpH;
+	// 				suffixT = begpV;
+	// 			}
+	// 			else
+	// 			{
+	// 				direction  = 2;
+	// 				directionT = 1;
 
-					suffix  = begpH;
-					suffixT = begpV;
-				}
-				else
-				{
-					direction  = 3;
-					directionT = 3;
+	// 				suffix = begpH;
+	// 				suffixT = rlenV - endpV;
+	// 			}
+	// 		}
+	// 		else
+	// 		{
+	// 			if((begpV > 0) && (begpH > 0) && (rlenV-endpV == 0) && (rlenH-endpH == 0))
+	// 			{
+	// 				direction  = 0;
+	// 				directionT = 0;
 
-					suffix  = rlenH - endpH;
-					suffixT = rlenV - endpV;
-				}
-			}
-			overhang  = suffix  << 2 | direction;
-			overhangT = suffixT << 2 | directionT;
-		} // if(passed)
-	} // if(!contained)
+	// 				suffix  = begpH;
+	// 				suffixT = begpV;
+	// 			}
+	// 			else
+	// 			{
+	// 				direction  = 3;
+	// 				directionT = 3;
+
+	// 				suffix  = rlenH - endpH;
+	// 				suffixT = rlenV - endpV;
+	// 			}
+	// 		}
+	// 		overhang  = suffix  << 2 | direction;
+	// 		overhangT = suffixT << 2 | directionT;
+	// 	} // if(passed)
+	// } // if(!contained)
 
 #else
 	if(ai.xscore >= FIXEDTHR)
@@ -202,7 +235,6 @@ GPULoganAligner::apply_batch
 	#endif
 
 	uint64_t npairs = seqan::length(seqsh);
-	// setNumThreads(exec_policy, numThreads);
 	
 	lfs << "processing batch of size " << npairs << " with " << numThreads << " threads " << std::endl;
 
@@ -216,6 +248,10 @@ GPULoganAligner::apply_batch
 	std::vector<SeedInterface> seeds;
 	std::vector<LoganResult> xscores;
 
+	// bool *strands = new bool[npairs];
+	// int  *xscores = new int[npairs];
+	// TSeed  *seeds = new TSeed[npairs];
+
 	/* GGGG: seed_count is hardcoded here (2) */
 	for(int count = 0; count < seed_count; ++count)
 	{
@@ -225,7 +261,7 @@ GPULoganAligner::apply_batch
 		// #pragma omp parallel for 
 		for (uint64_t i = 0; i < npairs; ++i) // I acculate sequences for GPU batch alignment
 		{
-			// Init result
+			// init result
 			LoganResult localRes; 
 
 			// Get seed location
@@ -282,7 +318,7 @@ GPULoganAligner::apply_batch
 				SeedInterface seed(LocalSeedHOffset, LocalSeedVOffset, seed_length); //LocalSeedHOffset + , LocalSeedVOffset + seed_length);
 
 				// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
-				seeds.push_back(seed); // segfault origin might be around here 
+				seeds.push_back(seed); // segfault origin might be around here (?)
 				seqVs.push_back(seqV);
 				seqHs.push_back(seqH);
 
@@ -377,6 +413,10 @@ GPULoganAligner::apply_batch
 			bool passed = false;
 			int tid = omp_get_thread_num();
 
+			// GGGG: ai stores global idx to to store in ContainedSeqPerBatch
+			// GGGG: in PostAlignDecision() we can mark as contained sequences as removable in ContainedSeqPerBatch and their local contained edges
+			// GGGG: ContainedSeqPerBatch global indexes of contained sequences
+
 			elba::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
 
@@ -415,8 +455,7 @@ GPULoganAligner::apply_batch
 	}
 
 	auto end_time = std::chrono::system_clock::now();
-  	add_time("XA:StringOp",
-			 (ms_t(end_time - start_time)).count());
+  	add_time("XA:StringOp", (ms_t(end_time - start_time)).count());
 
 	delete [] ai;
 
