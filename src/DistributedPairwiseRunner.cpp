@@ -322,8 +322,8 @@ DistributedPairwiseRunner::run_batch
 		}
 		
 		// allocate StringSet
-		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsh;
-		seqan::StringSet<seqan::Gaps<seqan::Dna5String>> seqsv;
+		seqan::StringSet<seqan::Dna5String> seqsh;
+		seqan::StringSet<seqan::Dna5String> seqsv;
 		resize(seqsh, algn_cnts[numThreads], seqan::Exact{});
 		resize(seqsv, algn_cnts[numThreads], seqan::Exact{});
 
@@ -355,8 +355,8 @@ DistributedPairwiseRunner::run_batch
 				if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
 
-					seqsh[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->col_seq(l_col_idx)));
-					seqsv[algn_idx] = seqan::Gaps<seqan::Dna5String>(*(dfd->row_seq(l_row_idx)));
+					seqsh[algn_idx] = seqan::Dna5String(*(dfd->col_seq(l_col_idx)));
+					seqsv[algn_idx] = seqan::Dna5String(*(dfd->row_seq(l_row_idx)));
 
 					lids[algn_idx] = i;
 					++algn_idx;

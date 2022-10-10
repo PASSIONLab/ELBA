@@ -4,7 +4,6 @@
 #include "../../LoganGPU/RunLoganAligner.hpp" 	// Call to aligner
 
 uint minOverlapLenL = 5000;
-uint maxOverhangL = 25;
 
 char 
 complementbase(char n)
@@ -39,8 +38,8 @@ reversecomplement(const std::string& seq) {
 	return cpyseq;
 }
 
-void GPULoganAligner::PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioScoreOveralap,
-        int& dir, int& dirT, int& sfx, int& sfxT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqPerProc);
+void GPULoganAligner::PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioScoreOverlap,
+        int& dir, int& dirT, int& sfx, int& sfxT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
 {
 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the seqVs (vertical/horizonral direction)
 	// these four return seqan:Tposition objects
@@ -83,7 +82,7 @@ void GPULoganAligner::PostAlignDecision(const LoganAlignmentInfo& ai, bool& pass
 	}
 	else if (!noAlign)
 	{
-	    passed = ((float)ai.xscore >= myThr && overlap >= minOverlapLen);
+	    passed = ((float)ai.xscore >= myThr && overlap >= minOverlapLenL);
 
 	    if (passed)
 	    {
@@ -418,7 +417,7 @@ GPULoganAligner::apply_batch
 			// GGGG: ContainedSeqPerBatch global indexes of contained sequences
 
 			elba::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->dir, cks->dirT, cks->sfx, cks->sfxT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
 
 			if (passed)
 			{
