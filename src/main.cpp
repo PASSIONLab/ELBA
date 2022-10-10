@@ -47,7 +47,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 using namespace combblas;
 
 /*! Type definitions */
-typedef dibella::KmerIntersect<PosInRead, dibella::CommonKmers> KmerIntersectSR_t;
+typedef elba::KmerIntersect<PosInRead, elba::CommonKmers> KmerIntersectSR_t;
 
 /*! Function signatures */
 int parse_args(int argc, char **argv);
@@ -221,7 +221,7 @@ int main(int argc, char **argv)
 
   tp->times["StartMain:GenerateA()"] = std::chrono::system_clock::now();
   PSpMat<PosInRead>::MPI_DCCols A =
-      dibella::KmerOps::GenerateA(
+      elba::KmerOps::GenerateA(
           seq_count, dfd, klength, kstride,
           alph, parops, tp);
 
@@ -246,7 +246,7 @@ int main(int argc, char **argv)
   tp->times["StartMain:AAt()"] = std::chrono::system_clock::now();
 
   // @GGGG-TODO: check vector version (new one stack error)
-  PSpMat<dibella::CommonKmers>::MPI_DCCols B = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, dibella::CommonKmers, PSpMat<dibella::CommonKmers>::DCCols>(A, At);
+  PSpMat<elba::CommonKmers>::MPI_DCCols B = Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, elba::CommonKmers, PSpMat<elba::CommonKmers>::DCCols>(A, At);
 
   tp->times["EndMain:AAt()"] = std::chrono::system_clock::now();
 
@@ -296,7 +296,7 @@ int main(int argc, char **argv)
   // Output intermediate matrix post-alignment
   std::string candidatem = myoutput;
   candidatem += ".candidatematrix.mm";
-  B.ParallelWriteMM(candidatem, true, dibella::CkOutputMMHandler());
+  B.ParallelWriteMM(candidatem, true, elba::CkOutputMMHandler());
 
   // @GGGG: this should be input parameter
   bool LoganAlign = true;  
@@ -345,7 +345,7 @@ int main(int argc, char **argv)
   // Output intermediate matrix post-alignment
   std::string postalignment = myoutput;
   postalignment += ".resultmatrix.mm";
-  B.ParallelWriteMM(postalignment, true, dibella::CkOutputHandler());
+  B.ParallelWriteMM(postalignment, true, elba::CkOutputHandler());
 
   // @GGGG: this is useless (double check and remove)
   // #ifdef TRIU
@@ -365,7 +365,7 @@ int main(int argc, char **argv)
 
   SpParMat<int64_t, ReadOverlap, SpDCCols<int64_t, ReadOverlap>> R = B;
 
-  //B.ParallelWriteMM("common_kmers.mm", true, dibella::CkOutputHandler());
+  //B.ParallelWriteMM("common_kmers.mm", true, elba::CkOutputHandler());
   //R.ParallelWriteMM("read_overlaps.mm", true, ReadOverlapHandler());
 
   tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
@@ -384,7 +384,7 @@ int main(int argc, char **argv)
   stringm += ".stringmatrix.mm";
   
   double start = MPI_Wtime();
-  B.ParallelWriteMM(stringm, true, dibella::CkOutputMMHandler());
+  B.ParallelWriteMM(stringm, true, elba::CkOutputMMHandler());
   double ppend = MPI_Wtime() - start;
 
   //////////////////////////////////////////////////////////////////////////////////////
@@ -424,7 +424,7 @@ int main(int argc, char **argv)
   // matrix market extension
   // myoutput += ".mm";
   // double start = MPI_Wtime();
-  // B.ParallelWriteMM(myoutput, true, dibella::CkOutputMMHandler());
+  // B.ParallelWriteMM(myoutput, true, elba::CkOutputMMHandler());
   // double ppend = MPI_Wtime() - start;
 
 	tu.print_str("ParallelWriteMM " + std::to_string(ppend)+ "\n");

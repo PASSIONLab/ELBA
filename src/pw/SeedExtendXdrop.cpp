@@ -134,7 +134,7 @@ void SeedExtendXdrop::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
     seqan::Dna5String *seqH, seqan::Dna5String *seqV, ushort k,
-    dibella::CommonKmers &cks, std::stringstream& ss)
+    elba::CommonKmers &cks, std::stringstream& ss)
 {
   AlignmentInfo ai;
 
@@ -231,7 +231,7 @@ SeedExtendXdrop::apply_batch
 	uint64_t *lids,
 	uint64_t col_offset,
 	uint64_t row_offset,
-   	PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
+   	PSpMat<elba::CommonKmers>::ref_tuples *mattuples,
    	std::ofstream &lfs,
 	const bool noAlign,
 	ushort k,
@@ -278,7 +278,7 @@ SeedExtendXdrop::apply_batch
 	#pragma omp parallel for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
-			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
+			elba::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 
 			// In KmerIntersectSR.hpp we have (where res == cks):
 			// 	res.first.first 	= arg1.first.first;		// Kmer 1 on argA
@@ -437,7 +437,7 @@ SeedExtendXdrop::apply_batch
 			bool passed = false;
 			int tid = omp_get_thread_num();
 
-			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
+			elba::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 
 			// GGGG: ai stores global idx to to store in ContainedSeqPerBatch
 			// GGGG: in PostAlignDecision() we can mark as contained sequences as removable in ContainedSeqPerBatch and their local contained edges
