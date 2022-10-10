@@ -174,7 +174,7 @@ typedef pair<Kmer::MERARR, KmerCountType>  KmerValue;
 // GGGG: might need to modify this 
 typedef VectorMap<Kmer::MERARR, KmerCountType, std::hash<Kmer::MERARR>, std::less<Kmer::MERARR>, std::equal_to<Kmer::MERARR>> KmerCountsType;
 
-// namespace dibella {
+// namespace elba {
 //   struct Kmer {
 //   private:
 //     uint64_t kmer_code;

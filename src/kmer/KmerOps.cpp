@@ -57,7 +57,7 @@ using namespace std;
 // WriteReadNameMap                        //
 ///////////////////////////////////////////// 
 
-namespace dibella
+namespace elba
 {
 
 /*

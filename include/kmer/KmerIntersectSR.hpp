@@ -19,7 +19,7 @@ bool operator>(const std::pair<int, int>& l, const int& c) {
 	else return false;
 }
 
-namespace dibella {
+namespace elba {
   template<typename IN, typename OUT>
   struct KmerIntersect {
     static OUT id() {

@@ -9,7 +9,7 @@
 // for benchmarking
 #define EXTRA
 
-namespace dibella {
+namespace elba {
   struct CommonKmers {
     /*! The number of common kmers between two sequences.
      * The maximum could be floor((l-k)/s)+1, where

@@ -16,7 +16,7 @@
 #include "Kmer.hpp"
 #include <stdint.h>
 
-namespace dibella {
+namespace elba {
   class KmerOps {
   public:
     // GGGG: PSpMat needs CombBLAS 
