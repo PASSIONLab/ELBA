@@ -10,7 +10,8 @@
 #include "interface.hpp"
 
 template<typename Tx_>
-const Tx_&  min_logan(const Tx_& _Left, const Tx_& Right_)
+const Tx_&  
+__device__ __host__ min_logan(const Tx_& _Left, const Tx_& Right_)
 {   // return smaller of _Left and Right_
     if (_Left < Right_)
         return _Left;
@@ -19,10 +20,12 @@ const Tx_&  min_logan(const Tx_& _Left, const Tx_& Right_)
 }
 
 template<typename Tx_, typename Ty_>
-Tx_  min_logan(const Tx_& _Left, const Ty_& Right_)
+Tx_  
+__device__ __host__ min_logan(const Tx_& _Left, const Ty_& Right_)
 {   // return smaller of _Left and Right_
     return (Right_ < _Left ? Right_ : _Left);
 }
+
 template<typename Ty_>
 Ty_ const &
 __device__ __host__ max_logan(const Ty_& _Left, const Ty_& Right_)

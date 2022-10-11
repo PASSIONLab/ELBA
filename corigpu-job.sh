@@ -4,7 +4,7 @@
 #SBATCH -N 1
 #SBATCH -q regular
 #SBATCH -t 10:00
-#SBATCH --ntasks-per-node=16
+#SBATCH --ntasks-per-node=1
 #SBATCH -c 2
 #SBATCH --gpus-per-node=8
 
@@ -12,4 +12,4 @@
 
 export OMP_NUM_THREAD=1
 export SLURM_CPU_BIND="cores"
-srun -n 16 /global/cscratch1/sd/gguidi/ELBA-GPU/ELBA/build_release/./dibella -i /global/cscratch1/sd/gguidi/ELBA-GPU/ELBA/ecoli_hifi_29x.fasta -k 31 --idxmap ecoli.hifi.idxmap -c 8605 --alph dna --af ecoli.hifi.result -s 1 -O 100000 --afreq 100000 --xa 15
+srun -n 1 cuda-memcheck /global/cscratch1/sd/gguidi/ELBA-GPU/ELBA/build_release/./elba -i /global/cscratch1/sd/gguidi/ELBA-GPU/ELBA/sub_sample_ecoli_hifi.fasta -k 31 --idxmap ecoli.hifi.idxmap -c 1000 --alph dna --af ecoli.hifi.result -s 1 -O 100000 --afreq 100000 --xa 15

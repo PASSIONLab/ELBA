@@ -403,8 +403,6 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		cout<<"Error: Logan does not support gap opening penalty >= 0\n";
 		exit(-1);
 	}
-	//start measuring time
-	auto start_t1 = NOW;
 	
 	#ifdef ADAPTABLE
     n_threads = (XDrop/WARP_DIM + 1)* WARP_DIM;
@@ -429,7 +427,8 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	vector<LSeed> seeds_l;
 	seeds_r.reserve(numAlignments);
 
-	for (int i=0; i<seeds.size(); i++){
+	for (uint i = 0; i < seeds.size(); i++) 
+	{
 		seeds_r.push_back(seeds[i]);	
 	}
 
@@ -472,17 +471,25 @@ void extendSeedL(std::vector<LSeed> &seeds,
 
 	std::vector<double> pergpustime(ngpus);
 
+	// GGGG: debuggin seg fault
+	std::cout << "init" << std::endl;
+
 	#pragma omp parallel for
-	for(int i = 0; i < ngpus; i++){
+	for(int i = 0; i < ngpus; i++)
+	{
 		int dim = nSequences;
+
 		if(i==ngpus-1)
 			dim = nSequencesLast;
+
 		//compute offsets and shared memory per block
 		int MYTHREAD = omp_get_thread_num();
 		auto start_setup_ithread = NOW;
 		ant_len_left[i]=0;
 		ant_len_right[i]=0;
-		for(int j = 0; j < dim; j++){
+
+		for(int j = 0; j < dim; j++)
+		{
 
 			offsetLeftQ[i].push_back(getBeginPositionV(seeds[j+i*nSequences]));
 			offsetLeftT[i].push_back(getBeginPositionH(seeds[j+i*nSequences]));
@@ -515,7 +522,8 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		memcpy(suffQ[i], query[0+i*nSequences].c_str()+getEndPositionV(seeds[0+i*nSequences]), offsetRightQ[i][0]);
 		reverse_copy(target[0+i*nSequences].c_str()+getEndPositionH(seeds[0+i*nSequences]),target[0+i*nSequences].c_str()+getEndPositionH(seeds[0+i*nSequences])+offsetRightT[i][0],suffT[i]);
 		
-		for(int j = 1; j<dim; j++){
+		for(int j = 1; j<dim; j++)
+		{
 			char *seqptr = prefQ[i] + offsetLeftQ[i][j-1];
 			reverse_copy(query[j+i*nSequences].c_str(),query[j+i*nSequences].c_str()+(offsetLeftQ[i][j]-offsetLeftQ[i][j-1]),seqptr);
 			
@@ -527,10 +535,14 @@ void extendSeedL(std::vector<LSeed> &seeds,
 			reverse_copy(target[j+i*nSequences].c_str()+getEndPositionH(seeds[j+i*nSequences]),target[j+i*nSequences].c_str()+getEndPositionH(seeds[j+i*nSequences])+(offsetRightT[i][j]-offsetRightT[i][j-1]),seqptr);
 
 		}
+
 		auto end_setup_ithread = NOW;
 		duration<double> setup_ithread = end_setup_ithread - start_setup_ithread;
 		pergpustime[MYTHREAD] = setup_ithread.count();
 	}
+
+	// GGGG: debuggin seg fault
+	std::cout << "first for loop" << std::endl;
 
 	#pragma omp parallel for
 	for(int i = 0; i < ngpus; i++)
@@ -577,6 +589,9 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		cudaErrchk(cudaMemcpyAsync(suffT_d[i], suffT[i], totalLengthTSuff[i]*sizeof(char), cudaMemcpyHostToDevice, stream_r[i]));
 		//OK
 	}
+
+	// GGGG: debuggin seg fault
+	std::cout << "second for loop" << std::endl;
 	
 	auto start_c = NOW;
 	
@@ -594,6 +609,9 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		extendSeedLGappedXDropOneDirectionGlobal <<<dim, n_threads, n_threads*sizeof(short), stream_r[i]>>> (seed_d_r[i], suffQ_d[i], suffT_d[i], EXTEND_RIGHTL, XDrop, scoreRight_d[i], offsetRightQ_d[i], offsetRightT_d[i], ant_len_right[i], ant_r[i], n_threads);
 	}
 
+	// GGGG: debuggin seg fault
+	std::cout << "third for loop" << std::endl;
+
 	#pragma omp parallel for
 	for(int i = 0; i < ngpus; i++)
 	{
@@ -608,25 +626,28 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	
 	}
 
-	#pragma omp parallel for
+	// GGGG: debuggin seg fault
+	std::cout << "fouth for loop" << std::endl;
+
+#pragma omp parallel for
 	for(int i = 0; i < ngpus; i++)
 	{
 		cudaSetDevice(i);
 		cudaDeviceSynchronize();
-		auto end_c_ithread_3 = NOW;
 	}
+
+	// GGGG: debuggin seg fault
+	std::cout << "fifth for loop" << std::endl;
 
 	auto end_c = NOW;
 	duration<double> compute = end_c-start_c;
 	std::cout << "GPU only time:\t\t" << compute.count() << std::endl;
 
-
 	cudaErrchk(cudaPeekAtLastError());
 
-	auto start_f = NOW;
-
 	#pragma omp parallel for
-	for(int i = 0; i < ngpus; i++){
+	for(int i = 0; i < ngpus; i++)
+	{
 		cudaSetDevice(i);
 
 		cudaStreamDestroy(stream_l[i]);
@@ -651,13 +672,15 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		cudaErrchk(cudaFree(ant_r[i]));
 
 	}
-	auto end_f = NOW;
 	
-	for(int i = 0; i < numAlignments; i++){
+	// GGGG: debuggin seg fault
+	std::cout << "sixth for loop" << std::endl;
+	
+	for(int i = 0; i < numAlignments; i++)
+	{
 		res[i] = scoreLeft[i]+scoreRight[i]+kmer_length;
 		setEndPositionH(seeds[i], getEndPositionH(seeds_r[i]));    
 		setEndPositionV(seeds[i], getEndPositionV(seeds_r[i])); 
-		//cout << res[i] <<endl;
 	}
 	
 	free(scoreLeft);
