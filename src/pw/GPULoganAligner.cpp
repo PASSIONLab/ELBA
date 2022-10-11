@@ -335,7 +335,7 @@ GPULoganAligner::apply_batch
 		if(!noAlign) 
 		{ 
 			// @GGGG-TODO: Check the parameter
-			RunLoganAlign(seqHs, seqVs, seeds, xscores, xdrop, seed_length, myrank);
+			RunLoganAlign(seqHs, seqVs, seeds, xscores, xdrop, seed_length);
 		}
 
 		end_time = std::chrono::system_clock::now();

@@ -13,9 +13,7 @@
 #define GAP_OPEN -1
 #define UNDEF -32767
 #define NOW std::chrono::high_resolution_clock::now()
-
-using namespace std;
-using namespace chrono;
+#define MAX_GPUS 8
 
 using namespace std;
 using namespace chrono;
