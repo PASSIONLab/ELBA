@@ -4,8 +4,6 @@
 #include "logan.hpp"
 #include "interface.hpp"
 
-#define ONERANKPERNODE
-
 using namespace std;
 
 void 
@@ -53,7 +51,7 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
 			bLSeedSet.push_back(lseed); // segfault origin might be around here 
 		}
 
-		extendSeedL(bLSeedSet, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount, omp_get_num_threads());
+		extendSeedL(bLSeedSet, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount, GPU_THREADS);
 
 		for(int j = 0; j < numAlignmentsLocal; j++)
 		{

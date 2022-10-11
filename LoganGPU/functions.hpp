@@ -3,17 +3,16 @@
 // Author: A. Zeni, G. Guidi
 //==================================================================
 
-#define N_THREADS 128 
 #define MIN -32768
 #define BYTES_INT 4
-#define MAX_SIZE_ANTIDIAG 8000
+#define MAX_GPUS 8
 #define MATCH     1
 #define MISMATCH -1
 #define GAP_EXT  -1
 #define GAP_OPEN -1
 #define UNDEF -32767
+#define WARP_DIM 32 
 #define NOW std::chrono::high_resolution_clock::now()
-#define MAX_GPUS 8
 
 using namespace std;
 using namespace chrono;
@@ -35,8 +34,9 @@ enum ExtensionDirectionL
 	EXTEND_BOTHL  = 3
 };
 
-__inline__ __device__ void warpReduce(volatile short *input, int myTId){
-		input[myTId] = (input[myTId] > input[myTId + 32]) ? input[myTId] : input[myTId + 32]; 
+__inline__ __device__ void warpReduce(volatile short *input, int myTId)
+{
+		input[myTId] = (input[myTId] > input[myTId + 32]) ? input[myTId] : input[myTId + 32]; // invalid __global__ read of size 2
 		input[myTId] = (input[myTId] > input[myTId + 16]) ? input[myTId] : input[myTId + 16];
 		input[myTId] = (input[myTId] > input[myTId + 8]) ? input[myTId] : input[myTId + 8]; 
 		input[myTId] = (input[myTId] > input[myTId + 4]) ? input[myTId] : input[myTId + 4];
@@ -44,17 +44,24 @@ __inline__ __device__ void warpReduce(volatile short *input, int myTId){
 		input[myTId] = (input[myTId] > input[myTId + 1]) ? input[myTId] : input[myTId + 1];
 }
 
-__inline__ __device__ short reduce_max(short *input, int dim, int n_threads){
+__inline__ __device__ short reduce_max(short *input, int dim, int n_threads)
+{
 	unsigned int myTId = threadIdx.x;   
-	if(dim>32){
-		for(int i = n_threads/2; i >32; i>>=1){
-			if(myTId < i){
-						input[myTId] = (input[myTId] > input[myTId + i]) ? input[myTId] : input[myTId + i];
-			}__syncthreads();
-		} //__syncthreads();
+	if(dim > 32)
+	{
+		for(int i = n_threads/2; i > 32; i >>= 1)
+		{
+			if(myTId < i)
+			{
+				input[myTId] = (input[myTId] > input[myTId + i]) ? input[myTId] : input[myTId + i];
+			}
+			__syncthreads();
+		}
 	}
-	if(myTId<32)
-		warpReduce(input, myTId);
+
+	if(myTId < 32)
+		warpReduce(input, myTId); // invalid __global__ read of size 2
+
 	__syncthreads();
 	return input[0];
 }
@@ -113,7 +120,7 @@ __inline__ __device__ void computeAntidiag(short *antiDiag1,
 									){
 	int tid = threadIdx.x;
 	
-	for(int i = 0; i < maxCol; i+=n_threads){
+	for(int i = 0; i < maxCol; i += n_threads){
 
 		int col = tid + minCol + i;
 		int queryPos, dbPos;
@@ -263,18 +270,12 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 	int upperDiag = 0;
 
 	extern __shared__ short temp_alloc[];
-	short *temp= &temp_alloc[0];
+	short *temp = &temp_alloc[0];
 
 	while (minCol < maxCol)
 	{	
-
-		
 		++antiDiagNo;
 
-		//antidiagswap
-		//antiDiag2 -> antiDiag1
-		//antiDiag3 -> antiDiag2
-		//antiDiag1 -> antiDiag3
 		short *t = antiDiag1;
 		antiDiag1 = antiDiag2;
 		antiDiag2 = antiDiag3;
@@ -290,19 +291,20 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 		initAntiDiag3(antiDiag3, a3size, offset3, maxCol, antiDiagNo, best - scoreDropOff, GAP_EXT, UNDEF);
 		
 		computeAntidiag(antiDiag1, antiDiag2, antiDiag3, querySeg, databaseSeg, best, scoreDropOff, cols, rows, minCol, maxCol, antiDiagNo, offset1, offset2, direction, n_threads);	 	
-		//roofline analysis
 		__syncthreads();	
 	
 		int tmp, antiDiagBest = UNDEF;	
-		for(int i=0; i<a3size; i+=n_threads){
+		for(int i = 0; i < a3size; i += n_threads)
+		{
 			int size = a3size-i;
 			
-			if(myTId<n_threads){
+			if(myTId < n_threads)
+			{
 				temp[myTId] = (myTId<size) ? antiDiag3[myTId+i]:UNDEF;				
 			}
 			__syncthreads();
 			
-			tmp = reduce_max(temp,size, n_threads);
+			tmp = reduce_max(temp, size, n_threads);
 			antiDiagBest = (tmp>antiDiagBest) ? tmp:antiDiagBest;
 
 		}
@@ -330,7 +332,6 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 		minCol = (minCol > (antiDiagNo + 2 - rows)) ? minCol : (antiDiagNo + 2 - rows);
 		// end of querySeg reached?
 		maxCol = (maxCol < cols) ? maxCol : cols;
-		//}
 	}
 
 	int longestExtensionCol = a3size + offset3 - 2;
@@ -357,17 +358,16 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 		}
 	}
 
-	if (longestExtensionScore == UNDEF){
-
+	if (longestExtensionScore == UNDEF)
+	{
 		// general case
-		for (int i = 0; i < a1size; ++i){
-
-			if (antiDiag1[i] > longestExtensionScore){
-
+		for (int i = 0; i < a1size; ++i)
+		{
+			if (antiDiag1[i] > longestExtensionScore)
+			{
 				longestExtensionScore = antiDiag1[i];
 				longestExtensionCol = i + offset1;
 				longestExtensionRow = antiDiagNo - 2 - longestExtensionCol;
-			
 			}
 		}
 	}
@@ -393,14 +393,15 @@ void extendSeedL(std::vector<LSeed> &seeds,
 			)
 {
 
-	if(scoreGapExtend(penalties[0]) >= 0){
-
+	if(scoreGapExtend(penalties[0]) >= 0)
+	{
 		cout<<"Error: Logan does not support gap extension penalty >= 0\n";
 		exit(-1);
 	}
-	if(scoreGapOpen(penalties[0]) >= 0){
 
-		cout<<"Error: Logan does not support gap opening penalty >= 0\n";
+	if(scoreGapOpen(penalties[0]) >= 0)
+	{
+		cout << "Error: Logan does not support gap opening penalty >= 0\n";
 		exit(-1);
 	}
 	
@@ -471,15 +472,12 @@ void extendSeedL(std::vector<LSeed> &seeds,
 
 	std::vector<double> pergpustime(ngpus);
 
-	// GGGG: debuggin seg fault
-	std::cout << "init" << std::endl;
-
 	#pragma omp parallel for
 	for(int i = 0; i < ngpus; i++)
 	{
 		int dim = nSequences;
 
-		if(i==ngpus-1)
+		if(i == ngpus-1)
 			dim = nSequencesLast;
 
 		//compute offsets and shared memory per block
@@ -541,9 +539,6 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		pergpustime[MYTHREAD] = setup_ithread.count();
 	}
 
-	// GGGG: debuggin seg fault
-	std::cout << "first for loop" << std::endl;
-
 	#pragma omp parallel for
 	for(int i = 0; i < ngpus; i++)
 	{
@@ -589,13 +584,11 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		cudaErrchk(cudaMemcpyAsync(suffT_d[i], suffT[i], totalLengthTSuff[i]*sizeof(char), cudaMemcpyHostToDevice, stream_r[i]));
 		//OK
 	}
-
-	// GGGG: debuggin seg fault
-	std::cout << "second for loop" << std::endl;
 	
 	auto start_c = NOW;
 	
-	//execute kernels
+	// GGGG: Program hit CUDA_ERROR_INVALID_CONTEXT (error 201) due to "invalid device context" on CUDA API call to cuCtxGetDevice.
+	// This is the main kernel execution.
 	#pragma omp parallel for
 	for(int i = 0; i<ngpus;i++)
 	{
@@ -609,16 +602,15 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		extendSeedLGappedXDropOneDirectionGlobal <<<dim, n_threads, n_threads*sizeof(short), stream_r[i]>>> (seed_d_r[i], suffQ_d[i], suffT_d[i], EXTEND_RIGHTL, XDrop, scoreRight_d[i], offsetRightQ_d[i], offsetRightT_d[i], ant_len_right[i], ant_r[i], n_threads);
 	}
 
-	// GGGG: debuggin seg fault
-	std::cout << "third for loop" << std::endl;
-
 	#pragma omp parallel for
 	for(int i = 0; i < ngpus; i++)
 	{
 		cudaSetDevice(i);
 		int dim = nSequences;
+
 		if(i==ngpus-1)
 			dim = nSequencesLast;
+
 		cudaErrchk(cudaMemcpyAsync(scoreLeft+i*nSequences, scoreLeft_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(&seeds[0]+i*nSequences, seed_d_l[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(scoreRight+i*nSequences, scoreRight_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_r[i]));
@@ -626,18 +618,12 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	
 	}
 
-	// GGGG: debuggin seg fault
-	std::cout << "fouth for loop" << std::endl;
-
 #pragma omp parallel for
 	for(int i = 0; i < ngpus; i++)
 	{
 		cudaSetDevice(i);
 		cudaDeviceSynchronize();
 	}
-
-	// GGGG: debuggin seg fault
-	std::cout << "fifth for loop" << std::endl;
 
 	auto end_c = NOW;
 	duration<double> compute = end_c-start_c;
@@ -673,9 +659,6 @@ void extendSeedL(std::vector<LSeed> &seeds,
 
 	}
 	
-	// GGGG: debuggin seg fault
-	std::cout << "sixth for loop" << std::endl;
-	
 	for(int i = 0; i < numAlignments; i++)
 	{
 		res[i] = scoreLeft[i]+scoreRight[i]+kmer_length;
@@ -685,5 +668,4 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	
 	free(scoreLeft);
 	free(scoreRight);
-		
 }
