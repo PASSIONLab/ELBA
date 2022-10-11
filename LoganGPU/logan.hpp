@@ -16,11 +16,6 @@
 
 #include"seed.hpp"
 #include"score.hpp"
-
-#ifdef ADAPTABLE
 #include"functions.hpp"
-#else
-#include"functions_static.hpp"
-#endif
 
 #endif

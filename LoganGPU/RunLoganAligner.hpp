@@ -9,9 +9,6 @@
 #include <string>
 #include <vector>
 
-//#include "logan.hpp"
-//#include "interface.hpp"
-
 #define BATCH_SIZE 100000
 
 using namespace std;
