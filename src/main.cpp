@@ -195,7 +195,7 @@ int main(int argc, char **argv)
 
     if(myrank == 0)
     {
-        std::cout << "Process Grid (p x p x t): " << sqrt(nprocs) << " x " << sqrt(nprocs) << " x " << nthreads << std::endl;
+        std::cout << "\nProcess Grid (p x p x t): " << sqrt(nprocs) << " x " << sqrt(nprocs) << " x " << nthreads << std::endl;
     }
 
   proc_log_file = job_name + "_rank_" + std::to_string(parops->world_proc_rank) + "_log.txt";
@@ -210,9 +210,8 @@ int main(int argc, char **argv)
   std::time_t start_prog_time = std::chrono::system_clock::to_time_t(
   tp->times["StartMain"]);
 
-  print_str = "\nINFO: Program started on ";
+  print_str = "\nINFO: ELBA started on ";
   print_str.append(std::ctime(&start_prog_time));
-  print_str.append("\nINFO: Job ID ").append(job_name).append("\n");
   pretty_print_config(print_str);
   tu.print_str(print_str);
 
@@ -262,16 +261,23 @@ int main(int argc, char **argv)
 
   tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
 
+#ifdef VERBOSE
   if(is_print_rank)
   {
     std::cout << "Transitive Reduction is done and okay!" << std::endl;
   }
+#endif
 
   //////////////////////////////////////////////////////////////////////////////////////
   // CONTIG EXTRACTION                                                                //
   //////////////////////////////////////////////////////////////////////////////////////
 
   tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
+
+  if(is_print_rank)
+  {
+    std::cout << "\nContig Generation and Local Assembly started: " << std::endl;
+  }
 
   std::vector<std::string> myContigSet;
   bool contigging = true;
@@ -331,7 +337,7 @@ int main(int argc, char **argv)
 
   std::time_t end_prog_time = std::chrono::system_clock::to_time_t(tp->times["EndMain"]);
 
-  print_str = "INFO: Program ended on ";
+  print_str = "INFO: ELBA completed on ";
   print_str.append(std::ctime(&end_prog_time));
   tu.print_str(print_str);
   tu.print_str(tp->to_string());
@@ -350,8 +356,8 @@ int main(int argc, char **argv)
 
 int parse_args(int argc, char **argv)
 {
-  cxxopts::Options options("diBELLA",
-                           "Distributed Long Read to Long Read Alignment");
+  cxxopts::Options options("ELBA",
+                           "Distributed De Novo Long Read Assembler");
 
   options.add_options()
     (CMD_OPTION_INPUT, CMD_OPTION_DESCRIPTION_INPUT,
@@ -402,7 +408,7 @@ int parse_args(int argc, char **argv)
     input_file = result[CMD_OPTION_INPUT].as<std::string>();
   } else {
     if (is_world_rank0) {
-      std::cout << "ERROR: Input file not specified" << std::endl;
+      std::cout << "ERROR: input file not specified!" << std::endl;
     }
     return -1;
   }
@@ -411,7 +417,7 @@ int parse_args(int argc, char **argv)
         idx_map_file = result[CMD_OPTION_IDX_MAP].as<std::string>();
     } else {
         if (is_world_rank0) {
-            std::cout << "ERROR: Index map file not specified" << std::endl;
+            std::cout << "ERROR: index map file not specified!" << std::endl;
         }
         return -1;
     }
@@ -421,7 +427,7 @@ int parse_args(int argc, char **argv)
     seq_count = result[CMD_OPTION_INPUT_SEQ_COUNT].as<int>();
   } else {
     if (is_world_rank0) {
-      std::cout << "ERROR: Input sequence count not specified" << std::endl;
+      std::cout << "ERROR: input sequence count not specified!" << std::endl;
     }
     return -1;
   }
@@ -466,7 +472,7 @@ int parse_args(int argc, char **argv)
     klength = result[CMD_OPTION_KMER_LENGTH].as<int>();
   } else {
     if (is_world_rank0) {
-      std::cout << "ERROR: Kmer length not specified" << std::endl;
+      std::cout << "ERROR: k-mer length not specified!" << std::endl;
     }
     return -1;
   }
@@ -512,7 +518,7 @@ int parse_args(int argc, char **argv)
       alph_t = Alphabet::DNA;
     } else {
       if (is_world_rank0) {
-        std::cout << "ERROR: Unsupported alphabet type " << tmp << std::endl;
+        std::cout << "ERROR: unsupported alphabet type!" << tmp << std::endl;
       }
     }
   } else {
@@ -588,7 +594,6 @@ void pretty_print_config(std::string &append_to) {
   }
 
   std::string prefix = "  ";
-  append_to.append("Parameters:\n");
 
   for (ushort i = 0; i < params.size(); ++i)
   {
@@ -621,7 +626,7 @@ ParallelFastaParser(const char *input_file, const char *idx_map_file, const std:
     if (dfd->global_count() != seq_count)
     {
         uint64_t final_seq_count = dfd->global_count();
-        print_str = "\nINFO: Modified sequence count\n";
+        print_str = "\nINFO: Updated sequence count\n";
         print_str.append("  Final sequence count: ")
                  .append(std::to_string(final_seq_count))
                  .append(" (")
@@ -642,19 +647,23 @@ void GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd, PSpMat<
     tp->times["StartMain:GenerateA()"] = std::chrono::system_clock::now();
 
     Amat = new PSpMat<PosInRead>::MPI_DCCols(elba::KmerOps::GenerateA(seq_count, dfd, klength, kstride, alph, parops, tp));
+    
+    tu.print_str("\nA: ");
+    Amat->PrintInfo();
 
-    tu.print_str("Matrix A: ");
+#ifdef VERBOSE
     tu.print_str("\nLoad imbalance: " + std::to_string(Amat->LoadImbalance()) + "\n");
+#endif
 
     tp->times["EndMain:GenerateA()"] = std::chrono::system_clock::now();
-
-    Amat->PrintInfo();
 
     ATmat = new PSpMat<PosInRead>::MPI_DCCols(*Amat);
     tp->times["StartMain:At()"] = tp->times["EndMain:GenerateA()"];
     ATmat->Transpose();
-    tu.print_str("Matrix At: ");
+
+    tu.print_str("A^T: ");
     ATmat->PrintInfo();
+
     tp->times["EndMain:At()"] = std::chrono::system_clock::now();
 }
 
@@ -674,14 +683,17 @@ void OverlapDetection(std::shared_ptr<DistributedFastaData> dfd,
 
     tp->times["EndMain:AAt()"] = std::chrono::system_clock::now();
 
+  #ifdef VERBOSE
     // @GGGG-TODO: remove proc_log_stream
     tu.print_str(
-        "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
-        + std::to_string(Bmat->getnnz() - seq_count)
-        + "\nLoad imbalance: " + std::to_string(Bmat->LoadImbalance()) + "\n");
+        "AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
+        + std::to_string(Bmat->getnnz() - seq_count));
+    tu.print_str("\nLoad imbalance: " + std::to_string(Bmat->LoadImbalance()) + "\n");
+  #endif
 
-    tu.print_str("Matrix B, i.e AAt: ");
+    tu.print_str("AA^T: ");
     Bmat->PrintInfo();
+    tu.print_str("\n");
 
     /*! Wait until sequence exchange is complete */
     tp->times["StartMain:DfdWait()"] = std::chrono::system_clock::now();
@@ -716,23 +728,16 @@ void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<elba::C
   PairwiseFunction* pf = nullptr;
   uint64_t local_alignments = 1;
 
-  // Output intermediate matrix post-alignment
-  // std::string candidatem = myoutput;
-  // candidatem += ".candidatematrix.mm";
-  // Bmat->ParallelWriteMM(candidatem, true, elba::CkOutputMMHandler());
-
   // @GGGG: this should be input parameter
   bool LoganAlign = true;  
 
   if(LoganAlign)
   {
-    tu.print_str("GPU-based LOGAN alignment started");
+    tu.print_str("GPU-based LOGAN alignment started:\n");
     
     pf = new GPULoganAligner(scoring_scheme, klength, xdrop, seed_count);	    
     dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
 	  local_alignments = static_cast<GPULoganAligner*>(pf)->nalignments;
-    
-    tu.print_str("GPU-based LOGAN alignment completed");
   }
   else if(xdropAlign)
   {
@@ -756,17 +761,10 @@ void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<elba::C
   // total_alignments should be zero if "noAlign" is true
   if(is_print_rank)
   {
-    std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments << std::endl;
+    std::cout << "#alignment run (L-D-U): " << total_alignments << std::endl;
   }
 
-  // Output intermediate matrix post-alignment
-  // std::string postalignment = myoutput;
-  // postalignment += ".resultmatrix.mm";
-  // Bmat->ParallelWriteMM(postalignment, true, elba::CkOutputHandler());
-
   Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*Bmat);
-
-  // Rmat->ParallelWriteMM("alignment.mtx", true, ReadOverlapGraphHandler());
 
   delete Bmat;
 }

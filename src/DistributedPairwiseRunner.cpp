@@ -262,10 +262,12 @@ DistributedPairwiseRunner::run_batch
 		uint64_t beg = batch_idx * batch_size;
 		uint64_t end = ((batch_idx + 1) * batch_size > local_nnz_count) ? local_nnz_count : ((batch_idx + 1) * batch_size);
 
+	#ifdef VERBOSE
 		tu.print_str("Batch idx " + std::to_string(batch_idx) + "/" +
 					 std::to_string(batch_cnt) + " [" +
 					 std::to_string(beg) + ", " +
 					 std::to_string(end) + ")\n");
+	#endif
 
 		memset(algn_cnts, 0, sizeof(*algn_cnts) * (numThreads + 1));
 
@@ -509,50 +511,28 @@ DistributedPairwiseRunner::run_batch
   	MPI_Reduce(&nalignments, &maxalignments, 1, MPI_UINT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
  	MPI_Reduce(&nalignments, &minalignments, 1, MPI_UINT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
 
-	tu.print_str(
-				 "Total nnzs in the output matrix " +
-				 std::to_string(gmat->getnnz()) +
-				 "\nTotal nnzs in strictly lower (or upper) mat " +
-				 std::to_string((gmat->getnnz()-gmat->getncol())/2) + 
-				 "\n  Total alignments run " + std::to_string(nalignments_tot) +
-				 "\n  Eliminated due to common k-mer threshold " +
-				 std::to_string(nelims_ckthr_tot) + "\n");
+	tu.print_str("#nonzeros in C before pruning: ");
+    tu.print_str(std::to_string(gmat->getnnz()) + "\n");
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	// PRUNE MATRIX FROM SPURIOUS AND CONTAINED ALIGNMENT                               // 
 	//////////////////////////////////////////////////////////////////////////////////////
 
-	tu.print_str("\t* nnz before pruning " + std::to_string(gmat->getnnz()) + "\n");
-
-    //PSpMat<ReadOverlap>::MPI_DCCols* Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*gmat);
-    //Rmat->ParallelWriteMM("pre_alignment_pruning.mtx", true, ReadOverlapGraphHandler());
-    //delete Rmat;
-
-    //gmat->ParallelWriteMM("pre_alignment_pruning.mtx", true, CommonKmersGraphHandler());
-
-	// Prune pairs that do not meet score criteria
+	// Prune entries that do not meet score criteria
 	auto elim_score = [] (elba::CommonKmers &ck) { return ck.passed == false; };
 	gmat->Prune(elim_score); 
 
-    //Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*gmat);
-    //Rmat->ParallelWriteMM("post_alignment_pruning.mtx", true, ReadOverlapGraphHandler());
-    //delete Rmat;
-    //gmat->ParallelWriteMM("post_alignment_pruning.mtx", true, CommonKmersGraphHandler());
-
 	// GGGG: if noAlign == true, we remove only the contained overlaps as they are not useful for transitive reduction (next prune)
-	tu.print_str("\t* nnz after 1st pruning (score) " + std::to_string(gmat->getnnz()) + "\n");
+	tu.print_str("#nonzeros in C after score pruning: " + std::to_string(gmat->getnnz()) + "\n");
 
+#ifdef VERBOSE
     toerase.PrintInfo("toerase");
+#endif 
 
-	// Prune pairs involving contained seqs
+	// Prune entries involving contained sequences
 	gmat->PruneFull(toerase, toerase);
 
-    //Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*gmat);
-    //Rmat->ParallelWriteMM("post_containment_pruning.mtx", true, ReadOverlapGraphHandler());
-    //delete Rmat;
-    //gmat->ParallelWriteMM("post_containment_pruning.mtx", true, CommonKmersGraphHandler());
-
-	tu.print_str("\t* nnz after 2nd pruning (contained) " + std::to_string(gmat->getnnz()) + "\n");
+	tu.print_str("#nonzeros in C after contained sequences pruning: " + std::to_string(gmat->getnnz()) + "\n");
 	
 	delete [] algn_cnts;
 	delete [] mattuples;

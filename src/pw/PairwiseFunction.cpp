@@ -97,6 +97,7 @@ void PairwiseFunction::print_avg_times(std::shared_ptr<ParallelOps> parops, std:
   MPI_Allreduce(MPI_IN_PLACE, &(times_tmp[0]), times_tmp.size(),
                 MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
+#ifdef VERBOSE // Can possibly save communication when !VERBOSE
   if (parops->world_proc_rank == 0 && types_tmp != NULL)
   {
     for (auto &type : *types_tmp)
@@ -114,4 +115,5 @@ void PairwiseFunction::print_avg_times(std::shared_ptr<ParallelOps> parops, std:
 				<< " ms" << std::endl;
     }
   }
+#endif
 }

@@ -1486,10 +1486,12 @@ namespace combblas {
             
             if(nconverged==nrows)
             {
+            #ifdef VERBOSE
                 outs.clear();
                 outs << "Iteration: " << iteration << " converged: " << nrows << " stars: 0" << " nonstars: 0" ;
                 outs<< endl;
                 SpParHelper::Print(outs.str());
+            #endif
                 break;
             }
             
@@ -1512,25 +1514,18 @@ namespace combblas {
             IT nonstars = stars.Reduce(std::plus<IT>(), static_cast<IT>(0), [](short isStar){return static_cast<IT>(isStar==NONSTAR);});
             IT nstars = nrows - (nonstars + nconverged);
             
-            
-            
-            
-            
-            
-            
             double t2 = MPI_Wtime();
+
+        #ifdef VERBOSE
             outs.str("");
             outs.clear();
             outs << "Iteration: " << iteration << " converged: " << nconverged << " stars: " << nstars << " nonstars: " << nonstars;
-#ifdef CC_TIMING
-            //outs << " Time:  t_cond_hook: " << t_cond_hook << " t_starcheck1: " << t_starcheck1 << " t_uncond_hook: " << t_uncond_hook << " t_starcheck2: " << t_starcheck2 << " t_shortcut: " << t_shortcut << " t_starcheck: " << t_starcheck;
-#endif
             outs<< endl;
             SpParHelper::Print(outs.str());
+        #endif
             
             iteration++;
-            
-            
+
         }
         
         FullyDistVec<IT, IT> cc(parent.getcommgrid());

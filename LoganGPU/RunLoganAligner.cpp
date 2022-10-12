@@ -17,8 +17,12 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
 	int deviceCount;
 	cudaGetDeviceCount(&deviceCount); // 1 MPI process to many GPUs 
 
-	// one OMP thread per GPU
-    omp_set_num_threads(deviceCount); 
+	std::cout << "LOGAN is running on " << omp_get_num_threads() << " OMP threads before setting it to deviceCount" << std::endl;
+	std::cout << "LOGAN is running on " << deviceCount << " GPUs" << std::endl;
+
+    omp_set_num_threads(deviceCount); // 1 OMP thread per GPU
+	
+	std::cout << "LOGAN is running on " << omp_get_num_threads() << " OMP threads" << std::endl;
 	
 	int AlignmentsToBePerformed = SeedInterfaceSet.size();
 	int numAlignmentsLocal = BATCH_SIZE * deviceCount; 
@@ -52,8 +56,6 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
 		}
 
 		extendSeedL(bLSeedSet, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount, GPU_THREADS);
-		
-		std::cout << "extendSeedL completed in RunLoganAlign.cpp" << std::endl;
 
 		for(int j = 0; j < numAlignmentsLocal; j++)
 		{
@@ -67,7 +69,8 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
         }
 
 		free(res);
-		std::cout << "RunLoganAlign.cpp completed" << std::endl;
+		omp_set_num_threads(omp_get_max_threads()); // back to regular omp_get_num_threads()
+		std::cout << "The rest of the computation is running on " << omp_get_num_threads() << " OMP threads" << std::endl;
 	}
 }
 

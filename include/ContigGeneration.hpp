@@ -133,21 +133,22 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
     float balance = G.LoadImbalance();
     int64_t nnz   = G.getnnz();
 
+#ifdef VERBOSE
     std::ostringstream outs;
     outs << "CreateContig :: string graph has " << nnz << " nonzeros" << std::endl;
     tu.print_str(outs.str());
     outs.str("");
+#endif
 
     DistReadInfo di(G.getcommgrid(), dfd->lfd());
 
     IType NumContigs;
-    FullyDistVec<IType,IType> Read2Contigs;
-    FullyDistVec<IType,IType> ContigSizes;
+    FullyDistVec<IType,IType> Read2Contigs(G.getcommgrid());
+    FullyDistVec<IType,IType> ContigSizes(G.getcommgrid());
 
     tp->times["StartCreateContig:GetRead2Contigs()"] = std::chrono::system_clock::now();
     NumContigs  = GetRead2Contigs(G, Read2Contigs, di, tu);
     tp->times["EndCreateContig:GetRead2Contigs()"] = std::chrono::system_clock::now();
-    tu.print_str("CreateContig :: after GetRead2Contigs\n");
 
     Read2Contigs.ParallelWrite("contig-assignment.txt", true);
 
@@ -177,21 +178,28 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
     LocalRead2Procs = GetLocalRead2Procs(Read2Contigs, AllContigSizesSorted, NumUsedContigs, di, tu);
 
     IType max_contig_size = ContigSizes.Reduce(combblas::maximum<IType>(), static_cast<IType>(0));
+
+#ifdef VERBOSE
     outs << "CreateContig::NumContigs: " << NumUsedContigs << std::endl;
     outs << "CreateContig::MaxContigSize: " << max_contig_size << std::endl;
     tu.print_str(outs.str());
     outs.str("");
+#endif
 
     FullyDistVec<IType,IType> Read2Procs(LocalRead2Procs, G.getcommgrid());
     tp->times["EndCreateContig:GetRead2ProcAssignments()"] = std::chrono::system_clock::now();
-    tu.print_str("CreateContig :: Created distributed assignments vector\n");
 
+#ifdef VERBOSE
+    tu.print_str("CreateContig :: Created distributed assignments vector\n");
+#endif
     std::vector<IType> LocalContigReadIdxs;
 
     tp->times["StartCreateContig:InducedSubgraphs2Procs()"] = std::chrono::system_clock::now();
     SpDCCols<IType,ReadOverlap> ContigChainsDCC = G.InducedSubgraphs2Procs(Read2Procs, LocalContigReadIdxs);
     tp->times["EndCreateContig:InducedSubgraphs2Procs()"] = std::chrono::system_clock::now();
+#ifdef VERBOSE
     tu.print_str("CreateContig :: after InducedSubgraphs2Procs\n");
+#endif
 
     tp->times["StartCreateContig:BuildContigChains()"] = std::chrono::system_clock::now();
     SpCCols<IType,ReadOverlap> ContigChains(ContigChainsDCC);
@@ -202,7 +210,10 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
     tp->times["StartCreateContig:ReadExchange()"] = std::chrono::system_clock::now();
     const char *charbuf = ReadExchange(LocalRead2Procs, charbuf_info, di, tu);
     tp->times["EndCreateContig:ReadExchange()"] = std::chrono::system_clock::now();
+
+#ifdef VERBOSE
     tu.print_str("CreateContig :: after ReadExchange\n");
+#endif    
 
     tp->times["StartCreateContig:LocalAssembly()"] = std::chrono::system_clock::now();
     double duration = MPI_Wtime();
@@ -216,10 +227,11 @@ CreateContig(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, std::sh
 
     if (!di.myrank)
     {
-        std::cout << "LocalAssembly() time = " << maxtime << std::endl;
+        std::cout << "Local Assembly time: " << maxtime << "\n" << std::endl;
     }
-
+#ifdef VERBOSE
     tu.print_str("CreateContig :: after LocalAssembly\n");
+#endif
     delete [] charbuf;
 
     return contigs;
@@ -401,52 +413,77 @@ IType KTipsRemoval(SpParMat<IType,IType,SpDCCols<IType,IType>>& A, const FullyDi
 IType GetRead2Contigs(SpParMat<IType,ReadOverlap,SpDCCols<IType,ReadOverlap>>& G, FullyDistVec<IType,IType>& Read2Contigs, DistReadInfo& di, TraceUtils& tu)
 {
     std::stringstream iss;
-    SpParMat<IType,IType,SpDCCols<IType,IType>> A = G;
-    tu.print_str("GetRead2Contigs :: Created IType copy of string graph for vertex degree computations\n");
+    SpParMat<IType,IType,SpDCCols<IType,IType>> A(G.getcommgrid());
+    A = G;
 
-    SpParMat<IType,bool,SpDCCols<IType,bool>> D2;
-    FullyDistVec<IType,IType> Branches;
+    SpParMat<IType,bool,SpDCCols<IType,bool>>  D2(A.getcommgrid());
+    FullyDistVec<IType,IType> Branches(A.getcommgrid());
 
     FullyDistVec<IType,IType> degs2(A.getcommgrid());
 
+#ifdef VERBOSE
     tu.print_str("GetRead2Contigs :: Calculated vertex degrees\n");
+#endif
 
     IType ktip_edges_removed;
     do
     {
-        SpParMat<IType,bool,SpDCCols<IType,bool>> D1 = A;
+        SpParMat<IType,bool,SpDCCols<IType,bool>> D1(A.getcommgrid());
+        D1 = A;
+
         FullyDistVec<IType,IType> degs1(A.getcommgrid());
         D1.Reduce(degs1, Row, std::plus<IType>(), static_cast<IType>(0));
         ktip_edges_removed = KTipsRemoval(A, degs1, 1, tu);
+
+    #ifdef VERBOSE
         std::ostringstream oss;
         oss << "GetRead2Contigs :: Found " << ktip_edges_removed  << " k-tip edges\n";
         tu.print_str(oss.str());
+    #endif
+
     } while (ktip_edges_removed > 0);
 
+#ifdef VERBOSE
     tu.print_str("GetRead2Contigs :: Removed k-tips\n");
+#endif
 
     IType bridge_vertices_removed = RemoveBridgeVertices(A);
+
+#ifdef VERBOSE
     std::ostringstream oss;
     oss << "GetRead2Contigs :: Removed " << bridge_vertices_removed << " bridge vertices\n";
     tu.print_str(oss.str());
+#endif
 
     D2 = A;
     D2.Reduce(degs2, Row, std::plus<IType>(), static_cast<IType>(0));
+
+#ifdef VERBOSE
     tu.print_str("GetRead2Contigs :: Recalculate vertex degrees after k-tips and bridge vertices removed\n");
+#endif
 
     Branches = degs2.FindInds(bind2nd(std::greater<IType>(), 2));
     IType numbranches = Branches.TotalLength();
+
+#ifdef VERBOSE
     iss << "GetRead2Contigs :: Found " << numbranches << " branching points\n";
     tu.print_str(iss.str());
+#endif
 
     A.PruneFull(Branches, Branches);
+
+#ifdef VERBOSE
     tu.print_str("GetRead2Contigs :: Pruned branching points\n");
+#endif
 
     IType NumContigs;
     Read2Contigs = CC(A, NumContigs);
+
+#ifdef VERBOSE
     iss.str("");
     iss << "GetRead2Contigs :: Found " << NumContigs << " connected components on pruned graph\n";
     tu.print_str(iss.str());
+#endif
 
     return NumContigs;
 }
@@ -517,17 +554,22 @@ std::vector<std::tuple<IType,IType>> GetAllContigSizesSorted(FullyDistVec<IType,
     NumUsedContigs = std::accumulate(recvcounts.begin(), recvcounts.end(), static_cast<IType>(0));
 
     std::ostringstream outs;
-    outs << "GetAllContigSizesSorted :: Found " << NumUsedContigs << " connected components with size >= 2\n";
+    outs << "#connected components with size > 1: " << NumUsedContigs << "\n";
     tu.print_str(outs.str());
 
     std::vector<std::tuple<IType, IType>> result(NumUsedContigs);
     MPI_Allgatherv(sendbuf.data(), recvcounts[di.myrank], MPIType<std::tuple<IType,IType>>(), result.data(), recvcounts.data(), displs.data(), MPIType<std::tuple<IType,IType>>(), di.world);
+    
+#ifdef VERBOSE
     tu.print_str("GetAllContigSizesSorted :: All gathered contig ids and sizes\n");
+#endif
 
     std::sort(result.begin(), result.end(),
               [](std::tuple<IType, IType> a,
                  std::tuple<IType, IType> b) { return (std::get<1>(a) > std::get<1>(b)); });
+#ifdef VERBOSE
     tu.print_str("GetAllContigSizesSorted :: Sorted contig ids by size\n");
+#endif
 
     return result;
 }
@@ -642,12 +684,15 @@ std::vector<IType> GetLocalRead2Procs(FullyDistVec<IType,IType>& Read2Contigs, s
         file.close();
     }
 
+#ifdef VERBOSE
     tu.print_str("GetLocalRead2Procs :: Root process finished multiway partitioning for contig load-balancing\n");
-
+#endif
     MPI_Bcast(AllContig2Procs.data(), NumUsedContigs, MPIType<IType>(), 0, di.world);
     MPI_Bcast(SmallToLargeMap.data(), NumUsedContigs, MPIType<IType>(), 0, di.world);
 
+#ifdef VERBOSE
     tu.print_str("GetLocalRead2Procs :: Broadcast contig-to-processor assignments\n");
+#endif
 
     std::unordered_map<IType,IType> LargeToSmallMap; /* maps all global 'large' contig ids to 'small' ids */
     for (auto itr = SmallToLargeMap.begin(); itr != SmallToLargeMap.end(); ++itr)
@@ -657,8 +702,10 @@ std::vector<IType> GetLocalRead2Procs(FullyDistVec<IType,IType>& Read2Contigs, s
     IType nlocreads = di.numreads[di.myrank];
 
     std::vector<IType> LocalRead2Contigs = ImposeMyReadDistribution(Read2Contigs, di);
-    tu.print_str("GetLocalRead2Procs :: Got reconfigured read-to-processor distribution (local segment)\n");
 
+#ifdef VERBOSE
+    tu.print_str("GetLocalRead2Procs :: Got reconfigured read-to-processor distribution (local segment)\n");
+#endif
     assert((nlocreads == static_cast<IType>(LocalRead2Contigs.size())));
 
     std::vector<IType> LocalRead2Procs(nlocreads, -1);
@@ -667,8 +714,9 @@ std::vector<IType> GetLocalRead2Procs(FullyDistVec<IType,IType>& Read2Contigs, s
        if (LargeToSmallMap.find(*itr) != LargeToSmallMap.end())
            LocalRead2Procs[itr - LocalRead2Contigs.begin()] = AllContig2Procs[LargeToSmallMap[*itr]];
 
+#ifdef VERBOSE
     tu.print_str("GetLocalRead2Procs :: Got local read-to-processor assignments\n");
-
+#endif
     return LocalRead2Procs;
 }
 
@@ -751,7 +799,9 @@ const char * ReadExchange(std::vector<IType>& LocalRead2Procs, std::unordered_ma
     for (int i = 0; i < di.nprocs; ++i)
         std::copy(i_read_sendbuf[i].begin(), i_read_sendbuf[i].end(), read_sendbuf + read_sdispls[i]);
 
+#ifdef VERBOSE
     tu.print_str("ReadExchange :: Filled read id/size send buffers\n");
+#endif
 
     MPI_Alltoall(read_sendcounts.data(), 1, MPI_INT,     read_recvcounts.data(), 1, MPI_INT,     di.world);
     MPI_Alltoall(char_sendcounts.data(), 1, MPI_INT64_T, char_recvcounts.data(), 1, MPI_INT64_T, di.world);
@@ -770,7 +820,9 @@ const char * ReadExchange(std::vector<IType>& LocalRead2Procs, std::unordered_ma
     MPI_Alltoallv(read_sendbuf, read_sendcounts.data(), read_sdispls.data(), MPIType<std::tuple<IType,IType>>(),
                   read_recvbuf, read_recvcounts.data(), read_rdispls.data(), MPIType<std::tuple<IType,IType>>(), di.world);
 
+#ifdef VERBOSE
     tu.print_str("ReadExchange :: All-to-all communicated read id/size information\n");
+#endif
 
     char_send = new char[char_totsend+1]();
     char_recv = new char[char_totrecv+1](); /* allocated charbuf */
@@ -787,10 +839,15 @@ const char * ReadExchange(std::vector<IType>& LocalRead2Procs, std::unordered_ma
         char_send_ptr += len;
     }
 
+#ifdef VERBOSE
     tu.print_str("ReadExchange :: Filled char buffers\n");
+#endif VERBOSE
 
     MPI_Alltoallv_str(char_send, char_sendcounts, char_sdispls, char_recv, char_recvcounts, char_rdispls, di.world);
+
+#ifdef VERBOSE
     tu.print_str("ReadExchange :: Completed custom all-to-all using derived datatypes and Isend/Irecv calls\n");
+#endif
 
     /* TODO: inefficient */
     std::vector<IType> char_read_offsets(read_totrecv, 0);
@@ -800,7 +857,10 @@ const char * ReadExchange(std::vector<IType>& LocalRead2Procs, std::unordered_ma
     for (IType i = 0; i < read_totrecv; ++i)
         charbuf_info[std::get<0>(read_recvbuf[i])] = std::make_tuple(char_read_offsets[i], std::get<1>(read_recvbuf[i]));
 
+#ifdef VERBOSE
     tu.print_str("ReadExchange :: Filled out char buffer information maps for read sequence lookup\n");
+#endif
+
     delete [] char_send;
     delete [] read_sendbuf;
     delete [] read_recvbuf;
@@ -982,10 +1042,10 @@ int MPI_Alltoallv_str(const char *sendbuf, const std::vector<IType>& sendcounts,
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
 
-    if (!myrank)
-    {
-        std::cout << "MPI_Alltoallv_str was called!!" << std::endl;
-    }
+    // if (!myrank)
+    // {
+    //     std::cout << "MPI_Alltoallv_str was called!" << std::endl;
+    // }
 
     MPI_Request *reqs = new MPI_Request[2*nprocs];
 

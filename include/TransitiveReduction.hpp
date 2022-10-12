@@ -19,7 +19,7 @@
 
 /* TR main function */
 // #define BECONSERVATIVE
-#define TIMINGTR
+// #define TIMINGTR
 #ifdef  BECONSERVATIVE
 #define MAXITER 5
 #endif
@@ -190,9 +190,11 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     PSpMat<ReadOverlap>::MPI_DCCols F = R;
     F.Apply(PlusFuzzSRing());
 
-    tu.print_str("Matrix R, i.e. AAt post alignment and before transitive reduction: ");
+    tu.print_str("R: ");
     R.PrintInfo();
     tu.print_str("\n");
+
+    tu.print_str("Transitive Reduction started:\n");
 
     uint cur, prev;
 
@@ -327,17 +329,14 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     }  while (cur != prev);
 #endif
 
+#ifdef PDEBUG
     iss.str("");
     iss << "TR took " << count << " iteration to complete!";
     tu.print_str(iss.str());
 
-#ifdef PDEBUG
     T.PrintInfo();  
     T.ParallelWriteMM("transitive-matrix.mm", true);
 #endif
-
-    /* GGGG: this is not working as expected! there was a problem in the semiring but it's not fully fixed */
-    R.PrintInfo();
 
     double start = MPI_Wtime();
     isLogicalNot = true; /* GGGG: I want the ones to be removed to be set to false, so I use the logical negation */ 
@@ -346,19 +345,17 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     R = EWiseApply<ReadOverlap, SpDCCols<int64_t, ReadOverlap>>(R, T, TransitiveRemoval(), isLogicalNot, static_cast<int>(1));
 
 #ifdef PDEBUG   
-    tu.print_str("Matrix S, i.e. AAt post transitive reduction---BEFORE InvalidSRing Prune: ");
+    tu.print_str("S, i.e. AA^T post transitive reduction but before InvalidSRing Prune: \n");
     R.PrintInfo();
-
-    //R.ParallelWriteMM("string-graph-before-prune.mm", true, ReadOverlapExtraHandler());
 #endif
 
     R.Prune(InvalidSRing(), true);
     timeTR += MPI_Wtime() - start;
 
-    tu.print_str("Matrix S, i.e. AAt post transitive reduction---AFTER InvalidSRing Prune: ");
+    tu.print_str("S: ");
     R.PrintInfo();
 
- #ifdef TIMINGTR
+#ifdef TIMINGTR
     double maxtimePR, maxtimeI, maxtimeT, maxtimeTR;
 
     MPI_Reduce(&timePR, &maxtimePR, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -372,6 +369,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     tiss << "TransitiveReduction:TimeT  (element-wise) = "  <<  maxtimeT << "\n";
     tiss << "TransitiveReduction:TimeTR (element-wise) = "  << maxtimeTR << "\n";
     tu.print_str(tiss.str());
+
  #endif
 
     R.ParallelWriteMM("string.mtx", true, ReadOverlapGraphHandler());

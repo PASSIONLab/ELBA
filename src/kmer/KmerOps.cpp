@@ -40,6 +40,10 @@ extern "C" {
 /* If this flag set, it writes readname to disk through independent I/O */
 #define READNAME
 
+// #ifndef VERBOSE
+// #define VERBOSE
+// #endif
+
 KmerCountsType *kmercounts = NULL;
 
 int nprocs;
@@ -66,8 +70,11 @@ namespace elba
 void
 WriteReadNameMap(const char* outfilename, unordered_map<ReadId,string>& readNameMap)
 {
+
+#ifdef VERBOSE
     if(myrank == 0)
-	    std::cout << "writing readNameMap to " << outfilename << " in parallel" << std::endl;
+	    std::cout << "readNameMap to " << outfilename << " in parallel" << std::endl;
+#endif
 
 	ofstream myoutputfile;
 	myoutputfile.open(outfilename, std::ofstream::out | std::ofstream::trunc);
@@ -76,7 +83,6 @@ WriteReadNameMap(const char* outfilename, unordered_map<ReadId,string>& readName
     {
 		std::cout << "Could not open " << outfilename << std::endl;
         assert(0&&"couln't open");
-		//return -1;
 	}
 
 	for(auto map_itr = readNameMap.begin(); map_itr != readNameMap.end(); map_itr++)
@@ -258,6 +264,7 @@ void countTotalKmersAndCleanHash()
     CHECK_MPI(MPI_Reduce(&hashsize,   &distinctnonerror, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
     CHECK_MPI(MPI_Allreduce(&maxcount,  &globalmaxcount, 1, MPI_LONG_LONG, MPI_MAX,    MPI_COMM_WORLD));
 
+#ifdef VERBOSE
     if(myrank == 0)
     {
         cout << "Counting finished " << endl;
@@ -266,6 +273,7 @@ void countTotalKmersAndCleanHash()
         cout << __FUNCTION__ << ": Global max count is " << globalmaxcount << endl;
         cout << __FUNCTION__ << ": Large count histogram is of size " << HIGH_NUM_BINS << endl;
     }
+#endif
 
     /*! GGGG: heavy hitters part removed for now */  
     // if (globalmaxcount == 0)
@@ -305,12 +313,14 @@ void countTotalKmersAndCleanHash()
     CHECK_MPI(MPI_Reduce(&nonerrorkmers, &totalnonerror, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD)); 
     CHECK_MPI(MPI_Reduce(&hashsize, &distinctnonerror, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD));
 
+#ifdef VERBOSE // Could possibly save some communication here when VERBOSE is not defined
     if(myrank == 0)
     {
         cout << __FUNCTION__ << ": Erroneous count < " << LOWER_KMER_FREQ << " and high frequency > " << maxKmerFreq << " cases removed " << endl;
         cout << __FUNCTION__ << ": Kmerscount hash includes " << distinctnonerror << " distinct elements" << endl;
         cout << __FUNCTION__ << ": Kmerscount non error kmers count is " << totalnonerror << endl;
     }
+#endif
 }
 
 /////////////////////////////////////////////
@@ -706,11 +716,14 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
         assert(cardinality < 1L<<32);
         bloom_init(bm, cardinality, fp_probability);
 
+    #ifdef VERBOSE
         if(myrank == 0)
         {
             std::cout << __FUNCTION__ << ": First pass: Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
             std::cout << __FUNCTION__ << ": First pass: Optimal number of hash functions is : " << bm->hashes << endl;
         }
+    #endif
+
     }
 
     VectorVectorKmer  outgoing(nprocs);
@@ -780,6 +793,7 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
 
     CHECK_MPI(MPI_Reduce(&tots, &gtots, 4, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD));
 
+#ifdef VERBOSE
     if (myrank == 0)
     {
         int nranks;
@@ -794,6 +808,7 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
     {
         cout << __FUNCTION__ << " pass " << pass << ": Read/distributed/processed reads in " << t02 - t01 << " seconds" << endl;
     }
+#endif
 
     t02 = MPI_Wtime();
 
@@ -926,12 +941,14 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality, ush
 
 	cardinality = hll.estimate();
 
+#ifdef VERBOSE
 	if(myrank == 0)
     {
 		cout << __FUNCTION__ << ": Embarrassingly parallel k-mer count estimate is " << cardinality << endl;
 		cout << __FUNCTION__ << ": Total reads processed over all processors is " << readsprocessed << endl;
 	}
-    
+#endif
+
 	MPI_Barrier(MPI_COMM_WORLD);
 
     /* Assume a balanced distribution */
@@ -940,10 +957,12 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality, ush
     /* 10% benefit of doubt */
 	cardinality *= 1.1;
 
+#ifdef VERBOSE
 	if(myrank == 1)
     {
 		cout << __FUNCTION__ << ": Adjusted per-process cardinality: " << cardinality << endl;
 	}
+#endif
 }
 
 PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
@@ -1010,10 +1029,12 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
 
   MPI_Allreduce(MPI_IN_PLACE, sums, 3, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
 
+#ifdef VERBOSE
   if (myrank == 0)
   {
       std::cout << "Estimated cardinality: " << mycardinality << " totreads: " << mytotreads << " totbases: " << mytotbases << std::endl;
   }
+#endif
 
   /*! GGGG: from dibella v1 this is baseline for 10M kmers */
   if (mycardinality < 10000000) mycardinality = 10000000;
@@ -1131,6 +1152,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
 
   double timeloadimbalance = MPI_Wtime() - tstart;
 
+#ifdef VERBOSE
   if(myrank  == 0)
   {
     cout << __FUNCTION__ << ": Total number of stored k-mers: " << totcount << endl;
@@ -1142,6 +1164,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
     cout << __FUNCTION__ << ": Bloom filter + hash table (key) initialization " << static_cast<double>(totkmersprocessed) / (MEGA * max((firstpasstime),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (firstpasstime) << " seconds" << endl;
     cout << __FUNCTION__ << ": Hash table (value) initialization  " << static_cast<double>(totkmersprocessed) / (MEGA * max((timesecondpass),0.001) * nprocs) << " MEGA k-mers per sec/proc in " << (timesecondpass) << " seconds" << endl;
   }
+#endif
 
   // serial_printf("%s: Total time computing load imbalance: %0.3f s\n", __FUNCTION__, timeloadimbalance);
   CHECK_MPI(MPI_Barrier(MPI_COMM_WORLD));

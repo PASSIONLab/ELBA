@@ -34,7 +34,7 @@ struct TimePod {
   };
 
   std::string to_string() {
-    std::string str = "\nINFO: Program timings:\n";
+    std::string str = "\nINFO: ELBA runtimes:\n";
     ticks_t ts, te;
     for (const auto &name : names) {
       if (times.find("Start" + name) != times.end()) {
