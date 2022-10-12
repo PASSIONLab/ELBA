@@ -21,7 +21,6 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "../include/cxxopts.hpp"
 #include "../include/pw/SeedExtendXdrop.hpp"
 #include "../include/pw/OverlapFinder.hpp"
-#include "../include/pw/FullAligner.hpp"
 #include "../include/kmer/KmerOps.hpp"
 #include "../include/kmer/KmerIntersectSR.hpp"
 #include "../include/Utils.hpp"
@@ -36,9 +35,6 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include <fstream>
 
 #define TWOSEED
-//#define TRIL
-//#define TRIU
-//#define ELBA_DEBUG
 
 /*! Namespace declarations */
 using namespace combblas;
@@ -70,7 +66,7 @@ uint64_t input_overlap;
 uint64_t seq_count;
 int xdrop;
 int match;
-int  mismatch_sc;
+int mismatch_sc;
 int gap_open;
 int gap_ext;
 ushort klength;
@@ -90,10 +86,10 @@ int afreq;
 bool noAlign = false;
 
 /*! Perform full alignment */
-bool fullAlign = false;
+bool gpuAlign = false;
 
 /*! Perform xdrop alignment */
-bool xdropAlign = false;
+bool cpuAlign = false;
 
 /*! File path to output global sequence index to original global sequence
  * index mapping */
@@ -385,8 +381,9 @@ int parse_args(int argc, char **argv)
     (CMD_OPTION_ALIGN_FILE, CMD_OPTION_DESCRIPTION_ALIGN_FILE,
      cxxopts::value<std::string>())
     (CMD_OPTION_NO_ALIGN, CMD_OPTION_DESCRIPTION_NO_ALIGN)
-    (CMD_OPTION_FULL_ALIGN, CMD_OPTION_DESCRIPTION_FULL_ALIGN)
-    (CMD_OPTION_XDROP_ALIGN, CMD_OPTION_DESCRIPTION_XDROP_ALIGN,
+    (CMD_OPTION_GPU_ALIGN, CMD_OPTION_DESCRIPTION_GPU_ALIGN,
+     cxxopts::value<int>())
+    (CMD_OPTION_CPU_ALIGN, CMD_OPTION_DESCRIPTION_CPU_ALIGN,
      cxxopts::value<int>())
     (CMD_OPTION_IDX_MAP, CMD_OPTION_DESCRIPTION_IDX_MAP,
      cxxopts::value<std::string>())
@@ -497,19 +494,20 @@ int parse_args(int argc, char **argv)
   if (result.count(CMD_OPTION_NO_ALIGN)) {
     /* GGGG: You need to call the outer function anyway to calculate overhangs but the xdrop
     case value doesn't matter, because the actual pw alignment function is not executed */
-    xdropAlign = true;
-    noAlign    = true;
+    cpuAlign = true;
+    noAlign   = true;
   }
 
-  if (result.count(CMD_OPTION_FULL_ALIGN)) {
-    fullAlign = true;
+  if (result.count(CMD_OPTION_GPU_ALIGN)) {
+    gpuAlign = true;
     noAlign  = false;
+    xdrop = result[CMD_OPTION_GPU_ALIGN].as<int>();
   }
 
-  if (result.count(CMD_OPTION_XDROP_ALIGN)) {
-    xdropAlign = true;
-    noAlign   = false;
-    xdrop = result[CMD_OPTION_XDROP_ALIGN].as<int>();
+  if (result.count(CMD_OPTION_CPU_ALIGN)) {
+    cpuAlign = true;
+    noAlign  = false;
+    xdrop = result[CMD_OPTION_CPU_ALIGN].as<int>();
   }
 
   if (result.count(CMD_OPTION_ALPH)) {
@@ -537,30 +535,29 @@ int parse_args(int argc, char **argv)
 }
 
 auto bool_to_str = [](bool b){
-  return b ? "True" : "False";
+  return b ? "TRUE" : "FALSE";
 };
 
-/*! GGGG: add input match/ mismatch_sc */
 void pretty_print_config(std::string &append_to) {
   std::vector<std::string> params = {
     "Input file (-i)",
     "Original sequence count (-c)",
-    "Kmer length (k)",
-    "Kmer stride (s)",
+    "K-mer length (k)",
+    "K-mer stride (s)",
     "Overlap in bytes (-O)",
-    "Max seed count (--sc)",
+    "Top seed count (--sc)",
     "Base match score (--ma)",
     "Base mismatch score (--mi)",
     "Gap open penalty (-g)",
     "Gap extension penalty (-e)",
     "Overlap file (--of)",
-    "Alignment file (--af)",
-    "Alignment write frequency (--afreq)",
-    "No align (--na)",
-    "Full align (--fa)",
-    "Xdrop align (--xa)",
-    "Index map (--idxmap)",
-    "Alphabet (--alph)"
+    "Pairwise alignment file (--af)",
+    "alignmentlignment write frequency (--afreq)",
+    "Do not perform alignment (--na)",
+    "GPU alignment (--ga)",
+    "CPU-based alignment (--ca)",
+    "Read index map (--idxmap)",
+    "Pairwise alignment alphabet (--alph)"
   };
 
   std::vector<std::string> vals = {
@@ -578,8 +575,8 @@ void pretty_print_config(std::string &append_to) {
     !myoutput.empty()     ? myoutput    : "None",
     !myoutput.empty()     ? std::to_string(afreq) : "None",
     bool_to_str(noAlign),
-    bool_to_str(fullAlign),
-    bool_to_str(xdropAlign)  + (xdropAlign  ? " | xdrop: " + std::to_string(xdrop) : ""),
+    bool_to_str(gpuAlign) + (gpuAlign  ? " | X: " + std::to_string(xdrop) : ""),
+    bool_to_str(cpuAlign) + (cpuAlign  ? " | X: " + std::to_string(xdrop) : ""),
     !idx_map_file.empty() ? idx_map_file : "None",
     std::to_string(alph_t)
   };
@@ -627,7 +624,7 @@ ParallelFastaParser(const char *input_file, const char *idx_map_file, const std:
     {
         uint64_t final_seq_count = dfd->global_count();
         print_str = "\nINFO: Updated sequence count\n";
-        print_str.append("  Final sequence count: ")
+        print_str.append("The actual sequence count is: ")
                  .append(std::to_string(final_seq_count))
                  .append(" (")
                  .append(std::to_string((((seq_count - final_seq_count) * 100.0) / seq_count)))
@@ -645,10 +642,11 @@ void GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd, PSpMat<
     Alphabet alph(alph_t);
 
     tp->times["StartMain:GenerateA()"] = std::chrono::system_clock::now();
+    tu.print_str("\nK-mer Counting and 'A' Creation started:\n");
 
     Amat = new PSpMat<PosInRead>::MPI_DCCols(elba::KmerOps::GenerateA(seq_count, dfd, klength, kstride, alph, parops, tp));
     
-    tu.print_str("\nA: ");
+    tu.print_str("A (sequences-by-kmer matrix): ");
     Amat->PrintInfo();
 
 #ifdef VERBOSE
@@ -661,9 +659,6 @@ void GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd, PSpMat<
     tp->times["StartMain:At()"] = tp->times["EndMain:GenerateA()"];
     ATmat->Transpose();
 
-    tu.print_str("A^T: ");
-    ATmat->PrintInfo();
-
     tp->times["EndMain:At()"] = std::chrono::system_clock::now();
 }
 
@@ -674,6 +669,8 @@ void OverlapDetection(std::shared_ptr<DistributedFastaData> dfd,
                       const std::shared_ptr<TimePod>& tp, TraceUtils& tu)
 {
     tp->times["StartMain:AAt()"] = std::chrono::system_clock::now();
+
+    tu.print_str("\nOverlap Detection started:\n");
 
     // @GGGG-TODO: check vector version (new one stack error)
     Bmat = new PSpMat<elba::CommonKmers>::MPI_DCCols(Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, elba::CommonKmers, PSpMat<elba::CommonKmers>::DCCols>(*Amat, *ATmat));
@@ -691,7 +688,7 @@ void OverlapDetection(std::shared_ptr<DistributedFastaData> dfd,
     tu.print_str("\nLoad imbalance: " + std::to_string(Bmat->LoadImbalance()) + "\n");
   #endif
 
-    tu.print_str("AA^T: ");
+    tu.print_str("C (sequences-by-sequences candidate matrix) = AA^T: ");
     Bmat->PrintInfo();
     tu.print_str("\n");
 
@@ -728,10 +725,7 @@ void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<elba::C
   PairwiseFunction* pf = nullptr;
   uint64_t local_alignments = 1;
 
-  // @GGGG: this should be input parameter
-  bool LoganAlign = true;  
-
-  if(LoganAlign)
+  if(gpuAlign)
   {
     tu.print_str("GPU-based LOGAN alignment started:\n");
     
@@ -739,17 +733,13 @@ void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<elba::C
     dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
 	  local_alignments = static_cast<GPULoganAligner*>(pf)->nalignments;
   }
-  else if(xdropAlign)
+  else if(cpuAlign)
   {
+    tu.print_str("CPU-based SeqAn alignment started:\n");
+
     pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);
     dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
 	  local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
-  }
-  else if(fullAlign)
-  {
-    pf = new FullAligner(scoring_scheme);
-    dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
-	  local_alignments = static_cast<FullAligner*>(pf)->nalignments;
   }
 
   tp->times["EndMain:DprAlign()"] = std::chrono::system_clock::now();

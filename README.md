@@ -77,7 +77,7 @@ A tiny example `ecsample-sub1.fa` can be found in this repository.
 ## Ready to run
 The parameters and options of ELBA are as follows:
 - ```-i <string>```: Input FASTA file.
-- ```-c <integer>```: Number of sequences in the FASTA file.
+- ```-c <integer>```: # sequences in the FASTA file.
 - ```--sc <integer>```: Seed count. ```[default: 2]```
 - ```-k <integer>```: K-mer length.
 - ```-s <integer>```: K-mers stride. ```[default: 1]```
@@ -88,8 +88,8 @@ The parameters and options of ELBA are as follows:
 - ```-O <integer>```: Number of bytes to overlap when reading the input file in parallel. ```[default: 10000]```
 - ```--afreq <integer>```: Alignment write frequency.
 - ```--na```: Do not perform alignment.
-- ```--fa```: Full Smith-Waterman alignment.
-- ```--xa <integer>```: X-drop alignment with the indicated drop value.
+- ```--ga <integer>```: GPU-based x-drop alignment.
+- ```--ca <integer>```: CPU-based x-drop.
 - ```--of <string>```: Overlap file.
 - ```--af <string>```: Output file to write alignment information. 
 - ```--idxmap <string>```: Output file for input sequences to ids used in ELBA.

@@ -74,8 +74,6 @@ add_executable(elba
         include/MemoryChk.h
         src/Buffer.c
         include/Buffer.h
-        include/pw/FullAligner.hpp
-        src/pw/FullAligner.cpp
         include/kmer/CommonKmers.hpp
         include/kmer/KmerIntersectSR.hpp
         include/kmer/MatrixEntry.hpp
@@ -101,7 +99,7 @@ set(MAX_KMER_SIZE 32
     CACHE STRING "Longest K-mer Length")
 
 # DELTACHERNOFF can be 0.7-1 for CCS and 0.1-0.2 for CLR
-set(DELTACHERNOFF 0.9
+set(DELTACHERNOFF 0.1
     CACHE STRING "Delta Chernoff's bound")
     
 set(FUZZ 1000

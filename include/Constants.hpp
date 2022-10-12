@@ -46,11 +46,11 @@ extern const char *CMD_OPTION_DESCRIPTION_ALIGN_FILE;
 extern const char *CMD_OPTION_NO_ALIGN;
 extern const char *CMD_OPTION_DESCRIPTION_NO_ALIGN;
 
-extern const char *CMD_OPTION_FULL_ALIGN;
-extern const char *CMD_OPTION_DESCRIPTION_FULL_ALIGN;
+extern const char *CMD_OPTION_GPU_ALIGN;
+extern const char *CMD_OPTION_DESCRIPTION_GPU_ALIGN;
 
-extern const char *CMD_OPTION_XDROP_ALIGN;
-extern const char *CMD_OPTION_DESCRIPTION_XDROP_ALIGN;
+extern const char *CMD_OPTION_CPU_ALIGN;
+extern const char *CMD_OPTION_DESCRIPTION_CPU_ALIGN;
 
 extern const char *CMD_OPTION_IDX_MAP;
 extern const char *CMD_OPTION_DESCRIPTION_IDX_MAP;
