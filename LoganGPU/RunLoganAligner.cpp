@@ -52,6 +52,8 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
 		}
 
 		extendSeedL(bLSeedSet, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount, GPU_THREADS);
+		
+		std::cout << "extendSeedL completed in RunLoganAlign.cpp" << std::endl;
 
 		for(int j = 0; j < numAlignmentsLocal; j++)
 		{
@@ -65,6 +67,7 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
         }
 
 		free(res);
+		std::cout << "RunLoganAlign.cpp completed" << std::endl;
 	}
 }
 

@@ -602,6 +602,8 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		extendSeedLGappedXDropOneDirectionGlobal <<<dim, n_threads, n_threads*sizeof(short), stream_r[i]>>> (seed_d_r[i], suffQ_d[i], suffT_d[i], EXTEND_RIGHTL, XDrop, scoreRight_d[i], offsetRightQ_d[i], offsetRightT_d[i], ant_len_right[i], ant_r[i], n_threads);
 	}
 
+	 std::cout << "extendSeedLGappedXDropOneDirectionGlobal completed" << std::endl;
+
 	#pragma omp parallel for
 	for(int i = 0; i < ngpus; i++)
 	{
@@ -668,4 +670,6 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	
 	free(scoreLeft);
 	free(scoreRight);
+	
+	std::cout << "extendSeedL completed" << std::endl;
 }

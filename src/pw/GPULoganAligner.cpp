@@ -327,7 +327,7 @@ GPULoganAligner::apply_batch
 		}
 
 		auto end_time = std::chrono::system_clock::now();
-    	add_time("XA:LoganPreprocess", (ms_t(end_time - start_time)).count());
+	    	add_time("XA:LoganPreprocess", (ms_t(end_time - start_time)).count());
 
 		start_time = std::chrono::system_clock::now();
 
@@ -337,9 +337,11 @@ GPULoganAligner::apply_batch
 			// @GGGG-TODO: Check the parameter
 			RunLoganAlign(seqHs, seqVs, seeds, xscores, xdrop, seed_length);
 		}
+		
+//		std::cout << "Post RunLoganAlign in GPULoganAligner.cpp" << std::endl;
 
 		end_time = std::chrono::system_clock::now();
-    	add_time("XA:LoganAlign", (ms_t(end_time - start_time)).count());
+    		add_time("XA:LoganAlign", (ms_t(end_time - start_time)).count());
 
 		start_time = std::chrono::system_clock::now();
 		
@@ -354,10 +356,10 @@ GPULoganAligner::apply_batch
 				ai[i].xscore = xscores[i].score; 
 				ai[i].rc     = xscores[i].rc;
 
-                ai[i].begSeedH = xscores[i].begSeedH; 
-                ai[i].endSeedH = xscores[i].endSeedH; 
-                ai[i].begSeedV = xscores[i].begSeedV; 
-                ai[i].endSeedV = xscores[i].endSeedV; 
+                		ai[i].begSeedH = xscores[i].begSeedH; 	
+                		ai[i].endSeedH = xscores[i].endSeedH; 
+                		ai[i].begSeedV = xscores[i].begSeedV; 
+                		ai[i].endSeedV = xscores[i].endSeedV; 
 
 				ai[i].seq_h_length = seqan::length(seqsh[i]);
 				ai[i].seq_v_length = seqan::length(seqsv[i]);
@@ -368,7 +370,7 @@ GPULoganAligner::apply_batch
 
 				// GGGG: global idx over here to use in the FullDistVect for removing contained vertices/seqs
 				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
-    			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
+    				ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
 		}
 		else
@@ -382,10 +384,10 @@ GPULoganAligner::apply_batch
 					ai[i].xscore = xscores[i].score;
 					ai[i].rc     = xscores[i].rc;
 
-                    ai[i].begSeedH = xscores[i].begSeedH; 
-                    ai[i].endSeedH = xscores[i].endSeedH; 
-                    ai[i].begSeedV = xscores[i].begSeedV; 
-                    ai[i].endSeedV = xscores[i].endSeedV; 
+                    			ai[i].begSeedH = xscores[i].begSeedH; 
+                    			ai[i].endSeedH = xscores[i].endSeedH; 
+                    			ai[i].begSeedV = xscores[i].begSeedV; 
+                    			ai[i].endSeedV = xscores[i].endSeedV; 
 
 					// @GGGG: this is a bit redundant since we can extract it from seed
 					ai[i].seq_h_seed_length = ai[i].endSeedH - ai[i].begSeedH;
@@ -395,17 +397,14 @@ GPULoganAligner::apply_batch
 		}
 
 		end_time = std::chrono::system_clock::now();
-    	add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());
+    		add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());
 	}
 
 	auto start_time = std::chrono::system_clock::now();
 	std::vector<std::vector<int64_t>> ContainedSeqPerThread(numThreads);
 
 	// Dump alignment info 
-	// @GGGG: this should be fine parallel now (2/22 check here!)
-	#pragma omp parallel
 	{
-	    #pragma omp for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
 			// Only keep alignments that meet BELLA criteria

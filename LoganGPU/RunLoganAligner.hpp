@@ -10,7 +10,7 @@
 #include <vector>
 
 #define BATCH_SIZE 30000
-#define GPU_THREADS  128
+#define GPU_THREADS 128
 
 using namespace std;
 struct LoganResult {

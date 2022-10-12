@@ -40,9 +40,9 @@ echo ""
 cd $COMBBLAS_HOME
 mkdir build_release
 cd build_release
-cmake -DLOWER_KMER_FREQ=220 -DUPPER_KMER_FREQ=300 -DDELTACHERNOFF=0.7 ..
+cmake -DLOWER_KMER_FREQ=20 -DUPPER_KMER_FREQ=30 -DDELTACHERNOFF=0.7 ..
 make -j8
 
 echo ""
-echo "ELBA installation completed using upper [300], lower [220], and delta [0.7]."
+echo "ELBA installation completed."
 echo ""
