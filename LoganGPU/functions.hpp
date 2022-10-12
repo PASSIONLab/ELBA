@@ -472,7 +472,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 
 	std::vector<double> pergpustime(ngpus);
 
-#pragma omp parallel for
+#pragma omp parallel for num_threads(ngpus)
 	for(int i = 0; i < ngpus; i++)
 	{
 		int dim = nSequences;
@@ -539,7 +539,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		pergpustime[MYTHREAD] = setup_ithread.count();
 	}
 
-#pragma omp parallel for
+#pragma omp parallel for num_threads(ngpus)
 	for(int i = 0; i < ngpus; i++)
 	{
 		int dim = nSequences;
@@ -585,11 +585,11 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		//OK
 	}
 	
-	// auto start_c = NOW;
+	auto start_c = NOW;
 	
 	// GGGG: Program hit CUDA_ERROR_INVALID_CONTEXT (error 201) due to "invalid device context" on CUDA API call to cuCtxGetDevice.
 	// This is the main kernel execution.
-#pragma omp parallel for
+#pragma omp parallel for num_threads(ngpus)
 	for(int i = 0; i < ngpus;i++)
 	{
 		cudaSetDevice(i);
@@ -602,7 +602,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		extendSeedLGappedXDropOneDirectionGlobal <<<dim, n_threads, n_threads*sizeof(short), stream_r[i]>>> (seed_d_r[i], suffQ_d[i], suffT_d[i], EXTEND_RIGHTL, XDrop, scoreRight_d[i], offsetRightQ_d[i], offsetRightT_d[i], ant_len_right[i], ant_r[i], n_threads);
 	}
 
-#pragma omp parallel for
+#pragma omp parallel for num_threads(ngpus)
 	for(int i = 0; i < ngpus; i++)
 	{
 		cudaSetDevice(i);
@@ -618,20 +618,20 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	
 	}
 
-#pragma omp parallel for
+#pragma omp parallel for num_threads(ngpus)
 	for(int i = 0; i < ngpus; i++)
 	{
 		cudaSetDevice(i);
 		cudaDeviceSynchronize();
 	}
 
-	// auto end_c = NOW;
-	// duration<double> compute = end_c-start_c;
-	// std::cout << "GPU only time:\t\t" << compute.count() << std::endl;
+	auto end_c = NOW;
+	duration<double> compute = end_c-start_c;
+	std::cout << " - GPU-only runtime: " << compute.count() << " s" << std::endl;
 
 	cudaErrchk(cudaPeekAtLastError());
 
-#pragma omp parallel for
+#pragma omp parallel for num_threads(ngpus)
 	for(int i = 0; i < ngpus; i++)
 	{
 		cudaSetDevice(i);

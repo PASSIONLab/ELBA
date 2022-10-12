@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#define BATCH_SIZE 30000 // GGGG: tune batch size
+#define BATCH_SIZE 50000 // GGGG: tune batch size
 #define GPU_THREADS 128
 
 using namespace std;

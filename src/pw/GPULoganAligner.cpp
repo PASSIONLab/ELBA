@@ -334,12 +334,14 @@ GPULoganAligner::apply_batch
 		// Call LOGAN only if noAlign is false
 		if(!noAlign) 
 		{ 
-			// @GGGG-TODO: Check the parameter
+			if(count == 0)
+				std::cout << " - 1st k-mer comparison started on ";
+			else
+				std::cout << " - 2nd k-mer comparison started on ";
+
 			RunLoganAlign(seqHs, seqVs, seeds, xscores, xdrop, seed_length);
 		}
 		
-//		std::cout << "Post RunLoganAlign in GPULoganAligner.cpp" << std::endl;
-
 		end_time = std::chrono::system_clock::now();
     		add_time("XA:LoganAlign", (ms_t(end_time - start_time)).count());
 
@@ -350,7 +352,6 @@ GPULoganAligner::apply_batch
 		if (count == 0)	// overwrite in the first seed
 		{
 			// @GGGG: keep the order for the post alignment evaluation (measure slowdown)
-			// #pragma omp parallel for 
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
 				ai[i].xscore = xscores[i].score; 

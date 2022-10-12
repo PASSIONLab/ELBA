@@ -7,7 +7,7 @@
 #include <algorithm> 
 #include <cassert>
 
-#include "interface.hpp"
+#include "RunLoganAligner.hpp"
 
 template<typename Tx_>
 const Tx_&  

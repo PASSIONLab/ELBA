@@ -730,12 +730,8 @@ namespace combblas {
             delete [] statuses;
         }
         
-        
-        
-        
         return nreduce;
     }
-    
     
     // given two sparse vectors sv and val
     // sv_out[sv[i]] = val[i] for all nonzero index i in sv, whre sv_out is the output sparse vector

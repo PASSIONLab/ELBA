@@ -190,7 +190,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     PSpMat<ReadOverlap>::MPI_DCCols F = R;
     F.Apply(PlusFuzzSRing());
 
-    tu.print_str("R: ");
+    tu.print_str("R (post-alignment result matrix): ");
     R.PrintInfo();
     tu.print_str("\n");
 
@@ -352,7 +352,7 @@ void TransitiveReduction(PSpMat<ReadOverlap>::MPI_DCCols& R, TraceUtils tu)
     R.Prune(InvalidSRing(), true);
     timeTR += MPI_Wtime() - start;
 
-    tu.print_str("S: ");
+    tu.print_str("S (string matrix): ");
     R.PrintInfo();
 
 #ifdef TIMINGTR

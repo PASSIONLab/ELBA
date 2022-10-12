@@ -2,7 +2,6 @@
 
 #include "RunLoganAligner.hpp"
 #include "logan.hpp"
-#include "interface.hpp"
 
 using namespace std;
 
@@ -17,13 +16,8 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
 	int deviceCount;
 	cudaGetDeviceCount(&deviceCount); // 1 MPI process to many GPUs 
 
-	std::cout << "LOGAN is running on " << omp_get_num_threads() << " OMP threads before setting it to deviceCount" << std::endl;
-	std::cout << "LOGAN is running on " << deviceCount << " GPUs" << std::endl;
+	std::cout << deviceCount << " GPUs" << std::endl;
 
-    omp_set_num_threads(deviceCount); // 1 OMP thread per GPU
-	
-	std::cout << "LOGAN is running on " << omp_get_num_threads() << " OMP threads" << std::endl;
-	
 	int AlignmentsToBePerformed = SeedInterfaceSet.size();
 	int numAlignmentsLocal = BATCH_SIZE * deviceCount; 
 
@@ -69,8 +63,6 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
         }
 
 		free(res);
-		omp_set_num_threads(omp_get_max_threads()); // back to regular omp_get_num_threads()
-		std::cout << "The rest of the computation is running on " << omp_get_num_threads() << " OMP threads" << std::endl;
 	}
 }
 

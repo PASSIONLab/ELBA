@@ -353,7 +353,6 @@ DistributedPairwiseRunner::run_batch
 
 				elba::CommonKmers *cks = std::get<2>(mattuples[i]);
 
-			//	if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
 
@@ -366,7 +365,7 @@ DistributedPairwiseRunner::run_batch
 			}
 		}
 
-		// Function call to the aligner
+		// function call to the aligner
 		lfs << "calling aligner for batch idx " << batch_idx
 			<< " cur #algnments " 				<< algn_cnts[numThreads]
 			<< " overall " 						<< nalignments
