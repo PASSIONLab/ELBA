@@ -694,7 +694,7 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
 // ProcessFiles                            //
 /////////////////////////////////////////////
 
-size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap, ushort k)
+size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap, ushort k, std::string& myoutput)
 {
     /*! GGGG: include bloom filter source code */
     struct bloom * bm = NULL;
@@ -828,7 +828,7 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
 
     #ifdef READNAME
         /* GGGG: write read names to file needed for miniasm and benchmarking */
-        std::string outputfilename = "readNameMap_" + std::to_string(myrank);
+        std::string outputfilename = myoutput + "-readnamemap-" + std::to_string(myrank);
         WriteReadNameMap(outputfilename.c_str(), readNameMap);
     #endif
     }
@@ -968,7 +968,7 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality, ush
 PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
       std::shared_ptr<DistributedFastaData> &dfd, ushort k, ushort s,
       Alphabet &alph, const std::shared_ptr<ParallelOps> &parops,
-      const std::shared_ptr<TimePod> &tp) /*, std::unordered_set<Kmer, Kmer>& local_kmers) */
+      const std::shared_ptr<TimePod> &tp, std::string& myoutput) /*, std::unordered_set<Kmer, Kmer>& local_kmers) */
   {
 
   char *buff;
@@ -1078,7 +1078,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
   /*! GGGG: let's extract the function (I'll separate later once I understood what's going on) */
   /*! GGGG: functions in KmerCounter.cpp */
   /*  Determine final hash-table entries using bloom filter */
-  int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, readNameMap, k);//, readids);
+  int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, readNameMap, k, myoutput);//, readids);
 
   tp->times["EndKmerOp:GenerateA:FirstPass()"] = std::chrono::system_clock::now();
 
@@ -1131,7 +1131,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
   tp->times["StartKmerOp:GenerateA:SecondPass()"] = std::chrono::system_clock::now();
 
   /* Second pass */
-  ProcessFiles(lfd, 2, cardinality, myReadStartIndex, readNameMap, k);//, readids);
+  ProcessFiles(lfd, 2, cardinality, myReadStartIndex, readNameMap, k, myoutput);//, readids);
 
   tp->times["EndKmerOp:GenerateA:SecondPass()"] = std::chrono::system_clock::now();
 

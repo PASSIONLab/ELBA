@@ -644,7 +644,7 @@ void GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd, PSpMat<
     tp->times["StartMain:GenerateA()"] = std::chrono::system_clock::now();
     tu.print_str("\nK-mer Counting and 'A' Creation started:\n");
 
-    Amat = new PSpMat<PosInRead>::MPI_DCCols(elba::KmerOps::GenerateA(seq_count, dfd, klength, kstride, alph, parops, tp));
+    Amat = new PSpMat<PosInRead>::MPI_DCCols(elba::KmerOps::GenerateA(seq_count, dfd, klength, kstride, alph, parops, tp, myoutput));
     
     tu.print_str("A (sequences-by-kmer matrix): ");
     Amat->PrintInfo();
@@ -716,6 +716,10 @@ void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<elba::C
   uint64_t row_offset = gr_row_idx * avg_rows_in_grid;  // first row in this process
   uint64_t col_offset = gr_col_idx * avg_cols_in_grid;	// first col in this process
 
+  std::string candidatem = myoutput;
+  candidatem += "-overlap.mtx";
+  Bmat->ParallelWriteMM(candidatem, true, elba::CkOutputMMHandler());
+
   DistributedPairwiseRunner dpr(dfd, Bmat->seqptr(), Bmat, afreq, row_offset, col_offset, parops);
 
   double mytime = MPI_Wtime();
@@ -755,6 +759,10 @@ void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<elba::C
   }
 
   Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*Bmat);
+
+  std::string postalignment = myoutput;
+  postalignment += "-alignment.mtx";
+  Rmat->ParallelWriteMM(postalignment, true, ReadOverlapGraphHandler());
 
   delete Bmat;
 }

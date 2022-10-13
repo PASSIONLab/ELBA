@@ -34,11 +34,11 @@ namespace elba {
   #ifdef TWOSEED
       OUT res(arg1.count + arg2.count);
 
-      res.first.first   = arg1.first.first;
-      res.second.first  = arg2.first.first;
+      res.first.first   = arg1.first.first; // pos of k1 on read1
+      res.second.first  = arg2.first.first; // pos of k2 on read1
 
-      res.first.second  = arg1.first.second;
-      res.second.second = arg2.first.second;
+      res.first.second  = arg1.first.second; // pos of k1 on read2
+      res.second.second = arg2.first.second; // pos of k2 on read2
 
       return res;
   #else
@@ -72,8 +72,8 @@ namespace elba {
       OUT a;
 
   #ifdef TWOSEED
-      a.first.first  = arg1;
-      a.first.second = arg2;
+      a.first.first  = arg1; // pos of k1 on read1
+      a.first.second = arg2; // pos of k1 on read2
   #else
       std::pair<IN, IN> mypair{std::make_pair(arg1, arg2)};
       a.pos.push_back(mypair);

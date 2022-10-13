@@ -62,6 +62,15 @@ void GPULoganAligner::PostAlignDecision(const LoganAlignmentInfo& ai, bool& pass
 
 	overlap = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
 
+	if((seqV == 5 && seqH == 99) || 
+		(seqV == 5 && seqH == 100) || 
+			(seqV == 5 && seqH == 184) ||
+				(seqV == 24 && seqH == 40))
+	{
+		std::cout << seqV+1 << "\t" << seqH+1 << "\t" << ai.rc << "\t" << begpV 
+		<< "\t" << endpV << "\t" << begpH << "\t" << endpH  << "\t" << ai.xscore << "\t" << overlap << std::endl;
+	}
+
 #ifndef FIXEDTHR
 	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)overlap);
 
@@ -102,83 +111,6 @@ void GPULoganAligner::PostAlignDecision(const LoganAlignmentInfo& ai, bool& pass
 	        }
 	    }
 	}
-
-	// // Reserve length/position if rc [x]
-	// if(ai.rc)
-	// {
-	// 	uint tmp = begpH;
-	// 	begpH = rlenH - endpH;
-	// 	endpH = rlenH - tmp;
-	// }
-
-    // if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
-	// {
-	// 	ContainedSeqMyThread.push_back(seqH); // Push back global index
-	// 	contained = true;
-	// }
-    // else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
-	// {
-	// 	ContainedSeqMyThread.push_back(seqV); // Push back global index
-	// 	contained = true;
-	// }
-
-	// if(!contained)
-	// {
-	// 	// If noAlign is false, set passed to false if the score isn't good enough
-	// 	if(!noAlign)
-	// 	{
-	// 		if((float)ai.xscore < myThr || overlap < minOverlapLenL) passed = false;
-	// 		else passed = true;
-	// 	}
-
-	// 	if(passed)
-	// 	{
-	// 		uint32_t direction, directionT;
-	// 		uint32_t suffix, suffixT;
-
-	// 		// !reverse complement
-	// 		if(!ai.rc)
-	// 		{
-	// 			if(begpV > begpH)
-	// 			{
-	// 				direction  = 1;
-	// 				directionT = 2;
-
-	// 				suffix = rlenH - endpH;
-	// 				suffixT = begpV;
-	// 			}
-	// 			else
-	// 			{
-	// 				direction  = 2;
-	// 				directionT = 1;
-
-	// 				suffix = begpH;
-	// 				suffixT = rlenV - endpV;
-	// 			}
-	// 		}
-	// 		else
-	// 		{
-	// 			if((begpV > 0) && (begpH > 0) && (rlenV-endpV == 0) && (rlenH-endpH == 0))
-	// 			{
-	// 				direction  = 0;
-	// 				directionT = 0;
-
-	// 				suffix  = begpH;
-	// 				suffixT = begpV;
-	// 			}
-	// 			else
-	// 			{
-	// 				direction  = 3;
-	// 				directionT = 3;
-
-	// 				suffix  = rlenH - endpH;
-	// 				suffixT = rlenV - endpV;
-	// 			}
-	// 		}
-	// 		overhang  = suffix  << 2 | direction;
-	// 		overhangT = suffixT << 2 | directionT;
-	// 	} // if(passed)
-	// } // if(!contained)
 
 #else
 	if(ai.xscore >= FIXEDTHR)
@@ -267,10 +199,10 @@ GPULoganAligner::apply_batch
 			elba::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 
 			// In KmerIntersectSR.hpp we have (where res == cks):
-			// 	res.first.first 	= arg1.first.first;		// Kmer 1 on argA
-			// 	res.first.second 	= arg1.first.second;	// Kmer 2 on argA
-			// 	res.second.first 	= arg2.first.first;		// Kmer 1 on argB
-			// 	res.second.second 	= arg2.first.second;	// Kmer 2 on argB
+			// 	res.first.first 	// Kmer 1 on argA
+			// 	res.first.second 	// Kmer 1 on argB
+			// 	res.second.first 	// Kmer 2 on argA
+			// 	res.second.second 	// Kmer 2 on argB
 
 			// argA (see KmerIntersectSR.hpp) == row == seqV
 			ushort LocalSeedVOffset = (count == 0) ? cks->first.first : cks->second.first;
@@ -292,6 +224,19 @@ GPULoganAligner::apply_batch
 			std::string seedV = seqV.substr(LocalSeedVOffset, seed_length);
 
 			std::string twinH = reversecomplement(seedH);
+
+			int begV1 =  cks->first.first;
+			int begH1 =  cks->first.second;
+
+    		int iseqV = row_offset + std::get<0>(mattuples[lids[i]]);
+			int iseqH = col_offset + std::get<1>(mattuples[lids[i]]);
+		
+			if(iseqV == 5 && iseqH == 100)
+			{
+				std::cout << iseqV+1 << "\t" << iseqH+1 << "\t" << begV1 << "\t" << begH1 << std::endl;
+				std::cout << seedV   << "\t" << seedH   << std::endl;
+				std::cout << seedV   << "\t" << twinH   << std::endl;
+			}
 
 			if(twinH == seedV)
 			{
@@ -357,10 +302,10 @@ GPULoganAligner::apply_batch
 				ai[i].xscore = xscores[i].score; 
 				ai[i].rc     = xscores[i].rc;
 
-                		ai[i].begSeedH = xscores[i].begSeedH; 	
-                		ai[i].endSeedH = xscores[i].endSeedH; 
-                		ai[i].begSeedV = xscores[i].begSeedV; 
-                		ai[i].endSeedV = xscores[i].endSeedV; 
+                ai[i].begSeedH = xscores[i].begSeedH; 	
+                ai[i].endSeedH = xscores[i].endSeedH; 
+                ai[i].begSeedV = xscores[i].begSeedV; 
+                ai[i].endSeedV = xscores[i].endSeedV; 
 
 				ai[i].seq_h_length = seqan::length(seqsh[i]);
 				ai[i].seq_v_length = seqan::length(seqsv[i]);
@@ -371,7 +316,7 @@ GPULoganAligner::apply_batch
 
 				// GGGG: global idx over here to use in the FullDistVect for removing contained vertices/seqs
 				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
-    				ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
+    			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
 		}
 		else
@@ -385,10 +330,10 @@ GPULoganAligner::apply_batch
 					ai[i].xscore = xscores[i].score;
 					ai[i].rc     = xscores[i].rc;
 
-                    			ai[i].begSeedH = xscores[i].begSeedH; 
-                    			ai[i].endSeedH = xscores[i].endSeedH; 
-                    			ai[i].begSeedV = xscores[i].begSeedV; 
-                    			ai[i].endSeedV = xscores[i].endSeedV; 
+                    ai[i].begSeedH = xscores[i].begSeedH; 
+                    ai[i].endSeedH = xscores[i].endSeedH; 
+                    ai[i].begSeedV = xscores[i].begSeedV; 
+                    ai[i].endSeedV = xscores[i].endSeedV; 
 
 					// @GGGG: this is a bit redundant since we can extract it from seed
 					ai[i].seq_h_seed_length = ai[i].endSeedH - ai[i].begSeedH;
