@@ -96,15 +96,15 @@ The parameters and options of ELBA are as follows:
 - ```--alph <dna|protein>```: Alphabet.
 
 ## Run test program
-You can run the test dataset ```ecsample-sub1.fa``` as follows on one node (it's too small to run on multiple nodes), this command runs ELBA using x-drop alignment and ```x = 5```:
+You can run the test dataset ```ecsample-sub1.fa``` as follows on one node (it's too small to run on multiple nodes), this command runs ELBA using CPU-based x-drop alignment and ```x = 5```:
 ```
 export OMP_NUM_THREADS=1
-mpirun -np 1 ./elba -i /path/to/ecsample-sub1.fa -k 17 --idxmap elba-test -c 135 --alph dna --of overlap-test --af alignment-test -s 1 -O 100000 --afreq 100000 --xa 5
+mpirun -np 1 ./elba -i /path/to/ecsample-sub1.fa -k 17 --idxmap elba-test -c 135 --alph dna --of overlap-test --af alignment-test -s 1 -O 100000 --afreq 100000 --ca 5
 ```
 To run on multiple nodes, for example on 4 nodes using 4 MPI rank/node, please download ```ecsample30x.fa``` from [here](https://portal.nersc.gov/project/m1982/dibella.2d/inputs/) and run as follows:
 ```
 export OMP_NUM_THREADS=1
-mpirun -np 16 ./elba -i /path/to/ecsample30x.fa -k 17 --idxmap elba-ecsample -c 16890 --alph dna --of overlap-ecsample --af alignment-ecsample -s 1 -O 100000 --afreq 100000 --xa 5
+mpirun -np 16 ./elba -i /path/to/ecsample30x.fa -k 17 --idxmap elba-ecsample -c 16890 --alph dna --of overlap-ecsample --af alignment-ecsample -s 1 -O 100000 --afreq 100000 --ca 5
 ```
 You need to use a perfect square number of processes to match our 2D decomposition. Recall ```-c``` should match the number of sequences in the input FASTA.
 
