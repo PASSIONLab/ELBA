@@ -257,7 +257,7 @@ GPULoganAligner::apply_batch
 				localRes.rc = true;
 				xscores.push_back(localRes);
 			}
-			else
+			else if(seedH == seedV)
 			{
 				SeedInterface seed(LocalSeedHOffset, LocalSeedVOffset, seed_length); //LocalSeedHOffset + , LocalSeedVOffset + seed_length);
 

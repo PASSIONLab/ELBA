@@ -236,7 +236,7 @@ SeedExtendXdrop::apply_batch
 					xscores[i] = 0;
 				}
 			}
-			else
+			else if(seedH == seedV)
 			{
 
 				if(iseqV == 5 && iseqH == 100)
