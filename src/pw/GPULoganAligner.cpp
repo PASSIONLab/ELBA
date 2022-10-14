@@ -183,6 +183,8 @@ GPULoganAligner::apply_batch
 	// int  *xscores = new int[npairs];
 	// TSeed  *seeds = new TSeed[npairs];
 
+	std::cout << "seed_count " << seed_count << std::endl;
+
 	/* GGGG: seed_count is hardcoded here (2) */
 	for(int count = 0; count < seed_count; ++count)
 	{

@@ -146,6 +146,8 @@ SeedExtendXdrop::apply_batch
 	int  *xscores = new int[npairs];
 	TSeed  *seeds = new TSeed[npairs];
 
+	std::cout << "seed_count " << seed_count << std::endl;
+
 	/* GGGG: seed_count is hardcoded here (2) */
 	for(int count = 0; count < seed_count; ++count)
 	{
@@ -186,15 +188,10 @@ SeedExtendXdrop::apply_batch
 			seedV = infix(seqsv[i], beginPositionV(seed), endPositionV(seed)); // seed on argA == row == seqV
 			seedH = infix(seqsh[i], beginPositionH(seed), endPositionH(seed)); // seed on argB == col == seqH
 
+			seqan::Dna5StringReverseComplement twin(seedH);
+
 			if(twin == seedV)
 			{
-
-				if(iseqV == 5 && iseqH == 100)
-				{
-					std::cout << seedV << "\t" << twin << std::endl;
-					std::cout << "I should be here?" << std::endl;
-				}
-
 				strands[i] = true;
 				seqan::Dna5String twinseqH = seqsh[i];
 				seqan::Dna5StringReverseComplement twinRead(twinseqH);
@@ -223,12 +220,6 @@ SeedExtendXdrop::apply_batch
 			}
 			else if(seedH == seedV)
 			{
-
-				if(iseqV == 5 && iseqH == 100)
-				{
-					std::cout << seedV << "\t" << twin << std::endl;
-					std::cout << "I should NOT be here?" << std::endl;
-				}
 
 				strands[i] = false;
 				if(!noAlign)
