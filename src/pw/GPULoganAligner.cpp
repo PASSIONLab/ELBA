@@ -225,19 +225,6 @@ GPULoganAligner::apply_batch
 
 			std::string twinH = reversecomplement(seedH);
 
-			int begV1 =  cks->first.first;
-			int begH1 =  cks->first.second;
-
-    		int iseqV = row_offset + std::get<0>(mattuples[lids[i]]);
-			int iseqH = col_offset + std::get<1>(mattuples[lids[i]]);
-		
-			if(iseqV == 5 && iseqH == 100)
-			{
-				std::cout << iseqV+1 << "\t" << iseqH+1 << "\t" << begV1 << "\t" << begH1 << std::endl;
-				std::cout << seedV   << "\t" << seedH   << std::endl;
-				std::cout << seedV   << "\t" << twinH   << std::endl;
-			}
-
 			if(twinH == seedV)
 			{
 				std::string twinseqH(seqH);

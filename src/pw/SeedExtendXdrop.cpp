@@ -186,21 +186,6 @@ SeedExtendXdrop::apply_batch
 			seedV = infix(seqsv[i], beginPositionV(seed), endPositionV(seed)); // seed on argA == row == seqV
 			seedH = infix(seqsh[i], beginPositionH(seed), endPositionH(seed)); // seed on argB == col == seqH
 
-			int begV1 =  cks->first.first;
-			int begH1 =  cks->first.second;
-
-    		int iseqV = row_offset + std::get<0>(mattuples[lids[i]]);
-			int iseqH = col_offset + std::get<1>(mattuples[lids[i]]);
-
-			seqan::Dna5StringReverseComplement twin(seedH);
-		
-			if(iseqV == 5 && iseqH == 100)
-			{
-				std::cout << iseqV+1 << "\t" << iseqH+1 << "\t" << begV1 << "\t" << begH1 << std::endl;
-				std::cout << seedV   << "\t" << seedH   << std::endl;
-				std::cout << seedV   << "\t" << twin    << std::endl;
-			}
-
 			if(twin == seedV)
 			{
 
@@ -276,6 +261,7 @@ SeedExtendXdrop::apply_batch
 
 		// Compute stats
 		if (count == 0)	// overwrite in the first seed
+		// GGGG: why overwrite the first seed? we want to keep the best one not arbitrarily overwrite one
 		{
 		#pragma omp parallel for
 			for (uint64_t i = 0; i < npairs; ++i)
