@@ -183,8 +183,6 @@ GPULoganAligner::apply_batch
 	// int  *xscores = new int[npairs];
 	// TSeed  *seeds = new TSeed[npairs];
 
-	std::cout << "seed_count " << seed_count << std::endl;
-
 	/* GGGG: seed_count is hardcoded here (2) */
 	for(int count = 0; count < seed_count; ++count)
 	{
@@ -281,7 +279,6 @@ GPULoganAligner::apply_batch
 
 		start_time = std::chrono::system_clock::now();
 		
-		// @GGGG-TODO: this runs everything twice right now; pretty sure I can avoid this using CCS, I can add an option also run some benchmark
 		// Compute stats
 		if (count == 0)	// overwrite in the first seed
 		{
@@ -316,6 +313,8 @@ GPULoganAligner::apply_batch
 			{
 				if (xscores[i].score > ai[i].xscore)
 				{
+					std::cout << "Does this happen?" << std::endl;
+					
 					ai[i].xscore = xscores[i].score;
 					ai[i].rc     = xscores[i].rc;
 

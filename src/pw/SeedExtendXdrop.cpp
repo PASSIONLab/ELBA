@@ -146,8 +146,6 @@ SeedExtendXdrop::apply_batch
 	int  *xscores = new int[npairs];
 	TSeed  *seeds = new TSeed[npairs];
 
-	std::cout << "seed_count " << seed_count << std::endl;
-
 	/* GGGG: seed_count is hardcoded here (2) */
 	for(int count = 0; count < seed_count; ++count)
 	{
@@ -251,8 +249,7 @@ SeedExtendXdrop::apply_batch
 		start_time = std::chrono::system_clock::now();
 
 		// Compute stats
-		if (count == 0)	// overwrite in the first seed
-		// GGGG: why overwrite the first seed? we want to keep the best one not arbitrarily overwrite one
+		if (count == 0)	// GGGG: save the results from the first alignment (k-mer 1)
 		{
 		#pragma omp parallel for
 			for (uint64_t i = 0; i < npairs; ++i)
@@ -273,12 +270,13 @@ SeedExtendXdrop::apply_batch
     			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
 		}
-		else
+		else // GGGG: if the results from the second seed if better, then substitute it in ai
 		{
 		#pragma omp parallel for
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
-				if (xscores[i] > ai[i].xscore) // GGGG: TODO double check this logic with fresh neurons
+				if (xscores[i] > ai[i].xscore) // GGGG: if new seed is better, then save the new one
+				//  GGGG: but are we sure the score standalons is the right metric?
 				{
 					ai[i].xscore = xscores[i];
 					ai[i].rc     = strands[i];
@@ -324,7 +322,7 @@ SeedExtendXdrop::apply_batch
 
 			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->dir, cks->dirT, cks->sfx, cks->sfxT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
 
-			if (passed)
+			if (passed) // GGGG: this should probably decide which seed, rather than earlier?
 			{
 				// GGGG: store updated seed start/end position in the CommonKmers pairs (the semantics of these pairs change wrt the original semantics but that's okay)
 				cks->first.first   = beginPositionV(ai[i].seed); 	// start on vertical sequence
