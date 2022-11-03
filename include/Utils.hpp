@@ -10,6 +10,8 @@
 #include "Defines.hpp"
 #include "kmer/Kmer.hpp"
 
+// #define VERBOSE
+
 using namespace std;
 
 template <class T, std::size_t N>

@@ -2,29 +2,22 @@
 
 #include "RunLoganAligner.hpp"
 #include "logan.hpp"
-#include "interface.hpp"
 
 using namespace std;
 
 void 
 RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs, 
-	vector<SeedInterface>& SeedInterfaceSet, vector<LoganResult>& xscores, int& xdrop, ushort& seed_length, int& myrank)
+	vector<SeedInterface>& SeedInterfaceSet, vector<LoganResult>& xscores, int& xdrop, ushort& seed_length)
 {
 	ScoringSchemeL sscheme(1, -1, -1, -1);
 	std::vector<ScoringSchemeL> scoring;
 	scoring.push_back(sscheme);
 
 	int deviceCount;
-
-	#ifdef ONERANKPERNODE
 	cudaGetDeviceCount(&deviceCount); // 1 MPI process to many GPUs 
-	#else
-	deviceCount = 1; // many MPI processes to 1 GPU
-	#endif
 
-	// one OMP thread per GPU
-    omp_set_num_threads(deviceCount); 
-	
+	std::cout << deviceCount << " GPUs" << std::endl;
+
 	int AlignmentsToBePerformed = SeedInterfaceSet.size();
 	int numAlignmentsLocal = BATCH_SIZE * deviceCount; 
 
@@ -56,7 +49,7 @@ RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs,
 			bLSeedSet.push_back(lseed); // segfault origin might be around here 
 		}
 
-		extendSeedL(bLSeedSet, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount, myrank, omp_get_num_threads());
+		extendSeedL(bLSeedSet, EXTEND_BOTHL, bseqHs, bseqVs, scoring, xdrop, seed_length, res, numAlignmentsLocal, deviceCount, GPU_THREADS);
 
 		for(int j = 0; j < numAlignmentsLocal; j++)
 		{

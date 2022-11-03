@@ -9,8 +9,8 @@
 
 DistributedPairwiseRunner::DistributedPairwiseRunner(
     const std::shared_ptr<DistributedFastaData> dfd,
-    PSpMat<dibella::CommonKmers>::DCCols * localmat,
-	PSpMat<dibella::CommonKmers>::MPI_DCCols * glmat,
+    PSpMat<elba::CommonKmers>::DCCols * localmat,
+	PSpMat<elba::CommonKmers>::MPI_DCCols * glmat,
     int afreq,
     uint64_t rowoffset, uint64_t coloffset,
     const std::shared_ptr<ParallelOps> &parops)
@@ -62,7 +62,7 @@ void DistributedPairwiseRunner::write_overlaps(const char *file)
 	      continue;
 	    }
 
-	    dibella::CommonKmers cks = nzit.value();
+	    elba::CommonKmers cks = nzit.value();
 	    if (cks.count > l_max_common_kmers)
 		{
 	      l_max_common_kmers = cks.count;
@@ -118,7 +118,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 
   std::atomic<uint64_t> line_count(0);
   uint64_t nalignments = 0;
-  PSpMat<dibella::CommonKmers>::Tuples mattuples(*spSeq);
+  PSpMat<elba::CommonKmers>::Tuples mattuples(*spSeq);
   
   #pragma omp parallel for reduction(+:nalignments)
   for(uint64_t i=0; i< local_nnz_count; i++)
@@ -156,7 +156,7 @@ void DistributedPairwiseRunner::run(PairwiseFunction *pf, const char* file, std:
 		continue;
 	}
 
-	dibella::CommonKmers cks = mattuples.numvalue(i);
+	elba::CommonKmers cks = mattuples.numvalue(i);
 
 	int myThread = 0;
 #ifdef THREADED
@@ -220,10 +220,10 @@ DistributedPairwiseRunner::run_batch
 	int			batch_idx		= 0;
 	uint64_t	nalignments		= 0;
 
-	// PSpMat<dibella::CommonKmers>::Tuples mattuples(*spSeq);
+	// PSpMat<elba::CommonKmers>::Tuples mattuples(*spSeq);
 	// @TODO threaded
-	PSpMat<dibella::CommonKmers>::ref_tuples *mattuples =
-		new PSpMat<dibella::CommonKmers>::ref_tuples[local_nnz_count];
+	PSpMat<elba::CommonKmers>::ref_tuples *mattuples =
+		new PSpMat<elba::CommonKmers>::ref_tuples[local_nnz_count];
 
 	uint64_t z = 0;
 	auto dcsc = spSeq->GetDCSC();
@@ -262,10 +262,12 @@ DistributedPairwiseRunner::run_batch
 		uint64_t beg = batch_idx * batch_size;
 		uint64_t end = ((batch_idx + 1) * batch_size > local_nnz_count) ? local_nnz_count : ((batch_idx + 1) * batch_size);
 
+	#ifdef VERBOSE
 		tu.print_str("Batch idx " + std::to_string(batch_idx) + "/" +
 					 std::to_string(batch_cnt) + " [" +
 					 std::to_string(beg) + ", " +
 					 std::to_string(end) + ")\n");
+	#endif
 
 		memset(algn_cnts, 0, sizeof(*algn_cnts) * (numThreads + 1));
 
@@ -291,7 +293,7 @@ DistributedPairwiseRunner::run_batch
 
 				assert(l_row_idx >= 0 && l_col_idx >= 0 && g_col_idx >= 0 && g_row_idx >= 0);
 
-				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
+				elba::CommonKmers *cks = std::get<2>(mattuples[i]);
 
 				if ((cks->count >= ckthr) 	 	&& 
 					(l_col_idx >= l_row_idx) 	&&
@@ -349,9 +351,8 @@ DistributedPairwiseRunner::run_batch
 
 				assert(l_row_idx >= 0 && l_col_idx >= 0 && g_col_idx >= 0 && g_row_idx >= 0);
 
-				dibella::CommonKmers *cks = std::get<2>(mattuples[i]);
+				elba::CommonKmers *cks = std::get<2>(mattuples[i]);
 
-			//	if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				if ((cks->count >= ckthr) && (l_col_idx >= l_row_idx) && (l_col_idx != l_row_idx  || g_col_idx > g_row_idx))
 				{
 
@@ -364,7 +365,7 @@ DistributedPairwiseRunner::run_batch
 			}
 		}
 
-		// Function call to the aligner
+		// function call to the aligner
 		lfs << "calling aligner for batch idx " << batch_idx
 			<< " cur #algnments " 				<< algn_cnts[numThreads]
 			<< " overall " 						<< nalignments
@@ -372,7 +373,7 @@ DistributedPairwiseRunner::run_batch
 
 		// GGGG: fill ContainedSeqPerBatch
 		pf->apply_batch(seqsh, seqsv, lids, col_offset, row_offset, mattuples, lfs, noAlign, k, nreads, ContainedSeqPerBatch[batch_idx]);
-
+		
 		delete [] lids;
 		++batch_idx;
 	}
@@ -506,35 +507,31 @@ DistributedPairwiseRunner::run_batch
 	uint64_t avgalignments = nalignments_tot / parops->world_procs_count;
 
 	// min, max num alignments per proc
-  MPI_Reduce(&nalignments, &maxalignments, 1, MPI_UINT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
+  	MPI_Reduce(&nalignments, &maxalignments, 1, MPI_UINT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
  	MPI_Reduce(&nalignments, &minalignments, 1, MPI_UINT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
 
-	tu.print_str(
-				 "Total nnzs in the output matrix " +
-				 std::to_string(gmat->getnnz()) +
-				 "\nTotal nnzs in strictly lower (or upper) mat " +
-				 std::to_string((gmat->getnnz()-gmat->getncol())/2) + 
-				 "\n  Total alignments run " + std::to_string(nalignments_tot) +
-				 "\n  Eliminated due to common k-mer threshold " +
-				 std::to_string(nelims_ckthr_tot) + "\n");
+	tu.print_str("#nonzeros in C before pruning: ");
+    tu.print_str(std::to_string(gmat->getnnz()) + "\n");
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	// PRUNE MATRIX FROM SPURIOUS AND CONTAINED ALIGNMENT                               // 
 	//////////////////////////////////////////////////////////////////////////////////////
 
-	tu.print_str("\t* nnz before pruning " + std::to_string(gmat->getnnz()) + "\n");
-
-	// Prune pairs that do not meet score criteria
-	auto elim_score = [] (dibella::CommonKmers &ck) { return ck.passed == false; };
+	// Prune entries that do not meet score criteria
+	auto elim_score = [] (elba::CommonKmers &ck) { return ck.passed == false; };
 	gmat->Prune(elim_score); 
 
 	// GGGG: if noAlign == true, we remove only the contained overlaps as they are not useful for transitive reduction (next prune)
-	tu.print_str("\t* nnz after 1st pruning (score) " + std::to_string(gmat->getnnz()) + "\n");
+	tu.print_str("#nonzeros in C after score pruning: " + std::to_string(gmat->getnnz()) + "\n");
 
-	// Prune pairs involving contained seqs
+#ifdef VERBOSE
+    toerase.PrintInfo("toerase");
+#endif 
+
+	// Prune entries involving contained sequences
 	gmat->PruneFull(toerase, toerase);
 
-	tu.print_str("\t* nnz after 2nd pruning (contained) " + std::to_string(gmat->getnnz()) + "\n");
+	tu.print_str("#nonzeros in C after contained sequences pruning: " + std::to_string(gmat->getnnz()) + "\n");
 	
 	delete [] algn_cnts;
 	delete [] mattuples;

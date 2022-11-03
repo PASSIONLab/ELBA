@@ -36,7 +36,7 @@ DistributedFastaData::~DistributedFastaData() {
     delete[](recv_nbrs_buffs);
   }
   delete[](recv_nbrs_buff_lengths);
-  delete (fd->buffer());
+  delete[](fd->buffer());
   delete (fd);
   delete[](l_seq_counts);
   delete[](g_seq_offsets);
@@ -49,8 +49,7 @@ DistributedFastaData::DistributedFastaData(
   const std::shared_ptr<TimePod> &tp, TraceUtils tu)
   : overlap(overlap), k(k), parops(parops), tp(tp), tu(tu) {
 
-  is_diagonal_cell =
-    parops->grid->GetRankInProcRow() == parops->grid->GetRankInProcCol();
+  is_diagonal_cell = parops->grid->GetRankInProcRow() == parops->grid->GetRankInProcCol();
 
   tp->times["StartDfd:PfrReadFasta()"] = std::chrono::system_clock::now();
   char *buff;
@@ -323,6 +322,9 @@ void DistributedFastaData::collect_grid_seqs() {
   auto send_stats = new MPI_Status[to_nbrs_count];
   MPI_Waitall(recv_nbrs_count, recv_nbrs_buff_lengths_reqs, recv_stats);
   MPI_Waitall(to_nbrs_count, to_nbrs_send_reqs, send_stats);
+
+  delete [] recv_stats;
+  delete [] send_stats;
 
 #ifndef NDEBUG
   {

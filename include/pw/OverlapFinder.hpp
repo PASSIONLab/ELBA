@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 2019-07-10.
 
-#ifndef DIBELLA_OVERLAPFINDER_HPP
-#define DIBELLA_OVERLAPFINDER_HPP
+#ifndef ELBA_OVERLAPFINDER_HPP
+#define ELBA_OVERLAPFINDER_HPP
 
 #include "PairwiseFunction.hpp"
 
@@ -12,7 +12,7 @@ public:
   void apply(uint64_t l_col_idx, uint64_t g_col_idx, uint64_t l_row_idx,
              uint64_t g_row_idx, seqan::Dna5String *seq_h, seqan::Dna5String *seq_v,
              ushort k,
-             dibella::CommonKmers &cks, std::stringstream& ss) override;
+             elba::CommonKmers &cks, std::stringstream& ss) override;
 
 private:
   bool perform_alignment;
@@ -22,4 +22,4 @@ private:
   uint64_t local_nnz_count;
 };
 
-#endif //DIBELLA_OVERLAPFINDER_HPP
+#endif //ELBA_OVERLAPFINDER_HPP

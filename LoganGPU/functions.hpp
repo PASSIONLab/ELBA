@@ -1,20 +1,11 @@
 //==================================================================
 // Title:  Cuda x-drop seed-and-extend alignment algorithm
-// Author: G. Guidi, A. Zeni
-// Date:   6 March 2019
+// Author: A. Zeni, G. Guidi
 //==================================================================
-
-#include <omp.h>
 
 #define MIN -32768
 #define BYTES_INT 4
-
-#ifdef  ONERANKPERNODE
-#define MAXNGPUS 8 // 1 MPI process to many GPUs 
-#else
-#define MAXNGPUS 1 // many MPI processes to 1 GPU
-#endif
-
+#define MAX_GPUS 8
 #define MATCH     1
 #define MISMATCH -1
 #define GAP_EXT  -1
@@ -43,9 +34,9 @@ enum ExtensionDirectionL
 	EXTEND_BOTHL  = 3
 };
 
-__inline__ __device__ void warpReduce(volatile short *input,
-										  int myTId){
-		input[myTId] = (input[myTId] > input[myTId + 32]) ? input[myTId] : input[myTId + 32]; 
+__inline__ __device__ void warpReduce(volatile short *input, int myTId)
+{
+		input[myTId] = (input[myTId] > input[myTId + 32]) ? input[myTId] : input[myTId + 32]; // invalid __global__ read of size 2
 		input[myTId] = (input[myTId] > input[myTId + 16]) ? input[myTId] : input[myTId + 16];
 		input[myTId] = (input[myTId] > input[myTId + 8]) ? input[myTId] : input[myTId + 8]; 
 		input[myTId] = (input[myTId] > input[myTId + 4]) ? input[myTId] : input[myTId + 4];
@@ -53,17 +44,24 @@ __inline__ __device__ void warpReduce(volatile short *input,
 		input[myTId] = (input[myTId] > input[myTId + 1]) ? input[myTId] : input[myTId + 1];
 }
 
-__inline__ __device__ short reduce_max(short *input, int dim, int n_threads){
+__inline__ __device__ short reduce_max(short *input, int dim, int n_threads)
+{
 	unsigned int myTId = threadIdx.x;   
-	if(dim>32){
-		for(int i = n_threads/2; i >32; i>>=1){
-			if(myTId < i){
-						input[myTId] = (input[myTId] > input[myTId + i]) ? input[myTId] : input[myTId + i];
-			}__syncthreads();
-		}//__syncthreads();
+	if(dim > 32)
+	{
+		for(int i = n_threads/2; i > 32; i >>= 1)
+		{
+			if(myTId < i)
+			{
+				input[myTId] = (input[myTId] > input[myTId + i]) ? input[myTId] : input[myTId + i];
+			}
+			__syncthreads();
+		}
 	}
-	if(myTId<32)
-		warpReduce(input, myTId);
+
+	if(myTId < 32)
+		warpReduce(input, myTId); // invalid __global__ read of size 2
+
 	__syncthreads();
 	return input[0];
 }
@@ -122,21 +120,13 @@ __inline__ __device__ void computeAntidiag(short *antiDiag1,
 									){
 	int tid = threadIdx.x;
 	
-	for(int i = 0; i < maxCol; i+=n_threads){
+	for(int i = 0; i < maxCol; i += n_threads){
 
 		int col = tid + minCol + i;
 		int queryPos, dbPos;
 		
 		queryPos = col - 1;
 		dbPos = col + rows - antiDiagNo - 1;
-		
-		/*if(direction == EXTEND_LEFTL){
-			queryPos = cols - 1 - col;
-			dbPos = rows - 1 + col - antiDiagNo;
-		}else{//EXTEND RIGHT
-			queryPos = col - 1;
-			dbPos = antiDiagNo - col - 1;
-		}*/
 
 		if(col < maxCol){
 		
@@ -191,7 +181,6 @@ __inline__ __device__ void initAntiDiag3(short *antiDiag3,
 		if (antiDiagNo - maxCol == 0) // init first row
 			antiDiag3[maxCol - offset] = antiDiagNo * gapCost;
 	}
-	//return offset;
 }
 
 __inline__ __device__ void initAntiDiags(
@@ -204,25 +193,14 @@ __inline__ __device__ void initAntiDiags(
 			   int const &gapCost,
 			   int const &undefined)
 {
-	//antiDiag2.resize(1);
 	a2size = 1;
 
-	//resize(antiDiag2, 1);
 	antiDiag2[0] = 0;
 
-	//antiDiag3.resize(2);
 	a3size = 2;
 
-	//if (-gapCost > dropOff)
-	//{
-	// 	antiDiag3[0] = undefined;
-	// 	antiDiag3[1] = undefined;
-	//}
-	//else
-	//{
-		antiDiag3[0] = gapCost;
-		antiDiag3[1] = gapCost;
-	//}
+	antiDiag3[0] = gapCost;
+	antiDiag3[1] = gapCost;
 }
 
 __global__ void extendSeedLGappedXDropOneDirectionGlobal(
@@ -275,8 +253,7 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 	if (rows == 1 || cols == 1)
 		return;
 
-	//printf("%d\n", gapCost);
-	//int undefined = UNDEF;
+	
 	int minCol = 1;
 	int maxCol = 2;
 
@@ -293,18 +270,12 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 	int upperDiag = 0;
 
 	extern __shared__ short temp_alloc[];
-	short *temp= &temp_alloc[0];
+	short *temp = &temp_alloc[0];
 
 	while (minCol < maxCol)
 	{	
-
-		
 		++antiDiagNo;
 
-		//antidiagswap
-		//antiDiag2 -> antiDiag1
-		//antiDiag3 -> antiDiag2
-		//antiDiag1 -> antiDiag3
 		short *t = antiDiag1;
 		antiDiag1 = antiDiag2;
 		antiDiag2 = antiDiag3;
@@ -320,28 +291,25 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 		initAntiDiag3(antiDiag3, a3size, offset3, maxCol, antiDiagNo, best - scoreDropOff, GAP_EXT, UNDEF);
 		
 		computeAntidiag(antiDiag1, antiDiag2, antiDiag3, querySeg, databaseSeg, best, scoreDropOff, cols, rows, minCol, maxCol, antiDiagNo, offset1, offset2, direction, n_threads);	 	
-		//roofline analysis
 		__syncthreads();	
 	
 		int tmp, antiDiagBest = UNDEF;	
-		for(int i=0; i<a3size; i+=n_threads){
+		for(int i = 0; i < a3size; i += n_threads)
+		{
 			int size = a3size-i;
 			
-			if(myTId<n_threads){
+			if(myTId < n_threads)
+			{
 				temp[myTId] = (myTId<size) ? antiDiag3[myTId+i]:UNDEF;				
 			}
 			__syncthreads();
 			
-			tmp = reduce_max(temp,size, n_threads);
+			tmp = reduce_max(temp, size, n_threads);
 			antiDiagBest = (tmp>antiDiagBest) ? tmp:antiDiagBest;
 
 		}
 		best = (best > antiDiagBest) ? best : antiDiagBest;
-		//int prova = simple_max(antiDiag3, a3size);	
-		//if(prova!=antiDiagBest){
-		//	if(myTId==0)
-		//		printf("errore %d/%d\n", prova,antiDiagBest);
-		//}
+		
 		while (minCol - offset3 < a3size && antiDiag3[minCol - offset3] == UNDEF &&
 			   minCol - offset2 - 1 < a2size && antiDiag2[minCol - offset2 - 1] == UNDEF)
 		{
@@ -364,7 +332,6 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 		minCol = (minCol > (antiDiagNo + 2 - rows)) ? minCol : (antiDiagNo + 2 - rows);
 		// end of querySeg reached?
 		maxCol = (maxCol < cols) ? maxCol : cols;
-		//}
 	}
 
 	int longestExtensionCol = a3size + offset3 - 2;
@@ -391,19 +358,16 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 		}
 	}
 
-
-	//could be parallelized in some way
-	if (longestExtensionScore == UNDEF){
-
+	if (longestExtensionScore == UNDEF)
+	{
 		// general case
-		for (int i = 0; i < a1size; ++i){
-
-			if (antiDiag1[i] > longestExtensionScore){
-
+		for (int i = 0; i < a1size; ++i)
+		{
+			if (antiDiag1[i] > longestExtensionScore)
+			{
 				longestExtensionScore = antiDiag1[i];
 				longestExtensionCol = i + offset1;
 				longestExtensionRow = antiDiagNo - 2 - longestExtensionCol;
-			
 			}
 		}
 	}
@@ -412,57 +376,47 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 		updateExtendedSeedL(mySeed, direction, longestExtensionCol, longestExtensionRow, lowerDiag, upperDiag);
 	seed[myId] = mySeed;
 	res[myId] = longestExtensionScore;
-	//}
 
 }
 
-inline void extendSeedL(vector<LSeed> &seeds,
+void extendSeedL(std::vector<LSeed> &seeds,
 			ExtensionDirectionL direction,
-			vector<string> &target,
-			vector<string> &query,
-			vector<ScoringSchemeL> &penalties,
+			std::vector<std::string> &target,
+			std::vector<std::string> &query,
+			std::vector<ScoringSchemeL> &penalties,
 			int const& XDrop,
 			int const& kmer_length,
 			int *res,
 			int numAlignments,
 			int ngpus,
-			int myrank,
 			int n_threads
-			//,long int cups
 			)
 {
 
-	if(scoreGapExtend(penalties[0]) >= 0){
-
+	if(scoreGapExtend(penalties[0]) >= 0)
+	{
 		cout<<"Error: Logan does not support gap extension penalty >= 0\n";
 		exit(-1);
 	}
-	if(scoreGapOpen(penalties[0]) >= 0){
 
-		cout<<"Error: Logan does not support gap opening penalty >= 0\n";
+	if(scoreGapOpen(penalties[0]) >= 0)
+	{
+		cout << "Error: Logan does not support gap opening penalty >= 0\n";
 		exit(-1);
 	}
-	//start measuring time
-	auto start_t1 = NOW;
-
-	//set num of threads
-	//if(n_threads == 1){
-    //            std::cout<< "AUTOMATIC DETECTION OF THREADS" << std::endl;
-                n_threads = (XDrop/WARP_DIM + 1)* WARP_DIM;
-                if(n_threads>1024)
-                        n_threads=1024;
-    //    }
-    //    std::cout<< "RUNNING WITH "<<n_threads<< " THREADS"<<std::endl;
+	
+	#ifdef ADAPTABLE
+    n_threads = (XDrop/WARP_DIM + 1)* WARP_DIM;
+    if(n_threads>1024)
+        n_threads=1024;
+	#endif
 
 	//declare streams
 	cudaStream_t stream_r[MAX_GPUS], stream_l[MAX_GPUS];
 
 	// NB nSequences is correlated to the number of GPUs that we have
-	
 	int nSequences = numAlignments/ngpus;
-	//int nSeqInt = nSequences*sizeof(int);
 	int nSequencesLast = nSequences+numAlignments%ngpus;
-	//int nSeqIntLast = nSequencesLast*sizeof(int);	
 
 	//final result of the alignment
 	int *scoreLeft = (int *)malloc(numAlignments * sizeof(int));
@@ -473,10 +427,10 @@ inline void extendSeedL(vector<LSeed> &seeds,
 	vector<LSeed> seeds_r;
 	vector<LSeed> seeds_l;
 	seeds_r.reserve(numAlignments);
-	//seeds_l.reserve(numAlignments);
-	for (int i=0; i<seeds.size(); i++){
-			seeds_r.push_back(seeds[i]);
-			//seeds_l.push_back(seeds[i]);
+
+	for (uint i = 0; i < seeds.size(); i++) 
+	{
+		seeds_r.push_back(seeds[i]);	
 	}
 
 	//sequences offsets	 		
@@ -518,17 +472,22 @@ inline void extendSeedL(vector<LSeed> &seeds,
 
 	std::vector<double> pergpustime(ngpus);
 
-	#pragma omp parallel for
-	for(int i = 0; i < ngpus; i++){
+#pragma omp parallel for num_threads(ngpus)
+	for(int i = 0; i < ngpus; i++)
+	{
 		int dim = nSequences;
-		if(i==ngpus-1)
+
+		if(i == ngpus-1)
 			dim = nSequencesLast;
+
 		//compute offsets and shared memory per block
 		int MYTHREAD = omp_get_thread_num();
 		auto start_setup_ithread = NOW;
 		ant_len_left[i]=0;
 		ant_len_right[i]=0;
-		for(int j = 0; j < dim; j++){
+
+		for(int j = 0; j < dim; j++)
+		{
 
 			offsetLeftQ[i].push_back(getBeginPositionV(seeds[j+i*nSequences]));
 			offsetLeftT[i].push_back(getBeginPositionH(seeds[j+i*nSequences]));
@@ -555,55 +514,39 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		suffQ[i] = (char*)malloc(sizeof(char)*totalLengthQSuff[i]);
 		suffT[i] = (char*)malloc(sizeof(char)*totalLengthTSuff[i]);
 		//generate prefix and suffix on the CPU
-		//std::cout << "SETTING UP PREF/SUFF" << std::endl;
 		reverse_copy(query[0+i*nSequences].c_str(),query[0+i*nSequences].c_str()+offsetLeftQ[i][0],prefQ[i]);
-		//memcpy(prefQ[i], query[0+i*nSequences].c_str(), offsetLeftQ[i][0]);
+
 		memcpy(prefT[i], target[0+i*nSequences].c_str(), offsetLeftT[i][0]);
 		memcpy(suffQ[i], query[0+i*nSequences].c_str()+getEndPositionV(seeds[0+i*nSequences]), offsetRightQ[i][0]);
 		reverse_copy(target[0+i*nSequences].c_str()+getEndPositionH(seeds[0+i*nSequences]),target[0+i*nSequences].c_str()+getEndPositionH(seeds[0+i*nSequences])+offsetRightT[i][0],suffT[i]);
-		//memcpy(suffT[i], target[0+i*nSequences].c_str()+getEndPositionH(seeds[0+i*nSequences]), offsetRightT[i][0]);
-		for(int j = 1; j<dim; j++){
+		
+		for(int j = 1; j<dim; j++)
+		{
 			char *seqptr = prefQ[i] + offsetLeftQ[i][j-1];
 			reverse_copy(query[j+i*nSequences].c_str(),query[j+i*nSequences].c_str()+(offsetLeftQ[i][j]-offsetLeftQ[i][j-1]),seqptr);
-			//memcpy(seqptr, query[j+i*nSequences].c_str(), offsetLeftQ[i][j]-offsetLeftQ[i][j-1]);
+			
 			seqptr = prefT[i] + offsetLeftT[i][j-1];
 			memcpy(seqptr, target[j+i*nSequences].c_str(), offsetLeftT[i][j]-offsetLeftT[i][j-1]);
 			seqptr = suffQ[i] + offsetRightQ[i][j-1];
 			memcpy(seqptr, query[j+i*nSequences].c_str()+getEndPositionV(seeds[j+i*nSequences]), offsetRightQ[i][j]-offsetRightQ[i][j-1]);
 			seqptr = suffT[i] + offsetRightT[i][j-1];
 			reverse_copy(target[j+i*nSequences].c_str()+getEndPositionH(seeds[j+i*nSequences]),target[j+i*nSequences].c_str()+getEndPositionH(seeds[j+i*nSequences])+(offsetRightT[i][j]-offsetRightT[i][j-1]),seqptr);
-			//memcpy(seqptr, target[j+i*nSequences].c_str()+getEndPositionH(seeds[j+i*nSequences]), offsetRightT[i][j]-offsetRightT[i][j-1]);
 
 		}
+
 		auto end_setup_ithread = NOW;
 		duration<double> setup_ithread = end_setup_ithread - start_setup_ithread;
 		pergpustime[MYTHREAD] = setup_ithread.count();
 	}
 
-	// GG: measuring load balance/imbalance
-	std::vector<double> pergputtime(ngpus);
-	std::vector<double> pergpuctime(ngpus);
-	std::vector<int> 	pergpuseqs(ngpus);
-
-	auto start_transfer = NOW;
-
-	#pragma omp parallel for
+#pragma omp parallel for num_threads(ngpus)
 	for(int i = 0; i < ngpus; i++)
 	{
-		int MYTHREAD = omp_get_thread_num();
-		auto start_transfer_ithread = NOW;
 		int dim = nSequences;
-		pergpuseqs[MYTHREAD] = dim;
 		if(i==ngpus-1)
 			dim = nSequencesLast;
-
 		//set gpu device
-	#ifdef ONERANKPERNODE
-		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
-	#else
-		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
-	#endif
-
+		cudaSetDevice(i);
 		//create streams
 		cudaStreamCreateWithFlags(&stream_r[i],cudaStreamNonBlocking);
 		cudaStreamCreateWithFlags(&stream_l[i],cudaStreamNonBlocking);
@@ -640,116 +583,58 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		cudaErrchk(cudaMemcpyAsync(suffQ_d[i], suffQ[i], totalLengthQSuff[i]*sizeof(char), cudaMemcpyHostToDevice, stream_r[i]));
 		cudaErrchk(cudaMemcpyAsync(suffT_d[i], suffT[i], totalLengthTSuff[i]*sizeof(char), cudaMemcpyHostToDevice, stream_r[i]));
 		//OK
-
-		auto end_transfer_ithread = NOW;
-		duration<double> transfer_ithread = end_transfer_ithread - start_transfer_ithread;
-		pergputtime[MYTHREAD] = transfer_ithread.count();
 	}
 	
-	auto end_t1 = NOW;
-	duration<double> setup_transfer=end_t1-start_t1;
-	duration<double> transfer=end_t1-start_transfer;
-	std::cout << "Input setup time: " << setup_transfer.count() << std::endl;
-	std::cout << "Input transfer and malloc time: " << transfer.count() << std::endl;
-	
 	auto start_c = NOW;
-
-	// Get the device id for many MPI processes to 1 GPU option
-	int deviceCount;
-	cudaGetDeviceCount(&deviceCount);
-
-	int mygpuid = myrank % deviceCount; // myrank passed as argument so I don't have to link CUDA/MPI
 	
-	// execute kernels
-	#pragma omp parallel for
-	for(int i = 0; i<ngpus;i++)
+	// GGGG: Program hit CUDA_ERROR_INVALID_CONTEXT (error 201) due to "invalid device context" on CUDA API call to cuCtxGetDevice.
+	// This is the main kernel execution.
+#pragma omp parallel for num_threads(ngpus)
+	for(int i = 0; i < ngpus;i++)
 	{
-		int MYTHREAD = omp_get_thread_num();
-		auto start_c_ithread_1 = NOW;
-
-	#ifdef ONERANKPERNODE
-		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
-	#else
-		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
-	#endif
+		cudaSetDevice(i);
 		
 		int dim = nSequences;
-		if(i == ngpus-1)
+		if(i==ngpus-1)
 			dim = nSequencesLast;
 		
 		extendSeedLGappedXDropOneDirectionGlobal <<<dim, n_threads, n_threads*sizeof(short), stream_l[i]>>> (seed_d_l[i], prefQ_d[i], prefT_d[i], EXTEND_LEFTL, XDrop, scoreLeft_d[i], offsetLeftQ_d[i], offsetLeftT_d[i], ant_len_left[i], ant_l[i], n_threads);
 		extendSeedLGappedXDropOneDirectionGlobal <<<dim, n_threads, n_threads*sizeof(short), stream_r[i]>>> (seed_d_r[i], suffQ_d[i], suffT_d[i], EXTEND_RIGHTL, XDrop, scoreRight_d[i], offsetRightQ_d[i], offsetRightT_d[i], ant_len_right[i], ant_r[i], n_threads);
-		auto end_c_ithread_1 = NOW;
-		duration<double> c_ithread_1 = end_c_ithread_1 - start_c_ithread_1;
-		pergpuctime[MYTHREAD] = c_ithread_1.count();
 	}
 
-#pragma omp parallel for
+#pragma omp parallel for num_threads(ngpus)
 	for(int i = 0; i < ngpus; i++)
 	{
-		int MYTHREAD = omp_get_thread_num();
-		auto start_c_ithread_2 = NOW;
-
-	#ifdef ONERANKPERNODE
-		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
-	#else
-		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
-	#endif
-
+		cudaSetDevice(i);
 		int dim = nSequences;
+
 		if(i==ngpus-1)
 			dim = nSequencesLast;
+
 		cudaErrchk(cudaMemcpyAsync(scoreLeft+i*nSequences, scoreLeft_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(&seeds[0]+i*nSequences, seed_d_l[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(scoreRight+i*nSequences, scoreRight_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_r[i]));
 		cudaErrchk(cudaMemcpyAsync(&seeds_r[0]+i*nSequences, seed_d_r[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_r[i]));
-		auto end_c_ithread_2 = NOW;
-		duration<double> c_ithread_2 = end_c_ithread_2 - start_c_ithread_2;
-		pergpuctime[MYTHREAD] += c_ithread_2.count();
+	
 	}
 
-	#pragma omp parallel for
+#pragma omp parallel for num_threads(ngpus)
 	for(int i = 0; i < ngpus; i++)
 	{
-		int MYTHREAD = omp_get_thread_num();
-		auto start_c_ithread_3 = NOW;
-
-	#ifdef ONERANKPERNODE
-		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
-	#else
-		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
-	#endif
-
+		cudaSetDevice(i);
 		cudaDeviceSynchronize();
-		auto end_c_ithread_3 = NOW;
-		duration<double> c_ithread_3 = end_c_ithread_3 - start_c_ithread_3;
-		pergpuctime[MYTHREAD] += c_ithread_3.count();
 	}
 
 	auto end_c = NOW;
 	duration<double> compute = end_c-start_c;
-	std::cout << "Compute time:	" << compute.count() << std::endl;
-
-	/*for(int i = 0; i < ngpus; i++)
-	{
-		std::cout << "GPU" << i << "	seqs	:	" << pergpuseqs[i] << "	setup	" << pergpustime[i] << "	transfer	" << pergputtime[i] << " compute	" << pergpuctime[i] << std::endl;
-	}*/
+	std::cout << " - GPU-only runtime: " << compute.count() << " s" << std::endl;
 
 	cudaErrchk(cudaPeekAtLastError());
 
-	//cudaStreamDestroy(stream_l);
-	//cudaStreamDestroy(stream_r);
-	auto start_f = NOW;
-
-	#pragma omp parallel for
+#pragma omp parallel for num_threads(ngpus)
 	for(int i = 0; i < ngpus; i++)
 	{
-
-	#ifdef ONERANKPERNODE
-		cudaSetDevice(i); 		// 1 MPI process to many GPUs 
-	#else
-		cudaSetDevice(mygpuid); // many MPI processes to 1 GPU
-	#endif
+		cudaSetDevice(i);
 
 		cudaStreamDestroy(stream_l[i]);
 		cudaStreamDestroy(stream_r[i]);
@@ -773,17 +658,14 @@ inline void extendSeedL(vector<LSeed> &seeds,
 		cudaErrchk(cudaFree(ant_r[i]));
 
 	}
-	auto end_f = NOW;
 	
-	for(int i = 0; i < numAlignments; i++){
+	for(int i = 0; i < numAlignments; i++)
+	{
 		res[i] = scoreLeft[i]+scoreRight[i]+kmer_length;
 		setEndPositionH(seeds[i], getEndPositionH(seeds_r[i]));    
 		setEndPositionV(seeds[i], getEndPositionV(seeds_r[i])); 
-		//cout << res[i] <<endl;
 	}
 	
 	free(scoreLeft);
 	free(scoreRight);
-		
 }
-

@@ -9,10 +9,8 @@
 #include <string>
 #include <vector>
 
-//#include "logan.hpp"
-//#include "interface.hpp"
-
-#define BATCH_SIZE 100000
+#define BATCH_SIZE 50000 // GGGG: tune batch size
+#define GPU_THREADS 128
 
 using namespace std;
 struct LoganResult {
@@ -64,6 +62,6 @@ struct SeedInterface {
 
 void 
 RunLoganAlign(vector<string>& seqHs, vector<string>& seqVs, 
-	vector<SeedInterface>& SeedInterfaceSet, vector<LoganResult>& xscores, int& xdrop, ushort& seed_length, int& myrank);
+	vector<SeedInterface>& SeedInterfaceSet, vector<LoganResult>& xscores, int& xdrop, ushort& seed_length);
 
 #endif // __LOGAN_ALIGN_RESULT_HPP__

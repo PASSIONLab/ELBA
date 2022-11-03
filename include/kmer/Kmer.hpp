@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 10/17/19.
 
-#ifndef DIBELLA_KMER_HPP
-#define DIBELLA_KMER_HPP
+#ifndef ELBA_KMER_HPP
+#define ELBA_KMER_HPP
 
 #include <stdio.h>
 #include <stdint.h>
@@ -174,7 +174,7 @@ typedef pair<Kmer::MERARR, KmerCountType>  KmerValue;
 // GGGG: might need to modify this 
 typedef VectorMap<Kmer::MERARR, KmerCountType, std::hash<Kmer::MERARR>, std::less<Kmer::MERARR>, std::equal_to<Kmer::MERARR>> KmerCountsType;
 
-// namespace dibella {
+// namespace elba {
 //   struct Kmer {
 //   private:
 //     uint64_t kmer_code;
@@ -436,4 +436,4 @@ typedef VectorMap<Kmer::MERARR, KmerCountType, std::hash<Kmer::MERARR>, std::les
 //     }
 // };
 
-#endif //DIBELLA_KMER_HPP
+#endif //ELBA_KMER_HPP

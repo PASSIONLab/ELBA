@@ -1,7 +1,7 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef DIBELLA_KMEROPS_HPP
-#define DIBELLA_KMEROPS_HPP
+#ifndef ELBA_KMEROPS_HPP
+#define ELBA_KMEROPS_HPP
 
 #include <unordered_set>
 #include "MatrixEntry.hpp"
@@ -16,14 +16,14 @@
 #include "Kmer.hpp"
 #include <stdint.h>
 
-namespace dibella {
+namespace elba {
   class KmerOps {
   public:
     // GGGG: PSpMat needs CombBLAS 
     static PSpMat<PosInRead>::MPI_DCCols GenerateA(uint64_t seq_count,
         std::shared_ptr<DistributedFastaData>& dfd, ushort k, ushort s,
         Alphabet &alph, const std::shared_ptr<ParallelOps>& parops,
-        const std::shared_ptr<TimePod>& tp, int nthreads); //, std::unordered_set<Kmer, Kmer>& local_kmers);
+        const std::shared_ptr<TimePod>& tp, int nthreads, std::string& myoutput); //, std::unordered_set<Kmer, Kmer>& local_kmers);
 
   //   static uint64_t add_kmers(const char *seq, ushort len, uint64_t start_offset,
   //                             uint64_t end_offset_inclusive, ushort k, ushort s,
@@ -82,4 +82,4 @@ namespace dibella {
   };
 }
 
-#endif // DIBELLA_KMEROPS_HPP
+#endif // ELBA_KMEROPS_HPP

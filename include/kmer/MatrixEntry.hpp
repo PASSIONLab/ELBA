@@ -1,10 +1,10 @@
 // Created by Saliya Ekanayake on 10/15/19.
 
-#ifndef DIBELLA_MATRIXENTRY_HPP
-#define DIBELLA_MATRIXENTRY_HPP
+#ifndef ELBA_MATRIXENTRY_HPP
+#define ELBA_MATRIXENTRY_HPP
 
 // #include "../Types.hpp"
-// namespace dibella{
+// namespace elba{
 //   struct MatrixEntry
 //   {
 //     short cost;
@@ -29,4 +29,4 @@
 //     }
 //   };
 // }
-#endif //DIBELLA_MATRIXENTRY_HPP
+#endif //ELBA_MATRIXENTRY_HPP

@@ -4,7 +4,6 @@
 #include "../../LoganGPU/RunLoganAligner.hpp" 	// Call to aligner
 
 uint minOverlapLenL = 5000;
-uint maxOverhangL = 25;
 
 char 
 complementbase(char n)
@@ -39,8 +38,8 @@ reversecomplement(const std::string& seq) {
 	return cpyseq;
 }
 
-void PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioScoreOverlap, 
-	uint32_t& overhang, uint32_t& overhangT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
+void GPULoganAligner::PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioScoreOverlap,
+        int& dir, int& dirT, int& sfx, int& sfxT, uint32_t& overlap, const bool noAlign, std::vector<int64_t>& ContainedSeqMyThread)
 {
 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the seqVs (vertical/horizonral direction)
 	// these four return seqan:Tposition objects
@@ -63,6 +62,15 @@ void PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioS
 
 	overlap = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
 
+	if((seqV == 5 && seqH == 99) || 
+		(seqV == 5 && seqH == 100) || 
+			(seqV == 5 && seqH == 184) ||
+				(seqV == 24 && seqH == 40))
+	{
+		std::cout << seqV+1 << "\t" << seqH+1 << "\t" << ai.rc << "\t" << begpV 
+		<< "\t" << endpV << "\t" << begpH << "\t" << endpH  << "\t" << ai.xscore << "\t" << overlap << std::endl;
+	}
+
 #ifndef FIXEDTHR
 	float myThr = (1 - DELTACHERNOFF) * (ratioScoreOverlap * (float)overlap);
 
@@ -71,82 +79,38 @@ void PostAlignDecision(const LoganAlignmentInfo& ai, bool& passed, float& ratioS
 	bool contained = false;
 	bool chimeric  = false;
 
-	// Reserve length/position if rc [x]
-	if(ai.rc)
+	if (begpV <= begpH && (rlenV - endpV) <= (rlenH - endpH))
 	{
-		uint tmp = begpH;
-		begpH = rlenH - endpH;
-		endpH = rlenH - tmp;
+	    ContainedSeqMyThread.push_back(seqV);
+	    contained = true;
 	}
-
-    if (begpV > begpH && (rlenV - endpV) > (rlenH - endpH))
+	else if (begpV >= begpH && (rlenV - endpV) >= (rlenH - endpH))
 	{
-		ContainedSeqMyThread.push_back(seqH); // Push back global index
-		contained = true;
+	    ContainedSeqMyThread.push_back(seqH);
+	    contained = true;
 	}
-    else if (begpH > begpV && (rlenH - endpH) > (rlenV - endpV))
+	else if (!noAlign)
 	{
-		ContainedSeqMyThread.push_back(seqV); // Push back global index
-		contained = true;
+	    passed = ((float)ai.xscore >= myThr && overlap >= minOverlapLenL);
+
+	    if (passed)
+	    {
+	        if (begpV > begpH)
+	        {
+	            dir  = ai.rc? 0 : 1;
+	            dirT = ai.rc? 0 : 2;
+	            sfx  = ((rlenH - endpH) - (rlenV - endpV));
+	            sfxT = begpV - begpH;
+	        }
+	        else
+	        {
+	            dir  = ai.rc? 3 : 2;
+	            dirT = ai.rc? 3 : 1;
+	            sfx  = begpH - begpV;
+	            sfxT = ((rlenV - endpV) - (rlenH - endpH));
+	        }
+	    }
 	}
-
-	if(!contained)
-	{
-		// If noAlign is false, set passed to false if the score isn't good enough
-		if(!noAlign)
-		{
-			if((float)ai.xscore < myThr || overlap < minOverlapLenL) passed = false;
-			else passed = true;
-		}
-
-		if(passed)
-		{
-			uint32_t direction, directionT;
-			uint32_t suffix, suffixT;
-
-			// !reverse complement
-			if(!ai.rc)
-			{
-				if(begpV > begpH)
-				{
-					direction  = 1;
-					directionT = 2;
-
-					suffix = rlenH - endpH;
-					suffixT = begpV;
-				}
-				else
-				{
-					direction  = 2;
-					directionT = 1;
-
-					suffix = begpH;
-					suffixT = rlenV - endpV;
-				}
-			}
-			else
-			{
-				if((begpV > 0) && (begpH > 0) && (rlenV-endpV == 0) && (rlenH-endpH == 0))
-				{
-					direction  = 0;
-					directionT = 0;
-
-					suffix  = begpH;
-					suffixT = begpV;
-				}
-				else
-				{
-					direction  = 3;
-					directionT = 3;
-
-					suffix  = rlenH - endpH;
-					suffixT = rlenV - endpV;
-				}
-			}
-			overhang  = suffix  << 2 | direction;
-			overhangT = suffixT << 2 | directionT;
-		} // if(passed)
-	} // if(!contained)
 
 #else
 	if(ai.xscore >= FIXEDTHR)
@@ -166,7 +130,7 @@ void GPULoganAligner::apply(
     uint64_t l_col_idx, uint64_t g_col_idx,
     uint64_t l_row_idx, uint64_t g_row_idx,
     seqan::Dna5String *seqH, seqan::Dna5String *seqV, ushort k,
-    dibella::CommonKmers &cks, std::stringstream& ss)
+    elba::CommonKmers &cks, std::stringstream& ss)
 {
     // ...
 }
@@ -180,7 +144,7 @@ GPULoganAligner::apply_batch
 	uint64_t *lids,
 	uint64_t col_offset,
 	uint64_t row_offset,
-    PSpMat<dibella::CommonKmers>::ref_tuples *mattuples,
+    PSpMat<elba::CommonKmers>::ref_tuples *mattuples,
     std::ofstream &lfs,
 	const bool noAlign,
 	ushort k,
@@ -202,7 +166,6 @@ GPULoganAligner::apply_batch
 	#endif
 
 	uint64_t npairs = seqan::length(seqsh);
-	// setNumThreads(exec_policy, numThreads);
 	
 	lfs << "processing batch of size " << npairs << " with " << numThreads << " threads " << std::endl;
 
@@ -216,6 +179,10 @@ GPULoganAligner::apply_batch
 	std::vector<SeedInterface> seeds;
 	std::vector<LoganResult> xscores;
 
+	// bool *strands = new bool[npairs];
+	// int  *xscores = new int[npairs];
+	// TSeed  *seeds = new TSeed[npairs];
+
 	/* GGGG: seed_count is hardcoded here (2) */
 	for(int count = 0; count < seed_count; ++count)
 	{
@@ -225,17 +192,17 @@ GPULoganAligner::apply_batch
 		// #pragma omp parallel for 
 		for (uint64_t i = 0; i < npairs; ++i) // I acculate sequences for GPU batch alignment
 		{
-			// Init result
+			// init result
 			LoganResult localRes; 
 
 			// Get seed location
-			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
+			elba::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
 
 			// In KmerIntersectSR.hpp we have (where res == cks):
-			// 	res.first.first 	= arg1.first.first;		// Kmer 1 on argA
-			// 	res.first.second 	= arg1.first.second;	// Kmer 2 on argA
-			// 	res.second.first 	= arg2.first.first;		// Kmer 1 on argB
-			// 	res.second.second 	= arg2.first.second;	// Kmer 2 on argB
+			// 	res.first.first 	// Kmer 1 on argA
+			// 	res.first.second 	// Kmer 1 on argB
+			// 	res.second.first 	// Kmer 2 on argA
+			// 	res.second.second 	// Kmer 2 on argB
 
 			// argA (see KmerIntersectSR.hpp) == row == seqV
 			ushort LocalSeedVOffset = (count == 0) ? cks->first.first : cks->second.first;
@@ -277,12 +244,12 @@ GPULoganAligner::apply_batch
 				localRes.rc = true;
 				xscores.push_back(localRes);
 			}
-			else
+			else if(seedH == seedV)
 			{
 				SeedInterface seed(LocalSeedHOffset, LocalSeedVOffset, seed_length); //LocalSeedHOffset + , LocalSeedVOffset + seed_length);
 
 				// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
-				seeds.push_back(seed); // segfault origin might be around here 
+				seeds.push_back(seed); // segfault origin might be around here (?)
 				seqVs.push_back(seqV);
 				seqHs.push_back(seqH);
 
@@ -292,34 +259,36 @@ GPULoganAligner::apply_batch
 		}
 
 		auto end_time = std::chrono::system_clock::now();
-    	add_time("XA:LoganPreprocess", (ms_t(end_time - start_time)).count());
+	    	add_time("XA:LoganPreprocess", (ms_t(end_time - start_time)).count());
 
 		start_time = std::chrono::system_clock::now();
 
 		// Call LOGAN only if noAlign is false
 		if(!noAlign) 
 		{ 
-			// @GGGG-TODO: Check the parameter
-			RunLoganAlign(seqHs, seqVs, seeds, xscores, xdrop, seed_length, myrank);
-		}
+			if(count == 0)
+				std::cout << " - 1st k-mer comparison started on ";
+			else
+				std::cout << " - 2nd k-mer comparison started on ";
 
+			RunLoganAlign(seqHs, seqVs, seeds, xscores, xdrop, seed_length);
+		}
+		
 		end_time = std::chrono::system_clock::now();
-    	add_time("XA:LoganAlign", (ms_t(end_time - start_time)).count());
+    		add_time("XA:LoganAlign", (ms_t(end_time - start_time)).count());
 
 		start_time = std::chrono::system_clock::now();
 		
-		// @GGGG-TODO: this runs everything twice right now; pretty sure I can avoid this using CCS, I can add an option also run some benchmark
 		// Compute stats
 		if (count == 0)	// overwrite in the first seed
 		{
 			// @GGGG: keep the order for the post alignment evaluation (measure slowdown)
-			// #pragma omp parallel for 
 			for (uint64_t i = 0; i < npairs; ++i)
 			{
 				ai[i].xscore = xscores[i].score; 
 				ai[i].rc     = xscores[i].rc;
 
-                ai[i].begSeedH = xscores[i].begSeedH; 
+                ai[i].begSeedH = xscores[i].begSeedH; 	
                 ai[i].endSeedH = xscores[i].endSeedH; 
                 ai[i].begSeedV = xscores[i].begSeedV; 
                 ai[i].endSeedV = xscores[i].endSeedV; 
@@ -344,6 +313,8 @@ GPULoganAligner::apply_batch
 			{
 				if (xscores[i].score > ai[i].xscore)
 				{
+					std::cout << "Does this happen?" << std::endl;
+					
 					ai[i].xscore = xscores[i].score;
 					ai[i].rc     = xscores[i].rc;
 
@@ -360,25 +331,26 @@ GPULoganAligner::apply_batch
 		}
 
 		end_time = std::chrono::system_clock::now();
-    	add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());
+    		add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());
 	}
 
 	auto start_time = std::chrono::system_clock::now();
 	std::vector<std::vector<int64_t>> ContainedSeqPerThread(numThreads);
 
 	// Dump alignment info 
-	// @GGGG: this should be fine parallel now (2/22 check here!)
-	#pragma omp parallel
 	{
-	    #pragma omp for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
 			// Only keep alignments that meet BELLA criteria
 			bool passed = false;
 			int tid = omp_get_thread_num();
 
-			dibella::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
-			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->overhang, cks->overhangT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
+			// GGGG: ai stores global idx to to store in ContainedSeqPerBatch
+			// GGGG: in PostAlignDecision() we can mark as contained sequences as removable in ContainedSeqPerBatch and their local contained edges
+			// GGGG: ContainedSeqPerBatch global indexes of contained sequences
+
+			elba::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
+			PostAlignDecision(ai[i], passed, ratioScoreOverlap, cks->dir, cks->dirT, cks->sfx, cks->sfxT, cks->overlap, noAlign, ContainedSeqPerThread[tid]);
 
 			if (passed)
 			{
@@ -415,8 +387,7 @@ GPULoganAligner::apply_batch
 	}
 
 	auto end_time = std::chrono::system_clock::now();
-  	add_time("XA:StringOp",
-			 (ms_t(end_time - start_time)).count());
+  	add_time("XA:StringOp", (ms_t(end_time - start_time)).count());
 
 	delete [] ai;
 
