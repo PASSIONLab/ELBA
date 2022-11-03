@@ -645,7 +645,7 @@ void GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd, PSpMat<
     tp->times["StartMain:GenerateA()"] = std::chrono::system_clock::now();
     tu.print_str("\nK-mer Counting and 'A' Creation started:\n");
 
-    Amat = new PSpMat<PosInRead>::MPI_DCCols(elba::KmerOps::GenerateA(seq_count, dfd, klength, kstride, alph, parops, tp, myoutput));
+    Amat = new PSpMat<PosInRead>::MPI_DCCols(elba::KmerOps::GenerateA(seq_count, dfd, klength, kstride, alph, parops, tp, nthreads,  myoutput));
     
     tu.print_str("A (sequences-by-kmer matrix): ");
     Amat->PrintInfo();
