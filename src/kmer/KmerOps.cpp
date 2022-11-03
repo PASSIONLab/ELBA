@@ -21,7 +21,11 @@
 #include "../../include/kmer/KmerOps.hpp"
 #include "../../include/HyperLogLog.hpp"
 #include "../../include/Deleter.h"
+#include <omp.h>
 
+
+// TODO: Need to modify the 64-bit bloom filter to be concurrent
+// as well! 
 extern "C" {
 #ifdef HIPMER_BLOOM64
 #include "../libbloom/bloom64.h"
@@ -180,7 +184,7 @@ public:
         return inBloom;
     }
 
-    void updateReadIds(KmerCountsType::iterator got) {
+    void updateReadIds(KmerCountsType::iterator got, omp_lock_t* bucket_lock) {
 #ifdef KHASH
         READIDS reads = get<0>(*got);  // ::value returns (const valtype_t &) but ::* returns (valtype_t &), which can be changed
         POSITIONS& positions = get<1>(*got);
@@ -193,20 +197,31 @@ public:
         // never add duplicates, also currently doesn't support more than 1 positions per read ID
         int index;
         for (index = 0; index < maxKmerFreq && reads[index] > nullReadId; index++) {
-			if (reads[index] == readId) return;
+			if (reads[index] == readId) {
+                omp_unset_lock(bucket_lock);
+                return;
+            }
 		}
         // if the loop finishes without returning, the index is set to the next open space or there are no open spaces
-        if (index >= maxKmerFreq || reads[index] > nullReadId) return;
+        if (index >= maxKmerFreq || reads[index] > nullReadId) {
+            omp_unset_lock(bucket_lock);
+            return;
+        }
 
         ASSERT(reads[index] == nullReadId, "reads[index] does not equal expected value of nullReadId");
         reads[index] = readId;
 
         positions[index] = position;
+        omp_unset_lock(bucket_lock);
     }
 
     bool includeCount(bool doStoreReadId) {
-        auto got = kmercounts->find(kmer.getArray());  // kmercounts is a global variable
-        if ( doStoreReadId && (got != kmercounts->end()) ) { updateReadIds(got); }
+        omp_lock_t* bucket_lock;
+        auto got = kmercounts->find_without_unlock(kmer.getArray(), &bucket_lock);  // kmercounts is a global variable
+        if(got == kmercounts->end() || ! doStoreReadId) {
+            omp_unset_lock(bucket_lock);
+        }
+        if ( doStoreReadId && (got != kmercounts->end()) ) { updateReadIds(got, bucket_lock); }
         return includeCount(got);
     }
 
@@ -215,13 +230,17 @@ public:
         bool inserted = false;
         if(got != kmercounts->end()) // don't count anything else
         {
+            int* val_pointer;
 			// count the kmer in mercount
 #ifdef KHASH
-			++(get<2>(*got));  // ::value returns (const valtype_t &) but ::* returns (valtype_t &), which can be changed
+			val_pointer = &(get<2>(*got));  // ::value returns (const valtype_t &) but ::* returns (valtype_t &), which can be changed
 #else
-			++(get<2>(got->second)); // increment the counter regardless of quality extensions
+			val_pointer = &(get<2>(got->second)); // increment the counter regardless of quality extensions
 #endif
             inserted = true;
+
+            // For thread safety, make the increment is atomic
+            __atomic_add_fetch(val_pointer, 1, __ATOMIC_RELAXED);
         }
         MPI_Pcontrol(-1,"HashTable");
         return inserted;
@@ -347,6 +366,7 @@ void DealWithInMemoryData(VectorKmer& mykmers, int pass, struct bloom* bm, Vecto
     {
         assert(bm);
         size_t count = mykmers.size();
+        #pragma omp parallel for default(shared)
         for (size_t i = 0; i < count; ++i)
         {
             /* There will be a second pass, just insert into bloom, and map, but do not count */
@@ -358,6 +378,8 @@ void DealWithInMemoryData(VectorKmer& mykmers, int pass, struct bloom* bm, Vecto
     {
         ASSERT(pass == 2, "");
         size_t count = mykmers.size();
+
+        #pragma omp parallel for default(shared)
         for(size_t i = 0; i < count; ++i)
         {
             KmerInfo ki(mykmers[i], myreadids[i], mypositions[i]);
@@ -612,6 +634,7 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
     char* buff;
 
     /*! GGGG: make sure name are consistent with ids */
+
     for (uint64_t lreadidx = offset; lreadidx < nreads; ++lreadidx)
     {
         // GGGG: the next few lines might be responsable for some runtime overhead in packing time wrt diBELLA v1
@@ -694,7 +717,7 @@ size_t ParseNPack(FastaData* lfd, VectorVectorKmer& outgoing, VectorVectorReadId
 // ProcessFiles                            //
 /////////////////////////////////////////////
 
-size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap, ushort k, std::string& myoutput)
+size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readIndex, std::unordered_map<ReadId, std::string>& readNameMap, ushort k, int nthreads, std::string& myoutput)
 {
     /*! GGGG: include bloom filter source code */
     struct bloom * bm = NULL;
@@ -714,7 +737,7 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
 
         const double fp_probability = 0.05;
         assert(cardinality < 1L<<32);
-        bloom_init(bm, cardinality, fp_probability);
+        bloom_init(bm, cardinality, fp_probability, nthreads);
 
     #ifdef VERBOSE
         if(myrank == 0)
@@ -968,12 +991,11 @@ void ProudlyParallelCardinalityEstimate(FastaData* lfd, double& cardinality, ush
 PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
       std::shared_ptr<DistributedFastaData> &dfd, ushort k, ushort s,
       Alphabet &alph, const std::shared_ptr<ParallelOps> &parops,
-      const std::shared_ptr<TimePod> &tp, std::string& myoutput) /*, std::unordered_set<Kmer, Kmer>& local_kmers) */
+      const std::shared_ptr<TimePod> &tp, int nthreads, std::string& myoutput) /*, std::unordered_set<Kmer, Kmer>& local_kmers) */
   {
 
-  char *buff;
+   
   ushort len;
-  uint64_t start_offset, end_offset_inclusive;
 
   /* typedef std::vector<uint64_t> uvec_64; */
   uvec_64 lrow_ids, lcol_ids;
@@ -1011,10 +1033,17 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
   int64_t &mytotbases    = sums[2];
 
   mytotreads = lfd->local_count();
+
+  // Vivek: this loop is tiny; it may not be worth parallelizing with OpenMP
+  // And what is the purpose of instantiating myseq? 
+#ifdef THREADED
+#endif
+  #pragma omp parallel for reduction(+:mytotbases)
   for (uint64_t lseq_idx = 0; lseq_idx < mytotreads; ++lseq_idx)
   {
+      uint64_t start_offset, end_offset_inclusive;
       /*! GGGG: loading sequence string in buff */
-      buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
+      char* buff = lfd->get_sequence(lseq_idx, len, start_offset, end_offset_inclusive);
 
       string myseq{buff + start_offset, buff + end_offset_inclusive + 1};
       mytotbases += myseq.size();
@@ -1078,7 +1107,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
   /*! GGGG: let's extract the function (I'll separate later once I understood what's going on) */
   /*! GGGG: functions in KmerCounter.cpp */
   /*  Determine final hash-table entries using bloom filter */
-  int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, readNameMap, k, myoutput);//, readids);
+  int nreads = ProcessFiles(lfd, 1, cardinality, myReadStartIndex, readNameMap, k, nthreads, myoutput);//, readids);
 
   tp->times["EndKmerOp:GenerateA:FirstPass()"] = std::chrono::system_clock::now();
 
@@ -1131,7 +1160,7 @@ PSpMat<PosInRead>::MPI_DCCols KmerOps::GenerateA(uint64_t seq_count,
   tp->times["StartKmerOp:GenerateA:SecondPass()"] = std::chrono::system_clock::now();
 
   /* Second pass */
-  ProcessFiles(lfd, 2, cardinality, myReadStartIndex, readNameMap, k, myoutput);//, readids);
+  ProcessFiles(lfd, 2, cardinality, myReadStartIndex, readNameMap, k, nthreads, myoutput);//, readids);
 
   tp->times["EndKmerOp:GenerateA:SecondPass()"] = std::chrono::system_clock::now();
 

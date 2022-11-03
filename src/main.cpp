@@ -129,6 +129,7 @@ GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd,
                          PSpMat<PosInRead>::MPI_DCCols*&       ATmat,
                          const std::shared_ptr<ParallelOps>&   parops,
                          const std::shared_ptr<TimePod>&       tp,
+                         int                                   nthreads,
                          TraceUtils&                           tu);
 
 void
@@ -230,7 +231,7 @@ int main(int argc, char **argv)
 
   /* allocates Amat
    * allocates ATmat */
-  GenerateKmerByReadMatrix(dfd, Amat, ATmat, parops, tp, tu);
+  GenerateKmerByReadMatrix(dfd, Amat, ATmat, parops, tp, nthreads, tu);
 
   /* allocates Bmat
    * deletes Amat
@@ -637,7 +638,7 @@ ParallelFastaParser(const char *input_file, const char *idx_map_file, const std:
     return dfd;  
 }
 
-void GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd, PSpMat<PosInRead>::MPI_DCCols*& Amat, PSpMat<PosInRead>::MPI_DCCols*& ATmat, const std::shared_ptr<ParallelOps>& parops, const std::shared_ptr<TimePod>& tp, TraceUtils& tu)
+void GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd, PSpMat<PosInRead>::MPI_DCCols*& Amat, PSpMat<PosInRead>::MPI_DCCols*& ATmat, const std::shared_ptr<ParallelOps>& parops, const std::shared_ptr<TimePod>& tp, int nthreads, TraceUtils& tu)
 {
     Alphabet alph(alph_t);
 
