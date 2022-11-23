@@ -13,6 +13,7 @@ echo "Enviroment variables set and modules loaded."
 echo ""
 
 cd $LOGAN_HOME
+rm -rf build
 mkdir build
 cd build
 cmake ..
@@ -38,6 +39,7 @@ echo "CombBLAS installation completed."
 echo ""
 
 cd $COMBBLAS_HOME
+rm -rf build_release
 mkdir build_release
 cd build_release
 cmake -DLOWER_KMER_FREQ=20 -DUPPER_KMER_FREQ=30 -DDELTACHERNOFF=0.7 ..

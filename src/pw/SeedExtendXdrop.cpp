@@ -270,22 +270,22 @@ SeedExtendXdrop::apply_batch
     			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
 		}
-		else // GGGG: if the results from the second seed if better, then substitute it in ai
-		{
-		#pragma omp parallel for
-			for (uint64_t i = 0; i < npairs; ++i)
-			{
-				if (xscores[i] > ai[i].xscore) // GGGG: if new seed is better, then save the new one
-				//  GGGG: but are we sure the score standalons is the right metric?
-				{
-					ai[i].xscore = xscores[i];
-					ai[i].rc     = strands[i];
-					ai[i].seed   =   seeds[i];
-					ai[i].seq_h_seed_length = seedlens[i].first;
-					ai[i].seq_v_seed_length = seedlens[i].second;
-				}
-			}
-		}
+		// else // GGGG: if the results from the second seed if better, then substitute it in ai
+		// {
+		// #pragma omp parallel for
+		// 	for (uint64_t i = 0; i < npairs; ++i)
+		// 	{
+		// 		if (xscores[i] > ai[i].xscore) // GGGG: if new seed is better, then save the new one
+		// 		//  GGGG: but are we sure the score standalons is the right metric?
+		// 		{
+		// 			ai[i].xscore = xscores[i];
+		// 			ai[i].rc     = strands[i];
+		// 			ai[i].seed   =   seeds[i];
+		// 			ai[i].seq_h_seed_length = seedlens[i].first;
+		// 			ai[i].seq_v_seed_length = seedlens[i].second;
+		// 		}
+		// 	}
+		// }
 
 		end_time = std::chrono::system_clock::now();
     	add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());

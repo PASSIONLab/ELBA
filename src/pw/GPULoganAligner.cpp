@@ -305,30 +305,30 @@ GPULoganAligner::apply_batch
     			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
 		}
-		else
-		{
-			// @GGGG: keep the order for the post alignment evaluation (measure slowdown)
-			// #pragma omp parallel for 
-			for (uint64_t i = 0; i < npairs; ++i)
-			{
-				if (xscores[i].score > ai[i].xscore)
-				{
-					std::cout << "Does this happen?" << std::endl;
+		// else
+		// {
+		// 	// @GGGG: keep the order for the post alignment evaluation (measure slowdown)
+		// 	// #pragma omp parallel for 
+		// 	for (uint64_t i = 0; i < npairs; ++i)
+		// 	{
+		// 		if (xscores[i].score > ai[i].xscore)
+		// 		{
+		// 			std::cout << "Does this happen?" << std::endl;
 					
-					ai[i].xscore = xscores[i].score;
-					ai[i].rc     = xscores[i].rc;
+		// 			ai[i].xscore = xscores[i].score;
+		// 			ai[i].rc     = xscores[i].rc;
 
-                    ai[i].begSeedH = xscores[i].begSeedH; 
-                    ai[i].endSeedH = xscores[i].endSeedH; 
-                    ai[i].begSeedV = xscores[i].begSeedV; 
-                    ai[i].endSeedV = xscores[i].endSeedV; 
+        //             ai[i].begSeedH = xscores[i].begSeedH; 
+        //             ai[i].endSeedH = xscores[i].endSeedH; 
+        //             ai[i].begSeedV = xscores[i].begSeedV; 
+        //             ai[i].endSeedV = xscores[i].endSeedV; 
 
-					// @GGGG: this is a bit redundant since we can extract it from seed
-					ai[i].seq_h_seed_length = ai[i].endSeedH - ai[i].begSeedH;
-					ai[i].seq_v_seed_length = ai[i].endSeedV - ai[i].begSeedV;
-				}
-			}
-		}
+		// 			// @GGGG: this is a bit redundant since we can extract it from seed
+		// 			ai[i].seq_h_seed_length = ai[i].endSeedH - ai[i].begSeedH;
+		// 			ai[i].seq_v_seed_length = ai[i].endSeedV - ai[i].begSeedV;
+		// 		}
+		// 	}
+		// }
 
 		end_time = std::chrono::system_clock::now();
     		add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());

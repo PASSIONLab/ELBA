@@ -57,7 +57,7 @@ endif()
 
 message(STATUS "ARCH_FLAGS=${ARCH_FLAGS}")
 
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=-Wall,${OpenMP_CXX_FLAGS} ${ARCH_FLAGS}")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --default-stream per-thread -Xcompiler=-Wall,${OpenMP_CXX_FLAGS} ${ARCH_FLAGS}")
 message(STATUS "CMAKE_CUDA_FLAGS=${CMAKE_CUDA_FLAGS}")
 
 add_library(LOGAN_LIBRARY_obj OBJECT RunLoganAligner.cpp)

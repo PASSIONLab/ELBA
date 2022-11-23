@@ -613,6 +613,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 
 		cudaErrchk(cudaMemcpyAsync(scoreLeft+i*nSequences, scoreLeft_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(&seeds[0]+i*nSequences, seed_d_l[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_l[i]));
+		// There's an illegal memory access at 617
 		cudaErrchk(cudaMemcpyAsync(scoreRight+i*nSequences, scoreRight_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_r[i]));
 		cudaErrchk(cudaMemcpyAsync(&seeds_r[0]+i*nSequences, seed_d_r[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_r[i]));
 	
