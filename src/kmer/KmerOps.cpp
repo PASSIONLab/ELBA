@@ -23,6 +23,7 @@
 #include "../../include/Deleter.h"
 #include <omp.h>
 
+#define HIPMER_BLOOM64
 
 // TODO: Need to modify the 64-bit bloom filter to be concurrent
 // as well! 
@@ -366,7 +367,7 @@ void DealWithInMemoryData(VectorKmer& mykmers, int pass, struct bloom* bm, Vecto
     {
         assert(bm);
         size_t count = mykmers.size();
-        #pragma omp parallel for default(shared)
+    #pragma omp parallel for default(shared)
         for (size_t i = 0; i < count; ++i)
         {
             /* There will be a second pass, just insert into bloom, and map, but do not count */
@@ -737,15 +738,20 @@ size_t ProcessFiles(FastaData* lfd, int pass, double& cardinality, ReadId& readI
 
         const double fp_probability = 0.05;
         assert(cardinality < 1L<<32);
-        bloom_init(bm, cardinality, fp_probability, nthreads);
 
-    #ifdef VERBOSE
+    #ifdef HIPMER_BLOOM64
+        bloom_init64(bm, cardinality, fp_probability, nthreads); 
+    #else
+        bloom_init(bm, cardinality, fp_probability, nthreads);
+    #endif
+
+    // #ifdef VERBOSE
         if(myrank == 0)
         {
             std::cout << __FUNCTION__ << ": First pass: Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
             std::cout << __FUNCTION__ << ": First pass: Optimal number of hash functions is : " << bm->hashes << endl;
         }
-    #endif
+    // #endif
 
     }
 
