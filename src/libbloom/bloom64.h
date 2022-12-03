@@ -3,12 +3,16 @@
  *  All rights reserved.
  *
  *  This file is under BSD license. See LICENSE file.
+ * 
+ *  This file has been modified December 2022 to support concurrent updates from OMP threads 
+ *  without introducing false negatives.
  */
 
 #ifndef _BLOOM64_H
 #define _BLOOM64_H
 
 #include <stdint.h>
+#include <omp.h>
 
 /** ***************************************************************************
  * Structure to keep track of one bloom filter.  Caller needs to
@@ -33,6 +37,8 @@ struct bloom
   double bpe;
   unsigned char * bf;
   int ready;
+  int lock_table_size;
+  omp_lock_t* lock_table;
 };
 
 
@@ -62,7 +68,7 @@ struct bloom
  *     1 - on failure
  *
  */
-int bloom_init64(struct bloom * bloom, int64_t entries, double error);
+int bloom_init64(struct bloom * bloom, int64_t entries, double error, int nthreads);
 
 
 /** ***************************************************************************
@@ -84,6 +90,12 @@ int bloom_init64(struct bloom * bloom, int64_t entries, double error);
  */
 int bloom_check(struct bloom * bloom, const void * buffer, int len);
 
+/** ***************************************************************************
+ * This is identical to the function above, but operates under correctly in
+ * case the filter is being concurrently inserted into by other threads.
+ */
+
+int bloom_check_concurrent_safe(struct bloom * bloom, const void * buffer, int len);
 
 /** ***************************************************************************
  * Add the given element to the bloom filter.
@@ -105,6 +117,11 @@ int bloom_check(struct bloom * bloom, const void * buffer, int len);
  */
 int bloom_add(struct bloom * bloom, const void * buffer, int len);
 
+/*
+ * Same as the function above, but is guaranteed to work correctly if there
+ * are concurrent reads / inserts into the bloom filter. 
+ */
+int bloom_add_concurrent_safe(struct bloom * bloom, const void * buffer, int len);
 
 /** ***************************************************************************
  * Print (to stdout) info about this bloom filter. Debugging aid.

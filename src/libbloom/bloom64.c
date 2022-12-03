@@ -26,6 +26,8 @@
 #define UPC_ALLOCATOR 0
 #endif
 
+#define LOCK_TABLE_MULTIPLE 500 // making bloom64 concurrent
+
 /*
 #if UPC_ALLOCATOR
 #include "../../../common/upc_allocator.h"
@@ -76,8 +78,75 @@ static int bloom_check_add(struct bloom * bloom,
   return 0;
 }
 
+static int bloom_check_add_concurrent_safe(struct bloom * bloom,
+                           const void * buffer, int len, int add)
+{
+  if (bloom->ready == 0) {
+    (void)printf("bloom at %p not initialized!\n", (void *)bloom);
+    return -1;
+  }
 
-int bloom_init64(struct bloom * bloom, int64_t entries, double error)
+  int hits = 0;
+  unsigned int a1 = murmurhash2(buffer, len, 0x9747b28c);
+  unsigned int a2 = murmurhash2(buffer, len, a1);
+  unsigned int b1 = murmurhash2(buffer, len, a2);
+  unsigned int b2 = murmurhash2(buffer, len, b1);
+  register uint64_t a = (((uint64_t) a1) << 32) | ((uint64_t) a2);
+  register uint64_t b = (((uint64_t) b1) << 32) | ((uint64_t) b2);
+  register uint64_t x;
+  register uint64_t byte;
+  register unsigned int mask;
+  register unsigned int write_mask;
+  register unsigned int i;
+  register unsigned char c;
+  register          int lock_table_entry; // Does this need int64?
+  register          int lock_phase = 0;   // Does this need int64?
+
+  for (i = 0; i < bloom->hashes; i++) {
+    x = (a + i*b) % bloom->bits;
+    byte = x >> 3;
+    mask = 1 << (x % 8);
+    write_mask = add ? mask : 0;
+
+    if(!lock_phase) {
+      c = bloom->bf[byte];        // expensive memory access
+
+      if (c & mask) {
+        hits++;
+      } 
+      else 
+      {
+        lock_table_entry = a % bloom->lock_table_size;
+        omp_set_lock(bloom->lock_table + lock_table_entry);
+        lock_phase = 1;
+      }
+    }
+  }
+
+  if(lock_phase)
+  {
+    c = __atomic_or_fetch(bloom->bf + byte, write_mask, __ATOMIC_RELAXED);
+    
+    if (c & mask)
+    {
+      hits++;
+    } 
+  }
+
+  if(lock_phase)
+  {
+    omp_unset_lock(bloom->lock_table + lock_table_entry);
+  }
+
+  if (hits == bloom->hashes) {
+    return 1;                   // 1 == element already in (or collision)
+  }
+
+  return 0;
+}
+
+
+int bloom_init64(struct bloom * bloom, int64_t entries, double error, int nthreads)
 {
   bloom->ready = 0;
 
@@ -110,8 +179,17 @@ int bloom_init64(struct bloom * bloom, int64_t entries, double error)
 #else
   bloom->bf = (unsigned char *)calloc(bloom->bytes, sizeof(unsigned char));
 #endif
+
   if (bloom->bf == NULL) {
     return 1;
+  }
+
+  bloom->lock_table_size = nthreads * LOCK_TABLE_MULTIPLE;
+  bloom->lock_table = (omp_lock_t*) calloc(bloom->lock_table_size, sizeof(omp_lock_t)); 
+
+  for(int i = 0; i < bloom->lock_table_size; i++)
+  {
+      omp_init_lock(bloom->lock_table + i);
   }
 
   bloom->ready = 1;
@@ -124,12 +202,20 @@ int bloom_check(struct bloom * bloom, const void * buffer, int len)
   return bloom_check_add(bloom, buffer, len, 0);
 }
 
+int bloom_check_concurrent_safe(struct bloom * bloom, const void * buffer, int len)
+{
+  return bloom_check_add_concurrent_safe(bloom, buffer, len, 0);
+}
 
 int bloom_add(struct bloom * bloom, const void * buffer, int len)
 {
   return bloom_check_add(bloom, buffer, len, 1);
 }
 
+int bloom_add_concurrent_safe(struct bloom * bloom, const void * buffer, int len)
+{
+  return bloom_check_add_concurrent_safe(bloom, buffer, len, 1);
+}
 
 void bloom_print(struct bloom * bloom)
 {
@@ -145,7 +231,8 @@ void bloom_print(struct bloom * bloom)
 
 void bloom_free(struct bloom * bloom)
 {
-  if (bloom->ready) {
+  if (bloom->ready)
+  {
 #if UPC_ALLOCATOR
     upc_allocator_startUPC();
     upc_allocator_free(bloom->bf);
@@ -153,7 +240,13 @@ void bloom_free(struct bloom * bloom)
 #else
     free(bloom->bf);
 #endif
-    bloom->bf = NULL;
+
+    for(int i = 0; i < bloom->lock_table_size; i++)
+    {
+        omp_destroy_lock(bloom->lock_table + i);
+    }
+
+    free(bloom->lock_table);
   }
   bloom->ready = 0;
 }

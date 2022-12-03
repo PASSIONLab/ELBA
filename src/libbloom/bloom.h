@@ -4,7 +4,7 @@
  *
  *  This file is under BSD license. See LICENSE file.
  *
- *  Modified April 2021 to support concurrent updates from OMP threads 
+ *  This file has been modified April 2021 to support concurrent updates from OMP threads 
  *  without introducing false negatives.
  */
 

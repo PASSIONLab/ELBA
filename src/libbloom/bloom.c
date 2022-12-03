@@ -90,26 +90,33 @@ static int bloom_check_add_concurrent_safe(struct bloom * bloom,
     mask = 1 << (x % 8);
     write_mask = add ? mask : 0;
 
-    if(! lock_phase) {
+    if(!lock_phase) {
       c = bloom->bf[byte];        // expensive memory access
 
       if (c & mask) {
         hits++;
       }
-      else {
+      else 
+      {
         lock_table_entry = a % bloom->lock_table_size;
-        omp_set_lock( bloom->lock_table + lock_table_entry);
+        omp_set_lock(bloom->lock_table + lock_table_entry);
         lock_phase = 1;
       }
     }
-    if(lock_phase) {
+
+    if(lock_phase)
+    {
       c = __atomic_or_fetch(bloom->bf + byte, write_mask, __ATOMIC_RELAXED);
-      if (c & mask) {
+      
+      if (c & mask) 
+      {
         hits++;
       } 
     }
   }
-  if(lock_phase) {
+
+  if(lock_phase)
+  {
     omp_unset_lock(bloom->lock_table + lock_table_entry);
   }
 
@@ -131,9 +138,9 @@ int bloom_init(struct bloom * bloom, int entries, double error, int nthreads)
   bloom->entries = entries;
   bloom->error = error;
 
-  double num = log(bloom->error);
+  double num   = log(bloom->error);
   double denom = 0.480453013918201; // ln(2)^2
-  bloom->bpe = -(num / denom);
+  bloom->bpe   = -(num / denom);
 
   double dentries = (double)entries;
   bloom->bits = (int)(dentries * bloom->bpe);
@@ -147,6 +154,7 @@ int bloom_init(struct bloom * bloom, int entries, double error, int nthreads)
   bloom->hashes = (int) ceil(0.693147180559945 * bloom->bpe);  // ln(2)
 
   bloom->bf = (unsigned char *)calloc(bloom->bytes, sizeof(unsigned char));
+  
   if (bloom->bf == NULL) {
     return 1;
   }
@@ -154,7 +162,8 @@ int bloom_init(struct bloom * bloom, int entries, double error, int nthreads)
   bloom->lock_table_size = nthreads * LOCK_TABLE_MULTIPLE;
   bloom->lock_table = (omp_lock_t*) calloc(bloom->lock_table_size, sizeof(omp_lock_t)); 
 
-  for(int i = 0; i < bloom->lock_table_size; i++) {
+  for(int i = 0; i < bloom->lock_table_size; i++)
+  {
       omp_init_lock(bloom->lock_table + i);
   }
 
@@ -169,7 +178,8 @@ int bloom_check(struct bloom * bloom, const void * buffer, int len)
 }
 
 
-int bloom_check_concurrent_safe(struct bloom * bloom, const void * buffer, int len) {
+int bloom_check_concurrent_safe(struct bloom * bloom, const void * buffer, int len)
+{
   return bloom_check_add_concurrent_safe(bloom, buffer, len, 0);
 }
 
@@ -178,7 +188,6 @@ int bloom_add(struct bloom * bloom, const void * buffer, int len)
 {
   return bloom_check_add(bloom, buffer, len, 1);
 }
-
 
 int bloom_add_concurrent_safe(struct bloom * bloom, const void * buffer, int len)
 {
@@ -200,10 +209,12 @@ void bloom_print(struct bloom * bloom)
 
 void bloom_free(struct bloom * bloom)
 {
-  if (bloom->ready) {
+  if (bloom->ready)
+  {
     free(bloom->bf);
 
-    for(int i = 0; i < bloom->lock_table_size; i++) {
+    for(int i = 0; i < bloom->lock_table_size; i++)
+    {
         omp_destroy_lock(bloom->lock_table + i);
     }
 
