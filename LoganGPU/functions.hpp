@@ -706,10 +706,13 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	}
 	
 	// GGGG: copy results and extensions back to seeds (the regular std::vector, not using cuda_allocator)
-	// this line of code must be tested
 	for(int i = 0; i < numAlignments; i++)
 	{
 		res[i] = scoreLeft[i] + scoreRight[i] + kmer_length;
+		
+		// GGGG: these lines of code must be tested 
+		setBegPositionH(seeds[i], getBegPositionH(cudaseeds[i]));  // left extension wasn't modified before but now we need to move back to seeds from cudaseeds
+		setBegPositionV(seeds[i], getBegPositionV(cudaseeds[i]));  // left extension wasn't modified before but now we need to move back to seeds from cudaseeds
 		setEndPositionH(seeds[i], getEndPositionH(seeds_r[i]));    
 		setEndPositionV(seeds[i], getEndPositionV(seeds_r[i])); 
 	}
