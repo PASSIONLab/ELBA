@@ -266,10 +266,10 @@ GPULoganAligner::apply_batch
 		// Call LOGAN only if noAlign is false
 		if(!noAlign) 
 		{ 
-			if(count == 0)
-				std::cout << " - 1st k-mer comparison started on ";
-			else
-				std::cout << " - 2nd k-mer comparison started on ";
+//			if(count == 0)
+//				std::cout << " - 1st k-mer comparison started on ";
+//			else
+//				std::cout << " - 2nd k-mer comparison started on ";
 
 			RunLoganAlign(seqHs, seqVs, seeds, xscores, xdrop, seed_length);
 		}

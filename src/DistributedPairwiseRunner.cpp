@@ -215,7 +215,7 @@ DistributedPairwiseRunner::run_batch
 	int myrank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
-	int			batch_size		= 1e5;
+	int			batch_size		= 1e4;
 	int			batch_cnt		= (local_nnz_count / batch_size) + 1;
 	int			batch_idx		= 0;
 	uint64_t	nalignments		= 0;

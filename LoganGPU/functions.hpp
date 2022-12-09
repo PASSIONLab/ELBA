@@ -17,6 +17,39 @@
 using namespace std;
 using namespace chrono;
 
+template <typename T>
+class cuda_allocator : public std::allocator<T> {
+public:
+  using pointer = typename std::allocator<T>::pointer;
+
+  pointer allocate(std::size_t n) 
+  {
+    void* ptr;
+    cudaError_t err = cudaMallocHost(&ptr, n * sizeof(T));
+  
+    if (err != cudaSuccess)
+    {
+        std::cerr << "ERROR allocating memory on the host (missing size for cuda_allocator): " << cudaGetErrorString(err) << std::endl;
+        throw std::bad_alloc();
+    }  
+    
+    return static_cast<pointer>(ptr);
+  }
+
+  void deallocate(pointer p, std::size_t n) 
+  {
+    cudaFreeHost(p);
+  }
+};
+
+template <typename T>
+void copy_to_cuda_vector(const std::vector<T, std::allocator<T>>& src,
+                         std::vector<T, cuda_allocator<T>>& dst)
+{
+  dst.resize(src.size());
+  std::copy(src.begin(), src.end(), dst.begin());
+}
+
 #define cudaErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char* file, int line, bool abort = true){
 
@@ -392,6 +425,15 @@ void extendSeedL(std::vector<LSeed> &seeds,
 			int n_threads
 			)
 {
+	
+	// GGGG: std::vector<LSeed> &seeds needs to be allocated using pinned memory usign cudaMallocaHost
+	// but I cannot call cudaMallocaHost in a non cuda file where extendSeedL is called
+	// so I'm going to create a copy of the vector to handle the moving back and forth from the GPU
+	// then put the final results into the original seeds vector
+	// the new vector uses a custom allocator defined at the top of this file
+	
+	std::vector<LSeed, cuda_allocator<LSeed>> cudaseeds(numAlignments); // seeds vector using cudaMallocHost
+	copy_to_cuda_vector(seeds, cudaseeds);
 
 	if(scoreGapExtend(penalties[0]) >= 0)
 	{
@@ -406,9 +448,9 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	}
 	
 	#ifdef ADAPTABLE
-    n_threads = (XDrop/WARP_DIM + 1)* WARP_DIM;
-    if(n_threads>1024)
-        n_threads=1024;
+	n_threads = (XDrop/WARP_DIM + 1)* WARP_DIM;
+    	if(n_threads > 1024)
+        	n_threads = 1024;
 	#endif
 
 	//declare streams
@@ -418,19 +460,20 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	int nSequences = numAlignments/ngpus;
 	int nSequencesLast = nSequences+numAlignments%ngpus;
 
-	//final result of the alignment
-	int *scoreLeft = (int *)malloc(numAlignments * sizeof(int));
-	int *scoreRight = (int *)malloc(numAlignments * sizeof(int));
+	//GGGG: cudaMallocHost needed to pin memory on host for final result of the alignment
+	//int *scoreLeft = (int *)malloc(numAlignments * sizeof(int));
+	int *scoreLeft = NULL;
+	cudaMallocHost((void **) &scoreLeft, numAlignments * sizeof(int));
+	//int *scoreRight = (int *)malloc(numAlignments * sizeof(int));
+	int *scoreRight = NULL;
+        cudaMallocHost((void **) &scoreRight, numAlignments * sizeof(int));
 
-	//create two sets of seeds
-	//copy seeds
-	vector<LSeed> seeds_r;
-	vector<LSeed> seeds_l;
-	seeds_r.reserve(numAlignments);
-
-	for (uint i = 0; i < seeds.size(); i++) 
+	//GGGG: copy elements from cudaseeds to seeds_r so that we can extend left and right independently
+	vector<LSeed, cuda_allocator<LSeed>> seeds_r(numAlignments);
+	
+	for (uint i = 0; i < cudaseeds.size(); i++) 
 	{
-		seeds_r.push_back(seeds[i]);	
+		seeds_r.push_back(cudaseeds[i]);	
 	}
 
 	//sequences offsets	 		
@@ -489,8 +532,8 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		for(int j = 0; j < dim; j++)
 		{
 
-			offsetLeftQ[i].push_back(getBeginPositionV(seeds[j+i*nSequences]));
-			offsetLeftT[i].push_back(getBeginPositionH(seeds[j+i*nSequences]));
+			offsetLeftQ[i].push_back(getBeginPositionV(cudaseeds[j+i*nSequences]));
+			offsetLeftT[i].push_back(getBeginPositionH(cudaseeds[j+i*nSequences]));
 			ant_len_left[i] = std::max(std::min(offsetLeftQ[i][j],offsetLeftT[i][j]), ant_len_left[i]);
 			
 			offsetRightQ[i].push_back(query[j+i*nSequences].size()-getEndPositionV(seeds[j+i*nSequences]));
@@ -551,8 +594,8 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		cudaStreamCreateWithFlags(&stream_r[i],cudaStreamNonBlocking);
 		cudaStreamCreateWithFlags(&stream_l[i],cudaStreamNonBlocking);
 		//allocate antidiagonals on the GPU
-        cudaErrchk(cudaMalloc(&ant_l[i], sizeof(short)*ant_len_left[i]*3*dim));
-        cudaErrchk(cudaMalloc(&ant_r[i], sizeof(short)*ant_len_right[i]*3*dim));
+        	cudaErrchk(cudaMalloc(&ant_l[i], sizeof(short)*ant_len_left[i]*3*dim));
+        	cudaErrchk(cudaMalloc(&ant_r[i], sizeof(short)*ant_len_right[i]*3*dim));
 		//allocate offsets on the GPU
 		cudaErrchk(cudaMalloc(&offsetLeftQ_d[i], dim*sizeof(int)));
 		cudaErrchk(cudaMalloc(&offsetLeftT_d[i], dim*sizeof(int)));
@@ -570,7 +613,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		cudaErrchk(cudaMalloc(&suffQ_d[i], totalLengthQSuff[i]*sizeof(char)));
 		cudaErrchk(cudaMalloc(&suffT_d[i], totalLengthTSuff[i]*sizeof(char)));
 		//copy seeds on the GPU
-		cudaErrchk(cudaMemcpyAsync(seed_d_l[i], &seeds[0]+i*nSequences, dim*sizeof(LSeed), cudaMemcpyHostToDevice, stream_l[i]));
+		cudaErrchk(cudaMemcpyAsync(seed_d_l[i], &cudaseeds[0]+i*nSequences, dim*sizeof(LSeed), cudaMemcpyHostToDevice, stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(seed_d_r[i], &seeds_r[0]+i*nSequences, dim*sizeof(LSeed), cudaMemcpyHostToDevice, stream_r[i]));
 		//copy offsets on the GPU
 		cudaErrchk(cudaMemcpyAsync(offsetLeftQ_d[i], &offsetLeftQ[i][0], dim*sizeof(int), cudaMemcpyHostToDevice, stream_l[i]));
@@ -612,8 +655,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 			dim = nSequencesLast;
 
 		cudaErrchk(cudaMemcpyAsync(scoreLeft+i*nSequences, scoreLeft_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_l[i]));
-		cudaErrchk(cudaMemcpyAsync(&seeds[0]+i*nSequences, seed_d_l[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_l[i]));
-		// There's an illegal memory access at 617
+		cudaErrchk(cudaMemcpyAsync(&cudaseeds[0]+i*nSequences, seed_d_l[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(scoreRight+i*nSequences, scoreRight_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_r[i]));
 		cudaErrchk(cudaMemcpyAsync(&seeds_r[0]+i*nSequences, seed_d_r[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_r[i]));
 	
@@ -627,8 +669,8 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	}
 
 	auto end_c = NOW;
-	duration<double> compute = end_c-start_c;
-	std::cout << " - GPU-only runtime: " << compute.count() << " s" << std::endl;
+	//duration<double> compute = end_c-start_c;
+	//std::cout << " - GPU-only runtime: " << compute.count() << " s" << std::endl;
 
 	cudaErrchk(cudaPeekAtLastError());
 
@@ -663,10 +705,10 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	for(int i = 0; i < numAlignments; i++)
 	{
 		res[i] = scoreLeft[i]+scoreRight[i]+kmer_length;
-		setEndPositionH(seeds[i], getEndPositionH(seeds_r[i]));    
-		setEndPositionV(seeds[i], getEndPositionV(seeds_r[i])); 
+		setEndPositionH(cudaseeds[i], getEndPositionH(seeds_r[i]));    
+		setEndPositionV(cudaseeds[i], getEndPositionV(seeds_r[i])); 
 	}
 	
-	free(scoreLeft);
-	free(scoreRight);
+	cudaFreeHost(scoreLeft);
+	cudaFreeHost(scoreRight);
 }
