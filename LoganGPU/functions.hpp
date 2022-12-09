@@ -711,8 +711,8 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		res[i] = scoreLeft[i] + scoreRight[i] + kmer_length;
 		
 		// GGGG: these lines of code must be tested 
-		setBegPositionH(seeds[i], getBegPositionH(cudaseeds[i]));  // left extension wasn't modified before but now we need to move back to seeds from cudaseeds
-		setBegPositionV(seeds[i], getBegPositionV(cudaseeds[i]));  // left extension wasn't modified before but now we need to move back to seeds from cudaseeds
+		setBeginPositionH(seeds[i], getBeginPositionH(cudaseeds[i]));  // left extension wasn't modified before but now we need to move back to seeds from cudaseeds
+		setBeginPositionV(seeds[i], getBeginPositionV(cudaseeds[i]));  // left extension wasn't modified before but now we need to move back to seeds from cudaseeds
 		setEndPositionH(seeds[i], getEndPositionH(seeds_r[i]));    
 		setEndPositionV(seeds[i], getEndPositionV(seeds_r[i])); 
 	}
