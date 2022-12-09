@@ -17,6 +17,10 @@
 using namespace std;
 using namespace chrono;
 
+// GGGG: custom cuda allocator to use cudaMallocHost when allocating a std::vector
+// If we don't allocate the host vector using cudaMallocHost, it creates an illegal memory access when moving data from device to host
+// Given this interally uses cudaMallocHost, the size n of the std::vector must be defined, such as:
+// std::vector<int, cuda_allocator<int>> vec(n)
 template <typename T>
 class cuda_allocator : public std::allocator<T> {
 public:
@@ -27,6 +31,7 @@ public:
     void* ptr;
     cudaError_t err = cudaMallocHost(&ptr, n * sizeof(T));
   
+    // GGGG: throw an error and stop the computation if the size isn't defined since it'd create an illegal memory access	  	
     if (err != cudaSuccess)
     {
         std::cerr << "ERROR allocating memory on the host (missing size for cuda_allocator): " << cudaGetErrorString(err) << std::endl;
@@ -42,6 +47,7 @@ public:
   }
 };
 
+// GGGG: function to copy a standard std::vector into one using cuda_allocator
 template <typename T>
 void copy_to_cuda_vector(const std::vector<T, std::allocator<T>>& src,
                          std::vector<T, cuda_allocator<T>>& dst)
@@ -427,7 +433,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 {
 	
 	// GGGG: std::vector<LSeed> &seeds needs to be allocated using pinned memory usign cudaMallocaHost
-	// but I cannot call cudaMallocaHost in a non cuda file where extendSeedL is called
+	// but I cannot call cudaMallocaHost in the non-cuda file where extendSeedL is called
 	// so I'm going to create a copy of the vector to handle the moving back and forth from the GPU
 	// then put the final results into the original seeds vector
 	// the new vector uses a custom allocator defined at the top of this file
@@ -453,30 +459,28 @@ void extendSeedL(std::vector<LSeed> &seeds,
         	n_threads = 1024;
 	#endif
 
-	//declare streams
+	// declare streams
 	cudaStream_t stream_r[MAX_GPUS], stream_l[MAX_GPUS];
 
 	// NB nSequences is correlated to the number of GPUs that we have
 	int nSequences = numAlignments/ngpus;
 	int nSequencesLast = nSequences+numAlignments%ngpus;
 
-	//GGGG: cudaMallocHost needed to pin memory on host for final result of the alignment
-	//int *scoreLeft = (int *)malloc(numAlignments * sizeof(int));
+	// GGGG: cudaMallocHost needed to pin memory on host for final result of the alignment
 	int *scoreLeft = NULL;
 	cudaMallocHost((void **) &scoreLeft, numAlignments * sizeof(int));
-	//int *scoreRight = (int *)malloc(numAlignments * sizeof(int));
+
 	int *scoreRight = NULL;
         cudaMallocHost((void **) &scoreRight, numAlignments * sizeof(int));
 
-	//GGGG: copy elements from cudaseeds to seeds_r so that we can extend left and right independently
+	// GGGG: copy elements from cudaseeds to seeds_r so that we can extend left and right independently
 	vector<LSeed, cuda_allocator<LSeed>> seeds_r(numAlignments);
-	
 	for (uint i = 0; i < cudaseeds.size(); i++) 
 	{
 		seeds_r.push_back(cudaseeds[i]);	
 	}
 
-	//sequences offsets	 		
+	// sequences offsets
 	vector<int> offsetLeftQ[MAX_GPUS];
 	vector<int> offsetLeftT[MAX_GPUS];	
 	vector<int> offsetRightQ[MAX_GPUS];	
@@ -630,8 +634,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	
 	auto start_c = NOW;
 	
-	// GGGG: Program hit CUDA_ERROR_INVALID_CONTEXT (error 201) due to "invalid device context" on CUDA API call to cuCtxGetDevice.
-	// This is the main kernel execution.
+	//  main kernel execution
 #pragma omp parallel for num_threads(ngpus)
 	for(int i = 0; i < ngpus;i++)
 	{
@@ -653,7 +656,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 
 		if(i==ngpus-1)
 			dim = nSequencesLast;
-
+		
 		cudaErrchk(cudaMemcpyAsync(scoreLeft+i*nSequences, scoreLeft_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(&cudaseeds[0]+i*nSequences, seed_d_l[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(scoreRight+i*nSequences, scoreRight_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_r[i]));
@@ -669,8 +672,8 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	}
 
 	auto end_c = NOW;
-	//duration<double> compute = end_c-start_c;
-	//std::cout << " - GPU-only runtime: " << compute.count() << " s" << std::endl;
+	// duration<double> compute = end_c-start_c;
+	// std::cout << " - GPU-only runtime: " << compute.count() << " s" << std::endl;
 
 	cudaErrchk(cudaPeekAtLastError());
 
@@ -702,11 +705,13 @@ void extendSeedL(std::vector<LSeed> &seeds,
 
 	}
 	
+	// GGGG: copy results and extensions back to seeds (the regular std::vector, not using cuda_allocator)
+	// this line of code must be tested
 	for(int i = 0; i < numAlignments; i++)
 	{
-		res[i] = scoreLeft[i]+scoreRight[i]+kmer_length;
-		setEndPositionH(cudaseeds[i], getEndPositionH(seeds_r[i]));    
-		setEndPositionV(cudaseeds[i], getEndPositionV(seeds_r[i])); 
+		res[i] = scoreLeft[i] + scoreRight[i] + kmer_length;
+		setEndPositionH(seeds[i], getEndPositionH(seeds_r[i]));    
+		setEndPositionV(seeds[i], getEndPositionV(seeds_r[i])); 
 	}
 	
 	cudaFreeHost(scoreLeft);
