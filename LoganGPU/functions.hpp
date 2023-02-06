@@ -438,8 +438,10 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	// then put the final results into the original seeds vector
 	// the new vector uses a custom allocator defined at the top of this file
 	
-	std::vector<LSeed, cuda_allocator<LSeed>> cudaseeds(numAlignments); // seeds vector using cudaMallocHost
+	std::vector<LSeed, cuda_allocator<LSeed>> cudaseeds(numAlignments);   // seeds vector using cudaMallocHost
+	std::vector<LSeed, cuda_allocator<LSeed>> cudaseeds_r(numAlignments); // seeds vector using cudaMallocHost
 	copy_to_cuda_vector(seeds, cudaseeds);
+	copy_to_cuda_vector(seeds, cudaseeds_r);
 
 	if(scoreGapExtend(penalties[0]) >= 0)
 	{
@@ -471,14 +473,14 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	cudaMallocHost((void **) &scoreLeft, numAlignments * sizeof(int));
 
 	int *scoreRight = NULL;
-        cudaMallocHost((void **) &scoreRight, numAlignments * sizeof(int));
+    cudaMallocHost((void **) &scoreRight, numAlignments * sizeof(int));
 
 	// GGGG: copy elements from cudaseeds to seeds_r so that we can extend left and right independently
-	vector<LSeed, cuda_allocator<LSeed>> seeds_r(numAlignments);
-	for (uint i = 0; i < cudaseeds.size(); i++) 
-	{
-		seeds_r.push_back(cudaseeds[i]);	
-	}
+	// vector<LSeed, cuda_allocator<LSeed>> seeds_r(numAlignments);
+	// for (uint i = 0; i < cudaseeds.size(); i++) 
+	// {
+	// 	seeds_r.push_back(cudaseeds[i]);	
+	// }
 
 	// sequences offsets
 	vector<int> offsetLeftQ[MAX_GPUS];
@@ -618,7 +620,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		cudaErrchk(cudaMalloc(&suffT_d[i], totalLengthTSuff[i]*sizeof(char)));
 		//copy seeds on the GPU
 		cudaErrchk(cudaMemcpyAsync(seed_d_l[i], &cudaseeds[0]+i*nSequences, dim*sizeof(LSeed), cudaMemcpyHostToDevice, stream_l[i]));
-		cudaErrchk(cudaMemcpyAsync(seed_d_r[i], &seeds_r[0]+i*nSequences, dim*sizeof(LSeed), cudaMemcpyHostToDevice, stream_r[i]));
+		cudaErrchk(cudaMemcpyAsync(seed_d_r[i], &cudaseeds_r[0]+i*nSequences, dim*sizeof(LSeed), cudaMemcpyHostToDevice, stream_r[i]));
 		//copy offsets on the GPU
 		cudaErrchk(cudaMemcpyAsync(offsetLeftQ_d[i], &offsetLeftQ[i][0], dim*sizeof(int), cudaMemcpyHostToDevice, stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(offsetLeftT_d[i], &offsetLeftT[i][0], dim*sizeof(int), cudaMemcpyHostToDevice, stream_l[i]));
@@ -660,7 +662,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		cudaErrchk(cudaMemcpyAsync(scoreLeft+i*nSequences, scoreLeft_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(&cudaseeds[0]+i*nSequences, seed_d_l[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_l[i]));
 		cudaErrchk(cudaMemcpyAsync(scoreRight+i*nSequences, scoreRight_d[i], dim*sizeof(int), cudaMemcpyDeviceToHost, stream_r[i]));
-		cudaErrchk(cudaMemcpyAsync(&seeds_r[0]+i*nSequences, seed_d_r[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_r[i]));
+		cudaErrchk(cudaMemcpyAsync(&cudaseeds_r[0]+i*nSequences, seed_d_r[i], dim*sizeof(LSeed), cudaMemcpyDeviceToHost,stream_r[i]));
 	
 	}
 
@@ -710,11 +712,18 @@ void extendSeedL(std::vector<LSeed> &seeds,
 	{
 		res[i] = scoreLeft[i] + scoreRight[i] + kmer_length;
 		
+		// std::cout << getBeginPositionV(cudaseeds[i]) << " getBeginPositionV(cudaseeds[i])" << std::endl;
+		// std::cout << getBeginPositionH(cudaseeds[i]) << " getBeginPositionH(cudaseeds[i])" << std::endl;
+		
+		// std::cout << getEndPositionV(cudaseeds_r[i]) << " getEndPositionV(cudaseeds_r[i])" << std::endl;
+        // std::cout << getEndPositionH(cudaseeds_r[i]) << " getEndPositionH(cudaseeds_r[i)" << std::endl;
+
+
 		// GGGG: these lines of code must be tested 
 		setBeginPositionH(seeds[i], getBeginPositionH(cudaseeds[i]));  // left extension wasn't modified before but now we need to move back to seeds from cudaseeds
 		setBeginPositionV(seeds[i], getBeginPositionV(cudaseeds[i]));  // left extension wasn't modified before but now we need to move back to seeds from cudaseeds
-		setEndPositionH(seeds[i], getEndPositionH(seeds_r[i]));    
-		setEndPositionV(seeds[i], getEndPositionV(seeds_r[i])); 
+		setEndPositionH(seeds[i], getEndPositionH(cudaseeds_r[i]));    
+		setEndPositionV(seeds[i], getEndPositionV(cudaseeds_r[i])); 
 	}
 	
 	cudaFreeHost(scoreLeft);
