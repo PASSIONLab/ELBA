@@ -124,3 +124,10 @@ diBELLA 2D: Parallel String Graph Construction and Transitive Reduction for De N
 If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Intellectual Property Office at IPO@lbl.gov.
 
 NOTICE. This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare derivative works, and perform publicly and display publicly, and to permit others to do so.
+
+# HiFi Dataset
+
+1 - [E. coli 29X](https://portal.nersc.gov/project/m1982/bella/ecoli_hifi_29x.fasta) - UPPERBOUND = 30, LOWERBOUND = 20;
+2 - [E. coli 100X](https://portal.nersc.gov/project/m1982/bella/ecoli100x.fa) - UPPERBOUND = 20, LOWERBOUND = 50;
+3 - [C. elegans 40X](https://portal.nersc.gov/project/m1982/bella/celegans_hifi_sim.40x.fa) - UPPERBOUND = 31, LOWERBOUND = 40;
+4 - [H. sapiens 10X](https://portal.nersc.gov/project/m1982/bella/human10x.fa) - UPPERBOUND = ?, LOWERBOUND = ?;
