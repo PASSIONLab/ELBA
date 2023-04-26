@@ -82,6 +82,20 @@ int main(int argc, char **argv)
          * Start pipeline
          */
 
+        /*
+         * FastaIndex constructor does the following:
+         *
+         *  1. Root processor reads entire .fai file containing read index info.
+         *
+         *  2. Root processor scatters the index records to each processor in
+         *     load-balanced manner, such that each processor receives roughly
+         *     the same amount of sequence data. If true is passed as the
+         *     last parameter, then the sequences are balanced so that the
+         *     number of nucleotides is roughly equal across all processors.
+         *     If false is passed instead, then the reads are balanced according
+         *     such that the first nprocs-1 processors receive floor(numreads/nprocs)
+         *     reads and the last processor receives all the remaining sequences.
+         */
         FastaIndex index(fasta_fname, commgrid, true); // membalanced
 
         /*
