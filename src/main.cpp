@@ -21,6 +21,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include <mpi.h>
 #include "common.h"
 #include "compiletime.h"
+#include "Logger.hpp"
 
 int returncode;
 std::string fasta_fname;
@@ -81,9 +82,9 @@ int main(int argc, char **argv)
          */
 
         /* do stuff */
-        std::ostringstream ss;
-        ss << "Hello from rank[" << myrank+1 << "/" << nprocs << "]";
-        std::cout << ss.str() << std::endl;
+        Logger logger(commgrid);
+        logger() << "Hello from rank " << myrank;
+        logger.Flush("Proccesors say hello:");
 
         /*
          * Finish pipeline
