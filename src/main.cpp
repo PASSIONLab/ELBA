@@ -20,6 +20,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include <unistd.h>
 #include <mpi.h>
 #include "common.h"
+#include "compiletime.h"
 
 int returncode;
 std::string fasta_fname;
