@@ -26,7 +26,7 @@ endif
 
 all: elba
 
-elba: obj/main.o obj/Logger.o obj/CommGrid.o obj/MPIType.o
+elba: obj/main.o obj/Logger.o obj/FastaIndex.o obj/CommGrid.o obj/MPIType.o
 	@echo CXX -c -o $@ $^
 	@$(COMPILER) $(FLAGS) $(INCADD) -o $@ $^ $(MPICH_FLAGS) -lz
 
@@ -36,6 +36,7 @@ obj/%.o: src/%.cpp
 
 obj/main.o: src/main.cpp include/common.h
 obj/Logger.o: src/Logger.cpp include/Logger.hpp
+obj/FastaIndex.o: src/FastaIndex.cpp include/FastaIndex.hpp
 
 obj/CommGrid.o: $(COMBBLAS_SRC)/CommGrid.cpp $(COMBBLAS_INC)/CommGrid.h
 	@echo CXX -c -o $@ $<

@@ -22,6 +22,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "common.h"
 #include "compiletime.h"
 #include "Logger.hpp"
+#include "FastaIndex.hpp"
 
 int returncode;
 std::string fasta_fname;
@@ -81,10 +82,7 @@ int main(int argc, char **argv)
          * Start pipeline
          */
 
-        /* do stuff */
-        Logger logger(commgrid);
-        logger() << "Hello from rank " << myrank;
-        logger.Flush("Proccesors say hello:");
+        FastaIndex index(fasta_fname, commgrid, true); // membalanced
 
         /*
          * Finish pipeline
