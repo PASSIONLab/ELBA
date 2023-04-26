@@ -24,9 +24,17 @@ FLAGS+=$(MPICH_INC)
 MPICH_FLAGS+=$(MPICH_LIB) -L/usr/local/opt/libevent/lib -lmpi
 endif
 
+OBJECTS=obj/Logger.o \
+		obj/FastaIndex.o \
+		obj/FastaData.o \
+		obj/HashFuncs.o \
+		obj/HyperLogLog.o \
+		obj/CommGrid.o \
+		obj/MPIType.o
+
 all: elba
 
-elba: obj/main.o obj/Logger.o obj/FastaIndex.o obj/FastaData.o obj/HashFuncs.o obj/CommGrid.o obj/MPIType.o
+elba: obj/main.o $(OBJECTS)
 	@echo CXX -c -o $@ $^
 	@$(COMPILER) $(FLAGS) $(INCADD) -o $@ $^ $(MPICH_FLAGS) -lz
 
