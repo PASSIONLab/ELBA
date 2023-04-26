@@ -134,8 +134,7 @@ void FastaData::log() const
 {
     Logger logger(commgrid);
     size_t mynumreads = numreads();
-    size_t totbases = mynumreads;
-    MPI_ALLREDUCE(MPI_IN_PLACE, &totbases, 1, MPI_SIZE_T, MPI_SUM, commgrid->GetWorld());
+    size_t totbases = std::accumulate(readlens.begin(), readlens.end(), static_cast<size_t>(0), std::plus<size_t>{});
     double avglen = static_cast<double>(totbases) / static_cast<double>(mynumreads);
     logger() << std::fixed << std::setprecision(2) << "my range " << Logger::readrangestr(firstid, mynumreads) << ". ~" << avglen << " nts/read. (" << static_cast<double>(getbufsize()) / (1024.0 * 1024.0) << " Mbs compressed) == (" << getbufsize() << " bytes)";
     logger.Flush("FASTA distributed among process ranks (FastaData::Log)");
