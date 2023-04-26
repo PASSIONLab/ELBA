@@ -40,6 +40,7 @@ using MPI_Displ_type = MPI_Aint;
 
 #define MPI_ALLTOALL         MPI_FUNC_SELECT(MPI_Alltoall)
 #define MPI_ALLTOALLV        MPI_FUNC_SELECT(MPI_Alltoallv)
+#define MPI_ALLREDUCE        MPI_FUNC_SELECT(MPI_Allreduce)
 #define MPI_SCATTER          MPI_FUNC_SELECT(MPI_Scatter)
 #define MPI_SCATTERV         MPI_FUNC_SELECT(MPI_Scatterv)
 #define MPI_GATHER           MPI_FUNC_SELECT(MPI_Gather)

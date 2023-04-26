@@ -23,7 +23,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "compiletime.h"
 #include "Logger.hpp"
 #include "FastaIndex.hpp"
-#include "DnaSeq.hpp" /* temporary inclusion in this file */
+#include "FastaData.hpp"
 
 int returncode;
 std::string fasta_fname;
@@ -98,6 +98,9 @@ int main(int argc, char **argv)
          *     reads and the last processor receives all the remaining sequences.
          */
         FastaIndex index(fasta_fname, commgrid, true); // membalanced
+
+        FastaData lfd(index);
+        lfd.log();
 
         /*
          * Finish pipeline
