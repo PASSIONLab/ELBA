@@ -1,5 +1,6 @@
 #include "Logger.hpp"
 #include <iostream>
+#include <numeric>
 
 Logger::Logger(Grid commgrid) : logstream(new std::ostringstream()), commgrid(commgrid)
 {

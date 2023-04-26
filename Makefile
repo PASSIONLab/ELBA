@@ -17,7 +17,7 @@ INCADD=-I$(COMBBLAS)/include/ -I$(COMBBLAS)/psort-1.0/include/ -I$(COMBBLAS)/uso
 UNAME_S:=$(shell uname -s)
 
 ifeq ($(UNAME_S),Linux)
-COMPILER=mpic++
+COMPILER=CC
 else ifeq ($(UNAME_S),Darwin)
 COMPILER=g++-12
 FLAGS+=$(MPICH_INC)
