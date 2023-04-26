@@ -29,6 +29,7 @@ OBJECTS=obj/Logger.o \
 		obj/FastaData.o \
 		obj/HashFuncs.o \
 		obj/HyperLogLog.o \
+		obj/Bloom.o \
 		obj/CommGrid.o \
 		obj/MPIType.o
 
