@@ -20,55 +20,6 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include <unistd.h>
 #include <mpi.h>
 #include "common.h"
-// #include "../include/Constants.hpp"
-// #include "../include/ParallelOps.hpp"
-// #include "../include/ParallelFastaReader.hpp"
-// #include "../include/Alphabet.hpp"
-// #include "../include/DistributedPairwiseRunner.hpp"
-// #include "../include/cxxopts.hpp"
-// #include "../include/pw/SeedExtendXdrop.hpp"
-// #include "../include/pw/OverlapFinder.hpp"
-// #include "../include/pw/FullAligner.hpp"
-// #include "../include/kmer/KmerOps.hpp"
-// #include "../include/kmer/KmerIntersectSR.hpp"
-// #include "../include/Utils.hpp"
-// #include "../include/ContigGeneration.hpp"
-// #include "../include/ReadOverlap.hpp"
-// #include "../include/TransitiveReduction.hpp"
-
-// #include "seqan/score/score_matrix_data.h"
-
-/* std::shared_ptr<DistributedFastaData>                                  */
-/* ParallelFastaParser(const char*                         input_file,    */
-/*                     const char*                         idx_map_file,  */
-/*                     const std::shared_ptr<ParallelOps>& parops,        */
-/*                     const std::shared_ptr<TimePod>&     tp,            */
-/*                     TraceUtils&                         tu);           */
-
-/* void                                                                   */
-/* GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd,    */
-/*                          PSpMat<PosInRead>::MPI_DCCols*&       Amat,   */
-/*                          PSpMat<PosInRead>::MPI_DCCols*&       ATmat,  */
-/*                          const std::shared_ptr<ParallelOps>&   parops, */
-/*                          const std::shared_ptr<TimePod>&       tp,     */
-/*                          TraceUtils&                           tu);    */
-
-/* void                                                                   */
-/* OverlapDetection(std::shared_ptr<DistributedFastaData>      dfd,       */
-/*                  PSpMat<elba::CommonKmers>::MPI_DCCols*& Bmat,         */
-/*                  PSpMat<PosInRead>::MPI_DCCols*             Amat,      */
-/*                  PSpMat<PosInRead>::MPI_DCCols*             ATmat,     */
-/*                  const std::shared_ptr<TimePod>&            tp,        */
-/*                  TraceUtils&                                tu);       */
-
-/* void                                                                   */
-/* PairwiseAlignment(std::shared_ptr<DistributedFastaData>     dfd,       */
-/*                   PSpMat<elba::CommonKmers>::MPI_DCCols* Bmat,         */
-/*                   PSpMat<ReadOverlap>::MPI_DCCols*&         Rmat,      */
-/*                   const std::shared_ptr<ParallelOps>&       parops,    */
-/*                   const std::shared_ptr<TimePod>&           tp,        */
-/*                   TraceUtils&                               tu);       */
-
 
 int returncode;
 std::string fasta_fname;
