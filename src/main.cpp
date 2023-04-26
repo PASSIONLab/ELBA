@@ -23,6 +23,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "compiletime.h"
 #include "Logger.hpp"
 #include "FastaIndex.hpp"
+#include "DnaSeq.hpp" /* temporary inclusion in this file */
 
 int returncode;
 std::string fasta_fname;
