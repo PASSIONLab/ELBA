@@ -37,7 +37,8 @@ public:
     DnaSeq(char const *sequence, size_t len);
     DnaSeq(char const *sequence) : DnaSeq(sequence, strlen(sequence)) {}
     DnaSeq(std::string const& sequence) : DnaSeq(sequence.c_str(), sequence.size()) {}
-    DnaSeq(const DnaSeq& rhs); //
+    DnaSeq(const DnaSeq& rhs);
+    DnaSeq(uint8_t *external_buf, size_t len) : memory(external_buf), numbytes((len+3)/4), remain(4*numbytes - len), owns_memory(false) {}
     ~DnaSeq() { if (owns_memory) delete[] memory; }
 
     std::string ascii() const;

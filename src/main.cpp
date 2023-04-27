@@ -88,6 +88,8 @@ int main(int argc, char **argv)
         FastaData lfd(index);
         lfd.log();
 
+        lfd.ParallelWrite("sequences");
+
         /*
          * Finish pipeline
          */

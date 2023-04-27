@@ -20,6 +20,7 @@ public:
     FIndex getindex() const { return index; }
     size_t getfirstid() const { return index->getsomefirstid(idxtag); }
     std::string getsequence(size_t localid) const;
+    void ParallelWrite(const char *fname) const;
 
 private:
     FIndex index;

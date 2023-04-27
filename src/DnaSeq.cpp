@@ -29,6 +29,12 @@ DnaSeq::DnaSeq(char const *sequence, size_t len) : numbytes((len+3)/4), remain(4
     }
 }
 
+DnaSeq::DnaSeq(const DnaSeq& rhs) : numbytes(rhs.numbytes), remain(rhs.remain), owns_memory(true)
+{
+    memory = new uint8_t[numbytes];
+    std::memcpy(memory, rhs.memory, numbytes);
+}
+
 std::string DnaSeq::ascii() const
 {
     size_t len = size();
@@ -47,11 +53,6 @@ std::string DnaSeq::ascii() const
     return std::string(s.begin(), s.end());
 }
 
-DnaSeq::DnaSeq(const DnaSeq& rhs) : numbytes(rhs.numbytes), remain(rhs.remain), owns_memory(true)
-{
-    memory = new uint8_t[numbytes];
-    std::memcpy(memory, rhs.memory, numbytes);
-}
 
 int DnaSeq::operator[](size_t i) const
 {

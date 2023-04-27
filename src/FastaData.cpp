@@ -111,25 +111,28 @@ FastaData::FastaData(FIndex index) : index(index), idxtag(index->getcommgrid()->
 
 std::string FastaData::getsequence(size_t localid) const
 {
-    /*
-     * Probably never use this function, however it provides
-     * an understanding of how the data is actually stored.
-     */
+    return DnaSeq(buf + byteoffsets[localid], readlens[localid]).ascii();
+}
 
-    size_t len = readlens[localid];
-    uint8_t const *bytes = buf + byteoffsets[localid];
-    std::vector<char> s(len);
+void FastaData::ParallelWrite(const char *fname) const
+{
+    int myrank = getcommgrid()->GetRank();
+    int nprocs = getcommgrid()->GetSize();
 
-    for (size_t i = 0; i < len; ++i)
+    std::ostringstream ssfname;
+    ssfname << fname << ".rank" << myrank << ".txt";
+
+    std::ofstream filestream(ssfname.str());
+
+    size_t numreads = readlens.size();
+
+    for (size_t i = 0; i < numreads; ++i)
     {
-        int code = (*bytes >> (6 - (2 * (i%4)))) & 3;
-        s[i] = DnaSeq::getcodechar(code);
-
-        if ((i+1) % 4 == 0)
-            bytes++;
+        filestream << getsequence(i) << std::endl;
     }
 
-    return std::string(s.begin(), s.end());
+    filestream.close();
+    MPI_Barrier(getcommgrid()->GetWorld());
 }
 
 void FastaData::log() const
