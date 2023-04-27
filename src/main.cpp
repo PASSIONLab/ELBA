@@ -24,6 +24,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "Logger.hpp"
 #include "FastaIndex.hpp"
 #include "FastaData.hpp"
+#include "DistributedFastaData.hpp"
 #include "kmer/Kmer.hpp"
 
 int returncode;

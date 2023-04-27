@@ -27,6 +27,7 @@ endif
 OBJECTS=obj/Logger.o \
 		obj/FastaIndex.o \
 		obj/FastaData.o \
+		obj/DistributedFastaData.o \
 		obj/DnaSeq.o \
 		obj/HashFuncs.o \
 		obj/HyperLogLog.o \
@@ -48,6 +49,7 @@ obj/main.o: src/main.cpp include/common.h
 obj/Logger.o: src/Logger.cpp include/Logger.hpp
 obj/FastaIndex.o: src/FastaIndex.cpp include/FastaIndex.hpp
 obj/FastaData.o: src/FastaData.cpp include/FastaData.hpp
+obj/DistributedFastaData.o: src/DistributedFastaData.cpp include/DistributedFastaData.hpp
 obj/DnaSeq.o: src/DnaSeq.cpp include/DnaSeq.hpp
 obj/HashFuncs.o: src/HashFuncs.cpp include/HashFuncs.hpp
 

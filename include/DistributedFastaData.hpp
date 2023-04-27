@@ -1,135 +1,54 @@
-// Created by Saliya Ekanayake on 2019-02-17.
-
 #ifndef LBL_DAL_DISTRIBUTEDFASTADATA_H
 #define LBL_DAL_DISTRIBUTEDFASTADATA_H
 
-#include <seqan/sequence.h>
 #include "FastaData.hpp"
-#include "ParallelOps.hpp"
-#include "TraceUtils.hpp"
-#include "Defines.hpp"
+#include "Logger.hpp"
 
-struct NbrData {
-  ushort rc_flag;
-  int owner_rank;
-  int nbr_rank;
-  uint64_t nbr_seq_start_idx;
-  uint64_t nbr_seq_end_idx;
-
-  NbrData() = default;
-
-  NbrData(ushort rc_flag, int owner_rank, int nbr_rank,
-          uint64_t nbr_seq_start_idx,
-          uint64_t nbr_seq_end_idx)
-    : rc_flag(rc_flag),
-      owner_rank(owner_rank),
-      nbr_rank(nbr_rank),
-      nbr_seq_start_idx(nbr_seq_start_idx),
-      nbr_seq_end_idx(nbr_seq_end_idx) {
-
-  }
-};
-
-class DistributedFastaData {
+class DistributedFastaData
+{
 public:
-  ~DistributedFastaData();
 
-  DistributedFastaData(const char *file, const char* idx_map_file,
-                       uint64_t overlap, ushort k,
-                       const std::shared_ptr<ParallelOps> &parops,
-                       const std::shared_ptr<TimePod> &tp, TraceUtils tu);
+    struct NbrData
+    {
+        size_t startid;
+        size_t numseqs;
+        int source;
+        int rc_flag;
 
-  uint64_t global_count();
-  uint64_t global_start_idx();
+        NbrData(size_t startid, size_t numseqs, int source, int rc_flag) : startid(startid), numseqs(numseqs), source(source), rc_flag(rc_flag) {}
 
-  FastaData* lfd();
+        // static size_t findnbrs(std::vector<NbrData>& neighbors, const std::vector<size_t>& idoffsets, size_t startid, size_t totreads, int rc_flag, Grid commgrid)
+        // {
+            // int myrank = commgrid->GetRank();
+            // size_t numadded = 0;
 
-  bool is_ready();
-  bool is_diagonal();
+            // auto iditr = std::upper_bound(idoffsets.cbegin(), idoffsets.cend(), startid);
+            // iditr--;
 
-  seqan::Dna5String * row_seq(uint64_t l_row_idx);
-  seqan::Dna5String * col_seq(uint64_t l_col_idx);
+            // assert(*iditr <= startid);
 
-  uint64_t  l_seq_count;
-  uint64_t* l_seq_counts = nullptr;
+            // while (*iditr < startid + totreads)
+            // {
+                // int reqrank = iditr - idoffsets.cbegin();
+                // size_t reqstart = std::max(*iditr++, startid);
+                // size_t reqend = std::min(*iditr, startid + totreads);
+                // neighbors.emplace_back(reqstart, reqend-reqstart, reqrank, rc_flag);
+                // numadded++;
+            // }
 
-  /*! The original global sequence offset of the sequences stored in this
-   * instance. Fo r example, this instance could hold the original sequence
-   * indices [23,36] (total of 14 sequences). This would make the original
-   * global sequence offset to be 23. Their original local indices would
-   * be [0, 13], so adding 23 would give [23, 36].
-   * However, some of them, say original indices 0, 5, 7 and 10 were
-   * deleted because their sequence lengths were < k. Now, the l_seq_count
-   * would be 10 and their local indices would be [0, 9]. To get the original
-   * global indices of the local sequences one would need to use this
-   * orig_g_seq_offset along with the del_idxs in FastaData.
-   */
-  uint64_t orig_g_seq_offset;
+            // return numadded;
+        // }
+    };
 
-  /*!
-   * Global sequence count, which may be different (less than) from the
-   * original total sequence count because some sequences may get removed
-   * if their lengths are less than the k-mer length.
-   */
-  uint64_t  g_seq_count;
-  uint64_t* g_seq_offsets = nullptr;
-
-  void wait();
+    DistributedFastaData(FIndex index);
+    ~DistributedFastaData();
 
 private:
-  std::shared_ptr<TimePod> tp;
-  TraceUtils tu;
-  ushort k;
-  uint64_t overlap;
-  FastaData* fd = nullptr;
-
-  bool is_diagonal_cell = false;
-
-  std::vector<NbrData> my_nbrs;
-
-  std::vector<seqan::Dna5String *> row_seqs;
-  std::vector<seqan::Dna5String *> col_seqs;
-
-  uint64_t row_seq_start_idx;
-  uint64_t row_seq_end_idx;
-  uint64_t col_seq_start_idx;
-  uint64_t col_seq_end_idx;
-
-  /*! recv counts and buffers */
-  int recv_nbrs_count;
-  std::vector<int> recv_nbrs_idxs;
-  char **recv_nbrs_buffs = nullptr;
-  uint64_t *recv_nbrs_buff_lengths = nullptr;
-  MPI_Request *recv_nbrs_buffs_reqs = nullptr;
-  MPI_Status *recv_nbrs_buffs_stats = nullptr;
-  FastaData **recv_fds = nullptr;
-
-
-  /*! send counts and buffers */
-  int to_nbrs_count;
-  MPI_Request *to_nbrs_buffs_reqs = nullptr;
-  MPI_Status *to_nbrs_buffs_stat = nullptr;
-
-  bool ready = false;
-
-  std::shared_ptr<ParallelOps> parops;
-
-  void write_idx_map(const char* idx_map_file);
-
-  void collect_grid_seqs();
-
-  void find_nbrs(int grid_rc_procs_count,
-                 int grid_rc_id,
-                 uint64_t avg_l_seq_count,
-                 uint64_t avg_grid_seq_count,
-                 uint64_t rc_seq_start_idx,
-                 ushort rc_flag,
-                 std::vector<NbrData> &my_nbrs);
-
-  void push_seqs(int rc_flag, FastaData *fd, uint64_t seqs_count,
-                 uint64_t seq_start_idx, uint64_t rseq_beg, uint64_t cseq_beg);
-
+    FIndex index;
+    int myrowid, mycolid, procdim;
+    size_t readsperprocdim;
+    size_t rowstartid, colstartid;
+    size_t numrowreads, numcolreads;
 };
-
 
 #endif //LBL_DAL_DISTRIBUTEDFASTADATA_H
