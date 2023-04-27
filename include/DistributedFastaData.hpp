@@ -11,7 +11,8 @@ public:
     static_assert(sizeof(NbrData) == 2);
 
     DistributedFastaData(FIndex index);
-    ~DistributedFastaData();
+
+    void findnbrs(std::vector<NbrData>& nbrs);
 
 private:
     FIndex index;

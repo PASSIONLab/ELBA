@@ -57,6 +57,8 @@ double elapsed, mintime, maxtime, avgtime;
  */
 int parse_cli(int argc, char *argv[]);
 
+using NbrData = typename DistributedFastaData::NbrData;
+
 int main(int argc, char **argv)
 {
     MPI_Init(&argc, &argv);
@@ -86,19 +88,14 @@ int main(int argc, char **argv)
          */
 
         FIndex index(new FastaIndex(fasta_fname, commgrid));
+        FastaData lfd(index);
+        lfd.log();
 
-        Logger logger(commgrid);
-        size_t readid = 9000;
-        size_t count = 100;
-        std::vector<int> owners = index->collectowners(readid, count);
-        for (auto itr = owners.begin(); itr != owners.end(); ++itr)
-            logger() << *itr << " ";
-        std::ostringstream label;
-        label << "owners of reads [" << readid << ".." << readid+count-1 << "]";
-        logger.Flush(label.str().c_str());
+        DistributedFastaData dfd(index);
 
-        // FastaData lfd(index);
-        // lfd.log();
+        std::vector<NbrData> dummies;
+        dfd.findnbrs(dummies);
+
 
         /*
          * Finish pipeline
