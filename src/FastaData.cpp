@@ -2,27 +2,7 @@
 #include "DnaSeq.hpp"
 #include "Logger.hpp"
 
-size_t FastaData::bytesneeded(size_t numbases)
-{
-    return (numbases + 3) / 4;
-}
-
-size_t FastaData::computebufbound(size_t totbases, size_t numreads)
-{
-    /*
-     * For a sequence of length l, floor((l+3)/4) bytes are needed to encode it. Let
-     * L = l[0] + l[1] + ... + l[N-1], where l[i] is the length of the ith sequence, N is
-     * the total number of sequences, and hence L is the total sum of all the sequence
-     * lengths. Then the total number of bytes needed for the write buffer is
-     *
-     * Sum{0 <= i <= N-1}[floor((l[i]+3)/4)] <= (1/4) * Sum{0 <= i <= N-1}[l[i] + 4]
-     *                                       <= (1/4) * (L + 4N)
-     *                                        = (L/4) + N
-     */
-    return static_cast<size_t>(std::ceil((totbases/4.0) + numreads));
-}
-
-FastaData::FastaData(const FastaIndex& index) : commgrid(index.getcommgrid())
+FastaData::FastaData(FIndex index) : index(index), idxtag(index->getcommgrid()->GetRank())
 {
     /*
      * Will skip convention of adding 'my' to the front of variables referring
@@ -34,11 +14,16 @@ FastaData::FastaData(const FastaIndex& index) : commgrid(index.getcommgrid())
     MPI_Offset startpos, endpos, filesize, readbufsize;
     MPI_File fh;
 
-    const auto& records = index.getmyrecords();
+    Grid commgrid = index->getcommgrid();
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    MPI_Comm comm = commgrid->GetWorld();
+
+    const auto& records = index->getmyrecords();
     numreads = records.size();
     startpos = records.front().pos;
     endpos = records.back().pos + records.back().len + (records.back().len / records.back().bases);
-    MPI_File_open(commgrid->GetWorld(), index.GetFastaFilename().c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
+    MPI_File_open(comm, index->get_fasta_fname().c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
     MPI_File_get_size(fh, &filesize);
     if (endpos > filesize) endpos = filesize;
     readbufsize = endpos - startpos;
@@ -61,11 +46,10 @@ FastaData::FastaData(const FastaIndex& index) : commgrid(index.getcommgrid())
     buf = new uint8_t[bufbound];
 
     char *tmpbuf = new char[maxlen];
-
     size_t byteoffset = 0;
 
-    MPI_Barrier(commgrid->GetWorld());
-    double elapsed = MPI_Wtime();
+    MPI_Barrier(comm);
+    double elapsed = -MPI_Wtime();
 
     for (auto itr = records.cbegin(); itr != records.cend(); ++itr)
     {
@@ -115,29 +99,14 @@ FastaData::FastaData(const FastaIndex& index) : commgrid(index.getcommgrid())
     byteoffsets.push_back(byteoffset); /* convenient */
     assert(bufbound >= byteoffset); /* one computed from principals, the other computed via above algorithm, so if this fails then algorithm above is wrong */
 
-    elapsed = MPI_Wtime() - elapsed;
-
+    elapsed += MPI_Wtime();
     double mbspersecond = (totbases / 1048576.0) / elapsed;
     Logger logger(commgrid);
     logger() << std::fixed << std::setprecision(2) << mbspersecond << " Mbs/second";
-    logger.Flush("FASTA parsing rates (FastaIndex):");
+    logger.Flush("FASTA parsing rates (FastaData):");
 
     delete[] tmpbuf;
     delete[] readbuf;
-
-    MPI_Exscan(&numreads, &firstid, 1, MPI_SIZE_T, MPI_SUM, commgrid->GetWorld());
-    if (commgrid->GetRank() == 0) firstid = 0;
-
-}
-
-void FastaData::log() const
-{
-    Logger logger(commgrid);
-    size_t mynumreads = numreads();
-    size_t totbases = std::accumulate(readlens.begin(), readlens.end(), static_cast<size_t>(0), std::plus<size_t>{});
-    double avglen = static_cast<double>(totbases) / static_cast<double>(mynumreads);
-    logger() << std::fixed << std::setprecision(2) << "my range " << Logger::readrangestr(firstid, mynumreads) << ". ~" << avglen << " nts/read. (" << static_cast<double>(getbufsize()) / (1024.0 * 1024.0) << " Mbs compressed) == (" << getbufsize() << " bytes)";
-    logger.Flush("FASTA distributed among process ranks (FastaData::Log)");
 }
 
 std::string FastaData::getsequence(size_t localid) const
@@ -163,18 +132,34 @@ std::string FastaData::getsequence(size_t localid) const
     return std::string(s.begin(), s.end());
 }
 
-FastaData::FastaData(const FastaData& rhs) : commgrid(rhs.commgrid), byteoffsets(rhs.byteoffsets), readlens(rhs.readlens), firstid(rhs.firstid)
+void FastaData::log() const
 {
-    size_t bufsize = rhs.getbufsize();
-    buf = new uint8_t[bufsize];
-    memcpy(buf, rhs.buf, bufsize);
+    Logger logger(index->getcommgrid());
+    assert(index->getnumrecords() == readlens.size());
+    size_t numreads = index->getnumrecords();
+    size_t totbases = std::accumulate(readlens.begin(), readlens.end(), static_cast<size_t>(0));
+    double avglen = static_cast<double>(totbases) / numreads;
+    size_t firstid = getfirstid();
+    logger() << "idxtag " << idxtag << " stores reads " << Logger::readrangestr(firstid, numreads) << ". ~" << std::fixed << std::setprecision(2) << avglen << " nts/read. (" << static_cast<double>(getbufsize()) / (1024.0 * 1024.0) << " Mbs compressed) == (" << getbufsize() << " bytes)";
+    logger.Flush("FASTA sequence distribution (FastaData):");
 }
 
-uint8_t const* FastaData::getbufrange(size_t localstartid, size_t rangelen, size_t& numbytes) const
+size_t FastaData::computebufbound(size_t totbases, size_t numreads)
 {
-    size_t n = numreads();
-    uint8_t const *mem = buf + byteoffsets[localstartid];
-    size_t last = std::min(localstartid + rangelen, n);
-    numbytes = byteoffsets[last] - byteoffsets[localstartid];
-    return mem;
+    /*
+     * For a sequence of length l, floor((l+3)/4) bytes are needed to encode it. Let
+     * L = l[0] + l[1] + ... + l[N-1], where l[i] is the length of the ith sequence, N is
+     * the total number of sequences, and hence L is the total sum of all the sequence
+     * lengths. Then the total number of bytes needed for the write buffer is
+     *
+     * Sum{0 <= i <= N-1}[floor((l[i]+3)/4)] <= (1/4) * Sum{0 <= i <= N-1}[l[i] + 4]
+     *                                       <= (1/4) * (L + 4N)
+     *                                        = (L/4) + N
+     */
+    return static_cast<size_t>(std::ceil((totbases/4.0) + numreads));
+}
+
+size_t FastaData::bytesneeded(size_t numbases)
+{
+    return (numbases + 3) / 4;
 }
