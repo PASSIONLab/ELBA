@@ -24,7 +24,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "Logger.hpp"
 #include "FastaIndex.hpp"
 #include "FastaData.hpp"
-#include "Kmer/Kmer.hpp"
+#include "kmer/Kmer.hpp"
 
 int returncode;
 std::string fasta_fname;
@@ -173,9 +173,10 @@ int parse_cli(int argc, char *argv[])
         fasta_fname = argv[optind];
         fnamelen = fasta_fname.size();
 
-        std::cout << "-DKMER_SIZE="       << KMER_SIZE       << "\n"
-                  << "-DLOWER_KMER_FREQ=" << LOWER_KMER_FREQ << "\n"
-                  << "-DUPPER_KMER_FREQ=" << UPPER_KMER_FREQ << "\n"
+        std::cout << "-DKMER_SIZE="            << KMER_SIZE            << "\n"
+                  << "-DLOWER_KMER_FREQ="      << LOWER_KMER_FREQ      << "\n"
+                  << "-DUPPER_KMER_FREQ="      << UPPER_KMER_FREQ      << "\n"
+                  << "-DMPI_HAS_LARGE_COUNTS=" << MPI_HAS_LARGE_COUNTS << "\n"
         #ifdef USE_BLOOM
                   << "-DUSE_BLOOM\n"
         #endif

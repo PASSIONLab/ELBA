@@ -1,0 +1,38 @@
+-DKMER_SIZE=31
+-DLOWER_KMER_FREQ=15
+-DUPPER_KMER_FREQ=35
+-DMPI_HAS_LARGE_COUNTS=0
+
+int mat = 1;
+int mis = -1;
+int gap = -1;
+int xdrop_cutoff = 15;
+String fname = "data/strawberry.hifi.36x.fa";
+
+Fasta index construction:
+=========================
+
+rank[1/4] ::  is responsible for sequences [0..342147] (342148 reads) (7419062791 nucleotides, 25.000%)
+rank[2/4] ::  is responsible for sequences [342148..684530] (342383 reads) (7419049127 nucleotides, 25.000%)
+rank[3/4] ::  is responsible for sequences [684531..1026831] (342301 reads) (7419048562 nucleotides, 25.000%)
+rank[4/4] ::  is responsible for sequences [1026832..1369227] (342396 reads) (7419105284 nucleotides, 25.000%)
+
+FASTA parsing rates (FastaData):
+================================
+
+rank[1/4] :: 1199.81 Mbs/second
+rank[2/4] :: 1197.37 Mbs/second
+rank[3/4] :: 1197.95 Mbs/second
+rank[4/4] :: 1199.78 Mbs/second
+
+FASTA sequence distribution (FastaData):
+========================================
+
+rank[1/4] :: idxtag 0 stores reads [0..342147] (342148 reads). ~21683.78 nts/read. (1768.97 Mbs compressed) == (1854894478 bytes)
+rank[2/4] :: idxtag 1 stores reads [342148..684530] (342383 reads). ~21668.86 nts/read. (1768.96 Mbs compressed) == (1854890627 bytes)
+rank[3/4] :: idxtag 2 stores reads [684531..1026831] (342301 reads). ~21674.05 nts/read. (1768.96 Mbs compressed) == (1854890559 bytes)
+rank[4/4] :: idxtag 3 stores reads [1026832..1369227] (342396 reads). ~21668.20 nts/read. (1768.98 Mbs compressed) == (1854904788 bytes)
+
+Total time (user secs): 6.537
+Total work (proc secs): 26.148
+Total cost (proc secs): 26.148

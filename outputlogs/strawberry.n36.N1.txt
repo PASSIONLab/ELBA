@@ -1,0 +1,134 @@
+-DKMER_SIZE=31
+-DLOWER_KMER_FREQ=15
+-DUPPER_KMER_FREQ=35
+-DMPI_HAS_LARGE_COUNTS=0
+
+int mat = 1;
+int mis = -1;
+int gap = -1;
+int xdrop_cutoff = 15;
+String fname = "data/strawberry.hifi.36x.fa";
+
+Fasta index construction:
+=========================
+
+rank[1/36] ::  is responsible for sequences [0..38051] (38052 reads) (824337163 nucleotides, 2.778%)
+rank[2/36] ::  is responsible for sequences [38052..76101] (38050 reads) (824331138 nucleotides, 2.778%)
+rank[3/36] ::  is responsible for sequences [76102..114153] (38052 reads) (824328241 nucleotides, 2.778%)
+rank[4/36] ::  is responsible for sequences [114154..152178] (38025 reads) (824336823 nucleotides, 2.778%)
+rank[5/36] ::  is responsible for sequences [152179..190170] (37992 reads) (824333755 nucleotides, 2.778%)
+rank[6/36] ::  is responsible for sequences [190171..228218] (38048 reads) (824322838 nucleotides, 2.778%)
+rank[7/36] ::  is responsible for sequences [228219..266232] (38014 reads) (824322147 nucleotides, 2.778%)
+rank[8/36] ::  is responsible for sequences [266233..304224] (37992 reads) (824318946 nucleotides, 2.778%)
+rank[9/36] ::  is responsible for sequences [304225..342143] (37919 reads) (824337111 nucleotides, 2.778%)
+rank[10/36] ::  is responsible for sequences [342144..380162] (38019 reads) (824335824 nucleotides, 2.778%)
+rank[11/36] ::  is responsible for sequences [380163..418166] (38004 reads) (824326659 nucleotides, 2.778%)
+rank[12/36] ::  is responsible for sequences [418167..456215] (38049 reads) (824325150 nucleotides, 2.778%)
+rank[13/36] ::  is responsible for sequences [456216..494171] (37956 reads) (824325241 nucleotides, 2.778%)
+rank[14/36] ::  is responsible for sequences [494172..532183] (38012 reads) (824322610 nucleotides, 2.778%)
+rank[15/36] ::  is responsible for sequences [532184..570263] (38080 reads) (824322240 nucleotides, 2.778%)
+rank[16/36] ::  is responsible for sequences [570264..608355] (38092 reads) (824325353 nucleotides, 2.778%)
+rank[17/36] ::  is responsible for sequences [608356..646445] (38090 reads) (824337880 nucleotides, 2.778%)
+rank[18/36] ::  is responsible for sequences [646446..684521] (38076 reads) (824312222 nucleotides, 2.778%)
+rank[19/36] ::  is responsible for sequences [684522..722594] (38073 reads) (824324497 nucleotides, 2.778%)
+rank[20/36] ::  is responsible for sequences [722595..760680] (38086 reads) (824339246 nucleotides, 2.778%)
+rank[21/36] ::  is responsible for sequences [760681..798752] (38072 reads) (824325889 nucleotides, 2.778%)
+rank[22/36] ::  is responsible for sequences [798753..836749] (37997 reads) (824330190 nucleotides, 2.778%)
+rank[23/36] ::  is responsible for sequences [836750..874763] (38014 reads) (824328372 nucleotides, 2.778%)
+rank[24/36] ::  is responsible for sequences [874764..912795] (38032 reads) (824340705 nucleotides, 2.778%)
+rank[25/36] ::  is responsible for sequences [912796..950790] (37995 reads) (824336843 nucleotides, 2.778%)
+rank[26/36] ::  is responsible for sequences [950791..988838] (38048 reads) (824321643 nucleotides, 2.778%)
+rank[27/36] ::  is responsible for sequences [988839..1026819] (37981 reads) (824340273 nucleotides, 2.778%)
+rank[28/36] ::  is responsible for sequences [1026820..1064859] (38040 reads) (824340206 nucleotides, 2.778%)
+rank[29/36] ::  is responsible for sequences [1064860..1102906] (38047 reads) (824334037 nucleotides, 2.778%)
+rank[30/36] ::  is responsible for sequences [1102907..1141009] (38103 reads) (824321464 nucleotides, 2.778%)
+rank[31/36] ::  is responsible for sequences [1141010..1179080] (38071 reads) (824333996 nucleotides, 2.778%)
+rank[32/36] ::  is responsible for sequences [1179081..1217104] (38024 reads) (824338984 nucleotides, 2.778%)
+rank[33/36] ::  is responsible for sequences [1217105..1255135] (38031 reads) (824328775 nucleotides, 2.778%)
+rank[34/36] ::  is responsible for sequences [1255136..1293190] (38055 reads) (824339243 nucleotides, 2.778%)
+rank[35/36] ::  is responsible for sequences [1293191..1331221] (38031 reads) (824321892 nucleotides, 2.778%)
+rank[36/36] ::  is responsible for sequences [1331222..1369227] (38006 reads) (824718168 nucleotides, 2.779%)
+
+FASTA parsing rates (FastaData):
+================================
+
+rank[1/36] :: 1067.40 Mbs/second
+rank[2/36] :: 1064.73 Mbs/second
+rank[3/36] :: 1067.48 Mbs/second
+rank[4/36] :: 1025.29 Mbs/second
+rank[5/36] :: 1024.67 Mbs/second
+rank[6/36] :: 1069.78 Mbs/second
+rank[7/36] :: 1064.19 Mbs/second
+rank[8/36] :: 1067.98 Mbs/second
+rank[9/36] :: 1070.00 Mbs/second
+rank[10/36] :: 1053.35 Mbs/second
+rank[11/36] :: 1069.48 Mbs/second
+rank[12/36] :: 1061.82 Mbs/second
+rank[13/36] :: 1061.43 Mbs/second
+rank[14/36] :: 1065.13 Mbs/second
+rank[15/36] :: 1066.28 Mbs/second
+rank[16/36] :: 1064.61 Mbs/second
+rank[17/36] :: 1069.34 Mbs/second
+rank[18/36] :: 1069.47 Mbs/second
+rank[19/36] :: 1067.18 Mbs/second
+rank[20/36] :: 1067.82 Mbs/second
+rank[21/36] :: 1070.40 Mbs/second
+rank[22/36] :: 1062.44 Mbs/second
+rank[23/36] :: 1064.53 Mbs/second
+rank[24/36] :: 1064.13 Mbs/second
+rank[25/36] :: 1065.56 Mbs/second
+rank[26/36] :: 1069.50 Mbs/second
+rank[27/36] :: 1069.26 Mbs/second
+rank[28/36] :: 1064.05 Mbs/second
+rank[29/36] :: 1065.23 Mbs/second
+rank[30/36] :: 1064.79 Mbs/second
+rank[31/36] :: 1067.69 Mbs/second
+rank[32/36] :: 1066.87 Mbs/second
+rank[33/36] :: 1064.87 Mbs/second
+rank[34/36] :: 1071.04 Mbs/second
+rank[35/36] :: 1057.31 Mbs/second
+rank[36/36] :: 1067.82 Mbs/second
+
+FASTA sequence distribution (FastaData):
+========================================
+
+rank[1/36] :: idxtag 0 stores reads [0..38051] (38052 reads). ~21663.44 nts/read. (196.55 Mbs compressed) == (206098659 bytes)
+rank[2/36] :: idxtag 1 stores reads [38052..76101] (38050 reads). ~21664.42 nts/read. (196.55 Mbs compressed) == (206097129 bytes)
+rank[3/36] :: idxtag 2 stores reads [76102..114153] (38052 reads). ~21663.20 nts/read. (196.55 Mbs compressed) == (206096378 bytes)
+rank[4/36] :: idxtag 3 stores reads [114154..152178] (38025 reads). ~21678.81 nts/read. (196.55 Mbs compressed) == (206098437 bytes)
+rank[5/36] :: idxtag 4 stores reads [152179..190170] (37992 reads). ~21697.56 nts/read. (196.55 Mbs compressed) == (206097739 bytes)
+rank[6/36] :: idxtag 5 stores reads [190171..228218] (38048 reads). ~21665.34 nts/read. (196.55 Mbs compressed) == (206095122 bytes)
+rank[7/36] :: idxtag 6 stores reads [228219..266232] (38014 reads). ~21684.70 nts/read. (196.55 Mbs compressed) == (206094851 bytes)
+rank[8/36] :: idxtag 7 stores reads [266233..304224] (37992 reads). ~21697.17 nts/read. (196.55 Mbs compressed) == (206093996 bytes)
+rank[9/36] :: idxtag 8 stores reads [304225..342143] (37919 reads). ~21739.42 nts/read. (196.55 Mbs compressed) == (206098508 bytes)
+rank[10/36] :: idxtag 9 stores reads [342144..380162] (38019 reads). ~21682.21 nts/read. (196.55 Mbs compressed) == (206098200 bytes)
+rank[11/36] :: idxtag 10 stores reads [380163..418166] (38004 reads). ~21690.52 nts/read. (196.55 Mbs compressed) == (206095963 bytes)
+rank[12/36] :: idxtag 11 stores reads [418167..456215] (38049 reads). ~21664.83 nts/read. (196.55 Mbs compressed) == (206095527 bytes)
+rank[13/36] :: idxtag 12 stores reads [456216..494171] (37956 reads). ~21717.92 nts/read. (196.55 Mbs compressed) == (206095625 bytes)
+rank[14/36] :: idxtag 13 stores reads [494172..532183] (38012 reads). ~21685.85 nts/read. (196.55 Mbs compressed) == (206094824 bytes)
+rank[15/36] :: idxtag 14 stores reads [532184..570263] (38080 reads). ~21647.12 nts/read. (196.55 Mbs compressed) == (206094859 bytes)
+rank[16/36] :: idxtag 15 stores reads [570264..608355] (38092 reads). ~21640.38 nts/read. (196.55 Mbs compressed) == (206095567 bytes)
+rank[17/36] :: idxtag 16 stores reads [608356..646445] (38090 reads). ~21641.85 nts/read. (196.55 Mbs compressed) == (206098790 bytes)
+rank[18/36] :: idxtag 17 stores reads [646446..684521] (38076 reads). ~21649.13 nts/read. (196.54 Mbs compressed) == (206092284 bytes)
+rank[19/36] :: idxtag 18 stores reads [684522..722594] (38073 reads). ~21651.16 nts/read. (196.55 Mbs compressed) == (206095574 bytes)
+rank[20/36] :: idxtag 19 stores reads [722595..760680] (38086 reads). ~21644.15 nts/read. (196.55 Mbs compressed) == (206099130 bytes)
+rank[21/36] :: idxtag 20 stores reads [760681..798752] (38072 reads). ~21651.76 nts/read. (196.55 Mbs compressed) == (206095709 bytes)
+rank[22/36] :: idxtag 21 stores reads [798753..836749] (37997 reads). ~21694.61 nts/read. (196.55 Mbs compressed) == (206096750 bytes)
+rank[23/36] :: idxtag 22 stores reads [836750..874763] (38014 reads). ~21684.86 nts/read. (196.55 Mbs compressed) == (206096403 bytes)
+rank[24/36] :: idxtag 23 stores reads [874764..912795] (38032 reads). ~21674.92 nts/read. (196.55 Mbs compressed) == (206099366 bytes)
+rank[25/36] :: idxtag 24 stores reads [912796..950790] (37995 reads). ~21695.93 nts/read. (196.55 Mbs compressed) == (206098482 bytes)
+rank[26/36] :: idxtag 25 stores reads [950791..988838] (38048 reads). ~21665.31 nts/read. (196.55 Mbs compressed) == (206094605 bytes)
+rank[27/36] :: idxtag 26 stores reads [988839..1026819] (37981 reads). ~21704.02 nts/read. (196.55 Mbs compressed) == (206099312 bytes)
+rank[28/36] :: idxtag 27 stores reads [1026820..1064859] (38040 reads). ~21670.35 nts/read. (196.55 Mbs compressed) == (206099359 bytes)
+rank[29/36] :: idxtag 28 stores reads [1064860..1102906] (38047 reads). ~21666.20 nts/read. (196.55 Mbs compressed) == (206097810 bytes)
+rank[30/36] :: idxtag 29 stores reads [1102907..1141009] (38103 reads). ~21634.03 nts/read. (196.55 Mbs compressed) == (206094584 bytes)
+rank[31/36] :: idxtag 30 stores reads [1141010..1179080] (38071 reads). ~21652.54 nts/read. (196.55 Mbs compressed) == (206097727 bytes)
+rank[32/36] :: idxtag 31 stores reads [1179081..1217104] (38024 reads). ~21679.44 nts/read. (196.55 Mbs compressed) == (206098951 bytes)
+rank[33/36] :: idxtag 32 stores reads [1217105..1255135] (38031 reads). ~21675.18 nts/read. (196.55 Mbs compressed) == (206096572 bytes)
+rank[34/36] :: idxtag 33 stores reads [1255136..1293190] (38055 reads). ~21661.79 nts/read. (196.55 Mbs compressed) == (206099115 bytes)
+rank[35/36] :: idxtag 34 stores reads [1293191..1331221] (38031 reads). ~21675.00 nts/read. (196.55 Mbs compressed) == (206094750 bytes)
+rank[36/36] :: idxtag 35 stores reads [1331222..1369227] (38006 reads). ~21699.68 nts/read. (196.64 Mbs compressed) == (206193795 bytes)
+
+Total time (user secs): 12.856
+Total work (proc secs): 462.824
+Total cost (proc secs): 462.825
