@@ -86,10 +86,19 @@ int main(int argc, char **argv)
          */
 
         FIndex index(new FastaIndex(fasta_fname, commgrid));
-        FastaData lfd(index);
-        lfd.log();
 
-        lfd.ParallelWrite("sequences");
+        Logger logger(commgrid);
+        size_t readid = 9000;
+        size_t count = 100;
+        std::vector<int> owners = index->collectowners(readid, count);
+        for (auto itr = owners.begin(); itr != owners.end(); ++itr)
+            logger() << *itr << " ";
+        std::ostringstream label;
+        label << "owners of reads [" << readid << ".." << readid+count-1 << "]";
+        logger.Flush(label.str().c_str());
+
+        // FastaData lfd(index);
+        // lfd.log();
 
         /*
          * Finish pipeline

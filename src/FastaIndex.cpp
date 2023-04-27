@@ -110,3 +110,25 @@ FastaIndex::FastaIndex(const std::string& fasta_fname, Grid commgrid) : commgrid
     logger() << " is responsible for sequences " << Logger::readrangestr(readdispls[myrank], readcounts[myrank]) << " (" << mytotbases << " nucleotides, " << std::fixed << std::setprecision(3) << percent_proportion << "%)";
     logger.Flush("Fasta index construction:");
 }
+
+std::vector<int> FastaIndex::collectowners(size_t startid, size_t count) const
+{
+    size_t totreads = gettotrecords();
+
+    assert(count >= 1 && 0 <= startid && startid + count <= totreads);
+
+    std::vector<int> owners;
+
+    auto iditr = std::upper_bound(readdispls.cbegin(), readdispls.cend(), static_cast<MPI_Displ_type>(startid));
+    iditr--;
+
+    assert(*iditr <= startid);
+
+    while (*iditr < startid + count)
+    {
+        owners.push_back(iditr - readdispls.cbegin());
+        iditr++;
+    }
+
+    return owners;
+}

@@ -18,7 +18,7 @@ public:
     std::string get_faidx_fname() const { return fasta_fname + ".fai"; }
     size_t getsomefirstid(int rank) const { return static_cast<size_t>(readdispls[rank]); }
     size_t getmyfirstid() const { return getsomefirstid(commgrid->GetRank()); }
-
+    std::vector<int> collectowners(size_t startid, size_t count) const;
     static Record get_faidx_record(const std::string& line);
 
 
