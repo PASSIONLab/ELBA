@@ -93,9 +93,8 @@ int main(int argc, char **argv)
 
         DistributedFastaData dfd(index);
 
-        std::vector<NbrData> dummies;
-        dfd.findnbrs(dummies);
-
+        dfd.allgather_neighbors();
+        dfd.exchange_reads();
 
         /*
          * Finish pipeline

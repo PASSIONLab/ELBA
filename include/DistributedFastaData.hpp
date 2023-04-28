@@ -3,6 +3,7 @@
 
 #include "FastaData.hpp"
 #include "Logger.hpp"
+#include "DnaSeq.hpp"
 
 class DistributedFastaData
 {
@@ -14,7 +15,8 @@ public:
 
     DistributedFastaData(FIndex index);
 
-    void findnbrs(std::vector<NbrData>& nbrs);
+    void allgather_neighbors() {}
+    void exchange_reads() {}
 
 private:
     FIndex index;
@@ -22,6 +24,12 @@ private:
     size_t readsperprocdim;
     size_t rowstartid, colstartid;
     size_t numrowreads, numcolreads;
+
+    uint8_t *rowbuf, *colbuf;
+    std::vector<DnaSeq> rowreads, colreads;
+    std::vector<NbrData> allnbrs;
+
+    void findnbrs(std::vector<NbrData>& nbrs);
 };
 
 #endif //LBL_DAL_DISTRIBUTEDFASTADATA_H
