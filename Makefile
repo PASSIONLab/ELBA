@@ -32,6 +32,7 @@ OBJECTS=obj/Logger.o \
 		obj/HashFuncs.o \
 		obj/HyperLogLog.o \
 		obj/Bloom.o \
+		obj/KmerOps.o \
 		obj/CommGrid.o \
 		obj/MPIType.o
 
@@ -45,11 +46,12 @@ obj/%.o: src/%.cpp
 	@echo CXX $(COMPILE_TIME_PARAMETERS) -c -o $@ $<
 	@$(COMPILER) $(FLAGS) $(INCADD) -c -o $@ $<
 
-obj/main.o: src/main.cpp include/common.h
+obj/main.o: src/main.cpp include/common.h src/Kmer.cpp include/Kmer.hpp
 obj/Logger.o: src/Logger.cpp include/Logger.hpp
 obj/FastaIndex.o: src/FastaIndex.cpp include/FastaIndex.hpp
 obj/FastaData.o: src/FastaData.cpp include/FastaData.hpp
 obj/DistributedFastaData.o: src/DistributedFastaData.cpp include/DistributedFastaData.hpp
+obj/KmerOps.o: src/KmerOps.cpp include/KmerOps.hpp
 obj/DnaSeq.o: src/DnaSeq.cpp include/DnaSeq.hpp
 obj/HashFuncs.o: src/HashFuncs.cpp include/HashFuncs.hpp
 

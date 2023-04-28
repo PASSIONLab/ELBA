@@ -91,10 +91,22 @@ int main(int argc, char **argv)
         FastaData lfd(index);
         lfd.log();
 
-        DistributedFastaData dfd(index);
+        std::vector<DnaSeq> seqs = lfd.getdnaseqs();
 
-        dfd.allgather_neighbors();
-        dfd.exchange_reads();
+        std::ostringstream ss;
+        ss << "myseqs" << myrank << ".txt";
+        std::ofstream filestream(ss.str());
+
+        for (auto itr = seqs.begin(); itr != seqs.end(); ++itr)
+        {
+            filestream << *itr << std::endl;
+        }
+
+        filestream.close();
+
+        // DistributedFastaData dfd(index);
+        // dfd.allgather_neighbors();
+        // dfd.exchange_reads();
 
         /*
          * Finish pipeline

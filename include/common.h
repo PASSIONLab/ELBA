@@ -66,4 +66,8 @@ struct CT
     typedef FullyDistVec<uint64_t, NT> PDistVec;
 };
 
+#ifndef USE_BLOOM
+#define USE_BLOOM 1
+#endif
+
 #endif

@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "FastaIndex.hpp"
+#include "DnaSeq.hpp"
 #include <cassert>
 
 
@@ -21,6 +22,8 @@ public:
     size_t getfirstid() const { return index->getsomefirstid(idxtag); }
     std::string getsequence(size_t localid) const;
     void ParallelWrite(const char *fname) const;
+
+    std::vector<DnaSeq> getdnaseqs() const;
 
 private:
     FIndex index;

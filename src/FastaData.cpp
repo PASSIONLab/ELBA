@@ -2,6 +2,19 @@
 #include "DnaSeq.hpp"
 #include "Logger.hpp"
 
+std::vector<DnaSeq> FastaData::getdnaseqs() const
+{
+    std::vector<DnaSeq> seqs;
+    size_t numseqs = readlens.size();
+
+    for (size_t i = 0; i < numseqs; ++i)
+    {
+        seqs.emplace_back(buf + byteoffsets[i], readlens[i]);
+    }
+
+    return seqs;
+}
+
 FastaData::FastaData(FIndex index) : index(index), idxtag(index->getcommgrid()->GetRank())
 {
     /*
