@@ -13,7 +13,6 @@ public:
     Grid getcommgrid() const { return commgrid; }
     size_t getnumrecords() const { return readcounts[commgrid->GetRank()]; }
     size_t gettotrecords() const { return readdispls.back(); }
-    const std::vector<Record>& getmyrecords() const { return myrecords; }
     std::string get_fasta_fname() const { return fasta_fname; }
     std::string get_faidx_fname() const { return fasta_fname + ".fai"; }
     size_t getsomefirstid(int rank) const { return static_cast<size_t>(readdispls[rank]); }
@@ -22,6 +21,8 @@ public:
     std::vector<int> collectowners(size_t startid, size_t count) const;
     static Record get_faidx_record(const std::string& line);
 
+    const std::vector<Record>& getmyrecords() const { return myrecords; }
+    const std::vector<MPI_Displ_type>& getreaddispls() const { return readdispls; }
 
 private:
     Grid commgrid;

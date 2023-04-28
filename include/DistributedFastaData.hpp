@@ -8,15 +8,31 @@
 class DistributedFastaData
 {
 public:
-    struct NbrData { uint32_t id : 31, rc_flag : 1; };
-    static_assert(sizeof(NbrData) == 4);
+    struct NbrData
+    {
+        size_t startid, numseqs;
+        int sendrank, destrank;
+        unsigned short rcflag;
 
-    static NbrData nbrdata_ctor(int rank, int rc_flag) { return {static_cast<uint32_t>(rank), static_cast<uint32_t>(!!rc_flag)}; }
+        NbrData() = default;
+    };
 
     DistributedFastaData(FIndex index);
 
-    void allgather_neighbors() {}
-    void exchange_reads() {}
+    void findnbrs(std::vector<NbrData>& mynbrs, size_t startid, size_t count, unsigned short rc_flag) const;
+
+    // std::vector<NbrData> getmynbrs() const
+    // {
+        // Grid commgrid = index->getcommgrid();
+        // int nprocs = commgrid->GetSize();
+        // int myrank = commgrid->GetRank();
+        // MPI_Comm comm = commgrid->GetWorld();
+
+        // size_t totreads = index->gettotrecords();
+    // }
+
+    void allgather_neighbors();
+    void exchange_reads();
 
 private:
     FIndex index;
@@ -28,8 +44,6 @@ private:
     uint8_t *rowbuf, *colbuf;
     std::vector<DnaSeq> rowreads, colreads;
     std::vector<NbrData> allnbrs;
-
-    void findnbrs(std::vector<NbrData>& nbrs);
 };
 
 #endif //LBL_DAL_DISTRIBUTEDFASTADATA_H
