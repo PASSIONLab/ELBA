@@ -58,6 +58,7 @@ double elapsed, mintime, maxtime, avgtime;
  */
 int parse_cli(int argc, char *argv[]);
 void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid);
+CT<PosInRead>::PSpParMat CreateKmerMatrix(const std::vector<DnaSeq>& myreads, const KmerCountMap& kmermap, Grid commgrid);
 
 using NbrData = typename DistributedFastaData::NbrData;
 
@@ -103,19 +104,19 @@ int main(int argc, char **argv)
         GetKmerCountMapValues(myreads, kmermap, commgrid);
 
         PrintKmerHistogram(kmermap, commgrid);
-        // auto A = CreateKmerMatrix(myreads, kmermap, commgrid);
+        auto A = CreateKmerMatrix(myreads, kmermap, commgrid);
 
-        // size_t numreads = A.getnrow();
-        // size_t numkmers = A.getncol();
-        // size_t numseeds = A.getnnz();
+        size_t numreads = A.getnrow();
+        size_t numkmers = A.getncol();
+        size_t numseeds = A.getnnz();
 
-        // if (!myrank)
-        // {
-            // std::cout << "K-mer matrix A has " << numreads << " rows (readids), " << numkmers << " columns (k-mers), and " << numseeds << " nonzeros (k-mer seeds)\n" << std::endl;
-        // }
-        // MPI_Barrier(comm);
+        if (!myrank)
+        {
+            std::cout << "K-mer matrix A has " << numreads << " rows (readids), " << numkmers << " columns (k-mers), and " << numseeds << " nonzeros (k-mer seeds)\n" << std::endl;
+        }
+        MPI_Barrier(comm);
 
-        // A.ParallelWriteMM("A.mtx", false);
+        A.ParallelWriteMM("A.mtx", false);
 
         // auto AT = A;
         // AT.Transpose();
@@ -278,6 +279,47 @@ void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid)
     }
 
     MPI_Barrier(commgrid->GetWorld());
+}
+
+CT<PosInRead>::PSpParMat CreateKmerMatrix(const std::vector<DnaSeq>& myreads, const KmerCountMap& kmermap, Grid commgrid)
+{
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+
+    uint64_t kmerid = kmermap.size();
+    uint64_t totkmers = kmerid;
+    uint64_t totreads = myreads.size();
+
+    MPI_Allreduce(&kmerid,      &totkmers, 1, MPI_UINT64_T, MPI_SUM, commgrid->GetWorld());
+    MPI_Allreduce(MPI_IN_PLACE, &totreads, 1, MPI_UINT64_T, MPI_SUM, commgrid->GetWorld());
+
+    MPI_Exscan(MPI_IN_PLACE, &kmerid, 1, MPI_UINT64_T, MPI_SUM, commgrid->GetWorld());
+    if (myrank == 0) kmerid = 0;
+
+    std::vector<uint64_t> local_rowids, local_colids;
+    std::vector<PosInRead> local_positions;
+
+    for (auto itr = kmermap.cbegin(); itr != kmermap.cend(); ++itr)
+    {
+        const READIDS& readids = std::get<0>(itr->second);
+        const POSITIONS& positions = std::get<1>(itr->second);
+        int cnt = std::get<2>(itr->second);
+
+        for (int j = 0; j < cnt; ++j)
+        {
+            local_colids.push_back(kmerid);
+            local_rowids.push_back(readids[j]);
+            local_positions.push_back(positions[j]);
+        }
+
+        kmerid++;
+    }
+
+    CT<uint64_t>::PDistVec drows(local_rowids, commgrid);
+    CT<uint64_t>::PDistVec dcols(local_colids, commgrid);
+    CT<PosInRead>::PDistVec dvals(local_positions, commgrid);
+
+    return CT<PosInRead>::PSpParMat(totreads, totkmers, drows, dcols, dvals, false);
 }
 
 //  if (ret < 0)
