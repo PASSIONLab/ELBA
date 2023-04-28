@@ -21,16 +21,6 @@ public:
 
     void findnbrs(std::vector<NbrData>& mynbrs, size_t startid, size_t count, unsigned short rc_flag) const;
 
-    // std::vector<NbrData> getmynbrs() const
-    // {
-        // Grid commgrid = index->getcommgrid();
-        // int nprocs = commgrid->GetSize();
-        // int myrank = commgrid->GetRank();
-        // MPI_Comm comm = commgrid->GetWorld();
-
-        // size_t totreads = index->gettotrecords();
-    // }
-
     void allgather_neighbors();
     void exchange_reads();
 
@@ -45,5 +35,7 @@ private:
     std::vector<DnaSeq> rowreads, colreads;
     std::vector<NbrData> allnbrs;
 };
+
+typedef typename DistributedFastaData::NbrData NbrData;
 
 #endif //LBL_DAL_DISTRIBUTEDFASTADATA_H
