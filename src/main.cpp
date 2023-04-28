@@ -25,7 +25,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "FastaIndex.hpp"
 #include "FastaData.hpp"
 #include "DistributedFastaData.hpp"
-#include "kmer/Kmer.hpp"
+#include "Kmer.hpp"
 
 int returncode;
 std::string fasta_fname;
