@@ -37,8 +37,7 @@ void DistributedFastaData::findnbrs(std::vector<NbrData>& nbrs)
 
     for (auto itr = owners.begin(); itr != owners.end(); ++itr)
     {
-        NbrData nbr = {static_cast<uint16_t>(*itr), 0};
-        nbrs.push_back(nbr);
+        nbrs.push_back(nbrdata_ctor(*itr, 0));
     }
 
     if (myrowid != mycolid)
@@ -47,8 +46,7 @@ void DistributedFastaData::findnbrs(std::vector<NbrData>& nbrs)
 
         for (auto itr = owners.begin(); itr != owners.end(); ++itr)
         {
-            NbrData nbr = {static_cast<uint16_t>(*itr), 1};
-            nbrs.push_back(nbr);
+            nbrs.push_back(nbrdata_ctor(*itr, 1));
         }
     }
 

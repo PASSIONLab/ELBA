@@ -7,8 +7,10 @@
 class DistributedFastaData
 {
 public:
-    struct NbrData { uint16_t id : 15, rc_flag : 1; };
-    static_assert(sizeof(NbrData) == 2);
+    struct NbrData { uint32_t id : 31, rc_flag : 1; };
+    static_assert(sizeof(NbrData) == 4);
+
+    static NbrData nbrdata_ctor(int rank, int rc_flag) { return {static_cast<uint32_t>(rank), static_cast<uint32_t>(!!rc_flag)}; }
 
     DistributedFastaData(FIndex index);
 
