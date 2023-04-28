@@ -26,6 +26,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "FastaData.hpp"
 #include "DistributedFastaData.hpp"
 #include "Kmer.hpp"
+#include "KmerOps.hpp"
 
 int returncode;
 std::string fasta_fname;
@@ -56,6 +57,7 @@ double elapsed, mintime, maxtime, avgtime;
  * Command line parser.
  */
 int parse_cli(int argc, char *argv[]);
+void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid);
 
 using NbrData = typename DistributedFastaData::NbrData;
 
@@ -90,23 +92,47 @@ int main(int argc, char **argv)
         FIndex index(new FastaIndex(fasta_fname, commgrid));
         FastaData lfd(index);
         lfd.log();
-
-        std::vector<DnaSeq> seqs = lfd.getdnaseqs();
-
-        std::ostringstream ss;
-        ss << "myseqs" << myrank << ".txt";
-        std::ofstream filestream(ss.str());
-
-        for (auto itr = seqs.begin(); itr != seqs.end(); ++itr)
-        {
-            filestream << *itr << std::endl;
-        }
-
-        filestream.close();
-
         // DistributedFastaData dfd(index);
         // dfd.allgather_neighbors();
         // dfd.exchange_reads();
+
+        std::vector<DnaSeq> myreads = lfd.getdnaseqs();
+
+
+        KmerCountMap kmermap = GetKmerCountMapKeys(myreads, commgrid);
+        GetKmerCountMapValues(myreads, kmermap, commgrid);
+
+        PrintKmerHistogram(kmermap, commgrid);
+        // auto A = CreateKmerMatrix(myreads, kmermap, commgrid);
+
+        // size_t numreads = A.getnrow();
+        // size_t numkmers = A.getncol();
+        // size_t numseeds = A.getnnz();
+
+        // if (!myrank)
+        // {
+            // std::cout << "K-mer matrix A has " << numreads << " rows (readids), " << numkmers << " columns (k-mers), and " << numseeds << " nonzeros (k-mer seeds)\n" << std::endl;
+        // }
+        // MPI_Barrier(comm);
+
+        // A.ParallelWriteMM("A.mtx", false);
+
+        // auto AT = A;
+        // AT.Transpose();
+
+        // CT<ReadOverlap>::PSpParMat B = Mult_AnXBn_DoubleBuff<KmerIntersect, ReadOverlap, CT<ReadOverlap>::PSpDCCols>(A, AT);
+
+        // B.Prune([](const auto& item) { return item.count <= 1; });
+
+        // size_t numovlpseeds = B.getnnz();
+
+        // if (!myrank)
+        // {
+            // std::cout << "Overlap matrix B has " << numreads << " rows (readids), " << numreads << " columns (readids), and " << numovlpseeds << " nonzeros (overlap seeds)\n" << std::endl;
+        // }
+        // MPI_Barrier(comm);
+        // B.ParallelWriteMM("B.mtx", false, OverlapHandler());
+
 
         /*
          * Finish pipeline
@@ -216,6 +242,42 @@ int parse_cli(int argc, char *argv[])
     MPI_BCAST(fasta_fname.data(), fnamelen, MPI_CHAR, root, comm);
 
     return 0;
+}
+
+void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid)
+{
+    int maxcount = std::accumulate(kmermap.cbegin(), kmermap.cend(), 0, [](int cur, const auto& entry) { return std::max(cur, std::get<2>(entry.second)); });
+
+    MPI_Allreduce(MPI_IN_PLACE, &maxcount, 1, MPI_INT, MPI_MAX, commgrid->GetWorld());
+
+    std::vector<int> histo(maxcount+1, 0);
+
+    for (auto itr = kmermap.cbegin(); itr != kmermap.cend(); ++itr)
+    {
+        int cnt = std::get<2>(itr->second);
+        assert(cnt >= 1);
+        histo[cnt]++;
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, histo.data(), maxcount+1, MPI_INT, MPI_SUM, commgrid->GetWorld());
+
+    int myrank = commgrid->GetRank();
+
+    if (!myrank)
+    {
+        std::cout << "#count\tnumkmers" << std::endl;
+
+        for (int i = 1; i < histo.size(); ++i)
+        {
+            if (histo[i] > 0)
+            {
+                std::cout << i << "\t" << histo[i] << std::endl;
+            }
+        }
+        std::cout << std::endl;
+    }
+
+    MPI_Barrier(commgrid->GetWorld());
 }
 
 //  if (ret < 0)
