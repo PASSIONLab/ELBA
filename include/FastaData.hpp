@@ -24,7 +24,6 @@ private:
     std::vector<size_t> byteoffsets;
     std::vector<size_t> readlens;
     uint8_t *buf;
-    int idxtag; /* corresponds to the processor first responsible for these sequences */
 
     size_t getbufsize() const { return byteoffsets.back(); }
 

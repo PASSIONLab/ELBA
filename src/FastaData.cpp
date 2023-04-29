@@ -2,7 +2,7 @@
 #include "DnaSeq.hpp"
 #include "Logger.hpp"
 
-FastaData::FastaData(FIndex index) : index(index), idxtag(index->getcommgrid()->GetRank())
+FastaData::FastaData(FIndex index) : index(index)
 {
     /*
      * Will skip convention of adding 'my' to the front of variables referring
