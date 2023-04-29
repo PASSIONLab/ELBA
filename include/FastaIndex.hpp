@@ -11,16 +11,20 @@ public:
     FastaIndex(const std::string& fasta_fname, Grid commgrid);
 
     Grid getcommgrid() const { return commgrid; }
-    size_t getnumrecords() const { return readcounts[commgrid->GetRank()]; }
-    size_t gettotrecords() const { return readdispls.back(); }
-    const std::vector<Record>& getmyrecords() const { return myrecords; }
     std::string get_fasta_fname() const { return fasta_fname; }
     std::string get_faidx_fname() const { return fasta_fname + ".fai"; }
-    size_t getsomefirstid(int rank) const { return static_cast<size_t>(readdispls[rank]); }
-    size_t getmyfirstid() const { return getsomefirstid(commgrid->GetRank()); }
+
+    size_t gettotrecords() const { return readdispls.back(); }
+    size_t getreadcount(size_t i) const { return static_cast<size_t>(readcounts[i]); }
+    size_t getreaddispl(size_t i) const { return static_cast<size_t>(readdispls[i]); }
+    size_t getmyreadcount() const { return getreadcount(commgrid->GetRank()); }
+    size_t getmyreaddispl() const { return getreaddispl(commgrid->GetRank()); }
+
+    const std::vector<Record>& getmyrecords() const { return myrecords; }
+    const std::vector<MPI_Count_type> getreadcounts() const { return readcounts; }
+    const std::vector<MPI_Displ_type> getreaddispls() const { return readdispls; }
 
     static Record get_faidx_record(const std::string& line);
-
 
 private:
     Grid commgrid;

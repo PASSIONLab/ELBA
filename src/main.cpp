@@ -81,19 +81,17 @@ int main(int argc, char **argv)
         MPI_Barrier(comm);
         elapsed = -MPI_Wtime();
 
-        /*
-         * Start pipeline
-         */
+/***********************************************************/
+/************************ START ****************************/
+/***********************************************************/
 
         FIndex index(new FastaIndex(fasta_fname, commgrid));
         FastaData lfd(index);
         lfd.log();
 
-        lfd.ParallelWrite("sequences");
-
-        /*
-         * Finish pipeline
-         */
+/***********************************************************/
+/************************* END *****************************/
+/***********************************************************/
 
         elapsed += MPI_Wtime();
         MPI_Reduce(&elapsed, &maxtime, 1, MPI_DOUBLE, MPI_MAX, root, comm);

@@ -114,36 +114,15 @@ std::string FastaData::getsequence(size_t localid) const
     return DnaSeq(buf + byteoffsets[localid], readlens[localid]).ascii();
 }
 
-void FastaData::ParallelWrite(const char *fname) const
-{
-    int myrank = getcommgrid()->GetRank();
-    int nprocs = getcommgrid()->GetSize();
-
-    std::ostringstream ssfname;
-    ssfname << fname << ".rank" << myrank << ".txt";
-
-    std::ofstream filestream(ssfname.str());
-
-    size_t numreads = readlens.size();
-
-    for (size_t i = 0; i < numreads; ++i)
-    {
-        filestream << getsequence(i) << std::endl;
-    }
-
-    filestream.close();
-    MPI_Barrier(getcommgrid()->GetWorld());
-}
-
 void FastaData::log() const
 {
     Logger logger(index->getcommgrid());
-    assert(index->getnumrecords() == readlens.size());
-    size_t numreads = index->getnumrecords();
+    assert(index->getmyreadcount() == readlens.size());
+    size_t numreads = index->getmyreadcount();
     size_t totbases = std::accumulate(readlens.begin(), readlens.end(), static_cast<size_t>(0));
     double avglen = static_cast<double>(totbases) / numreads;
-    size_t firstid = getfirstid();
-    logger() << "idxtag " << idxtag << " stores reads " << Logger::readrangestr(firstid, numreads) << ". ~" << std::fixed << std::setprecision(2) << avglen << " nts/read. (" << static_cast<double>(getbufsize()) / (1024.0 * 1024.0) << " Mbs compressed) == (" << getbufsize() << " bytes)";
+    size_t firstid = index->getmyreaddispl();
+    logger() << " stores " << Logger::readrangestr(firstid, numreads) << ". ~" << std::fixed << std::setprecision(2) << avglen << " nts/read. (" << static_cast<double>(getbufsize()) / (1024.0 * 1024.0) << " Mbs compressed) == (" << getbufsize() << " bytes)";
     logger.Flush("FASTA sequence distribution (FastaData):");
 }
 
