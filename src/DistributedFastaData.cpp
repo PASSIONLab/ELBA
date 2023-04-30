@@ -58,6 +58,7 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
         size_t reqstart = std::max(static_cast<size_t>(*iditr++), globalstartid);
         size_t reqend = std::min(static_cast<size_t>(*iditr), globalstartid + count);
         if (sendrank != myrank) myrequests.emplace_back(sendrank, myrank, reqstart, reqend-reqstart, rc);
+        else myrequests.emplace_back(sendrank, myrank, reqstart, reqend-reqstart, 3);
     }
 }
 
@@ -68,6 +69,8 @@ std::vector<FastaDataRequest> DistributedFastaData::getremoterequests() const
     getgridrequests(myrequests, rowstartid, numrowreads, 0);
 
     if (!isdiag) getgridrequests(myrequests, colstartid, numcolreads, 1);
+
+    std::sort(myrequests.begin(), myrequests.end(), [](const auto& a, const auto& b) { return a.offset < b.offset; });
 
     Logger logger(index->getcommgrid());
 
