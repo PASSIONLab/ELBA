@@ -17,6 +17,8 @@ public:
     ~FastaData() = default;
     void log(FIndex index) const;
 
+    std::string operator[](size_t i) const { return sequences[i].ascii(); }
+
 private:
     std::unique_ptr<DnaBuffer> buffer;
     std::vector<DnaSeq> sequences;

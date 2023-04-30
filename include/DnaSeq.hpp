@@ -80,5 +80,4 @@ private:
     bool ownsmem; /* false if @memory pointer allocated somewhere else */
 };
 
-
 #endif
