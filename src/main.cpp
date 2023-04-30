@@ -85,7 +85,6 @@ int main(int argc, char **argv)
 /************************ START ****************************/
 /***********************************************************/
 
-        /* std::shared_ptr<FastaIndex> index(new FastaIndex(fasta_fname, commgrid)); */
         auto index = std::make_shared<FastaIndex>(fasta_fname, commgrid);
         FastaData lfd(index);
         lfd.log(index);

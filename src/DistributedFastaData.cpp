@@ -64,22 +64,42 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
 
 std::vector<FastaDataRequest> DistributedFastaData::getremoterequests() const
 {
+    Grid commgrid = index->getcommgrid();
+    int nprocs = commgrid->GetSize();
+    int myrank = commgrid->GetRank();
+    MPI_Comm comm = commgrid->GetWorld();
+
     std::vector<FastaDataRequest> allrequests, myrequests;
 
     getgridrequests(myrequests, rowstartid, numrowreads, 0);
-
     if (!isdiag) getgridrequests(myrequests, colstartid, numcolreads, 1);
 
-    std::sort(myrequests.begin(), myrequests.end(), [](const auto& a, const auto& b) { return a.offset < b.offset; });
+    MPI_Count_type allrequestcount, myrequestcount = myrequests.size();
+    std::vector<MPI_Count_type> requestcounts(nprocs);
+    std::vector<MPI_Displ_type> requestdispls(nprocs);
 
-    Logger logger(index->getcommgrid());
+    requestcounts[myrank] = myrequestcount;
+    MPI_ALLGATHER(MPI_IN_PLACE, 1, MPI_COUNT_TYPE, requestcounts.data(), 1, MPI_COUNT_TYPE, comm);
 
-    logger() << "\n";
-    for (auto itr = myrequests.begin(); itr != myrequests.end(); ++itr)
-    {
-        logger() << logger.rankstr(itr->requester) << " requests " << Logger::readrangestr(itr->offset, itr->count) << " from "
-                 << logger.rankstr(itr->owner) << "; (rc=" << itr->rc << ")" << "\n";
-    }
-    logger.Flush("Remote requests:");
-    return myrequests;
+    std::exclusive_scan(requestcounts.begin(), requestcounts.end(), requestdispls.begin(), static_cast<MPI_Displ_type>(0));
+    allrequestcount = requestdispls.back() + requestcounts.back();
+    allrequests.resize(allrequestcount);
+
+    MPI_Datatype reqtype;
+    int blklens[5] = {1,1,1,1,1};
+    MPI_Aint displs[5] = {offsetof(FastaDataRequest, owner),
+                          offsetof(FastaDataRequest, requester),
+                          offsetof(FastaDataRequest, offset),
+                          offsetof(FastaDataRequest, count),
+                          offsetof(FastaDataRequest, rc)};
+
+    MPI_Datatype types[5] = {MPI_INT, MPI_INT, MPI_SIZE_T, MPI_SIZE_T, MPI_UNSIGNED_SHORT};
+    MPI_Type_create_struct(5, blklens, displs, types, &reqtype);
+    MPI_Type_commit(&reqtype);
+    MPI_ALLGATHERV(myrequests.data(), myrequestcount, reqtype, allrequests.data(), requestcounts.data(), requestdispls.data(), reqtype, comm);
+    MPI_Type_free(&reqtype);
+
+    std::sort(allrequests.begin(), allrequests.end(), [](const auto& a, const auto& b) { return a.owner < b.owner; });
+
+    return allrequests;
 }

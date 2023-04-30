@@ -14,6 +14,7 @@ public:
         size_t offset, count; /* offset is local to the data owned by the requester, count is the number of sequences requested */
         unsigned short rc; /* rc=0 means sequences are common cross the row processor dimension, rc=1 ... column processor dimension */
 
+        FastaDataRequest() = default;
         FastaDataRequest(int owner, int requester, size_t offset, size_t count, unsigned short rc)
             : owner(owner), requester(requester), offset(offset), count(count), rc(rc) {}
     };
