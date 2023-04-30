@@ -86,8 +86,8 @@ int main(int argc, char **argv)
 /***********************************************************/
 
         FIndex index(new FastaIndex(fasta_fname, commgrid));
-        FastaData lfd(index);
-        lfd.log();
+        // FastaData lfd(index);
+        // lfd.log();
 
 /***********************************************************/
 /************************* END *****************************/

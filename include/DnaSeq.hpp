@@ -4,15 +4,47 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <vector>
+
+struct DnaBuffer
+{
+    size_t totbases; /* total number of nucleotides allowed */
+    size_t totseqs; /* total number of sequences allowed */
+    size_t numseqs; /* number of sequences currently used */
+    std::vector<uint8_t> buffer;
+
+    DnaBuffer(size_t totbases, size_t totseqs);
+
+    uint8_t* pushbufhead(size_t seqlen);
+    size_t getbufsize() const { return buffer.size(); }
+};
 
 class DnaSeq
 {
 public:
+    DnaSeq() : len(), memory(nullptr), ownsmem(true) {}
+    DnaSeq(char const *s, size_t len);
+    DnaSeq(char const *s, size_t len, DnaBuffer& extbuf);
+    DnaSeq(const DnaSeq& rhs);
+    ~DnaSeq() { if (ownsmem) delete[] memory; }
+
+    std::string ascii() const;
+    size_t size() const { return len; }
+    size_t numbytes() const { return bytesneeded(size()); }
+    int remainder() const { return 4*numbytes() - size(); }
+
+    int operator[](size_t i) const;
+    bool operator<(const DnaSeq& rhs);
+    bool operator==(const DnaSeq& rhs);
+    bool operator!=(const DnaSeq& rhs) { return !(*this == rhs); }
+
+    static size_t bytesneeded(size_t numbases) { return (numbases+3)/4; }
+
     static char    getcodechar(int c)  { return chartab[c]; }
     static uint8_t getcharcode(char c) { return codetab[(int)c]; }
     static char    getcharchar(char c) { return getcodechar(getcharcode(c)); }
 
-    static constexpr char chartab[4+1] = {'A', 'C', 'G', 'T', '?'};
+    static constexpr char chartab[4+1] = {'A', 'C', 'G', 'T', 'X'};
 
     static constexpr uint8_t codetab[256] =
     {
@@ -34,21 +66,6 @@ public:
         4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
     };
 
-    DnaSeq(char const *sequence, size_t len);
-    DnaSeq(char const *sequence) : DnaSeq(sequence, strlen(sequence)) {}
-    DnaSeq(std::string const& sequence) : DnaSeq(sequence.c_str(), sequence.size()) {}
-    DnaSeq(const DnaSeq& rhs);
-    DnaSeq(uint8_t *external_buf, size_t len) : memory(external_buf), numbytes((len+3)/4), remain(4*numbytes - len), owns_memory(false) {}
-    ~DnaSeq() { if (owns_memory) delete[] memory; }
-
-    std::string ascii() const;
-    size_t size() const { return 4*numbytes - remain; }
-    size_t getnumbytes() const { return numbytes; }
-
-    int operator[](size_t i) const; //
-    bool operator<(const DnaSeq& rhs);
-    bool operator==(const DnaSeq& rhs);
-    bool operator!=(const DnaSeq& rhs) { return !(*this == rhs); }
 
     friend std::ostream& operator<<(std::ostream& stream, const DnaSeq& s)
     {
@@ -57,10 +74,10 @@ public:
     }
 
 private:
+    size_t len; /* number of nucleotides encoded starting at @memory */
     uint8_t *memory; /* each byte encodes up to 8 nucleotides */
-    size_t numbytes; /* length of @memory */
-    int remain; /* number of nucleotides in last byte */
-    bool owns_memory; /* false if @memory pointer allocated somewhere else */
+    bool ownsmem; /* false if @memory pointer allocated somewhere else */
 };
+
 
 #endif

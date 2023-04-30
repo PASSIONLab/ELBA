@@ -109,10 +109,6 @@ FastaData::FastaData(FIndex index) : index(index)
     delete[] readbuf;
 }
 
-std::string FastaData::getsequence(size_t localid) const
-{
-    return DnaSeq(buf + byteoffsets[localid], readlens[localid]).ascii();
-}
 
 void FastaData::log() const
 {

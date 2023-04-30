@@ -17,7 +17,6 @@ public:
     void log() const;
 
     FIndex getindex() const { return index; }
-    std::string getsequence(size_t localid) const;
 
 private:
     FIndex index;

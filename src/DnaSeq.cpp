@@ -2,55 +2,106 @@
 #include <cassert>
 #include <cstring>
 #include <vector>
+#include <cmath>
 
-DnaSeq::DnaSeq(char const *sequence, size_t len) : numbytes((len+3)/4), remain(4*numbytes - len), owns_memory(true)
+/*
+ * For a sequence of length l, floor((l+3)/4) bytes are needed to encode it. Let
+ * L = l[0] + l[1] + ... + l[N-1], where l[i] is the length of the ith sequence, N is
+ * the total number of sequences, and hence L is the total sum of all the sequence
+ * lengths. Then the total number of bytes needed for the write buffer is
+ *
+ * Sum{0 <= i <= N-1}[floor((l[i]+3)/4)] <= (1/4) * Sum{0 <= i <= N-1}[l[i] + 4]
+ *                                       <= (1/4) * (L + 4N)
+ *                                        = (L/4) + N
+ */
+DnaBuffer::DnaBuffer(size_t totbases, size_t totseqs) : totbases(totbases), totseqs(totseqs), numseqs(0)
 {
-    assert(remain < 4);
+    size_t bufmem = std::ceil((totbases/4.0)+totseqs);
+    buffer.reserve(bufmem);
+}
 
-    memory = new uint8_t[numbytes];
+uint8_t* DnaBuffer::pushbufhead(size_t seqlen)
+{
+    assert(numseqs++ < totseqs);
+    size_t bufsize = getbufsize();
+    uint8_t *head = buffer.data() + bufsize;
+    buffer.resize(bufsize + DnaSeq::bytesneeded(seqlen));
+    return head;
+}
 
+DnaSeq::DnaSeq(char const *s, size_t len, DnaBuffer& extbuf) : len(len), ownsmem(false)
+{
+    memory = extbuf.pushbufhead(len);
+
+    const size_t nbytes = numbytes();
+    const int remain = remainder();
+    char const *p = s;
     size_t b = 0;
-    char const *sb = sequence;
 
-    while (b < numbytes)
+    while (b < nbytes)
     {
         uint8_t byte = 0;
-        int left = (b != numbytes-1? 4 : 4-remain);
+        int left = (b != nbytes-1? 4 : 4-remain);
 
         for (int i = 0; i < left; ++i)
         {
-            uint8_t code = DnaSeq::getcharcode(sb[i]);
+            uint8_t code = DnaSeq::getcharcode(p[i]);
             uint8_t shift = code << (6 - (2*i));
             byte |= shift;
         }
 
         memory[b++] = byte;
-        sb += 4;
+        p += 4;
     }
 }
 
-DnaSeq::DnaSeq(const DnaSeq& rhs) : numbytes(rhs.numbytes), remain(rhs.remain), owns_memory(true)
+DnaSeq::DnaSeq(char const *s, size_t len) : len(len), ownsmem(true)
 {
-    memory = new uint8_t[numbytes];
-    std::memcpy(memory, rhs.memory, numbytes);
+    memory = new uint8_t[numbytes()];
+
+    const size_t nbytes = numbytes();
+    const int remain = remainder();
+    char const *p = s;
+    size_t b = 0;
+
+    while (b < nbytes)
+    {
+        uint8_t byte = 0;
+        int left = (b != nbytes-1? 4 : 4-remain);
+
+        for (int i = 0; i < left; ++i)
+        {
+            uint8_t code = DnaSeq::getcharcode(p[i]);
+            uint8_t shift = code << (6 - (2*i));
+            byte |= shift;
+        }
+
+        memory[b++] = byte;
+        p += 4;
+    }
+}
+
+DnaSeq::DnaSeq(const DnaSeq& rhs) : len(rhs.len), ownsmem(true)
+{
+    memory = new uint8_t[numbytes()];
+    std::memcpy(memory, rhs.memory, numbytes());
 }
 
 std::string DnaSeq::ascii() const
 {
     size_t len = size();
-    uint8_t const *bb = memory;
-    std::vector<char> s(len);
+    uint8_t const *p = memory;
+    std::string s(len, '\0');
 
     for (size_t i = 0; i < len; ++i)
     {
-        int code = (*bb >> (6 - (2*(i%4)))) & 3;
+        int code = (*p >> (6 - (2*(i%4)))) & 3;
         s[i] = DnaSeq::getcodechar(code);
 
         if ((i+1) % 4 == 0)
-            bb++;
+            p++;
     }
-
-    return std::string(s.begin(), s.end());
+    return s;
 }
 
 
