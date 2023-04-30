@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "FastaIndex.hpp"
+#include "DnaSeq.hpp"
 #include <cassert>
 
 
@@ -13,21 +14,12 @@ class FastaData
 {
 public:
     FastaData(FIndex index);
-    ~FastaData() { delete[] buf; }
-    void log() const;
-
-    FIndex getindex() const { return index; }
+    ~FastaData() = default;
+    void log(FIndex index) const;
 
 private:
-    FIndex index;
-    std::vector<size_t> byteoffsets;
-    std::vector<size_t> readlens;
-    uint8_t *buf;
-
-    size_t getbufsize() const { return byteoffsets.back(); }
-
-    static size_t bytesneeded(size_t numbases);
-    static size_t computebufbound(size_t totbases, size_t numreads);
+    std::unique_ptr<DnaBuffer> buffer;
+    std::vector<DnaSeq> sequences;
 };
 
 #endif //LBL_DAL_FASTADATA_HPP

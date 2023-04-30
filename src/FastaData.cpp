@@ -2,7 +2,7 @@
 #include "DnaSeq.hpp"
 #include "Logger.hpp"
 
-FastaData::FastaData(FIndex index) : index(index)
+FastaData::FastaData(FIndex index)
 {
     /*
      * Will skip convention of adding 'my' to the front of variables referring
@@ -31,22 +31,12 @@ FastaData::FastaData(FIndex index) : index(index)
     MPI_FILE_READ_AT_ALL(fh, startpos, readbuf, readbufsize, MPI_CHAR, MPI_STATUS_IGNORE);
     MPI_File_close(&fh);
 
-    readlens.reserve(numreads);
-    byteoffsets.reserve(numreads+1);
+    size_t totbases = index->totbases();
+    size_t maxlen = index->maxlen();
 
-    size_t totbases = 0, maxlen = 0;
-    for (auto itr = records.cbegin(); itr != records.cend(); ++itr)
-    {
-        totbases += itr->len;
-        maxlen = std::max(itr->len, maxlen);
-        readlens.push_back(itr->len);
-    }
-
-    size_t bufbound = FastaData::computebufbound(totbases, numreads);
-    buf = new uint8_t[bufbound];
+    buffer.reset(new DnaBuffer(totbases, numreads));
 
     char *tmpbuf = new char[maxlen];
-    size_t byteoffset = 0;
 
     MPI_Barrier(comm);
     double elapsed = -MPI_Wtime();
@@ -67,37 +57,10 @@ FastaData::FastaData(FIndex index) : index(index)
             locpos += (cnt+1);
         }
 
-        size_t numbytes = FastaData::bytesneeded(itr->len);
-        size_t overhang = (numbytes * 4) - itr->len;
-        assert(overhang < 4);
+        /* ASCII sequence is now stored in tmpbuf */
 
-        size_t b = 0;
-        char const *sb = tmpbuf;
-        uint8_t *bytes = buf + byteoffset;
-        uint8_t byte;
-
-        while (b < numbytes)
-        {
-            byte = 0;
-            int left = (b != numbytes-1? 4 : 4-overhang);
-
-            for (int i = 0; i < left; ++i)
-            {
-                uint8_t code = DnaSeq::getcharcode(sb[i]);
-                uint8_t shift = code << (6 - (2*i));
-                byte |= shift;
-            }
-
-            bytes[b++] = byte;
-            sb += 4;
-        }
-
-        byteoffsets.push_back(byteoffset);
-        byteoffset += b;
+        sequences.emplace_back(tmpbuf, itr->len, *buffer);
     }
-
-    byteoffsets.push_back(byteoffset); /* convenient */
-    assert(bufbound >= byteoffset); /* one computed from principals, the other computed via above algorithm, so if this fails then algorithm above is wrong */
 
     elapsed += MPI_Wtime();
     double mbspersecond = (totbases / 1048576.0) / elapsed;
@@ -110,34 +73,14 @@ FastaData::FastaData(FIndex index) : index(index)
 }
 
 
-void FastaData::log() const
+void FastaData::log(FIndex index) const
 {
     Logger logger(index->getcommgrid());
-    assert(index->getmyreadcount() == readlens.size());
+    assert(index->getmyreadcount() == buffer->getnumseqs());
     size_t numreads = index->getmyreadcount();
-    size_t totbases = std::accumulate(readlens.begin(), readlens.end(), static_cast<size_t>(0));
+    size_t totbases = index->totbases();
     double avglen = static_cast<double>(totbases) / numreads;
     size_t firstid = index->getmyreaddispl();
-    logger() << " stores " << Logger::readrangestr(firstid, numreads) << ". ~" << std::fixed << std::setprecision(2) << avglen << " nts/read. (" << static_cast<double>(getbufsize()) / (1024.0 * 1024.0) << " Mbs compressed) == (" << getbufsize() << " bytes)";
+    logger() << " stores " << Logger::readrangestr(firstid, numreads) << ". ~" << std::fixed << std::setprecision(2) << avglen << " nts/read. (" << static_cast<double>(buffer->getbufsize()) / (1024.0 * 1024.0) << " Mbs compressed) == (" << buffer->getbufsize() << " bytes)";
     logger.Flush("FASTA sequence distribution (FastaData):");
-}
-
-size_t FastaData::computebufbound(size_t totbases, size_t numreads)
-{
-    /*
-     * For a sequence of length l, floor((l+3)/4) bytes are needed to encode it. Let
-     * L = l[0] + l[1] + ... + l[N-1], where l[i] is the length of the ith sequence, N is
-     * the total number of sequences, and hence L is the total sum of all the sequence
-     * lengths. Then the total number of bytes needed for the write buffer is
-     *
-     * Sum{0 <= i <= N-1}[floor((l[i]+3)/4)] <= (1/4) * Sum{0 <= i <= N-1}[l[i] + 4]
-     *                                       <= (1/4) * (L + 4N)
-     *                                        = (L/4) + N
-     */
-    return static_cast<size_t>(std::ceil((totbases/4.0) + numreads));
-}
-
-size_t FastaData::bytesneeded(size_t numbases)
-{
-    return (numbases + 3) / 4;
 }

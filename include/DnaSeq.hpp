@@ -15,6 +15,7 @@ struct DnaBuffer
 
     DnaBuffer(size_t totbases, size_t totseqs);
 
+    size_t getnumseqs() const { return numseqs; }
     uint8_t* pushbufhead(size_t seqlen);
     size_t getbufsize() const { return buffer.size(); }
 };
