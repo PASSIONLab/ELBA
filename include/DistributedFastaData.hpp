@@ -1,7 +1,7 @@
 #ifndef LBL_DAL_DISTRIBUTEDFASTADATA_H
 #define LBL_DAL_DISTRIBUTEDFASTADATA_H
 
-#include "FastaData.hpp"
+#include "FastaIndex.hpp"
 #include "Logger.hpp"
 
 class DistributedFastaData

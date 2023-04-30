@@ -155,6 +155,6 @@ void DistributedFastaData::blocking_read_exchange()
     size_t totrowbases=0;
     size_t totcolbases=0;
 
-    rowbuf.reset(new DnaBuffer(totrowbases, getnumrowreads()));
-    colbuf.reset(new DnaBuffer(totcolbases, getnumcolreads()));
+    // rowbuf.reset(new DnaBuffer(totrowbases, getnumrowreads()));
+    // colbuf.reset(new DnaBuffer(totcolbases, getnumcolreads()));
 }

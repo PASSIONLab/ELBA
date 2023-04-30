@@ -23,7 +23,6 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "compiletime.h"
 #include "Logger.hpp"
 #include "FastaIndex.hpp"
-#include "FastaData.hpp"
 #include "DistributedFastaData.hpp"
 #include "kmer/Kmer.hpp"
 
@@ -86,11 +85,13 @@ int main(int argc, char **argv)
 /***********************************************************/
 
         auto index = std::make_shared<FastaIndex>(fasta_fname, commgrid);
-        FastaData lfd(index);
-        lfd.log(index);
+        auto mydna = index->getmydna();
+        // DistributedFastaData dfd(mydna, index);
 
-        DistributedFastaData dfd(index);
-        dfd.blocking_read_exchange();
+        // FastaData lfd(index);
+        // lfd.log(index);
+        // DistributedFastaData dfd(index);
+        // dfd.blocking_read_exchange();
 
 
 /***********************************************************/

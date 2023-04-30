@@ -2,6 +2,7 @@
 #define FASTA_INDEX_H_
 
 #include "common.h"
+#include "DnaBuffer.hpp"
 
 class FastaIndex
 {
@@ -25,6 +26,8 @@ public:
     const std::vector<Record>& getmyrecords() const { return myrecords; }
     const std::vector<MPI_Count_type> getreadcounts() const { return readcounts; }
     const std::vector<MPI_Displ_type> getreaddispls() const { return readdispls; }
+
+    std::shared_ptr<DnaBuffer> getmydna() const;
 
     static Record get_faidx_record(const std::string& line);
 

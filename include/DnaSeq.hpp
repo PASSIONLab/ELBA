@@ -6,27 +6,13 @@
 #include <string>
 #include <vector>
 
-struct DnaBuffer
-{
-    size_t totbases; /* total number of nucleotides allowed */
-    size_t totseqs; /* total number of sequences allowed */
-    size_t numseqs; /* number of sequences currently used */
-    std::vector<uint8_t> buffer;
-
-    DnaBuffer(size_t totbases, size_t totseqs);
-
-    size_t getnumseqs() const { return numseqs; }
-    uint8_t* pushbufhead(size_t seqlen);
-    size_t getbufsize() const { return buffer.size(); }
-};
-
 class DnaSeq
 {
 public:
     DnaSeq() : len(), memory(nullptr), ownsmem(true) {}
-    DnaSeq(char const *s, size_t len);
-    DnaSeq(char const *s, size_t len, DnaBuffer& extbuf);
-    DnaSeq(const DnaSeq& rhs);
+    DnaSeq(char const *s, size_t len, uint8_t *mem) : len(len), memory(mem), ownsmem(false) { compress(s); }
+    DnaSeq(char const *s, size_t len) : len(len), memory(new uint8_t[bytesneeded(len)]), ownsmem(true) { compress(s); }
+    DnaSeq(const DnaSeq& rhs) : len(rhs.len), memory(new uint8_t[bytesneeded(rhs.len)]), ownsmem(true) { std::memcpy(memory, rhs.memory, numbytes()); }
     ~DnaSeq() { if (ownsmem) delete[] memory; }
 
     std::string ascii() const;
@@ -67,7 +53,6 @@ public:
         4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
     };
 
-
     friend std::ostream& operator<<(std::ostream& stream, const DnaSeq& s)
     {
         stream << s.ascii();
@@ -78,6 +63,11 @@ private:
     size_t len; /* number of nucleotides encoded starting at @memory */
     uint8_t *memory; /* each byte encodes up to 8 nucleotides */
     bool ownsmem; /* false if @memory pointer allocated somewhere else */
+
+    /*
+     * This is to be used only by the constructors of DnaSeq!
+     */
+    void compress(char const *s);
 };
 
 #endif
