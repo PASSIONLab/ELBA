@@ -151,4 +151,10 @@ void DistributedFastaData::blocking_read_exchange()
 {
     std::vector<FastaDataRequest> allrequests, myrequests;
     getremoterequests(allrequests, myrequests);
+
+    size_t totrowbases=0;
+    size_t totcolbases=0;
+
+    rowbuf.reset(new DnaBuffer(totrowbases, getnumrowreads()));
+    colbuf.reset(new DnaBuffer(totcolbases, getnumcolreads()));
 }
