@@ -39,6 +39,4 @@ private:
     void getpartition(std::vector<MPI_Count_type>& sendcounts);
 };
 
-using FIndex = std::shared_ptr<FastaIndex>;
-
 #endif

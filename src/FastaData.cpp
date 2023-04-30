@@ -2,7 +2,7 @@
 #include "DnaSeq.hpp"
 #include "Logger.hpp"
 
-FastaData::FastaData(FIndex index)
+FastaData::FastaData(std::shared_ptr<FastaIndex> index)
 {
     /*
      * Will skip convention of adding 'my' to the front of variables referring
@@ -73,7 +73,7 @@ FastaData::FastaData(FIndex index)
 }
 
 
-void FastaData::log(FIndex index) const
+void FastaData::log(std::shared_ptr<FastaIndex> index) const
 {
     Logger logger(index->getcommgrid());
     assert(index->getmyreadcount() == buffer->getnumseqs());
