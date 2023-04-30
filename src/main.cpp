@@ -90,6 +90,8 @@ int main(int argc, char **argv)
         lfd.log(index);
 
         DistributedFastaData dfd(index);
+        dfd.blocking_read_exchange();
+
 
 /***********************************************************/
 /************************* END *****************************/

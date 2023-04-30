@@ -29,8 +29,6 @@ DistributedFastaData::DistributedFastaData(std::shared_ptr<FastaIndex> index) : 
     Logger logger(commgrid);
     logger() << "P(" << myrowid+1 << ", " << mycolid+1 << ") " << Logger::readrangestr(rowstartid, numrowreads) << "; " << Logger::readrangestr(colstartid, numcolreads);
     logger.Flush("DistributedFastaData::DistributedFastaData");
-
-    auto requests = getremoterequests();
 }
 
 using FastaDataRequest = typename DistributedFastaData::FastaDataRequest;
@@ -90,19 +88,21 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
     }
 }
 
-std::vector<FastaDataRequest> DistributedFastaData::getremoterequests() const
+/*
+ * allrequests - allgathered requests
+ * myrequests - requests originating from me
+ */
+void DistributedFastaData::getremoterequests(std::vector<FastaDataRequest>& allrequests, std::vector<FastaDataRequest>& myrequests) const
 {
     Grid commgrid = index->getcommgrid();
     int nprocs = commgrid->GetSize();
     int myrank = commgrid->GetRank();
     MPI_Comm comm = commgrid->GetWorld();
 
-    std::vector<FastaDataRequest> allrequests; /* allgathered requests */
-    std::vector<FastaDataRequest> myrequests; /* requests originating from me */
-
     /*
      * Get row and column grid requests.
      */
+    myrequests.resize(0);
     getgridrequests(myrequests, rowstartid, numrowreads, 0);
     if (!isdiag) getgridrequests(myrequests, colstartid, numcolreads, 1);
 
@@ -145,11 +145,10 @@ std::vector<FastaDataRequest> DistributedFastaData::getremoterequests() const
     MPI_Type_free(&reqtype);
 
     // std::sort(allrequests.begin(), allrequests.end(), [](const auto& a, const auto& b) { return a.owner < b.owner; });
-
-    return allrequests;
 }
 
 void DistributedFastaData::blocking_read_exchange()
 {
-
+    std::vector<FastaDataRequest> allrequests, myrequests;
+    getremoterequests(allrequests, myrequests);
 }
