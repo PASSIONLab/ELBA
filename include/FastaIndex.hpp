@@ -20,14 +20,15 @@ public:
     size_t getreaddispl(size_t i) const { return static_cast<size_t>(readdispls[i]); }
     size_t getmyreadcount() const { return getreadcount(commgrid->GetRank()); }
     size_t getmyreaddispl() const { return getreaddispl(commgrid->GetRank()); }
-    size_t totbases() const { return std::accumulate(myrecords.begin(), myrecords.end(), static_cast<size_t>(0), [](size_t sum, const auto& record) { return sum + record.len; }); }
-    size_t maxlen() const { return std::accumulate(myrecords.begin(), myrecords.end(), static_cast<size_t>(0), [](size_t sum, const auto& record) { return std::max(sum, record.len); }); }
+
+    std::vector<size_t> getmyreadlens() const;
 
     const std::vector<Record>& getmyrecords() const { return myrecords; }
     const std::vector<MPI_Count_type> getreadcounts() const { return readcounts; }
     const std::vector<MPI_Displ_type> getreaddispls() const { return readdispls; }
 
     std::shared_ptr<DnaBuffer> getmydna() const;
+    void log(std::shared_ptr<DnaBuffer> buffer) const;
 
     static Record get_faidx_record(const std::string& line);
 
