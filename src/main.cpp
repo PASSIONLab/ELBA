@@ -89,10 +89,7 @@ int main(int argc, char **argv)
         FastaData lfd(index);
         lfd.log(index);
 
-        for (size_t i = 0; i < index->getmyreadcount(); ++i)
-        {
-            std::cout << lfd[i] << std::endl;
-        }
+        DistributedFastaData dfd(index);
 
 /***********************************************************/
 /************************* END *****************************/
