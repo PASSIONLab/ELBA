@@ -17,21 +17,8 @@ Record FastaIndex::get_faidx_record(const std::string& line)
     std::istringstream(line) >> dummy >> record.len >> record.pos >> record.bases;
     return record;
 }
-void FastaIndex::get_idbalanced_partition(std::vector<MPI_Count_type>& sendcounts)
-{
-    int myrank = commgrid->GetRank();
-    int nprocs = commgrid->GetSize();
-    size_t numreads = rootrecords.size();
-    sendcounts.resize(nprocs);
 
-    MPI_Count_type readsperproc = numreads / nprocs;
-
-    std::fill_n(sendcounts.begin(), nprocs-1, readsperproc);
-
-    sendcounts.back() = numreads - (nprocs-1) * readsperproc;
-}
-
-void FastaIndex::get_membalanced_partition(std::vector<MPI_Count_type>& sendcounts)
+void FastaIndex::getpartition(std::vector<MPI_Count_type>& sendcounts)
 {
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
@@ -76,7 +63,7 @@ FastaIndex::FastaIndex(const std::string& fasta_fname, Grid commgrid) : commgrid
         std::ifstream filestream(get_faidx_fname());
         while (std::getline(filestream, line)) rootrecords.push_back(get_faidx_record(line));
         filestream.close();
-        get_membalanced_partition(readcounts);
+        getpartition(readcounts);
     }
 
     MPI_BCAST(readcounts.data(), nprocs, MPI_COUNT_TYPE, 0, comm);

@@ -36,8 +36,7 @@ private:
     std::vector<MPI_Displ_type> readdispls; /* displacement counts for reads across all processors. Each processor gets a copy. |readdispls| == nprocs+1 */
     std::string fasta_fname; /* FASTA file name */
 
-    void get_idbalanced_partition(std::vector<MPI_Count_type>& sendcounts);
-    void get_membalanced_partition(std::vector<MPI_Count_type>& sendcounts);
+    void getpartition(std::vector<MPI_Count_type>& sendcounts);
 };
 
 using FIndex = std::shared_ptr<FastaIndex>;
