@@ -7,6 +7,17 @@
 class DistributedFastaData
 {
 public:
+
+    struct FastaDataRequest
+    {
+        int sender, receiver; /* sender is orignal data owner, receiver is remote requester */
+        size_t offset, count; /* offset is local to the data owned by the receiver, count is the number of sequences requested */
+        unsigned short rc; /* rc=0 means sequences are common cross the row processor dimension, rc=1 ... column processor dimension */
+
+        FastaDataRequest(int sender, int receiver, size_t offset, size_t count, unsigned short rc)
+            : sender(sender), receiver(receiver), offset(offset), count(count), rc(rc) {}
+    };
+
     DistributedFastaData(FIndex index);
 
     size_t getrowstartid() const { return rowstartid; }
@@ -19,27 +30,5 @@ private:
     size_t rowstartid, colstartid;
     size_t numrowreads, numcolreads;
 };
-
-// static size_t findnbrs(std::vector<NbrData>& neighbors, const std::vector<size_t>& idoffsets, size_t startid, size_t totreads, int rc_flag, Grid commgrid)
-// {
-    // int myrank = commgrid->GetRank();
-    // size_t numadded = 0;
-
-    // auto iditr = std::upper_bound(idoffsets.cbegin(), idoffsets.cend(), startid);
-    // iditr--;
-
-    // assert(*iditr <= startid);
-
-    // while (*iditr < startid + totreads)
-    // {
-        // int reqrank = iditr - idoffsets.cbegin();
-        // size_t reqstart = std::max(*iditr++, startid);
-        // size_t reqend = std::min(*iditr, startid + totreads);
-        // neighbors.emplace_back(reqstart, reqend-reqstart, reqrank, rc_flag);
-        // numadded++;
-    // }
-
-    // return numadded;
-// }
 
 #endif //LBL_DAL_DISTRIBUTEDFASTADATA_H
