@@ -29,8 +29,6 @@ DistributedFastaData::DistributedFastaData(std::shared_ptr<FastaIndex> index) : 
     Logger logger(commgrid);
     logger() << "P(" << myrowid+1 << ", " << mycolid+1 << ") " << Logger::readrangestr(rowstartid, numrowreads) << "; " << Logger::readrangestr(colstartid, numcolreads);
     logger.Flush("DistributedFastaData::DistributedFastaData");
-
-    auto requests = getremoterequests();
 }
 
 using FastaDataRequest = typename DistributedFastaData::FastaDataRequest;
@@ -102,4 +100,9 @@ std::vector<FastaDataRequest> DistributedFastaData::getremoterequests() const
     std::sort(allrequests.begin(), allrequests.end(), [](const auto& a, const auto& b) { return a.owner < b.owner; });
 
     return allrequests;
+}
+
+void DistributedFastaData::blocking_read_exchange()
+{
+
 }

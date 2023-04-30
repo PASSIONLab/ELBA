@@ -17,6 +17,12 @@ public:
         FastaDataRequest() = default;
         FastaDataRequest(int owner, int requester, size_t offset, size_t count, unsigned short rc)
             : owner(owner), requester(requester), offset(offset), count(count), rc(rc) {}
+
+        friend std::ostream& operator<<(std::ostream& stream, const FastaDataRequest& req)
+        {
+            stream << req.requester+1 << " requests from " << req.owner+1 << ": " << Logger::readrangestr(req.offset, req.count) << " (rc=" << req.rc << ")";
+            return stream;
+        }
     };
 
     DistributedFastaData(std::shared_ptr<FastaIndex> index);
@@ -26,11 +32,16 @@ public:
     size_t getnumrowreads() const { return numrowreads; }
     size_t getnumcolreads() const { return numcolreads; }
 
+    void blocking_read_exchange();
+
 private:
     std::shared_ptr<FastaIndex> index;
     bool isdiag;
     size_t rowstartid, colstartid;
     size_t numrowreads, numcolreads;
+
+    std::unique_ptr<DnaBuffer> rowbuf, colbuf;
+    std::vector<DnaSeq> rowseqs, colseqs;
 
     std::vector<FastaDataRequest> getremoterequests() const;
     void getgridrequests(std::vector<FastaDataRequest>& myrequests, size_t globalstartid, size_t count, unsigned short rc) const;
