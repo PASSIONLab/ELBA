@@ -85,26 +85,11 @@ int main(int argc, char **argv)
 /***********************************************************/
 
         std::shared_ptr<FastaIndex> index(new FastaIndex(fasta_fname, commgrid));
-        auto mydna = index->getmydna();
+        std::shared_ptr<DnaBuffer> mydna = index->getmydna();
         index->log(mydna);
 
-        // std::ostringstream ss;
-        // ss << "seqs.rank" << myrank+1 << ".txt";
-        // std::ofstream filestream(ss.str());
+        DistributedFastaData dfd(index);
 
-        // size_t n = mydna->size();
-
-        // for (size_t i = 0; i < n; ++i)
-        // {
-            // filestream << (*mydna)[i] << "\n";
-        // }
-        // filestream.close();
-
-
-        // DistributedFastaData dfd(mydna, index);
-        // FastaData lfd(index);
-        // lfd.log(index);
-        // DistributedFastaData dfd(index);
         // dfd.blocking_read_exchange();
 
 
