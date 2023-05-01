@@ -63,7 +63,9 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
      * that the processor rank just before it owns the read @globalstartid.
      */
     auto iditr = std::upper_bound(readdispls.cbegin(), readdispls.cend(), static_cast<MPI_Displ_type>(globalstartid));
-    int owner = --iditr - readdispls.cbegin();
+    iditr--;
+
+    int owner = iditr - readdispls.cbegin();
 
     /*
      * assert that the processor rank we think owns @globalstartid owns reads with
@@ -71,7 +73,7 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
      * the right starting rank because we already found from the std::upper_bound
      * computation that *(iditr+1) > @globalstartid.
      */
-    assert(*iditr <= globalstartid);
+    assert(readdispls[owner] <= globalstartid);
 
     /*
      * @globalstartid + @count is the smallest index that we don't want for this
@@ -81,16 +83,17 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
      */
     while (readdispls[owner] < globalstartid + count)
     {
+        assert(owner < nprocs);
 
          /* First read id stored on owning processor. */
-        size_t ownerstartid = static_cast<size_t>(readdispls[owner++]);
+        size_t ownerstartid = static_cast<size_t>(readdispls[owner]);
 
         /*
          * First readid stored on processor right after the owner,
          * or the total number of reads if the owner is the last
          * processor rank.
          */
-        size_t nextstartid = static_cast<size_t>(readdispls[owner]);
+        size_t nextstartid = static_cast<size_t>(readdispls[owner+1]);
 
          /* First readid we are requesting from owner. */
         size_t reqstart = std::max(ownerstartid, globalstartid);
@@ -100,7 +103,7 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
 
          /* If the owner and requester are the same, adjust the rcflag. */
         unsigned short rcflag = owner != requester? rc : rc + 2;
-        myrequests.emplace_back(owner, requester, reqstart, reqend - reqstart, rcflag);
+        myrequests.emplace_back(owner++, requester, reqstart, reqend - reqstart, rcflag);
     }
 }
 
