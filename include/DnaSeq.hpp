@@ -37,13 +37,15 @@ public:
      */
     DnaSeq() : len(0), memory(nullptr) {}
 
+    DnaSeq(size_t len, uint8_t *mem) : len(len), memory(mem) {}
+
     /*
      * char const *s - ASCII DNA sequence. Can include lower case letters. Ns converted to As.
      *                 Non-nucleotide characters cause undefined behaviour.
      * size_t len    - sequence length (number of nucleotides)
      * uint8_t* mem  - pointer to where compressed sequence should be written to and stored.
      */
-    DnaSeq(char const *s, size_t len, uint8_t *mem) : len(len), memory(mem) { compress(s); }
+    DnaSeq(char const *s, size_t len, uint8_t *mem) : DnaSeq(len, mem) { compress(s); }
 
     /*
      * Copy constructor. Copied DnaSeq objects reference
@@ -79,6 +81,15 @@ public:
      * Returns raw pointer to the first byte of memory.
      */
     const uint8_t* data() const { return memory; }
+
+    /*
+     * Copies data into location (meant to be used with DnaBufferContainer).
+     */
+    void copyto(size_t *readlen, uint8_t *mem) const
+    {
+        *readlen = len;
+        std::memcpy(mem, memory, numbytes());
+    }
 
     /*
      * returns integer code of given position:

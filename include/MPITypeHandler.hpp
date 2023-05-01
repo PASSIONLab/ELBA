@@ -9,10 +9,10 @@ struct MPITypeHandler
 {
     MPI_Datatype *datatype;
 
-    MPITypeHandler(MPI_Datatype *dtype) : datatype(dtype) { MPI_Type_commit(datatype); std::cout << "created datatype" << std::endl; }
+    MPITypeHandler(MPI_Datatype *dtype) : datatype(dtype) { MPI_Type_commit(datatype); }
     MPI_Datatype getdtype() const { return *datatype; }
 
-    ~MPITypeHandler() { MPI_Type_free(datatype); std::cout << "freed datatype" << std::endl; }
+    ~MPITypeHandler() { MPI_Type_free(datatype); }
 };
 
 
