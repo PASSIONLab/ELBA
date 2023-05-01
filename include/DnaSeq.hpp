@@ -6,14 +6,14 @@
 #include <string>
 #include <vector>
 
+#include <iostream>
+
 class DnaSeq
 {
 public:
-    DnaSeq() : len(), memory(nullptr), ownsmem(true) {}
-    DnaSeq(char const *s, size_t len, uint8_t *mem) : len(len), memory(mem), ownsmem(false) { compress(s); }
-    DnaSeq(char const *s, size_t len) : len(len), memory(new uint8_t[bytesneeded(len)]), ownsmem(true) { compress(s); }
-    DnaSeq(const DnaSeq& rhs) : len(rhs.len), memory(new uint8_t[bytesneeded(rhs.len)]), ownsmem(true) { std::memcpy(memory, rhs.memory, numbytes()); }
-    ~DnaSeq() { if (ownsmem) delete[] memory; }
+    DnaSeq() : len(), memory(nullptr) {}
+    DnaSeq(char const *s, size_t len, uint8_t *mem) : len(len), memory(mem) { compress(s); }
+    DnaSeq(const DnaSeq& rhs) : len(rhs.len), memory(rhs.memory) {}
 
     std::string ascii() const;
     size_t size() const { return len; }
@@ -62,8 +62,7 @@ public:
 
 private:
     size_t len; /* number of nucleotides encoded starting at @memory */
-    uint8_t *memory; /* each byte encodes up to 8 nucleotides */
-    bool ownsmem; /* false if @memory pointer allocated somewhere else */
+    uint8_t *memory; /* each byte encodes up to 4 nucleotides */
 
     /*
      * This is to be used only by the constructors of DnaSeq!

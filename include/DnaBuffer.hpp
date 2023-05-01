@@ -18,10 +18,12 @@ public:
 
     static size_t computebufsize(const std::vector<size_t>& seqlens);
 
+    ~DnaBuffer() { delete[] buf; }
+
 private:
     size_t bufhead;
     const size_t bufsize;
-    std::unique_ptr<uint8_t[]> buf;
+    uint8_t *buf;
     std::vector<DnaSeq> sequences;
 };
 

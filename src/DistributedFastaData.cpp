@@ -1,5 +1,6 @@
 #include "DistributedFastaData.hpp"
 #include "Logger.hpp"
+#include <limits>
 
 DistributedFastaData::DistributedFastaData(std::shared_ptr<FastaIndex> index) : index(index)
 {
@@ -160,14 +161,10 @@ void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> myd
     int nprocs = commgrid->GetSize();
     int myrank = commgrid->GetRank();
     MPI_Comm comm = commgrid->GetWorld();
+    Logger logger(commgrid);
 
     std::vector<FastaDataRequest> allrequests, myrequests;
     getremoterequests(allrequests, myrequests);
-
-    // size_t totrowbases = 0;
-    // size_t totcolbases = 0;
-    // rowbuf.reset(new DnaBuffer(totrowbases, getnumrowreads()));
-    // colbuf.reset(new DnaBuffer(totcolbases, getnumcolreads()));
 
     // std::vector<FastaDataRequest> myrealrequests;
     // std::copy_if(myrequests.begin(), myrequests.end(), std::back_inserter(myrealrequests), [](const auto& req) { return req.rc != 3; });
@@ -177,7 +174,6 @@ void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> myd
     // for (auto itr = myrealrequests.begin(); itr != myrealrequests.end(); ++itr)
         // logger() << *itr << "\n";
     // logger.Flush("myrealrequests");
-
 
     size_t nummyrequests = myrequests.size();
     size_t numallrequests = allrequests.size();
@@ -189,8 +185,8 @@ void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> myd
         MPI_IRECV(recvbufsizes.data() + i, 1, MPI_SIZE_T, myrequests[i].owner, 99+myrequests[i].rc, comm, recvrequests.data() + i);
     }
 
-    std::vector<int> destinations;
-    std::vector<size_t> sendbufsizes;
+    std::vector<std::tuple<size_t, int, unsigned short>> sendinfo;
+
 
     for (size_t i = 0; i < numallrequests; ++i)
     {
@@ -198,9 +194,24 @@ void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> myd
         {
             size_t start = allrequests[i].offset - index->getmyreaddispl();
             size_t sendbufsize = mydna->getrangebufsize(start, allrequests[i].count);
-            destinations.push_back(allrequests[i].requester);
-            sendbufsizes.push_back(sendbufsize);
+            sendinfo.emplace_back(sendbufsize, allrequests[i].requester, allrequests[i].rc);
         }
     }
 
+    size_t nummysends = sendinfo.size();
+    std::vector<MPI_Request> sendrequests(nummysends);
+
+    for (size_t i = 0; i < nummysends; ++i)
+    {
+        size_t sendbufsize = std::get<0>(sendinfo[i]);
+        int dest = std::get<1>(sendinfo[i]);
+        unsigned short rc = std::get<2>(sendinfo[i]);
+        MPI_ISEND(&sendbufsize, 1, MPI_SIZE_T, dest, 99+rc, comm, sendrequests.data() + i);
+    }
+
+    assert(nummyrequests <= std::numeric_limits<int>::max());
+    assert(nummysends <= std::numeric_limits<int>::max());
+
+    MPI_Waitall(static_cast<int>(nummysends), sendrequests.data(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(static_cast<int>(nummyrequests), recvrequests.data(), MPI_STATUSES_IGNORE);
 }
