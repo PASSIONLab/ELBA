@@ -1,0 +1,1678 @@
+-DKMER_SIZE=31
+-DLOWER_KMER_FREQ=15
+-DUPPER_KMER_FREQ=35
+-DMPI_HAS_LARGE_COUNTS=0
+
+int mat = 1;
+int mis = -1;
+int gap = -1;
+int xdrop_cutoff = 15;
+String fname = "reads.fa";
+
+Fasta index construction:
+=========================
+
+rank[1/64] ::  is responsible for sequences [0..2358] (2359 reads) (33973712 nucleotides, 1.562%)
+rank[2/64] ::  is responsible for sequences [2359..4632] (2274 reads) (33975543 nucleotides, 1.562%)
+rank[3/64] ::  is responsible for sequences [4633..6923] (2291 reads) (33977241 nucleotides, 1.562%)
+rank[4/64] ::  is responsible for sequences [6924..9182] (2259 reads) (33969429 nucleotides, 1.562%)
+rank[5/64] ::  is responsible for sequences [9183..11428] (2246 reads) (33963057 nucleotides, 1.562%)
+rank[6/64] ::  is responsible for sequences [11429..13679] (2251 reads) (33968781 nucleotides, 1.562%)
+rank[7/64] ::  is responsible for sequences [13680..15930] (2251 reads) (33970693 nucleotides, 1.562%)
+rank[8/64] ::  is responsible for sequences [15931..18189] (2259 reads) (33976939 nucleotides, 1.562%)
+rank[9/64] ::  is responsible for sequences [18190..20462] (2273 reads) (33960475 nucleotides, 1.562%)
+rank[10/64] ::  is responsible for sequences [20463..22697] (2235 reads) (33953089 nucleotides, 1.561%)
+rank[11/64] ::  is responsible for sequences [22698..24947] (2250 reads) (33969290 nucleotides, 1.562%)
+rank[12/64] ::  is responsible for sequences [24948..27204] (2257 reads) (33967874 nucleotides, 1.562%)
+rank[13/64] ::  is responsible for sequences [27205..29445] (2241 reads) (33968016 nucleotides, 1.562%)
+rank[14/64] ::  is responsible for sequences [29446..31683] (2238 reads) (33963686 nucleotides, 1.562%)
+rank[15/64] ::  is responsible for sequences [31684..33916] (2233 reads) (33971245 nucleotides, 1.562%)
+rank[16/64] ::  is responsible for sequences [33917..36157] (2241 reads) (33976811 nucleotides, 1.562%)
+rank[17/64] ::  is responsible for sequences [36158..38428] (2271 reads) (33966203 nucleotides, 1.562%)
+rank[18/64] ::  is responsible for sequences [38429..40707] (2279 reads) (33957028 nucleotides, 1.562%)
+rank[19/64] ::  is responsible for sequences [40708..42964] (2257 reads) (33973904 nucleotides, 1.562%)
+rank[20/64] ::  is responsible for sequences [42965..45204] (2240 reads) (33966907 nucleotides, 1.562%)
+rank[21/64] ::  is responsible for sequences [45205..47515] (2311 reads) (33968668 nucleotides, 1.562%)
+rank[22/64] ::  is responsible for sequences [47516..49764] (2249 reads) (33960341 nucleotides, 1.562%)
+rank[23/64] ::  is responsible for sequences [49765..52019] (2255 reads) (33971218 nucleotides, 1.562%)
+rank[24/64] ::  is responsible for sequences [52020..54283] (2264 reads) (33973361 nucleotides, 1.562%)
+rank[25/64] ::  is responsible for sequences [54284..56524] (2241 reads) (33968629 nucleotides, 1.562%)
+rank[26/64] ::  is responsible for sequences [56525..58818] (2294 reads) (33968393 nucleotides, 1.562%)
+rank[27/64] ::  is responsible for sequences [58819..61053] (2235 reads) (33967466 nucleotides, 1.562%)
+rank[28/64] ::  is responsible for sequences [61054..63289] (2236 reads) (33967521 nucleotides, 1.562%)
+rank[29/64] ::  is responsible for sequences [63290..65503] (2214 reads) (33964831 nucleotides, 1.562%)
+rank[30/64] ::  is responsible for sequences [65504..67775] (2272 reads) (33974938 nucleotides, 1.562%)
+rank[31/64] ::  is responsible for sequences [67776..70006] (2231 reads) (33949987 nucleotides, 1.561%)
+rank[32/64] ::  is responsible for sequences [70007..72304] (2298 reads) (33973158 nucleotides, 1.562%)
+rank[33/64] ::  is responsible for sequences [72305..74521] (2217 reads) (33963676 nucleotides, 1.562%)
+rank[34/64] ::  is responsible for sequences [74522..76768] (2247 reads) (33968020 nucleotides, 1.562%)
+rank[35/64] ::  is responsible for sequences [76769..79038] (2270 reads) (33976686 nucleotides, 1.562%)
+rank[36/64] ::  is responsible for sequences [79039..81237] (2199 reads) (33965600 nucleotides, 1.562%)
+rank[37/64] ::  is responsible for sequences [81238..83485] (2248 reads) (33959005 nucleotides, 1.562%)
+rank[38/64] ::  is responsible for sequences [83486..85694] (2209 reads) (33975575 nucleotides, 1.562%)
+rank[39/64] ::  is responsible for sequences [85695..87910] (2216 reads) (33958632 nucleotides, 1.562%)
+rank[40/64] ::  is responsible for sequences [87911..90149] (2239 reads) (33974200 nucleotides, 1.562%)
+rank[41/64] ::  is responsible for sequences [90150..92385] (2236 reads) (33974189 nucleotides, 1.562%)
+rank[42/64] ::  is responsible for sequences [92386..94660] (2275 reads) (33971207 nucleotides, 1.562%)
+rank[43/64] ::  is responsible for sequences [94661..96958] (2298 reads) (33973222 nucleotides, 1.562%)
+rank[44/64] ::  is responsible for sequences [96959..99301] (2343 reads) (33977002 nucleotides, 1.562%)
+rank[45/64] ::  is responsible for sequences [99302..101585] (2284 reads) (33960438 nucleotides, 1.562%)
+rank[46/64] ::  is responsible for sequences [101586..103823] (2238 reads) (33967206 nucleotides, 1.562%)
+rank[47/64] ::  is responsible for sequences [103824..106075] (2252 reads) (33976152 nucleotides, 1.562%)
+rank[48/64] ::  is responsible for sequences [106076..108322] (2247 reads) (33974306 nucleotides, 1.562%)
+rank[49/64] ::  is responsible for sequences [108323..110568] (2246 reads) (33975699 nucleotides, 1.562%)
+rank[50/64] ::  is responsible for sequences [110569..112835] (2267 reads) (33964931 nucleotides, 1.562%)
+rank[51/64] ::  is responsible for sequences [112836..115114] (2279 reads) (33971529 nucleotides, 1.562%)
+rank[52/64] ::  is responsible for sequences [115115..117388] (2274 reads) (33974556 nucleotides, 1.562%)
+rank[53/64] ::  is responsible for sequences [117389..119678] (2290 reads) (33960837 nucleotides, 1.562%)
+rank[54/64] ::  is responsible for sequences [119679..121968] (2290 reads) (33968614 nucleotides, 1.562%)
+rank[55/64] ::  is responsible for sequences [121969..124304] (2336 reads) (33962210 nucleotides, 1.562%)
+rank[56/64] ::  is responsible for sequences [124305..126641] (2337 reads) (33971117 nucleotides, 1.562%)
+rank[57/64] ::  is responsible for sequences [126642..128952] (2311 reads) (33955203 nucleotides, 1.561%)
+rank[58/64] ::  is responsible for sequences [128953..131230] (2278 reads) (33966857 nucleotides, 1.562%)
+rank[59/64] ::  is responsible for sequences [131231..133507] (2277 reads) (33968525 nucleotides, 1.562%)
+rank[60/64] ::  is responsible for sequences [133508..135775] (2268 reads) (33961352 nucleotides, 1.562%)
+rank[61/64] ::  is responsible for sequences [135776..138039] (2264 reads) (33973909 nucleotides, 1.562%)
+rank[62/64] ::  is responsible for sequences [138040..140289] (2250 reads) (33961872 nucleotides, 1.562%)
+rank[63/64] ::  is responsible for sequences [140290..142539] (2250 reads) (33961522 nucleotides, 1.562%)
+rank[64/64] ::  is responsible for sequences [142540..144874] (2335 reads) (34552783 nucleotides, 1.589%)
+
+FASTA parsing rates (DnaBuffer):
+================================
+
+rank[1/64] :: 1229.57 Mbs/second
+rank[2/64] :: 1289.65 Mbs/second
+rank[3/64] :: 1161.77 Mbs/second
+rank[4/64] :: 1226.78 Mbs/second
+rank[5/64] :: 1257.60 Mbs/second
+rank[6/64] :: 1117.31 Mbs/second
+rank[7/64] :: 1275.37 Mbs/second
+rank[8/64] :: 1202.71 Mbs/second
+rank[9/64] :: 1266.36 Mbs/second
+rank[10/64] :: 1118.98 Mbs/second
+rank[11/64] :: 1166.95 Mbs/second
+rank[12/64] :: 1191.83 Mbs/second
+rank[13/64] :: 1196.96 Mbs/second
+rank[14/64] :: 1130.77 Mbs/second
+rank[15/64] :: 1335.39 Mbs/second
+rank[16/64] :: 1192.25 Mbs/second
+rank[17/64] :: 1117.84 Mbs/second
+rank[18/64] :: 1300.59 Mbs/second
+rank[19/64] :: 1208.66 Mbs/second
+rank[20/64] :: 1103.12 Mbs/second
+rank[21/64] :: 1288.20 Mbs/second
+rank[22/64] :: 1155.47 Mbs/second
+rank[23/64] :: 1250.54 Mbs/second
+rank[24/64] :: 1136.87 Mbs/second
+rank[25/64] :: 1146.38 Mbs/second
+rank[26/64] :: 1259.07 Mbs/second
+rank[27/64] :: 1309.50 Mbs/second
+rank[28/64] :: 1310.82 Mbs/second
+rank[29/64] :: 1127.60 Mbs/second
+rank[30/64] :: 1174.90 Mbs/second
+rank[31/64] :: 1255.00 Mbs/second
+rank[32/64] :: 1156.47 Mbs/second
+rank[33/64] :: 1251.21 Mbs/second
+rank[34/64] :: 1161.04 Mbs/second
+rank[35/64] :: 1104.43 Mbs/second
+rank[36/64] :: 1162.25 Mbs/second
+rank[37/64] :: 1121.78 Mbs/second
+rank[38/64] :: 1103.40 Mbs/second
+rank[39/64] :: 1127.97 Mbs/second
+rank[40/64] :: 1288.58 Mbs/second
+rank[41/64] :: 1339.91 Mbs/second
+rank[42/64] :: 1279.51 Mbs/second
+rank[43/64] :: 1205.33 Mbs/second
+rank[44/64] :: 1160.64 Mbs/second
+rank[45/64] :: 1255.72 Mbs/second
+rank[46/64] :: 1235.85 Mbs/second
+rank[47/64] :: 1122.58 Mbs/second
+rank[48/64] :: 1127.27 Mbs/second
+rank[49/64] :: 1113.70 Mbs/second
+rank[50/64] :: 1346.60 Mbs/second
+rank[51/64] :: 1158.83 Mbs/second
+rank[52/64] :: 1138.02 Mbs/second
+rank[53/64] :: 1102.18 Mbs/second
+rank[54/64] :: 1098.30 Mbs/second
+rank[55/64] :: 1129.39 Mbs/second
+rank[56/64] :: 1119.41 Mbs/second
+rank[57/64] :: 1129.43 Mbs/second
+rank[58/64] :: 1249.01 Mbs/second
+rank[59/64] :: 1151.88 Mbs/second
+rank[60/64] :: 1154.44 Mbs/second
+rank[61/64] :: 1283.16 Mbs/second
+rank[62/64] :: 1127.30 Mbs/second
+rank[63/64] :: 1162.53 Mbs/second
+rank[64/64] :: 1097.49 Mbs/second
+
+FASTA sequence storage (DnaBuffer):
+===================================
+
+rank[1/64] ::  stores [0..2358] (2359 reads). ~14401.74 nts/read. (8.10 Mbs compressed) == (8494322 bytes)
+rank[2/64] ::  stores [2359..4632] (2274 reads). ~14940.87 nts/read. (8.10 Mbs compressed) == (8494767 bytes)
+rank[3/64] ::  stores [4633..6923] (2291 reads). ~14830.75 nts/read. (8.10 Mbs compressed) == (8495166 bytes)
+rank[4/64] ::  stores [6924..9182] (2259 reads). ~15037.37 nts/read. (8.10 Mbs compressed) == (8493200 bytes)
+rank[5/64] ::  stores [9183..11428] (2246 reads). ~15121.57 nts/read. (8.10 Mbs compressed) == (8491589 bytes)
+rank[6/64] ::  stores [11429..13679] (2251 reads). ~15090.53 nts/read. (8.10 Mbs compressed) == (8493035 bytes)
+rank[7/64] ::  stores [13680..15930] (2251 reads). ~15091.38 nts/read. (8.10 Mbs compressed) == (8493548 bytes)
+rank[8/64] ::  stores [15931..18189] (2259 reads). ~15040.70 nts/read. (8.10 Mbs compressed) == (8495074 bytes)
+rank[9/64] ::  stores [18190..20462] (2273 reads). ~14940.82 nts/read. (8.10 Mbs compressed) == (8490961 bytes)
+rank[10/64] ::  stores [20463..22697] (2235 reads). ~15191.54 nts/read. (8.10 Mbs compressed) == (8489116 bytes)
+rank[11/64] ::  stores [22698..24947] (2250 reads). ~15097.46 nts/read. (8.10 Mbs compressed) == (8493147 bytes)
+rank[12/64] ::  stores [24948..27204] (2257 reads). ~15050.01 nts/read. (8.10 Mbs compressed) == (8492801 bytes)
+rank[13/64] ::  stores [27205..29445] (2241 reads). ~15157.53 nts/read. (8.10 Mbs compressed) == (8492833 bytes)
+rank[14/64] ::  stores [29446..31683] (2238 reads). ~15175.91 nts/read. (8.10 Mbs compressed) == (8491754 bytes)
+rank[15/64] ::  stores [31684..33916] (2233 reads). ~15213.28 nts/read. (8.10 Mbs compressed) == (8493657 bytes)
+rank[16/64] ::  stores [33917..36157] (2241 reads). ~15161.45 nts/read. (8.10 Mbs compressed) == (8495057 bytes)
+rank[17/64] ::  stores [36158..38428] (2271 reads). ~14956.50 nts/read. (8.10 Mbs compressed) == (8492405 bytes)
+rank[18/64] ::  stores [38429..40707] (2279 reads). ~14899.97 nts/read. (8.10 Mbs compressed) == (8490112 bytes)
+rank[19/64] ::  stores [40708..42964] (2257 reads). ~15052.68 nts/read. (8.10 Mbs compressed) == (8494324 bytes)
+rank[20/64] ::  stores [42965..45204] (2240 reads). ~15163.80 nts/read. (8.10 Mbs compressed) == (8492588 bytes)
+rank[21/64] ::  stores [45205..47515] (2311 reads). ~14698.69 nts/read. (8.10 Mbs compressed) == (8493031 bytes)
+rank[22/64] ::  stores [47516..49764] (2249 reads). ~15100.20 nts/read. (8.10 Mbs compressed) == (8490937 bytes)
+rank[23/64] ::  stores [49765..52019] (2255 reads). ~15064.84 nts/read. (8.10 Mbs compressed) == (8493638 bytes)
+rank[24/64] ::  stores [52020..54283] (2264 reads). ~15005.90 nts/read. (8.10 Mbs compressed) == (8494210 bytes)
+rank[25/64] ::  stores [54284..56524] (2241 reads). ~15157.80 nts/read. (8.10 Mbs compressed) == (8492992 bytes)
+rank[26/64] ::  stores [56525..58818] (2294 reads). ~14807.49 nts/read. (8.10 Mbs compressed) == (8492961 bytes)
+rank[27/64] ::  stores [58819..61053] (2235 reads). ~15197.97 nts/read. (8.10 Mbs compressed) == (8492703 bytes)
+rank[28/64] ::  stores [61054..63289] (2236 reads). ~15191.20 nts/read. (8.10 Mbs compressed) == (8492714 bytes)
+rank[29/64] ::  stores [63290..65503] (2214 reads). ~15340.94 nts/read. (8.10 Mbs compressed) == (8492026 bytes)
+rank[30/64] ::  stores [65504..67775] (2272 reads). ~14953.76 nts/read. (8.10 Mbs compressed) == (8494597 bytes)
+rank[31/64] ::  stores [67776..70006] (2231 reads). ~15217.39 nts/read. (8.10 Mbs compressed) == (8488343 bytes)
+rank[32/64] ::  stores [70007..72304] (2298 reads). ~14783.79 nts/read. (8.10 Mbs compressed) == (8494129 bytes)
+rank[33/64] ::  stores [72305..74521] (2217 reads). ~15319.66 nts/read. (8.10 Mbs compressed) == (8491745 bytes)
+rank[34/64] ::  stores [74522..76768] (2247 reads). ~15117.05 nts/read. (8.10 Mbs compressed) == (8492839 bytes)
+rank[35/64] ::  stores [76769..79038] (2270 reads). ~14967.70 nts/read. (8.10 Mbs compressed) == (8495021 bytes)
+rank[36/64] ::  stores [79039..81237] (2199 reads). ~15445.93 nts/read. (8.10 Mbs compressed) == (8492213 bytes)
+rank[37/64] ::  stores [81238..83485] (2248 reads). ~15106.32 nts/read. (8.10 Mbs compressed) == (8490603 bytes)
+rank[38/64] ::  stores [83486..85694] (2209 reads). ~15380.52 nts/read. (8.10 Mbs compressed) == (8494738 bytes)
+rank[39/64] ::  stores [85695..87910] (2216 reads). ~15324.29 nts/read. (8.10 Mbs compressed) == (8490497 bytes)
+rank[40/64] ::  stores [87911..90149] (2239 reads). ~15173.83 nts/read. (8.10 Mbs compressed) == (8494407 bytes)
+rank[41/64] ::  stores [90150..92385] (2236 reads). ~15194.18 nts/read. (8.10 Mbs compressed) == (8494383 bytes)
+rank[42/64] ::  stores [92386..94660] (2275 reads). ~14932.40 nts/read. (8.10 Mbs compressed) == (8493632 bytes)
+rank[43/64] ::  stores [94661..96958] (2298 reads). ~14783.82 nts/read. (8.10 Mbs compressed) == (8494164 bytes)
+rank[44/64] ::  stores [96959..99301] (2343 reads). ~14501.49 nts/read. (8.10 Mbs compressed) == (8495139 bytes)
+rank[45/64] ::  stores [99302..101585] (2284 reads). ~14868.84 nts/read. (8.10 Mbs compressed) == (8490976 bytes)
+rank[46/64] ::  stores [101586..103823] (2238 reads). ~15177.48 nts/read. (8.10 Mbs compressed) == (8492632 bytes)
+rank[47/64] ::  stores [103824..106075] (2252 reads). ~15087.10 nts/read. (8.10 Mbs compressed) == (8494887 bytes)
+rank[48/64] ::  stores [106076..108322] (2247 reads). ~15119.85 nts/read. (8.10 Mbs compressed) == (8494420 bytes)
+rank[49/64] ::  stores [108323..110568] (2246 reads). ~15127.20 nts/read. (8.10 Mbs compressed) == (8494738 bytes)
+rank[50/64] ::  stores [110569..112835] (2267 reads). ~14982.33 nts/read. (8.10 Mbs compressed) == (8492093 bytes)
+rank[51/64] ::  stores [112836..115114] (2279 reads). ~14906.33 nts/read. (8.10 Mbs compressed) == (8493735 bytes)
+rank[52/64] ::  stores [115115..117388] (2274 reads). ~14940.44 nts/read. (8.10 Mbs compressed) == (8494479 bytes)
+rank[53/64] ::  stores [117389..119678] (2290 reads). ~14830.06 nts/read. (8.10 Mbs compressed) == (8491063 bytes)
+rank[54/64] ::  stores [119679..121968] (2290 reads). ~14833.46 nts/read. (8.10 Mbs compressed) == (8493012 bytes)
+rank[55/64] ::  stores [121969..124304] (2336 reads). ~14538.62 nts/read. (8.10 Mbs compressed) == (8491416 bytes)
+rank[56/64] ::  stores [124305..126641] (2337 reads). ~14536.21 nts/read. (8.10 Mbs compressed) == (8493641 bytes)
+rank[57/64] ::  stores [126642..128952] (2311 reads). ~14692.86 nts/read. (8.10 Mbs compressed) == (8489657 bytes)
+rank[58/64] ::  stores [128953..131230] (2278 reads). ~14910.82 nts/read. (8.10 Mbs compressed) == (8492547 bytes)
+rank[59/64] ::  stores [131231..133507] (2277 reads). ~14918.10 nts/read. (8.10 Mbs compressed) == (8492981 bytes)
+rank[60/64] ::  stores [133508..135775] (2268 reads). ~14974.14 nts/read. (8.10 Mbs compressed) == (8491178 bytes)
+rank[61/64] ::  stores [135776..138039] (2264 reads). ~15006.14 nts/read. (8.10 Mbs compressed) == (8494296 bytes)
+rank[62/64] ::  stores [138040..140289] (2250 reads). ~15094.17 nts/read. (8.10 Mbs compressed) == (8491308 bytes)
+rank[63/64] ::  stores [140290..142539] (2250 reads). ~15094.01 nts/read. (8.10 Mbs compressed) == (8491233 bytes)
+rank[64/64] ::  stores [142540..144874] (2335 reads). ~14797.77 nts/read. (8.24 Mbs compressed) == (8639069 bytes)
+
+DistributedFastaData::DistributedFastaData
+==========================================
+
+rank[1/64] :: P(1, 1) [0..18108] (18109 reads); [0..18108] (18109 reads)
+rank[2/64] :: P(1, 2) [0..18108] (18109 reads); [18109..36217] (18109 reads)
+rank[3/64] :: P(1, 3) [0..18108] (18109 reads); [36218..54326] (18109 reads)
+rank[4/64] :: P(1, 4) [0..18108] (18109 reads); [54327..72435] (18109 reads)
+rank[5/64] :: P(1, 5) [0..18108] (18109 reads); [72436..90544] (18109 reads)
+rank[6/64] :: P(1, 6) [0..18108] (18109 reads); [90545..108653] (18109 reads)
+rank[7/64] :: P(1, 7) [0..18108] (18109 reads); [108654..126762] (18109 reads)
+rank[8/64] :: P(1, 8) [0..18108] (18109 reads); [126763..144874] (18112 reads)
+rank[9/64] :: P(2, 1) [18109..36217] (18109 reads); [0..18108] (18109 reads)
+rank[10/64] :: P(2, 2) [18109..36217] (18109 reads); [18109..36217] (18109 reads)
+rank[11/64] :: P(2, 3) [18109..36217] (18109 reads); [36218..54326] (18109 reads)
+rank[12/64] :: P(2, 4) [18109..36217] (18109 reads); [54327..72435] (18109 reads)
+rank[13/64] :: P(2, 5) [18109..36217] (18109 reads); [72436..90544] (18109 reads)
+rank[14/64] :: P(2, 6) [18109..36217] (18109 reads); [90545..108653] (18109 reads)
+rank[15/64] :: P(2, 7) [18109..36217] (18109 reads); [108654..126762] (18109 reads)
+rank[16/64] :: P(2, 8) [18109..36217] (18109 reads); [126763..144874] (18112 reads)
+rank[17/64] :: P(3, 1) [36218..54326] (18109 reads); [0..18108] (18109 reads)
+rank[18/64] :: P(3, 2) [36218..54326] (18109 reads); [18109..36217] (18109 reads)
+rank[19/64] :: P(3, 3) [36218..54326] (18109 reads); [36218..54326] (18109 reads)
+rank[20/64] :: P(3, 4) [36218..54326] (18109 reads); [54327..72435] (18109 reads)
+rank[21/64] :: P(3, 5) [36218..54326] (18109 reads); [72436..90544] (18109 reads)
+rank[22/64] :: P(3, 6) [36218..54326] (18109 reads); [90545..108653] (18109 reads)
+rank[23/64] :: P(3, 7) [36218..54326] (18109 reads); [108654..126762] (18109 reads)
+rank[24/64] :: P(3, 8) [36218..54326] (18109 reads); [126763..144874] (18112 reads)
+rank[25/64] :: P(4, 1) [54327..72435] (18109 reads); [0..18108] (18109 reads)
+rank[26/64] :: P(4, 2) [54327..72435] (18109 reads); [18109..36217] (18109 reads)
+rank[27/64] :: P(4, 3) [54327..72435] (18109 reads); [36218..54326] (18109 reads)
+rank[28/64] :: P(4, 4) [54327..72435] (18109 reads); [54327..72435] (18109 reads)
+rank[29/64] :: P(4, 5) [54327..72435] (18109 reads); [72436..90544] (18109 reads)
+rank[30/64] :: P(4, 6) [54327..72435] (18109 reads); [90545..108653] (18109 reads)
+rank[31/64] :: P(4, 7) [54327..72435] (18109 reads); [108654..126762] (18109 reads)
+rank[32/64] :: P(4, 8) [54327..72435] (18109 reads); [126763..144874] (18112 reads)
+rank[33/64] :: P(5, 1) [72436..90544] (18109 reads); [0..18108] (18109 reads)
+rank[34/64] :: P(5, 2) [72436..90544] (18109 reads); [18109..36217] (18109 reads)
+rank[35/64] :: P(5, 3) [72436..90544] (18109 reads); [36218..54326] (18109 reads)
+rank[36/64] :: P(5, 4) [72436..90544] (18109 reads); [54327..72435] (18109 reads)
+rank[37/64] :: P(5, 5) [72436..90544] (18109 reads); [72436..90544] (18109 reads)
+rank[38/64] :: P(5, 6) [72436..90544] (18109 reads); [90545..108653] (18109 reads)
+rank[39/64] :: P(5, 7) [72436..90544] (18109 reads); [108654..126762] (18109 reads)
+rank[40/64] :: P(5, 8) [72436..90544] (18109 reads); [126763..144874] (18112 reads)
+rank[41/64] :: P(6, 1) [90545..108653] (18109 reads); [0..18108] (18109 reads)
+rank[42/64] :: P(6, 2) [90545..108653] (18109 reads); [18109..36217] (18109 reads)
+rank[43/64] :: P(6, 3) [90545..108653] (18109 reads); [36218..54326] (18109 reads)
+rank[44/64] :: P(6, 4) [90545..108653] (18109 reads); [54327..72435] (18109 reads)
+rank[45/64] :: P(6, 5) [90545..108653] (18109 reads); [72436..90544] (18109 reads)
+rank[46/64] :: P(6, 6) [90545..108653] (18109 reads); [90545..108653] (18109 reads)
+rank[47/64] :: P(6, 7) [90545..108653] (18109 reads); [108654..126762] (18109 reads)
+rank[48/64] :: P(6, 8) [90545..108653] (18109 reads); [126763..144874] (18112 reads)
+rank[49/64] :: P(7, 1) [108654..126762] (18109 reads); [0..18108] (18109 reads)
+rank[50/64] :: P(7, 2) [108654..126762] (18109 reads); [18109..36217] (18109 reads)
+rank[51/64] :: P(7, 3) [108654..126762] (18109 reads); [36218..54326] (18109 reads)
+rank[52/64] :: P(7, 4) [108654..126762] (18109 reads); [54327..72435] (18109 reads)
+rank[53/64] :: P(7, 5) [108654..126762] (18109 reads); [72436..90544] (18109 reads)
+rank[54/64] :: P(7, 6) [108654..126762] (18109 reads); [90545..108653] (18109 reads)
+rank[55/64] :: P(7, 7) [108654..126762] (18109 reads); [108654..126762] (18109 reads)
+rank[56/64] :: P(7, 8) [108654..126762] (18109 reads); [126763..144874] (18112 reads)
+rank[57/64] :: P(8, 1) [126763..144874] (18112 reads); [0..18108] (18109 reads)
+rank[58/64] :: P(8, 2) [126763..144874] (18112 reads); [18109..36217] (18109 reads)
+rank[59/64] :: P(8, 3) [126763..144874] (18112 reads); [36218..54326] (18109 reads)
+rank[60/64] :: P(8, 4) [126763..144874] (18112 reads); [54327..72435] (18109 reads)
+rank[61/64] :: P(8, 5) [126763..144874] (18112 reads); [72436..90544] (18109 reads)
+rank[62/64] :: P(8, 6) [126763..144874] (18112 reads); [90545..108653] (18109 reads)
+rank[63/64] :: P(8, 7) [126763..144874] (18112 reads); [108654..126762] (18109 reads)
+rank[64/64] :: P(8, 8) [126763..144874] (18112 reads); [126763..144874] (18112 reads)
+
+Requests FROM me:
+=================
+
+rank[1/64] :: 
+1 requests from 2: [0..2358] (2359 reads) (rc=0)
+1 requests from 3: [2359..4632] (2274 reads) (rc=0)
+1 requests from 4: [4633..6923] (2291 reads) (rc=0)
+1 requests from 5: [6924..9182] (2259 reads) (rc=0)
+1 requests from 6: [9183..11428] (2246 reads) (rc=0)
+1 requests from 7: [11429..13679] (2251 reads) (rc=0)
+1 requests from 8: [13680..15930] (2251 reads) (rc=0)
+1 requests from 9: [15931..18108] (2178 reads) (rc=0)
+
+rank[2/64] :: 
+2 requests from 2: [0..2358] (2359 reads) (rc=2)
+2 requests from 3: [2359..4632] (2274 reads) (rc=0)
+2 requests from 4: [4633..6923] (2291 reads) (rc=0)
+2 requests from 5: [6924..9182] (2259 reads) (rc=0)
+2 requests from 6: [9183..11428] (2246 reads) (rc=0)
+2 requests from 7: [11429..13679] (2251 reads) (rc=0)
+2 requests from 8: [13680..15930] (2251 reads) (rc=0)
+2 requests from 9: [15931..18108] (2178 reads) (rc=0)
+
+rank[3/64] :: 
+3 requests from 2: [0..2358] (2359 reads) (rc=0)
+3 requests from 3: [2359..4632] (2274 reads) (rc=2)
+3 requests from 4: [4633..6923] (2291 reads) (rc=0)
+3 requests from 5: [6924..9182] (2259 reads) (rc=0)
+3 requests from 6: [9183..11428] (2246 reads) (rc=0)
+3 requests from 7: [11429..13679] (2251 reads) (rc=0)
+3 requests from 8: [13680..15930] (2251 reads) (rc=0)
+3 requests from 9: [15931..18108] (2178 reads) (rc=0)
+
+rank[4/64] :: 
+4 requests from 2: [0..2358] (2359 reads) (rc=0)
+4 requests from 3: [2359..4632] (2274 reads) (rc=0)
+4 requests from 4: [4633..6923] (2291 reads) (rc=2)
+4 requests from 5: [6924..9182] (2259 reads) (rc=0)
+4 requests from 6: [9183..11428] (2246 reads) (rc=0)
+4 requests from 7: [11429..13679] (2251 reads) (rc=0)
+4 requests from 8: [13680..15930] (2251 reads) (rc=0)
+4 requests from 9: [15931..18108] (2178 reads) (rc=0)
+
+rank[5/64] :: 
+5 requests from 2: [0..2358] (2359 reads) (rc=0)
+5 requests from 3: [2359..4632] (2274 reads) (rc=0)
+5 requests from 4: [4633..6923] (2291 reads) (rc=0)
+5 requests from 5: [6924..9182] (2259 reads) (rc=2)
+5 requests from 6: [9183..11428] (2246 reads) (rc=0)
+5 requests from 7: [11429..13679] (2251 reads) (rc=0)
+5 requests from 8: [13680..15930] (2251 reads) (rc=0)
+5 requests from 9: [15931..18108] (2178 reads) (rc=0)
+
+rank[6/64] :: 
+6 requests from 2: [0..2358] (2359 reads) (rc=0)
+6 requests from 3: [2359..4632] (2274 reads) (rc=0)
+6 requests from 4: [4633..6923] (2291 reads) (rc=0)
+6 requests from 5: [6924..9182] (2259 reads) (rc=0)
+6 requests from 6: [9183..11428] (2246 reads) (rc=2)
+6 requests from 7: [11429..13679] (2251 reads) (rc=0)
+6 requests from 8: [13680..15930] (2251 reads) (rc=0)
+6 requests from 9: [15931..18108] (2178 reads) (rc=0)
+
+rank[7/64] :: 
+7 requests from 2: [0..2358] (2359 reads) (rc=0)
+7 requests from 3: [2359..4632] (2274 reads) (rc=0)
+7 requests from 4: [4633..6923] (2291 reads) (rc=0)
+7 requests from 5: [6924..9182] (2259 reads) (rc=0)
+7 requests from 6: [9183..11428] (2246 reads) (rc=0)
+7 requests from 7: [11429..13679] (2251 reads) (rc=2)
+7 requests from 8: [13680..15930] (2251 reads) (rc=0)
+7 requests from 9: [15931..18108] (2178 reads) (rc=0)
+
+rank[8/64] :: 
+8 requests from 2: [0..2358] (2359 reads) (rc=0)
+8 requests from 3: [2359..4632] (2274 reads) (rc=0)
+8 requests from 4: [4633..6923] (2291 reads) (rc=0)
+8 requests from 5: [6924..9182] (2259 reads) (rc=0)
+8 requests from 6: [9183..11428] (2246 reads) (rc=0)
+8 requests from 7: [11429..13679] (2251 reads) (rc=0)
+8 requests from 8: [13680..15930] (2251 reads) (rc=2)
+8 requests from 9: [15931..18108] (2178 reads) (rc=0)
+
+rank[9/64] :: 
+9 requests from 9: [18109..18189] (81 reads) (rc=2)
+9 requests from 10: [18190..20462] (2273 reads) (rc=0)
+9 requests from 11: [20463..22697] (2235 reads) (rc=0)
+9 requests from 12: [22698..24947] (2250 reads) (rc=0)
+9 requests from 13: [24948..27204] (2257 reads) (rc=0)
+9 requests from 14: [27205..29445] (2241 reads) (rc=0)
+9 requests from 15: [29446..31683] (2238 reads) (rc=0)
+9 requests from 16: [31684..33916] (2233 reads) (rc=0)
+9 requests from 17: [33917..36157] (2241 reads) (rc=0)
+9 requests from 18: [36158..36217] (60 reads) (rc=0)
+
+rank[10/64] :: 
+10 requests from 9: [18109..18189] (81 reads) (rc=0)
+10 requests from 10: [18190..20462] (2273 reads) (rc=2)
+10 requests from 11: [20463..22697] (2235 reads) (rc=0)
+10 requests from 12: [22698..24947] (2250 reads) (rc=0)
+10 requests from 13: [24948..27204] (2257 reads) (rc=0)
+10 requests from 14: [27205..29445] (2241 reads) (rc=0)
+10 requests from 15: [29446..31683] (2238 reads) (rc=0)
+10 requests from 16: [31684..33916] (2233 reads) (rc=0)
+10 requests from 17: [33917..36157] (2241 reads) (rc=0)
+10 requests from 18: [36158..36217] (60 reads) (rc=0)
+
+rank[11/64] :: 
+11 requests from 9: [18109..18189] (81 reads) (rc=0)
+11 requests from 10: [18190..20462] (2273 reads) (rc=0)
+11 requests from 11: [20463..22697] (2235 reads) (rc=2)
+11 requests from 12: [22698..24947] (2250 reads) (rc=0)
+11 requests from 13: [24948..27204] (2257 reads) (rc=0)
+11 requests from 14: [27205..29445] (2241 reads) (rc=0)
+11 requests from 15: [29446..31683] (2238 reads) (rc=0)
+11 requests from 16: [31684..33916] (2233 reads) (rc=0)
+11 requests from 17: [33917..36157] (2241 reads) (rc=0)
+11 requests from 18: [36158..36217] (60 reads) (rc=0)
+
+rank[12/64] :: 
+12 requests from 9: [18109..18189] (81 reads) (rc=0)
+12 requests from 10: [18190..20462] (2273 reads) (rc=0)
+12 requests from 11: [20463..22697] (2235 reads) (rc=0)
+12 requests from 12: [22698..24947] (2250 reads) (rc=2)
+12 requests from 13: [24948..27204] (2257 reads) (rc=0)
+12 requests from 14: [27205..29445] (2241 reads) (rc=0)
+12 requests from 15: [29446..31683] (2238 reads) (rc=0)
+12 requests from 16: [31684..33916] (2233 reads) (rc=0)
+12 requests from 17: [33917..36157] (2241 reads) (rc=0)
+12 requests from 18: [36158..36217] (60 reads) (rc=0)
+
+rank[13/64] :: 
+13 requests from 9: [18109..18189] (81 reads) (rc=0)
+13 requests from 10: [18190..20462] (2273 reads) (rc=0)
+13 requests from 11: [20463..22697] (2235 reads) (rc=0)
+13 requests from 12: [22698..24947] (2250 reads) (rc=0)
+13 requests from 13: [24948..27204] (2257 reads) (rc=2)
+13 requests from 14: [27205..29445] (2241 reads) (rc=0)
+13 requests from 15: [29446..31683] (2238 reads) (rc=0)
+13 requests from 16: [31684..33916] (2233 reads) (rc=0)
+13 requests from 17: [33917..36157] (2241 reads) (rc=0)
+13 requests from 18: [36158..36217] (60 reads) (rc=0)
+
+rank[14/64] :: 
+14 requests from 9: [18109..18189] (81 reads) (rc=0)
+14 requests from 10: [18190..20462] (2273 reads) (rc=0)
+14 requests from 11: [20463..22697] (2235 reads) (rc=0)
+14 requests from 12: [22698..24947] (2250 reads) (rc=0)
+14 requests from 13: [24948..27204] (2257 reads) (rc=0)
+14 requests from 14: [27205..29445] (2241 reads) (rc=2)
+14 requests from 15: [29446..31683] (2238 reads) (rc=0)
+14 requests from 16: [31684..33916] (2233 reads) (rc=0)
+14 requests from 17: [33917..36157] (2241 reads) (rc=0)
+14 requests from 18: [36158..36217] (60 reads) (rc=0)
+
+rank[15/64] :: 
+15 requests from 9: [18109..18189] (81 reads) (rc=0)
+15 requests from 10: [18190..20462] (2273 reads) (rc=0)
+15 requests from 11: [20463..22697] (2235 reads) (rc=0)
+15 requests from 12: [22698..24947] (2250 reads) (rc=0)
+15 requests from 13: [24948..27204] (2257 reads) (rc=0)
+15 requests from 14: [27205..29445] (2241 reads) (rc=0)
+15 requests from 15: [29446..31683] (2238 reads) (rc=2)
+15 requests from 16: [31684..33916] (2233 reads) (rc=0)
+15 requests from 17: [33917..36157] (2241 reads) (rc=0)
+15 requests from 18: [36158..36217] (60 reads) (rc=0)
+
+rank[16/64] :: 
+16 requests from 9: [18109..18189] (81 reads) (rc=0)
+16 requests from 10: [18190..20462] (2273 reads) (rc=0)
+16 requests from 11: [20463..22697] (2235 reads) (rc=0)
+16 requests from 12: [22698..24947] (2250 reads) (rc=0)
+16 requests from 13: [24948..27204] (2257 reads) (rc=0)
+16 requests from 14: [27205..29445] (2241 reads) (rc=0)
+16 requests from 15: [29446..31683] (2238 reads) (rc=0)
+16 requests from 16: [31684..33916] (2233 reads) (rc=2)
+16 requests from 17: [33917..36157] (2241 reads) (rc=0)
+16 requests from 18: [36158..36217] (60 reads) (rc=0)
+
+rank[17/64] :: 
+17 requests from 18: [36218..38428] (2211 reads) (rc=0)
+17 requests from 19: [38429..40707] (2279 reads) (rc=0)
+17 requests from 20: [40708..42964] (2257 reads) (rc=0)
+17 requests from 21: [42965..45204] (2240 reads) (rc=0)
+17 requests from 22: [45205..47515] (2311 reads) (rc=0)
+17 requests from 23: [47516..49764] (2249 reads) (rc=0)
+17 requests from 24: [49765..52019] (2255 reads) (rc=0)
+17 requests from 25: [52020..54283] (2264 reads) (rc=0)
+17 requests from 26: [54284..54326] (43 reads) (rc=0)
+
+rank[18/64] :: 
+18 requests from 18: [36218..38428] (2211 reads) (rc=2)
+18 requests from 19: [38429..40707] (2279 reads) (rc=0)
+18 requests from 20: [40708..42964] (2257 reads) (rc=0)
+18 requests from 21: [42965..45204] (2240 reads) (rc=0)
+18 requests from 22: [45205..47515] (2311 reads) (rc=0)
+18 requests from 23: [47516..49764] (2249 reads) (rc=0)
+18 requests from 24: [49765..52019] (2255 reads) (rc=0)
+18 requests from 25: [52020..54283] (2264 reads) (rc=0)
+18 requests from 26: [54284..54326] (43 reads) (rc=0)
+
+rank[19/64] :: 
+19 requests from 18: [36218..38428] (2211 reads) (rc=0)
+19 requests from 19: [38429..40707] (2279 reads) (rc=2)
+19 requests from 20: [40708..42964] (2257 reads) (rc=0)
+19 requests from 21: [42965..45204] (2240 reads) (rc=0)
+19 requests from 22: [45205..47515] (2311 reads) (rc=0)
+19 requests from 23: [47516..49764] (2249 reads) (rc=0)
+19 requests from 24: [49765..52019] (2255 reads) (rc=0)
+19 requests from 25: [52020..54283] (2264 reads) (rc=0)
+19 requests from 26: [54284..54326] (43 reads) (rc=0)
+
+rank[20/64] :: 
+20 requests from 18: [36218..38428] (2211 reads) (rc=0)
+20 requests from 19: [38429..40707] (2279 reads) (rc=0)
+20 requests from 20: [40708..42964] (2257 reads) (rc=2)
+20 requests from 21: [42965..45204] (2240 reads) (rc=0)
+20 requests from 22: [45205..47515] (2311 reads) (rc=0)
+20 requests from 23: [47516..49764] (2249 reads) (rc=0)
+20 requests from 24: [49765..52019] (2255 reads) (rc=0)
+20 requests from 25: [52020..54283] (2264 reads) (rc=0)
+20 requests from 26: [54284..54326] (43 reads) (rc=0)
+
+rank[21/64] :: 
+21 requests from 18: [36218..38428] (2211 reads) (rc=0)
+21 requests from 19: [38429..40707] (2279 reads) (rc=0)
+21 requests from 20: [40708..42964] (2257 reads) (rc=0)
+21 requests from 21: [42965..45204] (2240 reads) (rc=2)
+21 requests from 22: [45205..47515] (2311 reads) (rc=0)
+21 requests from 23: [47516..49764] (2249 reads) (rc=0)
+21 requests from 24: [49765..52019] (2255 reads) (rc=0)
+21 requests from 25: [52020..54283] (2264 reads) (rc=0)
+21 requests from 26: [54284..54326] (43 reads) (rc=0)
+
+rank[22/64] :: 
+22 requests from 18: [36218..38428] (2211 reads) (rc=0)
+22 requests from 19: [38429..40707] (2279 reads) (rc=0)
+22 requests from 20: [40708..42964] (2257 reads) (rc=0)
+22 requests from 21: [42965..45204] (2240 reads) (rc=0)
+22 requests from 22: [45205..47515] (2311 reads) (rc=2)
+22 requests from 23: [47516..49764] (2249 reads) (rc=0)
+22 requests from 24: [49765..52019] (2255 reads) (rc=0)
+22 requests from 25: [52020..54283] (2264 reads) (rc=0)
+22 requests from 26: [54284..54326] (43 reads) (rc=0)
+
+rank[23/64] :: 
+23 requests from 18: [36218..38428] (2211 reads) (rc=0)
+23 requests from 19: [38429..40707] (2279 reads) (rc=0)
+23 requests from 20: [40708..42964] (2257 reads) (rc=0)
+23 requests from 21: [42965..45204] (2240 reads) (rc=0)
+23 requests from 22: [45205..47515] (2311 reads) (rc=0)
+23 requests from 23: [47516..49764] (2249 reads) (rc=2)
+23 requests from 24: [49765..52019] (2255 reads) (rc=0)
+23 requests from 25: [52020..54283] (2264 reads) (rc=0)
+23 requests from 26: [54284..54326] (43 reads) (rc=0)
+
+rank[24/64] :: 
+24 requests from 18: [36218..38428] (2211 reads) (rc=0)
+24 requests from 19: [38429..40707] (2279 reads) (rc=0)
+24 requests from 20: [40708..42964] (2257 reads) (rc=0)
+24 requests from 21: [42965..45204] (2240 reads) (rc=0)
+24 requests from 22: [45205..47515] (2311 reads) (rc=0)
+24 requests from 23: [47516..49764] (2249 reads) (rc=0)
+24 requests from 24: [49765..52019] (2255 reads) (rc=2)
+24 requests from 25: [52020..54283] (2264 reads) (rc=0)
+24 requests from 26: [54284..54326] (43 reads) (rc=0)
+
+rank[25/64] :: 
+25 requests from 26: [54327..56524] (2198 reads) (rc=0)
+25 requests from 27: [56525..58818] (2294 reads) (rc=0)
+25 requests from 28: [58819..61053] (2235 reads) (rc=0)
+25 requests from 29: [61054..63289] (2236 reads) (rc=0)
+25 requests from 30: [63290..65503] (2214 reads) (rc=0)
+25 requests from 31: [65504..67775] (2272 reads) (rc=0)
+25 requests from 32: [67776..70006] (2231 reads) (rc=0)
+25 requests from 33: [70007..72304] (2298 reads) (rc=0)
+25 requests from 34: [72305..72435] (131 reads) (rc=0)
+
+rank[26/64] :: 
+26 requests from 26: [54327..56524] (2198 reads) (rc=2)
+26 requests from 27: [56525..58818] (2294 reads) (rc=0)
+26 requests from 28: [58819..61053] (2235 reads) (rc=0)
+26 requests from 29: [61054..63289] (2236 reads) (rc=0)
+26 requests from 30: [63290..65503] (2214 reads) (rc=0)
+26 requests from 31: [65504..67775] (2272 reads) (rc=0)
+26 requests from 32: [67776..70006] (2231 reads) (rc=0)
+26 requests from 33: [70007..72304] (2298 reads) (rc=0)
+26 requests from 34: [72305..72435] (131 reads) (rc=0)
+
+rank[27/64] :: 
+27 requests from 26: [54327..56524] (2198 reads) (rc=0)
+27 requests from 27: [56525..58818] (2294 reads) (rc=2)
+27 requests from 28: [58819..61053] (2235 reads) (rc=0)
+27 requests from 29: [61054..63289] (2236 reads) (rc=0)
+27 requests from 30: [63290..65503] (2214 reads) (rc=0)
+27 requests from 31: [65504..67775] (2272 reads) (rc=0)
+27 requests from 32: [67776..70006] (2231 reads) (rc=0)
+27 requests from 33: [70007..72304] (2298 reads) (rc=0)
+27 requests from 34: [72305..72435] (131 reads) (rc=0)
+
+rank[28/64] :: 
+28 requests from 26: [54327..56524] (2198 reads) (rc=0)
+28 requests from 27: [56525..58818] (2294 reads) (rc=0)
+28 requests from 28: [58819..61053] (2235 reads) (rc=2)
+28 requests from 29: [61054..63289] (2236 reads) (rc=0)
+28 requests from 30: [63290..65503] (2214 reads) (rc=0)
+28 requests from 31: [65504..67775] (2272 reads) (rc=0)
+28 requests from 32: [67776..70006] (2231 reads) (rc=0)
+28 requests from 33: [70007..72304] (2298 reads) (rc=0)
+28 requests from 34: [72305..72435] (131 reads) (rc=0)
+
+rank[29/64] :: 
+29 requests from 26: [54327..56524] (2198 reads) (rc=0)
+29 requests from 27: [56525..58818] (2294 reads) (rc=0)
+29 requests from 28: [58819..61053] (2235 reads) (rc=0)
+29 requests from 29: [61054..63289] (2236 reads) (rc=2)
+29 requests from 30: [63290..65503] (2214 reads) (rc=0)
+29 requests from 31: [65504..67775] (2272 reads) (rc=0)
+29 requests from 32: [67776..70006] (2231 reads) (rc=0)
+29 requests from 33: [70007..72304] (2298 reads) (rc=0)
+29 requests from 34: [72305..72435] (131 reads) (rc=0)
+
+rank[30/64] :: 
+30 requests from 26: [54327..56524] (2198 reads) (rc=0)
+30 requests from 27: [56525..58818] (2294 reads) (rc=0)
+30 requests from 28: [58819..61053] (2235 reads) (rc=0)
+30 requests from 29: [61054..63289] (2236 reads) (rc=0)
+30 requests from 30: [63290..65503] (2214 reads) (rc=2)
+30 requests from 31: [65504..67775] (2272 reads) (rc=0)
+30 requests from 32: [67776..70006] (2231 reads) (rc=0)
+30 requests from 33: [70007..72304] (2298 reads) (rc=0)
+30 requests from 34: [72305..72435] (131 reads) (rc=0)
+
+rank[31/64] :: 
+31 requests from 26: [54327..56524] (2198 reads) (rc=0)
+31 requests from 27: [56525..58818] (2294 reads) (rc=0)
+31 requests from 28: [58819..61053] (2235 reads) (rc=0)
+31 requests from 29: [61054..63289] (2236 reads) (rc=0)
+31 requests from 30: [63290..65503] (2214 reads) (rc=0)
+31 requests from 31: [65504..67775] (2272 reads) (rc=2)
+31 requests from 32: [67776..70006] (2231 reads) (rc=0)
+31 requests from 33: [70007..72304] (2298 reads) (rc=0)
+31 requests from 34: [72305..72435] (131 reads) (rc=0)
+
+rank[32/64] :: 
+32 requests from 26: [54327..56524] (2198 reads) (rc=0)
+32 requests from 27: [56525..58818] (2294 reads) (rc=0)
+32 requests from 28: [58819..61053] (2235 reads) (rc=0)
+32 requests from 29: [61054..63289] (2236 reads) (rc=0)
+32 requests from 30: [63290..65503] (2214 reads) (rc=0)
+32 requests from 31: [65504..67775] (2272 reads) (rc=0)
+32 requests from 32: [67776..70006] (2231 reads) (rc=2)
+32 requests from 33: [70007..72304] (2298 reads) (rc=0)
+32 requests from 34: [72305..72435] (131 reads) (rc=0)
+
+rank[33/64] :: 
+33 requests from 34: [72436..74521] (2086 reads) (rc=0)
+33 requests from 35: [74522..76768] (2247 reads) (rc=0)
+33 requests from 36: [76769..79038] (2270 reads) (rc=0)
+33 requests from 37: [79039..81237] (2199 reads) (rc=0)
+33 requests from 38: [81238..83485] (2248 reads) (rc=0)
+33 requests from 39: [83486..85694] (2209 reads) (rc=0)
+33 requests from 40: [85695..87910] (2216 reads) (rc=0)
+33 requests from 41: [87911..90149] (2239 reads) (rc=0)
+33 requests from 42: [90150..90544] (395 reads) (rc=0)
+
+rank[34/64] :: 
+34 requests from 34: [72436..74521] (2086 reads) (rc=2)
+34 requests from 35: [74522..76768] (2247 reads) (rc=0)
+34 requests from 36: [76769..79038] (2270 reads) (rc=0)
+34 requests from 37: [79039..81237] (2199 reads) (rc=0)
+34 requests from 38: [81238..83485] (2248 reads) (rc=0)
+34 requests from 39: [83486..85694] (2209 reads) (rc=0)
+34 requests from 40: [85695..87910] (2216 reads) (rc=0)
+34 requests from 41: [87911..90149] (2239 reads) (rc=0)
+34 requests from 42: [90150..90544] (395 reads) (rc=0)
+
+rank[35/64] :: 
+35 requests from 34: [72436..74521] (2086 reads) (rc=0)
+35 requests from 35: [74522..76768] (2247 reads) (rc=2)
+35 requests from 36: [76769..79038] (2270 reads) (rc=0)
+35 requests from 37: [79039..81237] (2199 reads) (rc=0)
+35 requests from 38: [81238..83485] (2248 reads) (rc=0)
+35 requests from 39: [83486..85694] (2209 reads) (rc=0)
+35 requests from 40: [85695..87910] (2216 reads) (rc=0)
+35 requests from 41: [87911..90149] (2239 reads) (rc=0)
+35 requests from 42: [90150..90544] (395 reads) (rc=0)
+
+rank[36/64] :: 
+36 requests from 34: [72436..74521] (2086 reads) (rc=0)
+36 requests from 35: [74522..76768] (2247 reads) (rc=0)
+36 requests from 36: [76769..79038] (2270 reads) (rc=2)
+36 requests from 37: [79039..81237] (2199 reads) (rc=0)
+36 requests from 38: [81238..83485] (2248 reads) (rc=0)
+36 requests from 39: [83486..85694] (2209 reads) (rc=0)
+36 requests from 40: [85695..87910] (2216 reads) (rc=0)
+36 requests from 41: [87911..90149] (2239 reads) (rc=0)
+36 requests from 42: [90150..90544] (395 reads) (rc=0)
+
+rank[37/64] :: 
+37 requests from 34: [72436..74521] (2086 reads) (rc=0)
+37 requests from 35: [74522..76768] (2247 reads) (rc=0)
+37 requests from 36: [76769..79038] (2270 reads) (rc=0)
+37 requests from 37: [79039..81237] (2199 reads) (rc=2)
+37 requests from 38: [81238..83485] (2248 reads) (rc=0)
+37 requests from 39: [83486..85694] (2209 reads) (rc=0)
+37 requests from 40: [85695..87910] (2216 reads) (rc=0)
+37 requests from 41: [87911..90149] (2239 reads) (rc=0)
+37 requests from 42: [90150..90544] (395 reads) (rc=0)
+
+rank[38/64] :: 
+38 requests from 34: [72436..74521] (2086 reads) (rc=0)
+38 requests from 35: [74522..76768] (2247 reads) (rc=0)
+38 requests from 36: [76769..79038] (2270 reads) (rc=0)
+38 requests from 37: [79039..81237] (2199 reads) (rc=0)
+38 requests from 38: [81238..83485] (2248 reads) (rc=2)
+38 requests from 39: [83486..85694] (2209 reads) (rc=0)
+38 requests from 40: [85695..87910] (2216 reads) (rc=0)
+38 requests from 41: [87911..90149] (2239 reads) (rc=0)
+38 requests from 42: [90150..90544] (395 reads) (rc=0)
+
+rank[39/64] :: 
+39 requests from 34: [72436..74521] (2086 reads) (rc=0)
+39 requests from 35: [74522..76768] (2247 reads) (rc=0)
+39 requests from 36: [76769..79038] (2270 reads) (rc=0)
+39 requests from 37: [79039..81237] (2199 reads) (rc=0)
+39 requests from 38: [81238..83485] (2248 reads) (rc=0)
+39 requests from 39: [83486..85694] (2209 reads) (rc=2)
+39 requests from 40: [85695..87910] (2216 reads) (rc=0)
+39 requests from 41: [87911..90149] (2239 reads) (rc=0)
+39 requests from 42: [90150..90544] (395 reads) (rc=0)
+
+rank[40/64] :: 
+40 requests from 34: [72436..74521] (2086 reads) (rc=0)
+40 requests from 35: [74522..76768] (2247 reads) (rc=0)
+40 requests from 36: [76769..79038] (2270 reads) (rc=0)
+40 requests from 37: [79039..81237] (2199 reads) (rc=0)
+40 requests from 38: [81238..83485] (2248 reads) (rc=0)
+40 requests from 39: [83486..85694] (2209 reads) (rc=0)
+40 requests from 40: [85695..87910] (2216 reads) (rc=2)
+40 requests from 41: [87911..90149] (2239 reads) (rc=0)
+40 requests from 42: [90150..90544] (395 reads) (rc=0)
+
+rank[41/64] :: 
+41 requests from 42: [90545..92385] (1841 reads) (rc=0)
+41 requests from 43: [92386..94660] (2275 reads) (rc=0)
+41 requests from 44: [94661..96958] (2298 reads) (rc=0)
+41 requests from 45: [96959..99301] (2343 reads) (rc=0)
+41 requests from 46: [99302..101585] (2284 reads) (rc=0)
+41 requests from 47: [101586..103823] (2238 reads) (rc=0)
+41 requests from 48: [103824..106075] (2252 reads) (rc=0)
+41 requests from 49: [106076..108322] (2247 reads) (rc=0)
+41 requests from 50: [108323..108653] (331 reads) (rc=0)
+
+rank[42/64] :: 
+42 requests from 42: [90545..92385] (1841 reads) (rc=2)
+42 requests from 43: [92386..94660] (2275 reads) (rc=0)
+42 requests from 44: [94661..96958] (2298 reads) (rc=0)
+42 requests from 45: [96959..99301] (2343 reads) (rc=0)
+42 requests from 46: [99302..101585] (2284 reads) (rc=0)
+42 requests from 47: [101586..103823] (2238 reads) (rc=0)
+42 requests from 48: [103824..106075] (2252 reads) (rc=0)
+42 requests from 49: [106076..108322] (2247 reads) (rc=0)
+42 requests from 50: [108323..108653] (331 reads) (rc=0)
+
+rank[43/64] :: 
+43 requests from 42: [90545..92385] (1841 reads) (rc=0)
+43 requests from 43: [92386..94660] (2275 reads) (rc=2)
+43 requests from 44: [94661..96958] (2298 reads) (rc=0)
+43 requests from 45: [96959..99301] (2343 reads) (rc=0)
+43 requests from 46: [99302..101585] (2284 reads) (rc=0)
+43 requests from 47: [101586..103823] (2238 reads) (rc=0)
+43 requests from 48: [103824..106075] (2252 reads) (rc=0)
+43 requests from 49: [106076..108322] (2247 reads) (rc=0)
+43 requests from 50: [108323..108653] (331 reads) (rc=0)
+
+rank[44/64] :: 
+44 requests from 42: [90545..92385] (1841 reads) (rc=0)
+44 requests from 43: [92386..94660] (2275 reads) (rc=0)
+44 requests from 44: [94661..96958] (2298 reads) (rc=2)
+44 requests from 45: [96959..99301] (2343 reads) (rc=0)
+44 requests from 46: [99302..101585] (2284 reads) (rc=0)
+44 requests from 47: [101586..103823] (2238 reads) (rc=0)
+44 requests from 48: [103824..106075] (2252 reads) (rc=0)
+44 requests from 49: [106076..108322] (2247 reads) (rc=0)
+44 requests from 50: [108323..108653] (331 reads) (rc=0)
+
+rank[45/64] :: 
+45 requests from 42: [90545..92385] (1841 reads) (rc=0)
+45 requests from 43: [92386..94660] (2275 reads) (rc=0)
+45 requests from 44: [94661..96958] (2298 reads) (rc=0)
+45 requests from 45: [96959..99301] (2343 reads) (rc=2)
+45 requests from 46: [99302..101585] (2284 reads) (rc=0)
+45 requests from 47: [101586..103823] (2238 reads) (rc=0)
+45 requests from 48: [103824..106075] (2252 reads) (rc=0)
+45 requests from 49: [106076..108322] (2247 reads) (rc=0)
+45 requests from 50: [108323..108653] (331 reads) (rc=0)
+
+rank[46/64] :: 
+46 requests from 42: [90545..92385] (1841 reads) (rc=0)
+46 requests from 43: [92386..94660] (2275 reads) (rc=0)
+46 requests from 44: [94661..96958] (2298 reads) (rc=0)
+46 requests from 45: [96959..99301] (2343 reads) (rc=0)
+46 requests from 46: [99302..101585] (2284 reads) (rc=2)
+46 requests from 47: [101586..103823] (2238 reads) (rc=0)
+46 requests from 48: [103824..106075] (2252 reads) (rc=0)
+46 requests from 49: [106076..108322] (2247 reads) (rc=0)
+46 requests from 50: [108323..108653] (331 reads) (rc=0)
+
+rank[47/64] :: 
+47 requests from 42: [90545..92385] (1841 reads) (rc=0)
+47 requests from 43: [92386..94660] (2275 reads) (rc=0)
+47 requests from 44: [94661..96958] (2298 reads) (rc=0)
+47 requests from 45: [96959..99301] (2343 reads) (rc=0)
+47 requests from 46: [99302..101585] (2284 reads) (rc=0)
+47 requests from 47: [101586..103823] (2238 reads) (rc=2)
+47 requests from 48: [103824..106075] (2252 reads) (rc=0)
+47 requests from 49: [106076..108322] (2247 reads) (rc=0)
+47 requests from 50: [108323..108653] (331 reads) (rc=0)
+
+rank[48/64] :: 
+48 requests from 42: [90545..92385] (1841 reads) (rc=0)
+48 requests from 43: [92386..94660] (2275 reads) (rc=0)
+48 requests from 44: [94661..96958] (2298 reads) (rc=0)
+48 requests from 45: [96959..99301] (2343 reads) (rc=0)
+48 requests from 46: [99302..101585] (2284 reads) (rc=0)
+48 requests from 47: [101586..103823] (2238 reads) (rc=0)
+48 requests from 48: [103824..106075] (2252 reads) (rc=2)
+48 requests from 49: [106076..108322] (2247 reads) (rc=0)
+48 requests from 50: [108323..108653] (331 reads) (rc=0)
+
+rank[49/64] :: 
+49 requests from 50: [108654..110568] (1915 reads) (rc=0)
+49 requests from 51: [110569..112835] (2267 reads) (rc=0)
+49 requests from 52: [112836..115114] (2279 reads) (rc=0)
+49 requests from 53: [115115..117388] (2274 reads) (rc=0)
+49 requests from 54: [117389..119678] (2290 reads) (rc=0)
+49 requests from 55: [119679..121968] (2290 reads) (rc=0)
+49 requests from 56: [121969..124304] (2336 reads) (rc=0)
+49 requests from 57: [124305..126641] (2337 reads) (rc=0)
+49 requests from 58: [126642..126762] (121 reads) (rc=0)
+
+rank[50/64] :: 
+50 requests from 50: [108654..110568] (1915 reads) (rc=2)
+50 requests from 51: [110569..112835] (2267 reads) (rc=0)
+50 requests from 52: [112836..115114] (2279 reads) (rc=0)
+50 requests from 53: [115115..117388] (2274 reads) (rc=0)
+50 requests from 54: [117389..119678] (2290 reads) (rc=0)
+50 requests from 55: [119679..121968] (2290 reads) (rc=0)
+50 requests from 56: [121969..124304] (2336 reads) (rc=0)
+50 requests from 57: [124305..126641] (2337 reads) (rc=0)
+50 requests from 58: [126642..126762] (121 reads) (rc=0)
+
+rank[51/64] :: 
+51 requests from 50: [108654..110568] (1915 reads) (rc=0)
+51 requests from 51: [110569..112835] (2267 reads) (rc=2)
+51 requests from 52: [112836..115114] (2279 reads) (rc=0)
+51 requests from 53: [115115..117388] (2274 reads) (rc=0)
+51 requests from 54: [117389..119678] (2290 reads) (rc=0)
+51 requests from 55: [119679..121968] (2290 reads) (rc=0)
+51 requests from 56: [121969..124304] (2336 reads) (rc=0)
+51 requests from 57: [124305..126641] (2337 reads) (rc=0)
+51 requests from 58: [126642..126762] (121 reads) (rc=0)
+
+rank[52/64] :: 
+52 requests from 50: [108654..110568] (1915 reads) (rc=0)
+52 requests from 51: [110569..112835] (2267 reads) (rc=0)
+52 requests from 52: [112836..115114] (2279 reads) (rc=2)
+52 requests from 53: [115115..117388] (2274 reads) (rc=0)
+52 requests from 54: [117389..119678] (2290 reads) (rc=0)
+52 requests from 55: [119679..121968] (2290 reads) (rc=0)
+52 requests from 56: [121969..124304] (2336 reads) (rc=0)
+52 requests from 57: [124305..126641] (2337 reads) (rc=0)
+52 requests from 58: [126642..126762] (121 reads) (rc=0)
+
+rank[53/64] :: 
+53 requests from 50: [108654..110568] (1915 reads) (rc=0)
+53 requests from 51: [110569..112835] (2267 reads) (rc=0)
+53 requests from 52: [112836..115114] (2279 reads) (rc=0)
+53 requests from 53: [115115..117388] (2274 reads) (rc=2)
+53 requests from 54: [117389..119678] (2290 reads) (rc=0)
+53 requests from 55: [119679..121968] (2290 reads) (rc=0)
+53 requests from 56: [121969..124304] (2336 reads) (rc=0)
+53 requests from 57: [124305..126641] (2337 reads) (rc=0)
+53 requests from 58: [126642..126762] (121 reads) (rc=0)
+
+rank[54/64] :: 
+54 requests from 50: [108654..110568] (1915 reads) (rc=0)
+54 requests from 51: [110569..112835] (2267 reads) (rc=0)
+54 requests from 52: [112836..115114] (2279 reads) (rc=0)
+54 requests from 53: [115115..117388] (2274 reads) (rc=0)
+54 requests from 54: [117389..119678] (2290 reads) (rc=2)
+54 requests from 55: [119679..121968] (2290 reads) (rc=0)
+54 requests from 56: [121969..124304] (2336 reads) (rc=0)
+54 requests from 57: [124305..126641] (2337 reads) (rc=0)
+54 requests from 58: [126642..126762] (121 reads) (rc=0)
+
+rank[55/64] :: 
+55 requests from 50: [108654..110568] (1915 reads) (rc=0)
+55 requests from 51: [110569..112835] (2267 reads) (rc=0)
+55 requests from 52: [112836..115114] (2279 reads) (rc=0)
+55 requests from 53: [115115..117388] (2274 reads) (rc=0)
+55 requests from 54: [117389..119678] (2290 reads) (rc=0)
+55 requests from 55: [119679..121968] (2290 reads) (rc=2)
+55 requests from 56: [121969..124304] (2336 reads) (rc=0)
+55 requests from 57: [124305..126641] (2337 reads) (rc=0)
+55 requests from 58: [126642..126762] (121 reads) (rc=0)
+
+rank[56/64] :: 
+56 requests from 50: [108654..110568] (1915 reads) (rc=0)
+56 requests from 51: [110569..112835] (2267 reads) (rc=0)
+56 requests from 52: [112836..115114] (2279 reads) (rc=0)
+56 requests from 53: [115115..117388] (2274 reads) (rc=0)
+56 requests from 54: [117389..119678] (2290 reads) (rc=0)
+56 requests from 55: [119679..121968] (2290 reads) (rc=0)
+56 requests from 56: [121969..124304] (2336 reads) (rc=2)
+56 requests from 57: [124305..126641] (2337 reads) (rc=0)
+56 requests from 58: [126642..126762] (121 reads) (rc=0)
+
+rank[57/64] :: 
+57 requests from 58: [126763..128952] (2190 reads) (rc=0)
+57 requests from 59: [128953..131230] (2278 reads) (rc=0)
+57 requests from 60: [131231..133507] (2277 reads) (rc=0)
+57 requests from 61: [133508..135775] (2268 reads) (rc=0)
+57 requests from 62: [135776..138039] (2264 reads) (rc=0)
+57 requests from 63: [138040..140289] (2250 reads) (rc=0)
+57 requests from 64: [140290..142539] (2250 reads) (rc=0)
+57 requests from 65: [142540..144874] (2335 reads) (rc=0)
+
+rank[58/64] :: 
+58 requests from 58: [126763..128952] (2190 reads) (rc=2)
+58 requests from 59: [128953..131230] (2278 reads) (rc=0)
+58 requests from 60: [131231..133507] (2277 reads) (rc=0)
+58 requests from 61: [133508..135775] (2268 reads) (rc=0)
+58 requests from 62: [135776..138039] (2264 reads) (rc=0)
+58 requests from 63: [138040..140289] (2250 reads) (rc=0)
+58 requests from 64: [140290..142539] (2250 reads) (rc=0)
+58 requests from 65: [142540..144874] (2335 reads) (rc=0)
+
+rank[59/64] :: 
+59 requests from 58: [126763..128952] (2190 reads) (rc=0)
+59 requests from 59: [128953..131230] (2278 reads) (rc=2)
+59 requests from 60: [131231..133507] (2277 reads) (rc=0)
+59 requests from 61: [133508..135775] (2268 reads) (rc=0)
+59 requests from 62: [135776..138039] (2264 reads) (rc=0)
+59 requests from 63: [138040..140289] (2250 reads) (rc=0)
+59 requests from 64: [140290..142539] (2250 reads) (rc=0)
+59 requests from 65: [142540..144874] (2335 reads) (rc=0)
+
+rank[60/64] :: 
+60 requests from 58: [126763..128952] (2190 reads) (rc=0)
+60 requests from 59: [128953..131230] (2278 reads) (rc=0)
+60 requests from 60: [131231..133507] (2277 reads) (rc=2)
+60 requests from 61: [133508..135775] (2268 reads) (rc=0)
+60 requests from 62: [135776..138039] (2264 reads) (rc=0)
+60 requests from 63: [138040..140289] (2250 reads) (rc=0)
+60 requests from 64: [140290..142539] (2250 reads) (rc=0)
+60 requests from 65: [142540..144874] (2335 reads) (rc=0)
+
+rank[61/64] :: 
+61 requests from 58: [126763..128952] (2190 reads) (rc=0)
+61 requests from 59: [128953..131230] (2278 reads) (rc=0)
+61 requests from 60: [131231..133507] (2277 reads) (rc=0)
+61 requests from 61: [133508..135775] (2268 reads) (rc=2)
+61 requests from 62: [135776..138039] (2264 reads) (rc=0)
+61 requests from 63: [138040..140289] (2250 reads) (rc=0)
+61 requests from 64: [140290..142539] (2250 reads) (rc=0)
+61 requests from 65: [142540..144874] (2335 reads) (rc=0)
+
+rank[62/64] :: 
+62 requests from 58: [126763..128952] (2190 reads) (rc=0)
+62 requests from 59: [128953..131230] (2278 reads) (rc=0)
+62 requests from 60: [131231..133507] (2277 reads) (rc=0)
+62 requests from 61: [133508..135775] (2268 reads) (rc=0)
+62 requests from 62: [135776..138039] (2264 reads) (rc=2)
+62 requests from 63: [138040..140289] (2250 reads) (rc=0)
+62 requests from 64: [140290..142539] (2250 reads) (rc=0)
+62 requests from 65: [142540..144874] (2335 reads) (rc=0)
+
+rank[63/64] :: 
+63 requests from 58: [126763..128952] (2190 reads) (rc=0)
+63 requests from 59: [128953..131230] (2278 reads) (rc=0)
+63 requests from 60: [131231..133507] (2277 reads) (rc=0)
+63 requests from 61: [133508..135775] (2268 reads) (rc=0)
+63 requests from 62: [135776..138039] (2264 reads) (rc=0)
+63 requests from 63: [138040..140289] (2250 reads) (rc=2)
+63 requests from 64: [140290..142539] (2250 reads) (rc=0)
+63 requests from 65: [142540..144874] (2335 reads) (rc=0)
+
+rank[64/64] :: 
+64 requests from 58: [126763..128952] (2190 reads) (rc=0)
+64 requests from 59: [128953..131230] (2278 reads) (rc=0)
+64 requests from 60: [131231..133507] (2277 reads) (rc=0)
+64 requests from 61: [133508..135775] (2268 reads) (rc=0)
+64 requests from 62: [135776..138039] (2264 reads) (rc=0)
+64 requests from 63: [138040..140289] (2250 reads) (rc=0)
+64 requests from 64: [140290..142539] (2250 reads) (rc=2)
+64 requests from 65: [142540..144874] (2335 reads) (rc=0)
+
+
+Requests TO me:
+===============
+
+rank[1/64] :: 
+
+rank[2/64] :: 
+1 requests from 2: [0..2358] (2359 reads) (rc=0)
+2 requests from 2: [0..2358] (2359 reads) (rc=2)
+3 requests from 2: [0..2358] (2359 reads) (rc=0)
+4 requests from 2: [0..2358] (2359 reads) (rc=0)
+5 requests from 2: [0..2358] (2359 reads) (rc=0)
+6 requests from 2: [0..2358] (2359 reads) (rc=0)
+7 requests from 2: [0..2358] (2359 reads) (rc=0)
+8 requests from 2: [0..2358] (2359 reads) (rc=0)
+
+rank[3/64] :: 
+1 requests from 3: [2359..4632] (2274 reads) (rc=0)
+2 requests from 3: [2359..4632] (2274 reads) (rc=0)
+3 requests from 3: [2359..4632] (2274 reads) (rc=2)
+4 requests from 3: [2359..4632] (2274 reads) (rc=0)
+5 requests from 3: [2359..4632] (2274 reads) (rc=0)
+6 requests from 3: [2359..4632] (2274 reads) (rc=0)
+7 requests from 3: [2359..4632] (2274 reads) (rc=0)
+8 requests from 3: [2359..4632] (2274 reads) (rc=0)
+
+rank[4/64] :: 
+1 requests from 4: [4633..6923] (2291 reads) (rc=0)
+2 requests from 4: [4633..6923] (2291 reads) (rc=0)
+3 requests from 4: [4633..6923] (2291 reads) (rc=0)
+4 requests from 4: [4633..6923] (2291 reads) (rc=2)
+5 requests from 4: [4633..6923] (2291 reads) (rc=0)
+6 requests from 4: [4633..6923] (2291 reads) (rc=0)
+7 requests from 4: [4633..6923] (2291 reads) (rc=0)
+8 requests from 4: [4633..6923] (2291 reads) (rc=0)
+
+rank[5/64] :: 
+1 requests from 5: [6924..9182] (2259 reads) (rc=0)
+2 requests from 5: [6924..9182] (2259 reads) (rc=0)
+3 requests from 5: [6924..9182] (2259 reads) (rc=0)
+4 requests from 5: [6924..9182] (2259 reads) (rc=0)
+5 requests from 5: [6924..9182] (2259 reads) (rc=2)
+6 requests from 5: [6924..9182] (2259 reads) (rc=0)
+7 requests from 5: [6924..9182] (2259 reads) (rc=0)
+8 requests from 5: [6924..9182] (2259 reads) (rc=0)
+
+rank[6/64] :: 
+1 requests from 6: [9183..11428] (2246 reads) (rc=0)
+2 requests from 6: [9183..11428] (2246 reads) (rc=0)
+3 requests from 6: [9183..11428] (2246 reads) (rc=0)
+4 requests from 6: [9183..11428] (2246 reads) (rc=0)
+5 requests from 6: [9183..11428] (2246 reads) (rc=0)
+6 requests from 6: [9183..11428] (2246 reads) (rc=2)
+7 requests from 6: [9183..11428] (2246 reads) (rc=0)
+8 requests from 6: [9183..11428] (2246 reads) (rc=0)
+
+rank[7/64] :: 
+1 requests from 7: [11429..13679] (2251 reads) (rc=0)
+2 requests from 7: [11429..13679] (2251 reads) (rc=0)
+3 requests from 7: [11429..13679] (2251 reads) (rc=0)
+4 requests from 7: [11429..13679] (2251 reads) (rc=0)
+5 requests from 7: [11429..13679] (2251 reads) (rc=0)
+6 requests from 7: [11429..13679] (2251 reads) (rc=0)
+7 requests from 7: [11429..13679] (2251 reads) (rc=2)
+8 requests from 7: [11429..13679] (2251 reads) (rc=0)
+
+rank[8/64] :: 
+1 requests from 8: [13680..15930] (2251 reads) (rc=0)
+2 requests from 8: [13680..15930] (2251 reads) (rc=0)
+3 requests from 8: [13680..15930] (2251 reads) (rc=0)
+4 requests from 8: [13680..15930] (2251 reads) (rc=0)
+5 requests from 8: [13680..15930] (2251 reads) (rc=0)
+6 requests from 8: [13680..15930] (2251 reads) (rc=0)
+7 requests from 8: [13680..15930] (2251 reads) (rc=0)
+8 requests from 8: [13680..15930] (2251 reads) (rc=2)
+
+rank[9/64] :: 
+1 requests from 9: [15931..18108] (2178 reads) (rc=0)
+2 requests from 9: [15931..18108] (2178 reads) (rc=0)
+3 requests from 9: [15931..18108] (2178 reads) (rc=0)
+4 requests from 9: [15931..18108] (2178 reads) (rc=0)
+5 requests from 9: [15931..18108] (2178 reads) (rc=0)
+6 requests from 9: [15931..18108] (2178 reads) (rc=0)
+7 requests from 9: [15931..18108] (2178 reads) (rc=0)
+8 requests from 9: [15931..18108] (2178 reads) (rc=0)
+9 requests from 9: [18109..18189] (81 reads) (rc=2)
+10 requests from 9: [18109..18189] (81 reads) (rc=0)
+11 requests from 9: [18109..18189] (81 reads) (rc=0)
+12 requests from 9: [18109..18189] (81 reads) (rc=0)
+13 requests from 9: [18109..18189] (81 reads) (rc=0)
+14 requests from 9: [18109..18189] (81 reads) (rc=0)
+15 requests from 9: [18109..18189] (81 reads) (rc=0)
+16 requests from 9: [18109..18189] (81 reads) (rc=0)
+
+rank[10/64] :: 
+9 requests from 10: [18190..20462] (2273 reads) (rc=0)
+10 requests from 10: [18190..20462] (2273 reads) (rc=2)
+11 requests from 10: [18190..20462] (2273 reads) (rc=0)
+12 requests from 10: [18190..20462] (2273 reads) (rc=0)
+13 requests from 10: [18190..20462] (2273 reads) (rc=0)
+14 requests from 10: [18190..20462] (2273 reads) (rc=0)
+15 requests from 10: [18190..20462] (2273 reads) (rc=0)
+16 requests from 10: [18190..20462] (2273 reads) (rc=0)
+
+rank[11/64] :: 
+9 requests from 11: [20463..22697] (2235 reads) (rc=0)
+10 requests from 11: [20463..22697] (2235 reads) (rc=0)
+11 requests from 11: [20463..22697] (2235 reads) (rc=2)
+12 requests from 11: [20463..22697] (2235 reads) (rc=0)
+13 requests from 11: [20463..22697] (2235 reads) (rc=0)
+14 requests from 11: [20463..22697] (2235 reads) (rc=0)
+15 requests from 11: [20463..22697] (2235 reads) (rc=0)
+16 requests from 11: [20463..22697] (2235 reads) (rc=0)
+
+rank[12/64] :: 
+9 requests from 12: [22698..24947] (2250 reads) (rc=0)
+10 requests from 12: [22698..24947] (2250 reads) (rc=0)
+11 requests from 12: [22698..24947] (2250 reads) (rc=0)
+12 requests from 12: [22698..24947] (2250 reads) (rc=2)
+13 requests from 12: [22698..24947] (2250 reads) (rc=0)
+14 requests from 12: [22698..24947] (2250 reads) (rc=0)
+15 requests from 12: [22698..24947] (2250 reads) (rc=0)
+16 requests from 12: [22698..24947] (2250 reads) (rc=0)
+
+rank[13/64] :: 
+9 requests from 13: [24948..27204] (2257 reads) (rc=0)
+10 requests from 13: [24948..27204] (2257 reads) (rc=0)
+11 requests from 13: [24948..27204] (2257 reads) (rc=0)
+12 requests from 13: [24948..27204] (2257 reads) (rc=0)
+13 requests from 13: [24948..27204] (2257 reads) (rc=2)
+14 requests from 13: [24948..27204] (2257 reads) (rc=0)
+15 requests from 13: [24948..27204] (2257 reads) (rc=0)
+16 requests from 13: [24948..27204] (2257 reads) (rc=0)
+
+rank[14/64] :: 
+9 requests from 14: [27205..29445] (2241 reads) (rc=0)
+10 requests from 14: [27205..29445] (2241 reads) (rc=0)
+11 requests from 14: [27205..29445] (2241 reads) (rc=0)
+12 requests from 14: [27205..29445] (2241 reads) (rc=0)
+13 requests from 14: [27205..29445] (2241 reads) (rc=0)
+14 requests from 14: [27205..29445] (2241 reads) (rc=2)
+15 requests from 14: [27205..29445] (2241 reads) (rc=0)
+16 requests from 14: [27205..29445] (2241 reads) (rc=0)
+
+rank[15/64] :: 
+9 requests from 15: [29446..31683] (2238 reads) (rc=0)
+10 requests from 15: [29446..31683] (2238 reads) (rc=0)
+11 requests from 15: [29446..31683] (2238 reads) (rc=0)
+12 requests from 15: [29446..31683] (2238 reads) (rc=0)
+13 requests from 15: [29446..31683] (2238 reads) (rc=0)
+14 requests from 15: [29446..31683] (2238 reads) (rc=0)
+15 requests from 15: [29446..31683] (2238 reads) (rc=2)
+16 requests from 15: [29446..31683] (2238 reads) (rc=0)
+
+rank[16/64] :: 
+9 requests from 16: [31684..33916] (2233 reads) (rc=0)
+10 requests from 16: [31684..33916] (2233 reads) (rc=0)
+11 requests from 16: [31684..33916] (2233 reads) (rc=0)
+12 requests from 16: [31684..33916] (2233 reads) (rc=0)
+13 requests from 16: [31684..33916] (2233 reads) (rc=0)
+14 requests from 16: [31684..33916] (2233 reads) (rc=0)
+15 requests from 16: [31684..33916] (2233 reads) (rc=0)
+16 requests from 16: [31684..33916] (2233 reads) (rc=2)
+
+rank[17/64] :: 
+9 requests from 17: [33917..36157] (2241 reads) (rc=0)
+10 requests from 17: [33917..36157] (2241 reads) (rc=0)
+11 requests from 17: [33917..36157] (2241 reads) (rc=0)
+12 requests from 17: [33917..36157] (2241 reads) (rc=0)
+13 requests from 17: [33917..36157] (2241 reads) (rc=0)
+14 requests from 17: [33917..36157] (2241 reads) (rc=0)
+15 requests from 17: [33917..36157] (2241 reads) (rc=0)
+16 requests from 17: [33917..36157] (2241 reads) (rc=0)
+
+rank[18/64] :: 
+9 requests from 18: [36158..36217] (60 reads) (rc=0)
+10 requests from 18: [36158..36217] (60 reads) (rc=0)
+11 requests from 18: [36158..36217] (60 reads) (rc=0)
+12 requests from 18: [36158..36217] (60 reads) (rc=0)
+13 requests from 18: [36158..36217] (60 reads) (rc=0)
+14 requests from 18: [36158..36217] (60 reads) (rc=0)
+15 requests from 18: [36158..36217] (60 reads) (rc=0)
+16 requests from 18: [36158..36217] (60 reads) (rc=0)
+17 requests from 18: [36218..38428] (2211 reads) (rc=0)
+18 requests from 18: [36218..38428] (2211 reads) (rc=2)
+19 requests from 18: [36218..38428] (2211 reads) (rc=0)
+20 requests from 18: [36218..38428] (2211 reads) (rc=0)
+21 requests from 18: [36218..38428] (2211 reads) (rc=0)
+22 requests from 18: [36218..38428] (2211 reads) (rc=0)
+23 requests from 18: [36218..38428] (2211 reads) (rc=0)
+24 requests from 18: [36218..38428] (2211 reads) (rc=0)
+
+rank[19/64] :: 
+17 requests from 19: [38429..40707] (2279 reads) (rc=0)
+18 requests from 19: [38429..40707] (2279 reads) (rc=0)
+19 requests from 19: [38429..40707] (2279 reads) (rc=2)
+20 requests from 19: [38429..40707] (2279 reads) (rc=0)
+21 requests from 19: [38429..40707] (2279 reads) (rc=0)
+22 requests from 19: [38429..40707] (2279 reads) (rc=0)
+23 requests from 19: [38429..40707] (2279 reads) (rc=0)
+24 requests from 19: [38429..40707] (2279 reads) (rc=0)
+
+rank[20/64] :: 
+17 requests from 20: [40708..42964] (2257 reads) (rc=0)
+18 requests from 20: [40708..42964] (2257 reads) (rc=0)
+19 requests from 20: [40708..42964] (2257 reads) (rc=0)
+20 requests from 20: [40708..42964] (2257 reads) (rc=2)
+21 requests from 20: [40708..42964] (2257 reads) (rc=0)
+22 requests from 20: [40708..42964] (2257 reads) (rc=0)
+23 requests from 20: [40708..42964] (2257 reads) (rc=0)
+24 requests from 20: [40708..42964] (2257 reads) (rc=0)
+
+rank[21/64] :: 
+17 requests from 21: [42965..45204] (2240 reads) (rc=0)
+18 requests from 21: [42965..45204] (2240 reads) (rc=0)
+19 requests from 21: [42965..45204] (2240 reads) (rc=0)
+20 requests from 21: [42965..45204] (2240 reads) (rc=0)
+21 requests from 21: [42965..45204] (2240 reads) (rc=2)
+22 requests from 21: [42965..45204] (2240 reads) (rc=0)
+23 requests from 21: [42965..45204] (2240 reads) (rc=0)
+24 requests from 21: [42965..45204] (2240 reads) (rc=0)
+
+rank[22/64] :: 
+17 requests from 22: [45205..47515] (2311 reads) (rc=0)
+18 requests from 22: [45205..47515] (2311 reads) (rc=0)
+19 requests from 22: [45205..47515] (2311 reads) (rc=0)
+20 requests from 22: [45205..47515] (2311 reads) (rc=0)
+21 requests from 22: [45205..47515] (2311 reads) (rc=0)
+22 requests from 22: [45205..47515] (2311 reads) (rc=2)
+23 requests from 22: [45205..47515] (2311 reads) (rc=0)
+24 requests from 22: [45205..47515] (2311 reads) (rc=0)
+
+rank[23/64] :: 
+17 requests from 23: [47516..49764] (2249 reads) (rc=0)
+18 requests from 23: [47516..49764] (2249 reads) (rc=0)
+19 requests from 23: [47516..49764] (2249 reads) (rc=0)
+20 requests from 23: [47516..49764] (2249 reads) (rc=0)
+21 requests from 23: [47516..49764] (2249 reads) (rc=0)
+22 requests from 23: [47516..49764] (2249 reads) (rc=0)
+23 requests from 23: [47516..49764] (2249 reads) (rc=2)
+24 requests from 23: [47516..49764] (2249 reads) (rc=0)
+
+rank[24/64] :: 
+17 requests from 24: [49765..52019] (2255 reads) (rc=0)
+18 requests from 24: [49765..52019] (2255 reads) (rc=0)
+19 requests from 24: [49765..52019] (2255 reads) (rc=0)
+20 requests from 24: [49765..52019] (2255 reads) (rc=0)
+21 requests from 24: [49765..52019] (2255 reads) (rc=0)
+22 requests from 24: [49765..52019] (2255 reads) (rc=0)
+23 requests from 24: [49765..52019] (2255 reads) (rc=0)
+24 requests from 24: [49765..52019] (2255 reads) (rc=2)
+
+rank[25/64] :: 
+17 requests from 25: [52020..54283] (2264 reads) (rc=0)
+18 requests from 25: [52020..54283] (2264 reads) (rc=0)
+19 requests from 25: [52020..54283] (2264 reads) (rc=0)
+20 requests from 25: [52020..54283] (2264 reads) (rc=0)
+21 requests from 25: [52020..54283] (2264 reads) (rc=0)
+22 requests from 25: [52020..54283] (2264 reads) (rc=0)
+23 requests from 25: [52020..54283] (2264 reads) (rc=0)
+24 requests from 25: [52020..54283] (2264 reads) (rc=0)
+
+rank[26/64] :: 
+17 requests from 26: [54284..54326] (43 reads) (rc=0)
+18 requests from 26: [54284..54326] (43 reads) (rc=0)
+19 requests from 26: [54284..54326] (43 reads) (rc=0)
+20 requests from 26: [54284..54326] (43 reads) (rc=0)
+21 requests from 26: [54284..54326] (43 reads) (rc=0)
+22 requests from 26: [54284..54326] (43 reads) (rc=0)
+23 requests from 26: [54284..54326] (43 reads) (rc=0)
+24 requests from 26: [54284..54326] (43 reads) (rc=0)
+25 requests from 26: [54327..56524] (2198 reads) (rc=0)
+26 requests from 26: [54327..56524] (2198 reads) (rc=2)
+27 requests from 26: [54327..56524] (2198 reads) (rc=0)
+28 requests from 26: [54327..56524] (2198 reads) (rc=0)
+29 requests from 26: [54327..56524] (2198 reads) (rc=0)
+30 requests from 26: [54327..56524] (2198 reads) (rc=0)
+31 requests from 26: [54327..56524] (2198 reads) (rc=0)
+32 requests from 26: [54327..56524] (2198 reads) (rc=0)
+
+rank[27/64] :: 
+25 requests from 27: [56525..58818] (2294 reads) (rc=0)
+26 requests from 27: [56525..58818] (2294 reads) (rc=0)
+27 requests from 27: [56525..58818] (2294 reads) (rc=2)
+28 requests from 27: [56525..58818] (2294 reads) (rc=0)
+29 requests from 27: [56525..58818] (2294 reads) (rc=0)
+30 requests from 27: [56525..58818] (2294 reads) (rc=0)
+31 requests from 27: [56525..58818] (2294 reads) (rc=0)
+32 requests from 27: [56525..58818] (2294 reads) (rc=0)
+
+rank[28/64] :: 
+25 requests from 28: [58819..61053] (2235 reads) (rc=0)
+26 requests from 28: [58819..61053] (2235 reads) (rc=0)
+27 requests from 28: [58819..61053] (2235 reads) (rc=0)
+28 requests from 28: [58819..61053] (2235 reads) (rc=2)
+29 requests from 28: [58819..61053] (2235 reads) (rc=0)
+30 requests from 28: [58819..61053] (2235 reads) (rc=0)
+31 requests from 28: [58819..61053] (2235 reads) (rc=0)
+32 requests from 28: [58819..61053] (2235 reads) (rc=0)
+
+rank[29/64] :: 
+25 requests from 29: [61054..63289] (2236 reads) (rc=0)
+26 requests from 29: [61054..63289] (2236 reads) (rc=0)
+27 requests from 29: [61054..63289] (2236 reads) (rc=0)
+28 requests from 29: [61054..63289] (2236 reads) (rc=0)
+29 requests from 29: [61054..63289] (2236 reads) (rc=2)
+30 requests from 29: [61054..63289] (2236 reads) (rc=0)
+31 requests from 29: [61054..63289] (2236 reads) (rc=0)
+32 requests from 29: [61054..63289] (2236 reads) (rc=0)
+
+rank[30/64] :: 
+25 requests from 30: [63290..65503] (2214 reads) (rc=0)
+26 requests from 30: [63290..65503] (2214 reads) (rc=0)
+27 requests from 30: [63290..65503] (2214 reads) (rc=0)
+28 requests from 30: [63290..65503] (2214 reads) (rc=0)
+29 requests from 30: [63290..65503] (2214 reads) (rc=0)
+30 requests from 30: [63290..65503] (2214 reads) (rc=2)
+31 requests from 30: [63290..65503] (2214 reads) (rc=0)
+32 requests from 30: [63290..65503] (2214 reads) (rc=0)
+
+rank[31/64] :: 
+25 requests from 31: [65504..67775] (2272 reads) (rc=0)
+26 requests from 31: [65504..67775] (2272 reads) (rc=0)
+27 requests from 31: [65504..67775] (2272 reads) (rc=0)
+28 requests from 31: [65504..67775] (2272 reads) (rc=0)
+29 requests from 31: [65504..67775] (2272 reads) (rc=0)
+30 requests from 31: [65504..67775] (2272 reads) (rc=0)
+31 requests from 31: [65504..67775] (2272 reads) (rc=2)
+32 requests from 31: [65504..67775] (2272 reads) (rc=0)
+
+rank[32/64] :: 
+25 requests from 32: [67776..70006] (2231 reads) (rc=0)
+26 requests from 32: [67776..70006] (2231 reads) (rc=0)
+27 requests from 32: [67776..70006] (2231 reads) (rc=0)
+28 requests from 32: [67776..70006] (2231 reads) (rc=0)
+29 requests from 32: [67776..70006] (2231 reads) (rc=0)
+30 requests from 32: [67776..70006] (2231 reads) (rc=0)
+31 requests from 32: [67776..70006] (2231 reads) (rc=0)
+32 requests from 32: [67776..70006] (2231 reads) (rc=2)
+
+rank[33/64] :: 
+25 requests from 33: [70007..72304] (2298 reads) (rc=0)
+26 requests from 33: [70007..72304] (2298 reads) (rc=0)
+27 requests from 33: [70007..72304] (2298 reads) (rc=0)
+28 requests from 33: [70007..72304] (2298 reads) (rc=0)
+29 requests from 33: [70007..72304] (2298 reads) (rc=0)
+30 requests from 33: [70007..72304] (2298 reads) (rc=0)
+31 requests from 33: [70007..72304] (2298 reads) (rc=0)
+32 requests from 33: [70007..72304] (2298 reads) (rc=0)
+
+rank[34/64] :: 
+25 requests from 34: [72305..72435] (131 reads) (rc=0)
+26 requests from 34: [72305..72435] (131 reads) (rc=0)
+27 requests from 34: [72305..72435] (131 reads) (rc=0)
+28 requests from 34: [72305..72435] (131 reads) (rc=0)
+29 requests from 34: [72305..72435] (131 reads) (rc=0)
+30 requests from 34: [72305..72435] (131 reads) (rc=0)
+31 requests from 34: [72305..72435] (131 reads) (rc=0)
+32 requests from 34: [72305..72435] (131 reads) (rc=0)
+33 requests from 34: [72436..74521] (2086 reads) (rc=0)
+34 requests from 34: [72436..74521] (2086 reads) (rc=2)
+35 requests from 34: [72436..74521] (2086 reads) (rc=0)
+36 requests from 34: [72436..74521] (2086 reads) (rc=0)
+37 requests from 34: [72436..74521] (2086 reads) (rc=0)
+38 requests from 34: [72436..74521] (2086 reads) (rc=0)
+39 requests from 34: [72436..74521] (2086 reads) (rc=0)
+40 requests from 34: [72436..74521] (2086 reads) (rc=0)
+
+rank[35/64] :: 
+33 requests from 35: [74522..76768] (2247 reads) (rc=0)
+34 requests from 35: [74522..76768] (2247 reads) (rc=0)
+35 requests from 35: [74522..76768] (2247 reads) (rc=2)
+36 requests from 35: [74522..76768] (2247 reads) (rc=0)
+37 requests from 35: [74522..76768] (2247 reads) (rc=0)
+38 requests from 35: [74522..76768] (2247 reads) (rc=0)
+39 requests from 35: [74522..76768] (2247 reads) (rc=0)
+40 requests from 35: [74522..76768] (2247 reads) (rc=0)
+
+rank[36/64] :: 
+33 requests from 36: [76769..79038] (2270 reads) (rc=0)
+34 requests from 36: [76769..79038] (2270 reads) (rc=0)
+35 requests from 36: [76769..79038] (2270 reads) (rc=0)
+36 requests from 36: [76769..79038] (2270 reads) (rc=2)
+37 requests from 36: [76769..79038] (2270 reads) (rc=0)
+38 requests from 36: [76769..79038] (2270 reads) (rc=0)
+39 requests from 36: [76769..79038] (2270 reads) (rc=0)
+40 requests from 36: [76769..79038] (2270 reads) (rc=0)
+
+rank[37/64] :: 
+33 requests from 37: [79039..81237] (2199 reads) (rc=0)
+34 requests from 37: [79039..81237] (2199 reads) (rc=0)
+35 requests from 37: [79039..81237] (2199 reads) (rc=0)
+36 requests from 37: [79039..81237] (2199 reads) (rc=0)
+37 requests from 37: [79039..81237] (2199 reads) (rc=2)
+38 requests from 37: [79039..81237] (2199 reads) (rc=0)
+39 requests from 37: [79039..81237] (2199 reads) (rc=0)
+40 requests from 37: [79039..81237] (2199 reads) (rc=0)
+
+rank[38/64] :: 
+33 requests from 38: [81238..83485] (2248 reads) (rc=0)
+34 requests from 38: [81238..83485] (2248 reads) (rc=0)
+35 requests from 38: [81238..83485] (2248 reads) (rc=0)
+36 requests from 38: [81238..83485] (2248 reads) (rc=0)
+37 requests from 38: [81238..83485] (2248 reads) (rc=0)
+38 requests from 38: [81238..83485] (2248 reads) (rc=2)
+39 requests from 38: [81238..83485] (2248 reads) (rc=0)
+40 requests from 38: [81238..83485] (2248 reads) (rc=0)
+
+rank[39/64] :: 
+33 requests from 39: [83486..85694] (2209 reads) (rc=0)
+34 requests from 39: [83486..85694] (2209 reads) (rc=0)
+35 requests from 39: [83486..85694] (2209 reads) (rc=0)
+36 requests from 39: [83486..85694] (2209 reads) (rc=0)
+37 requests from 39: [83486..85694] (2209 reads) (rc=0)
+38 requests from 39: [83486..85694] (2209 reads) (rc=0)
+39 requests from 39: [83486..85694] (2209 reads) (rc=2)
+40 requests from 39: [83486..85694] (2209 reads) (rc=0)
+
+rank[40/64] :: 
+33 requests from 40: [85695..87910] (2216 reads) (rc=0)
+34 requests from 40: [85695..87910] (2216 reads) (rc=0)
+35 requests from 40: [85695..87910] (2216 reads) (rc=0)
+36 requests from 40: [85695..87910] (2216 reads) (rc=0)
+37 requests from 40: [85695..87910] (2216 reads) (rc=0)
+38 requests from 40: [85695..87910] (2216 reads) (rc=0)
+39 requests from 40: [85695..87910] (2216 reads) (rc=0)
+40 requests from 40: [85695..87910] (2216 reads) (rc=2)
+
+rank[41/64] :: 
+33 requests from 41: [87911..90149] (2239 reads) (rc=0)
+34 requests from 41: [87911..90149] (2239 reads) (rc=0)
+35 requests from 41: [87911..90149] (2239 reads) (rc=0)
+36 requests from 41: [87911..90149] (2239 reads) (rc=0)
+37 requests from 41: [87911..90149] (2239 reads) (rc=0)
+38 requests from 41: [87911..90149] (2239 reads) (rc=0)
+39 requests from 41: [87911..90149] (2239 reads) (rc=0)
+40 requests from 41: [87911..90149] (2239 reads) (rc=0)
+
+rank[42/64] :: 
+33 requests from 42: [90150..90544] (395 reads) (rc=0)
+34 requests from 42: [90150..90544] (395 reads) (rc=0)
+35 requests from 42: [90150..90544] (395 reads) (rc=0)
+36 requests from 42: [90150..90544] (395 reads) (rc=0)
+37 requests from 42: [90150..90544] (395 reads) (rc=0)
+38 requests from 42: [90150..90544] (395 reads) (rc=0)
+39 requests from 42: [90150..90544] (395 reads) (rc=0)
+40 requests from 42: [90150..90544] (395 reads) (rc=0)
+41 requests from 42: [90545..92385] (1841 reads) (rc=0)
+42 requests from 42: [90545..92385] (1841 reads) (rc=2)
+43 requests from 42: [90545..92385] (1841 reads) (rc=0)
+44 requests from 42: [90545..92385] (1841 reads) (rc=0)
+45 requests from 42: [90545..92385] (1841 reads) (rc=0)
+46 requests from 42: [90545..92385] (1841 reads) (rc=0)
+47 requests from 42: [90545..92385] (1841 reads) (rc=0)
+48 requests from 42: [90545..92385] (1841 reads) (rc=0)
+
+rank[43/64] :: 
+41 requests from 43: [92386..94660] (2275 reads) (rc=0)
+42 requests from 43: [92386..94660] (2275 reads) (rc=0)
+43 requests from 43: [92386..94660] (2275 reads) (rc=2)
+44 requests from 43: [92386..94660] (2275 reads) (rc=0)
+45 requests from 43: [92386..94660] (2275 reads) (rc=0)
+46 requests from 43: [92386..94660] (2275 reads) (rc=0)
+47 requests from 43: [92386..94660] (2275 reads) (rc=0)
+48 requests from 43: [92386..94660] (2275 reads) (rc=0)
+
+rank[44/64] :: 
+41 requests from 44: [94661..96958] (2298 reads) (rc=0)
+42 requests from 44: [94661..96958] (2298 reads) (rc=0)
+43 requests from 44: [94661..96958] (2298 reads) (rc=0)
+44 requests from 44: [94661..96958] (2298 reads) (rc=2)
+45 requests from 44: [94661..96958] (2298 reads) (rc=0)
+46 requests from 44: [94661..96958] (2298 reads) (rc=0)
+47 requests from 44: [94661..96958] (2298 reads) (rc=0)
+48 requests from 44: [94661..96958] (2298 reads) (rc=0)
+
+rank[45/64] :: 
+41 requests from 45: [96959..99301] (2343 reads) (rc=0)
+42 requests from 45: [96959..99301] (2343 reads) (rc=0)
+43 requests from 45: [96959..99301] (2343 reads) (rc=0)
+44 requests from 45: [96959..99301] (2343 reads) (rc=0)
+45 requests from 45: [96959..99301] (2343 reads) (rc=2)
+46 requests from 45: [96959..99301] (2343 reads) (rc=0)
+47 requests from 45: [96959..99301] (2343 reads) (rc=0)
+48 requests from 45: [96959..99301] (2343 reads) (rc=0)
+
+rank[46/64] :: 
+41 requests from 46: [99302..101585] (2284 reads) (rc=0)
+42 requests from 46: [99302..101585] (2284 reads) (rc=0)
+43 requests from 46: [99302..101585] (2284 reads) (rc=0)
+44 requests from 46: [99302..101585] (2284 reads) (rc=0)
+45 requests from 46: [99302..101585] (2284 reads) (rc=0)
+46 requests from 46: [99302..101585] (2284 reads) (rc=2)
+47 requests from 46: [99302..101585] (2284 reads) (rc=0)
+48 requests from 46: [99302..101585] (2284 reads) (rc=0)
+
+rank[47/64] :: 
+41 requests from 47: [101586..103823] (2238 reads) (rc=0)
+42 requests from 47: [101586..103823] (2238 reads) (rc=0)
+43 requests from 47: [101586..103823] (2238 reads) (rc=0)
+44 requests from 47: [101586..103823] (2238 reads) (rc=0)
+45 requests from 47: [101586..103823] (2238 reads) (rc=0)
+46 requests from 47: [101586..103823] (2238 reads) (rc=0)
+47 requests from 47: [101586..103823] (2238 reads) (rc=2)
+48 requests from 47: [101586..103823] (2238 reads) (rc=0)
+
+rank[48/64] :: 
+41 requests from 48: [103824..106075] (2252 reads) (rc=0)
+42 requests from 48: [103824..106075] (2252 reads) (rc=0)
+43 requests from 48: [103824..106075] (2252 reads) (rc=0)
+44 requests from 48: [103824..106075] (2252 reads) (rc=0)
+45 requests from 48: [103824..106075] (2252 reads) (rc=0)
+46 requests from 48: [103824..106075] (2252 reads) (rc=0)
+47 requests from 48: [103824..106075] (2252 reads) (rc=0)
+48 requests from 48: [103824..106075] (2252 reads) (rc=2)
+
+rank[49/64] :: 
+41 requests from 49: [106076..108322] (2247 reads) (rc=0)
+42 requests from 49: [106076..108322] (2247 reads) (rc=0)
+43 requests from 49: [106076..108322] (2247 reads) (rc=0)
+44 requests from 49: [106076..108322] (2247 reads) (rc=0)
+45 requests from 49: [106076..108322] (2247 reads) (rc=0)
+46 requests from 49: [106076..108322] (2247 reads) (rc=0)
+47 requests from 49: [106076..108322] (2247 reads) (rc=0)
+48 requests from 49: [106076..108322] (2247 reads) (rc=0)
+
+rank[50/64] :: 
+41 requests from 50: [108323..108653] (331 reads) (rc=0)
+42 requests from 50: [108323..108653] (331 reads) (rc=0)
+43 requests from 50: [108323..108653] (331 reads) (rc=0)
+44 requests from 50: [108323..108653] (331 reads) (rc=0)
+45 requests from 50: [108323..108653] (331 reads) (rc=0)
+46 requests from 50: [108323..108653] (331 reads) (rc=0)
+47 requests from 50: [108323..108653] (331 reads) (rc=0)
+48 requests from 50: [108323..108653] (331 reads) (rc=0)
+49 requests from 50: [108654..110568] (1915 reads) (rc=0)
+50 requests from 50: [108654..110568] (1915 reads) (rc=2)
+51 requests from 50: [108654..110568] (1915 reads) (rc=0)
+52 requests from 50: [108654..110568] (1915 reads) (rc=0)
+53 requests from 50: [108654..110568] (1915 reads) (rc=0)
+54 requests from 50: [108654..110568] (1915 reads) (rc=0)
+55 requests from 50: [108654..110568] (1915 reads) (rc=0)
+56 requests from 50: [108654..110568] (1915 reads) (rc=0)
+
+rank[51/64] :: 
+49 requests from 51: [110569..112835] (2267 reads) (rc=0)
+50 requests from 51: [110569..112835] (2267 reads) (rc=0)
+51 requests from 51: [110569..112835] (2267 reads) (rc=2)
+52 requests from 51: [110569..112835] (2267 reads) (rc=0)
+53 requests from 51: [110569..112835] (2267 reads) (rc=0)
+54 requests from 51: [110569..112835] (2267 reads) (rc=0)
+55 requests from 51: [110569..112835] (2267 reads) (rc=0)
+56 requests from 51: [110569..112835] (2267 reads) (rc=0)
+
+rank[52/64] :: 
+49 requests from 52: [112836..115114] (2279 reads) (rc=0)
+50 requests from 52: [112836..115114] (2279 reads) (rc=0)
+51 requests from 52: [112836..115114] (2279 reads) (rc=0)
+52 requests from 52: [112836..115114] (2279 reads) (rc=2)
+53 requests from 52: [112836..115114] (2279 reads) (rc=0)
+54 requests from 52: [112836..115114] (2279 reads) (rc=0)
+55 requests from 52: [112836..115114] (2279 reads) (rc=0)
+56 requests from 52: [112836..115114] (2279 reads) (rc=0)
+
+rank[53/64] :: 
+49 requests from 53: [115115..117388] (2274 reads) (rc=0)
+50 requests from 53: [115115..117388] (2274 reads) (rc=0)
+51 requests from 53: [115115..117388] (2274 reads) (rc=0)
+52 requests from 53: [115115..117388] (2274 reads) (rc=0)
+53 requests from 53: [115115..117388] (2274 reads) (rc=2)
+54 requests from 53: [115115..117388] (2274 reads) (rc=0)
+55 requests from 53: [115115..117388] (2274 reads) (rc=0)
+56 requests from 53: [115115..117388] (2274 reads) (rc=0)
+
+rank[54/64] :: 
+49 requests from 54: [117389..119678] (2290 reads) (rc=0)
+50 requests from 54: [117389..119678] (2290 reads) (rc=0)
+51 requests from 54: [117389..119678] (2290 reads) (rc=0)
+52 requests from 54: [117389..119678] (2290 reads) (rc=0)
+53 requests from 54: [117389..119678] (2290 reads) (rc=0)
+54 requests from 54: [117389..119678] (2290 reads) (rc=2)
+55 requests from 54: [117389..119678] (2290 reads) (rc=0)
+56 requests from 54: [117389..119678] (2290 reads) (rc=0)
+
+rank[55/64] :: 
+49 requests from 55: [119679..121968] (2290 reads) (rc=0)
+50 requests from 55: [119679..121968] (2290 reads) (rc=0)
+51 requests from 55: [119679..121968] (2290 reads) (rc=0)
+52 requests from 55: [119679..121968] (2290 reads) (rc=0)
+53 requests from 55: [119679..121968] (2290 reads) (rc=0)
+54 requests from 55: [119679..121968] (2290 reads) (rc=0)
+55 requests from 55: [119679..121968] (2290 reads) (rc=2)
+56 requests from 55: [119679..121968] (2290 reads) (rc=0)
+
+rank[56/64] :: 
+49 requests from 56: [121969..124304] (2336 reads) (rc=0)
+50 requests from 56: [121969..124304] (2336 reads) (rc=0)
+51 requests from 56: [121969..124304] (2336 reads) (rc=0)
+52 requests from 56: [121969..124304] (2336 reads) (rc=0)
+53 requests from 56: [121969..124304] (2336 reads) (rc=0)
+54 requests from 56: [121969..124304] (2336 reads) (rc=0)
+55 requests from 56: [121969..124304] (2336 reads) (rc=0)
+56 requests from 56: [121969..124304] (2336 reads) (rc=2)
+
+rank[57/64] :: 
+49 requests from 57: [124305..126641] (2337 reads) (rc=0)
+50 requests from 57: [124305..126641] (2337 reads) (rc=0)
+51 requests from 57: [124305..126641] (2337 reads) (rc=0)
+52 requests from 57: [124305..126641] (2337 reads) (rc=0)
+53 requests from 57: [124305..126641] (2337 reads) (rc=0)
+54 requests from 57: [124305..126641] (2337 reads) (rc=0)
+55 requests from 57: [124305..126641] (2337 reads) (rc=0)
+56 requests from 57: [124305..126641] (2337 reads) (rc=0)
+
+rank[58/64] :: 
+49 requests from 58: [126642..126762] (121 reads) (rc=0)
+50 requests from 58: [126642..126762] (121 reads) (rc=0)
+51 requests from 58: [126642..126762] (121 reads) (rc=0)
+52 requests from 58: [126642..126762] (121 reads) (rc=0)
+53 requests from 58: [126642..126762] (121 reads) (rc=0)
+54 requests from 58: [126642..126762] (121 reads) (rc=0)
+55 requests from 58: [126642..126762] (121 reads) (rc=0)
+56 requests from 58: [126642..126762] (121 reads) (rc=0)
+57 requests from 58: [126763..128952] (2190 reads) (rc=0)
+58 requests from 58: [126763..128952] (2190 reads) (rc=2)
+59 requests from 58: [126763..128952] (2190 reads) (rc=0)
+60 requests from 58: [126763..128952] (2190 reads) (rc=0)
+61 requests from 58: [126763..128952] (2190 reads) (rc=0)
+62 requests from 58: [126763..128952] (2190 reads) (rc=0)
+63 requests from 58: [126763..128952] (2190 reads) (rc=0)
+64 requests from 58: [126763..128952] (2190 reads) (rc=0)
+
+rank[59/64] :: 
+57 requests from 59: [128953..131230] (2278 reads) (rc=0)
+58 requests from 59: [128953..131230] (2278 reads) (rc=0)
+59 requests from 59: [128953..131230] (2278 reads) (rc=2)
+60 requests from 59: [128953..131230] (2278 reads) (rc=0)
+61 requests from 59: [128953..131230] (2278 reads) (rc=0)
+62 requests from 59: [128953..131230] (2278 reads) (rc=0)
+63 requests from 59: [128953..131230] (2278 reads) (rc=0)
+64 requests from 59: [128953..131230] (2278 reads) (rc=0)
+
+rank[60/64] :: 
+57 requests from 60: [131231..133507] (2277 reads) (rc=0)
+58 requests from 60: [131231..133507] (2277 reads) (rc=0)
+59 requests from 60: [131231..133507] (2277 reads) (rc=0)
+60 requests from 60: [131231..133507] (2277 reads) (rc=2)
+61 requests from 60: [131231..133507] (2277 reads) (rc=0)
+62 requests from 60: [131231..133507] (2277 reads) (rc=0)
+63 requests from 60: [131231..133507] (2277 reads) (rc=0)
+64 requests from 60: [131231..133507] (2277 reads) (rc=0)
+
+rank[61/64] :: 
+57 requests from 61: [133508..135775] (2268 reads) (rc=0)
+58 requests from 61: [133508..135775] (2268 reads) (rc=0)
+59 requests from 61: [133508..135775] (2268 reads) (rc=0)
+60 requests from 61: [133508..135775] (2268 reads) (rc=0)
+61 requests from 61: [133508..135775] (2268 reads) (rc=2)
+62 requests from 61: [133508..135775] (2268 reads) (rc=0)
+63 requests from 61: [133508..135775] (2268 reads) (rc=0)
+64 requests from 61: [133508..135775] (2268 reads) (rc=0)
+
+rank[62/64] :: 
+57 requests from 62: [135776..138039] (2264 reads) (rc=0)
+58 requests from 62: [135776..138039] (2264 reads) (rc=0)
+59 requests from 62: [135776..138039] (2264 reads) (rc=0)
+60 requests from 62: [135776..138039] (2264 reads) (rc=0)
+61 requests from 62: [135776..138039] (2264 reads) (rc=0)
+62 requests from 62: [135776..138039] (2264 reads) (rc=2)
+63 requests from 62: [135776..138039] (2264 reads) (rc=0)
+64 requests from 62: [135776..138039] (2264 reads) (rc=0)
+
+rank[63/64] :: 
+57 requests from 63: [138040..140289] (2250 reads) (rc=0)
+58 requests from 63: [138040..140289] (2250 reads) (rc=0)
+59 requests from 63: [138040..140289] (2250 reads) (rc=0)
+60 requests from 63: [138040..140289] (2250 reads) (rc=0)
+61 requests from 63: [138040..140289] (2250 reads) (rc=0)
+62 requests from 63: [138040..140289] (2250 reads) (rc=0)
+63 requests from 63: [138040..140289] (2250 reads) (rc=2)
+64 requests from 63: [138040..140289] (2250 reads) (rc=0)
+
+rank[64/64] :: 
+57 requests from 64: [140290..142539] (2250 reads) (rc=0)
+58 requests from 64: [140290..142539] (2250 reads) (rc=0)
+59 requests from 64: [140290..142539] (2250 reads) (rc=0)
+60 requests from 64: [140290..142539] (2250 reads) (rc=0)
+61 requests from 64: [140290..142539] (2250 reads) (rc=0)
+62 requests from 64: [140290..142539] (2250 reads) (rc=0)
+63 requests from 64: [140290..142539] (2250 reads) (rc=0)
+64 requests from 64: [140290..142539] (2250 reads) (rc=2)
+
+
+Total time (user secs): 1.342
+Total work (proc secs): 85.896
+Total cost (proc secs): 85.893
