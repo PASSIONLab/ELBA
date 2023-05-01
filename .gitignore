@@ -175,3 +175,6 @@ cmake_install.cmake
 comb_blas
 lbl_dal
 elba
+.vscode
+CombBLAS
+data
