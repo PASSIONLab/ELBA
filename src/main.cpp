@@ -89,8 +89,7 @@ int main(int argc, char **argv)
         index->log(mydna);
 
         DistributedFastaData dfd(index);
-
-        // dfd.blocking_read_exchange();
+        dfd.blocking_read_exchange();
 
 
 /***********************************************************/

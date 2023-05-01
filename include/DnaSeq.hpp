@@ -19,6 +19,7 @@ public:
     size_t size() const { return len; }
     size_t numbytes() const { return bytesneeded(size()); }
     int remainder() const { return 4*numbytes() - size(); }
+    const uint8_t* data() const { return memory; }
 
     int operator[](size_t i) const;
     bool operator<(const DnaSeq& rhs);

@@ -106,6 +106,13 @@ void DistributedFastaData::getremoterequests(std::vector<FastaDataRequest>& allr
     getgridrequests(myrequests, rowstartid, numrowreads, 0);
     if (!isdiag) getgridrequests(myrequests, colstartid, numcolreads, 1);
 
+    Logger logger(commgrid);
+    logger() << "\n";
+    for (auto itr = myrequests.begin(); itr != myrequests.end(); ++itr)
+        logger() << *itr << "\n";
+    logger.Flush("myrequests");
+
+
     MPI_Count_type allrequestcount; /* total number of requests */
     MPI_Count_type myrequestcount = myrequests.size(); /* number of requests originating from me */
 
@@ -152,8 +159,8 @@ void DistributedFastaData::blocking_read_exchange()
     std::vector<FastaDataRequest> allrequests, myrequests;
     getremoterequests(allrequests, myrequests);
 
-    size_t totrowbases=0;
-    size_t totcolbases=0;
+    size_t totrowbases = 0;
+    size_t totcolbases = 0;
 
     // rowbuf.reset(new DnaBuffer(totrowbases, getnumrowreads()));
     // colbuf.reset(new DnaBuffer(totcolbases, getnumcolreads()));
