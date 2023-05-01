@@ -162,11 +162,11 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     MPI_ALLGATHERV(myreqs.data(), reqcounts[myrank], reqtype, allreqs.data(), reqcounts.data(), reqdispls.data(), reqtype, comm);
     MPI_Type_free(&reqtype);
 
-    std::vector<FastaDataRequest> reqsforme;
-    std::copy_if(allreqs.begin(), allreqs.end(), std::back_inserter(reqsforme), [&](const auto& req) { return req.owner == myrank; });
+    std::vector<FastaDataRequest> mysends;
+    std::copy_if(allreqs.begin(), allreqs.end(), std::back_inserter(mysends), [&](const auto& req) { return req.owner == myrank; });
 
     logger() << "\n";
-    for (auto itr = reqsforme.begin(); itr != reqsforme.end(); ++itr)
+    for (auto itr = mysends.begin(); itr != mysends.end(); ++itr)
     {
         logger() << *itr << "\n";
     }
