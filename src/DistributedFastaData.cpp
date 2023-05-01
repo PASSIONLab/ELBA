@@ -115,18 +115,14 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     MPI_Comm comm = commgrid->GetWorld();
     Logger logger(commgrid);
 
-    std::vector<FastaDataRequest> myreqs, allreqs;
+    std::vector<FastaDataRequest> myreqs, mysends, allreqs;
 
     getgridrequests(myreqs, getrowstartid(), getnumrowreads(), 0);
-
-    logger() << "\n";
-    for (auto itr = myreqs.begin(); itr != myreqs.end(); ++itr) logger() << *itr << "\n";
-    logger.Flush("Requests FROM me:");
 
     std::vector<MPI_Count_type> reqcounts(nprocs); /* Allgatherv receive counts */
     std::vector<MPI_Displ_type> reqdispls(nprocs); /* Allgatherv receive displacements */
 
-    size_t totnumreqs;
+    size_t totnumreqs, mynumsends;
     size_t mynumreqs = myreqs.size();
 
     /*
@@ -141,7 +137,6 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     std::exclusive_scan(reqcounts.begin(), reqcounts.end(), reqdispls.begin(), static_cast<MPI_Displ_type>(0));
     totnumreqs = reqdispls.back() + reqcounts.back();
     allreqs.resize(totnumreqs);
-
 
     /*
      * Create MPI_Datatype for FastaDataRequest (needed for allgatherv).
@@ -159,15 +154,40 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     MPI_ALLGATHERV(myreqs.data(), reqcounts[myrank], reqtype, allreqs.data(), reqcounts.data(), reqdispls.data(), reqtype, comm);
     MPI_Type_free(&reqtype);
 
-    std::vector<FastaDataRequest> mysends;
     std::copy_if(allreqs.begin(), allreqs.end(), std::back_inserter(mysends), [&](const auto& req) { return req.owner == myrank; });
+    mynumsends = mysends.size();
+
+
+    std::vector<size_t> reqbufsizes(mynumreqs);
+    std::vector<MPI_Request> recvreqs(mynumreqs), sendreqs(mynumsends);
+
+    for (size_t i = 0; i < mynumreqs; ++i)
+    {
+        MPI_IRECV(reqbufsizes.data() + i, 1, MPI_SIZE_T, myreqs[i].owner, 99, comm, recvreqs.data() + i);
+    }
 
     logger() << "\n";
-    for (auto itr = mysends.begin(); itr != mysends.end(); ++itr) logger() << *itr << "\n";
-    logger.Flush("Requests TO me:");
+    for (size_t i = 0; i < mynumsends; ++i)
+    {
+        assert(mysends[i].owner == myrank);
+        size_t offset = mysends[i].offset;
+        size_t count = mysends[i].count;
+        assert(index->getmyreaddispl() <= offset && offset + count <= index->getmyreaddispl() + index->getmyreadcount());
+        size_t rangebufsize = mydna->getrangebufsize(offset - index->getmyreaddispl(), count);
+        MPI_ISEND(&rangebufsize, 1, MPI_SIZE_T, mysends[i].requester, 99, comm, sendreqs.data() + i);
+        logger() << "sent " << rangebufsize << " to " << logger.rankstr(mysends[i].requester) << " :: " << mysends[i] << "\n";
+    }
 
-    std::vector<size_t> reqbufsizes;
-    std::vector<MPI_Request> recvreqs, sendreqs;
+    assert(mynumreqs <= std::numeric_limits<int>::max());
+    assert(mynumsends <= std::numeric_limits<int>::max());
+
+    MPI_Waitall(static_cast<int>(mynumsends), sendreqs.data(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(static_cast<int>(mynumreqs), recvreqs.data(), MPI_STATUSES_IGNORE);
+
+    logger() << "\n";
+    for (size_t i = 0; i < mynumreqs; ++i) logger() << "received " << reqbufsizes[i] << " from " << logger.rankstr(myreqs[i].owner) << " :: " << myreqs[i] << "\n";
+    logger.Flush("Exchanges:");
+
     return std::make_shared<DnaBuffer>(1);
 }
 

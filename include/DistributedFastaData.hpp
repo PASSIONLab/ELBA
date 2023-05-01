@@ -20,7 +20,7 @@ public:
 
         friend std::ostream& operator<<(std::ostream& stream, const FastaDataRequest& req)
         {
-            stream << req.requester+1 << " requests from " << req.owner+1 << ": " << Logger::readrangestr(req.offset, req.count) << " (rc=" << req.rc << ")";
+            stream << "{owner=" << req.owner << ";requester=" << req.requester << ";offset=" << req.offset << ";count=" << req.count << ";rc=" << req.rc << "}";
             return stream;
         }
     };

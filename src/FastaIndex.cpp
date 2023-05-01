@@ -252,7 +252,7 @@ void FastaIndex::logall(std::shared_ptr<DnaBuffer> buffer) const
     for (size_t i = 0; i < numseqs; ++i)
     {
         const auto& dnaseq = (*buffer)[i];
-        logger() << "readid=" << i << ", size=" << dnaseq.size() << ", numbytes=" << dnaseq.numbytes() <<
+        logger() << "readid=" << i+getmyreaddispl() << ", size=" << dnaseq.size() << ", numbytes=" << dnaseq.numbytes() <<
             ", bufsize_before=" << buffer->getrangebufsize(0, i) << ", bufsize_after=" << buffer->getrangebufsize(i, numseqs-1-i) << ", ascii=" << std::quoted(dnaseq.ascii()) << "\n";
     }
 
