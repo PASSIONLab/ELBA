@@ -154,14 +154,53 @@ void DistributedFastaData::getremoterequests(std::vector<FastaDataRequest>& allr
     // std::sort(allrequests.begin(), allrequests.end(), [](const auto& a, const auto& b) { return a.owner < b.owner; });
 }
 
-void DistributedFastaData::blocking_read_exchange()
+void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> mydna)
 {
+    Grid commgrid = index->getcommgrid();
+    int nprocs = commgrid->GetSize();
+    int myrank = commgrid->GetRank();
+    MPI_Comm comm = commgrid->GetWorld();
+
     std::vector<FastaDataRequest> allrequests, myrequests;
     getremoterequests(allrequests, myrequests);
 
-    size_t totrowbases = 0;
-    size_t totcolbases = 0;
-
+    // size_t totrowbases = 0;
+    // size_t totcolbases = 0;
     // rowbuf.reset(new DnaBuffer(totrowbases, getnumrowreads()));
     // colbuf.reset(new DnaBuffer(totcolbases, getnumcolreads()));
+
+    // std::vector<FastaDataRequest> myrealrequests;
+    // std::copy_if(myrequests.begin(), myrequests.end(), std::back_inserter(myrealrequests), [](const auto& req) { return req.rc != 3; });
+
+    // Logger logger(index->getcommgrid());
+    // logger() << "\n";
+    // for (auto itr = myrealrequests.begin(); itr != myrealrequests.end(); ++itr)
+        // logger() << *itr << "\n";
+    // logger.Flush("myrealrequests");
+
+
+    size_t nummyrequests = myrequests.size();
+    size_t numallrequests = allrequests.size();
+    std::vector<size_t> recvbufsizes(nummyrequests);
+    std::vector<MPI_Request> recvrequests(nummyrequests);
+
+    for (size_t i = 0; i < nummyrequests; ++i)
+    {
+        MPI_IRECV(recvbufsizes.data() + i, 1, MPI_SIZE_T, myrequests[i].owner, 99+myrequests[i].rc, comm, recvrequests.data() + i);
+    }
+
+    std::vector<int> destinations;
+    std::vector<size_t> sendbufsizes;
+
+    for (size_t i = 0; i < numallrequests; ++i)
+    {
+        if (allrequests[i].owner == myrank)
+        {
+            size_t start = allrequests[i].offset - index->getmyreaddispl();
+            size_t sendbufsize = mydna->getrangebufsize(start, allrequests[i].count);
+            destinations.push_back(allrequests[i].requester);
+            sendbufsizes.push_back(sendbufsize);
+        }
+    }
+
 }

@@ -32,7 +32,7 @@ public:
     size_t getnumrowreads() const { return numrowreads; }
     size_t getnumcolreads() const { return numcolreads; }
 
-    void blocking_read_exchange();
+    void blocking_read_exchange(std::shared_ptr<DnaBuffer> mydna);
 
 private:
     std::shared_ptr<FastaIndex> index;
