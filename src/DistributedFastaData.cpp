@@ -104,71 +104,6 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
     }
 }
 
-/*
- * allrequests - allgathered requests
- * myrequests - requests originating from me
- */
-void DistributedFastaData::getremoterequests(std::vector<FastaDataRequest>& allrequests, std::vector<FastaDataRequest>& myrequests) const
-{
-    Grid commgrid = index->getcommgrid();
-    int nprocs = commgrid->GetSize();
-    int myrank = commgrid->GetRank();
-    MPI_Comm comm = commgrid->GetWorld();
-
-    /*
-     * Get row and column grid requests.
-     */
-    myrequests.resize(0);
-    getgridrequests(myrequests, rowstartid, numrowreads, 0);
-
-    Logger logger(commgrid);
-    logger() << "\n";
-    for (auto itr = myrequests.begin(); itr != myrequests.end(); ++itr)
-        logger() << *itr << "\n";
-    logger.Flush("myrequests");
-
-
-    MPI_Count_type allrequestcount; /* total number of requests */
-    MPI_Count_type myrequestcount = myrequests.size(); /* number of requests originating from me */
-
-    std::vector<MPI_Count_type> requestcounts(nprocs); /* Allgatherv receive counts */
-    std::vector<MPI_Displ_type> requestdispls(nprocs); /* Allgatherv receive displacements */
-
-    /*
-     * Globally collect the number of requests each processor wants to make.
-     */
-    requestcounts[myrank] = myrequestcount;
-    MPI_ALLGATHER(MPI_IN_PLACE, 1, MPI_COUNT_TYPE, requestcounts.data(), 1, MPI_COUNT_TYPE, comm);
-
-    /*
-     * Compute allgatherv displacements.
-     */
-    std::exclusive_scan(requestcounts.begin(), requestcounts.end(), requestdispls.begin(), static_cast<MPI_Displ_type>(0));
-    allrequestcount = requestdispls.back() + requestcounts.back();
-    allrequests.resize(allrequestcount);
-
-    /* Create MPI_Datatype for FastaDataRequest (needed for allgatherv) */
-    MPI_Datatype reqtype;
-    int blklens[5] = {1,1,1,1,1};
-    MPI_Aint displs[5] = {offsetof(FastaDataRequest, owner),
-                          offsetof(FastaDataRequest, requester),
-                          offsetof(FastaDataRequest, offset),
-                          offsetof(FastaDataRequest, count),
-                          offsetof(FastaDataRequest, rc)};
-
-    MPI_Datatype types[5] = {MPI_INT, MPI_INT, MPI_SIZE_T, MPI_SIZE_T, MPI_UNSIGNED_SHORT};
-    MPI_Type_create_struct(5, blklens, displs, types, &reqtype);
-    MPI_Type_commit(&reqtype);
-
-    /*
-     * Globally collect all requests that are being made into @allrequests.
-     */
-    MPI_ALLGATHERV(myrequests.data(), myrequestcount, reqtype, allrequests.data(), requestcounts.data(), requestdispls.data(), reqtype, comm);
-    MPI_Type_free(&reqtype);
-
-    // std::sort(allrequests.begin(), allrequests.end(), [](const auto& a, const auto& b) { return a.owner < b.owner; });
-}
-
 std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shared_ptr<DnaBuffer> mydna)
 {
     Grid commgrid = index->getcommgrid();
@@ -177,19 +112,117 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     MPI_Comm comm = commgrid->GetWorld();
     Logger logger(commgrid);
 
-    std::vector<FastaDataRequest> myrowreqs, allrowreqs;
+    std::vector<FastaDataRequest> myreqs, allreqs;
 
-    getgridrequests(myrowreqs, getrowstartid(), getnumrowreads(), 0);
+    getgridrequests(myreqs, getrowstartid(), getnumrowreads(), 0);
 
-    logger() << "\n";
-    for (auto itr = myrowreqs.begin(); itr != myrowreqs.end(); ++itr)
+    std::vector<MPI_Count_type> reqcounts(nprocs); /* Allgatherv receive counts */
+    std::vector<MPI_Displ_type> reqdispls(nprocs); /* Allgatherv receive displacements */
+
+    size_t totnumreqs;
+    size_t mynumreqs = myreqs.size();
+
+    /*
+     * Globally collect the number of requests each processor wants to make.
+     */
+    reqcounts[myrank] = static_cast<MPI_Count_type>(mynumreqs);
+    MPI_ALLGATHER(MPI_IN_PLACE, 1, MPI_COUNT_TYPE, reqcounts.data(), 1, MPI_COUNT_TYPE, comm);
+
+    /*
+     * Compute allgatherv displacements.
+     */
+    std::exclusive_scan(reqcounts.begin(), reqcounts.end(), reqdispls.begin(), static_cast<MPI_Displ_type>(0));
+    totnumreqs = reqdispls.back() + reqcounts.back();
+    allreqs.resize(totnumreqs);
+
+
+    /*
+     * Create MPI_Datatype for FastaDataRequest (needed for allgatherv).
+     */
+    MPI_Datatype reqtype;
+    int blklens[5] = {1,1,1,1,1};
+    MPI_Aint displs[5] = {offsetof(FastaDataRequest, owner), offsetof(FastaDataRequest, requester), offsetof(FastaDataRequest, offset), offsetof(FastaDataRequest, count), offsetof(FastaDataRequest, rc)};
+    MPI_Datatype types[5] = {MPI_INT, MPI_INT, MPI_SIZE_T, MPI_SIZE_T, MPI_UNSIGNED_SHORT};
+    MPI_Type_create_struct(5, blklens, displs, types, &reqtype);
+    MPI_Type_commit(&reqtype);
+
+    /*
+     * Globally collect all requests that are being made into @allreqs;
+     */
+    MPI_ALLGATHERV(myreqs.data(), reqcounts[myrank], reqtype, allreqs.data(), reqcounts.data(), reqdispls.data(), reqtype, comm);
+    MPI_Type_free(&reqtype);
+
+    if (myrank == 0)
     {
-        logger() << *itr << "\n";
+        for (auto itr = allreqs.begin(); itr != allreqs.end(); ++itr)
+        {
+            std::cout << *itr << "\n";
+        }
+        std::cout << std::endl;
     }
-    logger.Flush("myrowreqs");
+    MPI_Barrier(comm);
 
+    std::vector<size_t> reqbufsizes;
+    std::vector<MPI_Request> recvreqs, sendreqs;
     return std::make_shared<DnaBuffer>(1);
 }
+
+/*
+ * allrequests - allgathered requests
+ * myrequests - requests originating from me
+ */
+//void DistributedFastaData::getremoterequests(std::vector<FastaDataRequest>& allrequests, std::vector<FastaDataRequest>& myrequests) const
+//{
+//    Grid commgrid = index->getcommgrid();
+//    int nprocs = commgrid->GetSize();
+//    int myrank = commgrid->GetRank();
+//    MPI_Comm comm = commgrid->GetWorld();
+//
+//    /*
+//     * Get row and column grid requests.
+//     */
+//    myrequests.resize(0);
+//    getgridrequests(myrequests, rowstartid, numrowreads, 0);
+//
+//    MPI_Count_type allrequestcount; /* total number of requests */
+//    MPI_Count_type myrequestcount = myrequests.size(); /* number of requests originating from me */
+//
+//    std::vector<MPI_Count_type> requestcounts(nprocs); /* Allgatherv receive counts */
+//    std::vector<MPI_Displ_type> requestdispls(nprocs); /* Allgatherv receive displacements */
+//
+//    /*
+//     * Globally collect the number of requests each processor wants to make.
+//     */
+//    requestcounts[myrank] = myrequestcount;
+//    MPI_ALLGATHER(MPI_IN_PLACE, 1, MPI_COUNT_TYPE, requestcounts.data(), 1, MPI_COUNT_TYPE, comm);
+//
+//    /*
+//     * Compute allgatherv displacements.
+//     */
+//    std::exclusive_scan(requestcounts.begin(), requestcounts.end(), requestdispls.begin(), static_cast<MPI_Displ_type>(0));
+//    allrequestcount = requestdispls.back() + requestcounts.back();
+//    allrequests.resize(allrequestcount);
+//
+//    /* Create MPI_Datatype for FastaDataRequest (needed for allgatherv) */
+//    MPI_Datatype reqtype;
+//    int blklens[5] = {1,1,1,1,1};
+//    MPI_Aint displs[5] = {offsetof(FastaDataRequest, owner),
+//                          offsetof(FastaDataRequest, requester),
+//                          offsetof(FastaDataRequest, offset),
+//                          offsetof(FastaDataRequest, count),
+//                          offsetof(FastaDataRequest, rc)};
+//
+//    MPI_Datatype types[5] = {MPI_INT, MPI_INT, MPI_SIZE_T, MPI_SIZE_T, MPI_UNSIGNED_SHORT};
+//    MPI_Type_create_struct(5, blklens, displs, types, &reqtype);
+//    MPI_Type_commit(&reqtype);
+//
+//    /*
+//     * Globally collect all requests that are being made into @allrequests.
+//     */
+//    MPI_ALLGATHERV(myrequests.data(), myrequestcount, reqtype, allrequests.data(), requestcounts.data(), requestdispls.data(), reqtype, comm);
+//    MPI_Type_free(&reqtype);
+//}
+
 
 //void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> mydna)
 //{
