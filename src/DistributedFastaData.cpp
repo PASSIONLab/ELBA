@@ -1,4 +1,5 @@
 #include "DistributedFastaData.hpp"
+#include "MPITypeHandler.hpp"
 #include "Logger.hpp"
 #include <limits>
 
@@ -146,13 +147,12 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     MPI_Aint displs[5] = {offsetof(FastaDataRequest, owner), offsetof(FastaDataRequest, requester), offsetof(FastaDataRequest, offset), offsetof(FastaDataRequest, count), offsetof(FastaDataRequest, rc)};
     MPI_Datatype types[5] = {MPI_INT, MPI_INT, MPI_SIZE_T, MPI_SIZE_T, MPI_UNSIGNED_SHORT};
     MPI_Type_create_struct(5, blklens, displs, types, &reqtype);
-    MPI_Type_commit(&reqtype);
+    MPITypeHandler rthandler(&reqtype);
 
     /*
      * Globally collect all requests that are being made into @allreqs;
      */
     MPI_ALLGATHERV(myreqs.data(), reqcounts[myrank], reqtype, allreqs.data(), reqcounts.data(), reqdispls.data(), reqtype, comm);
-    MPI_Type_free(&reqtype);
 
     std::copy_if(allreqs.begin(), allreqs.end(), std::back_inserter(mysends), [&](const auto& req) { return req.owner == myrank; });
     mynumsends = mysends.size();
