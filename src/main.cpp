@@ -88,7 +88,7 @@ int main(int argc, char **argv)
         std::shared_ptr<DnaBuffer> mydna = index->getmydna();
         // index->log(mydna);
         DistributedFastaData dfd(index);
-        dfd.blocking_read_exchange(mydna);
+        auto rowdna = dfd.collect_row_sequences(mydna);
 
 
 /***********************************************************/

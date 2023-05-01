@@ -41,6 +41,7 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
     int myrank = commgrid->GetRank();
     MPI_Comm comm = commgrid->GetWorld();
 
+    int requester = myrank; /* I'm the processor making a request */
     size_t totreads = index->gettotrecords(); /* total reads in FASTA */
     const auto& readdispls = index->getreaddispls(); /* linear uniform read distribution displacements (across all processors) */
 
@@ -62,7 +63,7 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
      * that the processor rank just before it owns the read @globalstartid.
      */
     auto iditr = std::upper_bound(readdispls.cbegin(), readdispls.cend(), static_cast<MPI_Displ_type>(globalstartid));
-    iditr--;
+    int owner = --iditr - readdispls.cbegin();
 
     /*
      * assert that the processor rank we think owns @globalstartid owns reads with
@@ -78,14 +79,28 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
      * processor ranks in the correct range and collect the information we
      * need from each one.
      */
-    int requester = myrank;
-    while (*iditr < globalstartid + count)
+    while (readdispls[owner] < globalstartid + count)
     {
-        int owner = iditr - readdispls.cbegin();
-        size_t reqstart = std::max(static_cast<size_t>(*iditr++), globalstartid);
-        size_t reqend = std::min(static_cast<size_t>(*iditr), globalstartid + count);
-        if (owner != requester) myrequests.emplace_back(owner, requester, reqstart, reqend-reqstart, rc);
-        else myrequests.emplace_back(owner, requester, reqstart, reqend-reqstart, rc+2);
+
+         /* First read id stored on owning processor. */
+        size_t ownerstartid = static_cast<size_t>(readdispls[owner++]);
+
+        /*
+         * First readid stored on processor right after the owner,
+         * or the total number of reads if the owner is the last
+         * processor rank.
+         */
+        size_t nextstartid = static_cast<size_t>(readdispls[owner]);
+
+         /* First readid we are requesting from owner. */
+        size_t reqstart = std::max(ownerstartid, globalstartid);
+
+         /* One past the last readid we are requesting from owner. */
+        size_t reqend = std::min(nextstartid, globalstartid + count);
+
+         /* If the owner and requester are the same, adjust the rcflag. */
+        unsigned short rcflag = owner != requester? rc : rc + 2;
+        myrequests.emplace_back(owner, requester, reqstart, reqend - reqstart, rcflag);
     }
 }
 
@@ -154,7 +169,7 @@ void DistributedFastaData::getremoterequests(std::vector<FastaDataRequest>& allr
     // std::sort(allrequests.begin(), allrequests.end(), [](const auto& a, const auto& b) { return a.owner < b.owner; });
 }
 
-void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> mydna)
+std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shared_ptr<DnaBuffer> mydna)
 {
     Grid commgrid = index->getcommgrid();
     int nprocs = commgrid->GetSize();
@@ -162,51 +177,73 @@ void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> myd
     MPI_Comm comm = commgrid->GetWorld();
     Logger logger(commgrid);
 
-    std::vector<FastaDataRequest> allrequests, myrequests;
-    getremoterequests(allrequests, myrequests);
+    std::vector<FastaDataRequest> myrowreqs, allrowreqs;
 
-    size_t numallrequests, nummyrequests, nummysends;
-    std::vector<size_t> recvbufsizes;
-    std::vector<MPI_Request> recvrequests, sendrequests;
+    getgridrequests(myrowreqs, getrowstartid(), getnumrowreads(), 0);
 
-    nummyrequests = myrequests.size();
-    numallrequests = allrequests.size();
-    recvbufsizes.resize(nummyrequests);
-    recvrequests.resize(nummyrequests);
-
-    for (size_t i = 0; i < nummyrequests; ++i)
+    logger() << "\n";
+    for (auto itr = myrowreqs.begin(); itr != myrowreqs.end(); ++itr)
     {
-        MPI_IRECV(recvbufsizes.data() + i, 1, MPI_SIZE_T, myrequests[i].owner, 99+myrequests[i].rc, comm, recvrequests.data() + i);
+        logger() << *itr << "\n";
     }
+    logger.Flush("myrowreqs");
 
-    std::vector<std::tuple<size_t, int, unsigned short>> sendinfo;
-
-    for (size_t i = 0; i < numallrequests; ++i)
-    {
-        if (allrequests[i].owner == myrank)
-        {
-            size_t start = allrequests[i].offset - index->getmyreaddispl();
-            size_t sendbufsize = mydna->getrangebufsize(start, allrequests[i].count);
-            sendinfo.emplace_back(sendbufsize, allrequests[i].requester, allrequests[i].rc);
-        }
-    }
-
-    nummysends = sendinfo.size();
-    sendrequests.resize(nummysends);
-
-    for (size_t i = 0; i < nummysends; ++i)
-    {
-        size_t sendbufsize = std::get<0>(sendinfo[i]);
-        int dest = std::get<1>(sendinfo[i]);
-        unsigned short rc = std::get<2>(sendinfo[i]);
-        MPI_ISEND(&sendbufsize, 1, MPI_SIZE_T, dest, 99+rc, comm, sendrequests.data() + i);
-    }
-
-    assert(nummyrequests <= std::numeric_limits<int>::max());
-    assert(nummysends <= std::numeric_limits<int>::max());
-
-    MPI_Waitall(static_cast<int>(nummysends),    sendrequests.data(), MPI_STATUSES_IGNORE);
-    MPI_Waitall(static_cast<int>(nummyrequests), recvrequests.data(), MPI_STATUSES_IGNORE);
-
-    // rowbuf.reset(new DnaBuffer())
+    return std::make_shared<DnaBuffer>(1);
 }
+
+//void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> mydna)
+//{
+//    Grid commgrid = index->getcommgrid();
+//    int nprocs = commgrid->GetSize();
+//    int myrank = commgrid->GetRank();
+//    MPI_Comm comm = commgrid->GetWorld();
+//    Logger logger(commgrid);
+//
+//    std::vector<FastaDataRequest> allrequests, myrequests;
+//    getremoterequests(allrequests, myrequests);
+//
+//    size_t numallrequests, nummyrequests, nummysends;
+//    std::vector<size_t> recvbufsizes;
+//    std::vector<MPI_Request> recvrequests, sendrequests;
+//
+//    nummyrequests = myrequests.size();
+//    numallrequests = allrequests.size();
+//    recvbufsizes.resize(nummyrequests);
+//    recvrequests.resize(nummyrequests);
+//
+//    for (size_t i = 0; i < nummyrequests; ++i)
+//    {
+//        MPI_IRECV(recvbufsizes.data() + i, 1, MPI_SIZE_T, myrequests[i].owner, 99+myrequests[i].rc, comm, recvrequests.data() + i);
+//    }
+//
+//    std::vector<std::tuple<size_t, int, unsigned short>> sendinfo;
+//
+//    for (size_t i = 0; i < numallrequests; ++i)
+//    {
+//        if (allrequests[i].owner == myrank)
+//        {
+//            size_t start = allrequests[i].offset - index->getmyreaddispl();
+//            size_t sendbufsize = mydna->getrangebufsize(start, allrequests[i].count);
+//            sendinfo.emplace_back(sendbufsize, allrequests[i].requester, allrequests[i].rc);
+//        }
+//    }
+//
+//    nummysends = sendinfo.size();
+//    sendrequests.resize(nummysends);
+//
+//    for (size_t i = 0; i < nummysends; ++i)
+//    {
+//        size_t sendbufsize = std::get<0>(sendinfo[i]);
+//        int dest = std::get<1>(sendinfo[i]);
+//        unsigned short rc = std::get<2>(sendinfo[i]);
+//        MPI_ISEND(&sendbufsize, 1, MPI_SIZE_T, dest, 99+rc, comm, sendrequests.data() + i);
+//    }
+//
+//    assert(nummyrequests <= std::numeric_limits<int>::max());
+//    assert(nummysends <= std::numeric_limits<int>::max());
+//
+//    MPI_Waitall(static_cast<int>(nummysends),    sendrequests.data(), MPI_STATUSES_IGNORE);
+//    MPI_Waitall(static_cast<int>(nummyrequests), recvrequests.data(), MPI_STATUSES_IGNORE);
+//
+//    // rowbuf.reset(new DnaBuffer())
+//}
