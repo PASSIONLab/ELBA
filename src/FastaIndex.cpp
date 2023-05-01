@@ -234,6 +234,31 @@ std::shared_ptr<DnaBuffer> FastaIndex::getmydna() const
     return dnabuf;
 }
 
+#include <iomanip>
+
+void FastaIndex::logall(std::shared_ptr<DnaBuffer> buffer) const
+{
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    MPI_Comm comm = commgrid->GetWorld();
+
+    Logger logger(commgrid);
+
+    size_t numseqs = buffer->size();
+    size_t bufsize = buffer->getbufsize();
+
+    logger() << "numseqs=" << numseqs << ", bufsize=" << bufsize << "\n";
+
+    for (size_t i = 0; i < numseqs; ++i)
+    {
+        const auto& dnaseq = (*buffer)[i];
+        logger() << "readid=" << i << ", size=" << dnaseq.size() << ", numbytes=" << dnaseq.numbytes() <<
+            ", bufsize_before=" << buffer->getrangebufsize(0, i) << ", bufsize_after=" << buffer->getrangebufsize(i, numseqs-1-i) << ", ascii=" << std::quoted(dnaseq.ascii()) << "\n";
+    }
+
+    logger.Flush("logall");
+}
+
 void FastaIndex::log(std::shared_ptr<DnaBuffer> buffer) const
 {
     Logger logger(commgrid);

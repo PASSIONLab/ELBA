@@ -120,10 +120,7 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     getgridrequests(myreqs, getrowstartid(), getnumrowreads(), 0);
 
     logger() << "\n";
-    for (auto itr = myreqs.begin(); itr != myreqs.end(); ++itr)
-    {
-        logger() << *itr << "\n";
-    }
+    for (auto itr = myreqs.begin(); itr != myreqs.end(); ++itr) logger() << *itr << "\n";
     logger.Flush("Requests FROM me:");
 
     std::vector<MPI_Count_type> reqcounts(nprocs); /* Allgatherv receive counts */
@@ -166,10 +163,7 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     std::copy_if(allreqs.begin(), allreqs.end(), std::back_inserter(mysends), [&](const auto& req) { return req.owner == myrank; });
 
     logger() << "\n";
-    for (auto itr = mysends.begin(); itr != mysends.end(); ++itr)
-    {
-        logger() << *itr << "\n";
-    }
+    for (auto itr = mysends.begin(); itr != mysends.end(); ++itr) logger() << *itr << "\n";
     logger.Flush("Requests TO me:");
 
     std::vector<size_t> reqbufsizes;

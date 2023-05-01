@@ -86,7 +86,8 @@ int main(int argc, char **argv)
 
         std::shared_ptr<FastaIndex> index(new FastaIndex(fasta_fname, commgrid));
         std::shared_ptr<DnaBuffer> mydna = index->getmydna();
-        index->log(mydna);
+        index->logall(mydna);
+        // index->log(mydna);
         DistributedFastaData dfd(index);
         auto rowdna = dfd.collect_row_sequences(mydna);
 

@@ -19,6 +19,7 @@ void DnaBuffer::push_back(char const *s, size_t len)
 
 size_t DnaBuffer::getrangebufsize(size_t start, size_t count) const
 {
+    if (start + count == 0) return 0;
     size_t end = start+count-1;
     const uint8_t* startmem = sequences[start].data();
     const uint8_t* endmem = sequences[end].data() + sequences[end].numbytes();

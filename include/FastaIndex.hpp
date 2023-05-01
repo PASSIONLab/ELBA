@@ -29,6 +29,7 @@ public:
 
     std::shared_ptr<DnaBuffer> getmydna() const;
     void log(std::shared_ptr<DnaBuffer> buffer) const;
+    void logall(std::shared_ptr<DnaBuffer> buffer) const;
 
     static Record get_faidx_record(const std::string& line);
 
