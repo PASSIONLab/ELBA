@@ -116,6 +116,13 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
 
     getgridrequests(myreqs, getrowstartid(), getnumrowreads(), 0);
 
+    logger() << "\n";
+    for (auto itr = myreqs.begin(); itr != myreqs.end(); ++itr)
+    {
+        logger() << *itr << "\n";
+    }
+    logger.Flush("Requests FROM me:");
+
     std::vector<MPI_Count_type> reqcounts(nprocs); /* Allgatherv receive counts */
     std::vector<MPI_Displ_type> reqdispls(nprocs); /* Allgatherv receive displacements */
 
@@ -152,15 +159,15 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     MPI_ALLGATHERV(myreqs.data(), reqcounts[myrank], reqtype, allreqs.data(), reqcounts.data(), reqdispls.data(), reqtype, comm);
     MPI_Type_free(&reqtype);
 
-    if (myrank == 0)
+    std::vector<FastaDataRequest> reqsforme;
+    std::copy_if(allreqs.begin(), allreqs.end(), std::back_inserter(reqsforme), [&](const auto& req) { return req.owner == myrank; });
+
+    logger() << "\n";
+    for (auto itr = reqsforme.begin(); itr != reqsforme.end(); ++itr)
     {
-        for (auto itr = allreqs.begin(); itr != allreqs.end(); ++itr)
-        {
-            std::cout << *itr << "\n";
-        }
-        std::cout << std::endl;
+        logger() << *itr << "\n";
     }
-    MPI_Barrier(comm);
+    logger.Flush("Requests TO me:");
 
     std::vector<size_t> reqbufsizes;
     std::vector<MPI_Request> recvreqs, sendreqs;
