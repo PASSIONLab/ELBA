@@ -14,6 +14,9 @@ using Record = typename FastaIndex::Record;
 
 Record FastaIndex::get_faidx_record(const std::string& line)
 {
+    /*
+     * Read a line from a FASTA index file into a record object.
+     */
     std::string dummy;
     Record record;
     std::istringstream(line) >> dummy >> record.len >> record.pos >> record.bases;
@@ -30,6 +33,16 @@ void FastaIndex::getpartition(std::vector<MPI_Count_type>& sendcounts)
     size_t numreads = rootrecords.size();
     double avgbasesperproc = static_cast<double>(totbases) / nprocs;
 
+    /*
+     * Coming up with the optimal partitioning of sequences weighted by their length
+     * is NP-hard, and I can't imagine that it is NP-complete also (how would you verify
+     * in polynomial time?). Tried looking for the name of this optimization problem
+     * but couldn't find (didn't look too hard because its not too important for this).
+     * It's basically a variation on multiway number partition, except where the divisions
+     * must be ordered. The following seems like a fine approxmimation. Note that the
+     * the last processor tends to get more than the average amount of data.
+     */
+
     size_t readid = 0;
 
     for (int i = 0; i < nprocs-1; ++i)
@@ -37,6 +50,10 @@ void FastaIndex::getpartition(std::vector<MPI_Count_type>& sendcounts)
         size_t basessofar = 0;
         size_t startid = readid;
 
+        /*
+         * Keep going through reads until the next one puts us over
+         * the average bases per processor.
+         */
         while (readid < numreads && basessofar + rootrecords[readid].len < avgbasesperproc)
         {
             basessofar += rootrecords[readid].len;
@@ -49,6 +66,9 @@ void FastaIndex::getpartition(std::vector<MPI_Count_type>& sendcounts)
         sendcounts[i] = readssofar;
     }
 
+    /*
+     * Last processor gets the remaining reads.
+     */
     sendcounts.back() = numreads - readid;
 }
 
@@ -59,17 +79,31 @@ FastaIndex::FastaIndex(const std::string& fasta_fname, Grid commgrid) : commgrid
     MPI_Comm comm = commgrid->GetWorld();
     readcounts.resize(nprocs);
 
+    /*
+     * Root processor responsible for reading and parsing FASTA
+     * index file "{fasta_fname}.fai" into one record per sequence.
+     */
     if (myrank == 0)
     {
         std::string line;
         std::ifstream filestream(get_faidx_fname());
         while (std::getline(filestream, line)) rootrecords.push_back(get_faidx_record(line));
         filestream.close();
+
+        /*
+         * Compute load-balanced read partitioning.
+         */
         getpartition(readcounts);
     }
 
+    /*
+     * All processors get a copy of the read counts.
+     */
     MPI_BCAST(readcounts.data(), nprocs, MPI_COUNT_TYPE, 0, comm);
 
+    /*
+     * And the read displacements.
+     */
     readdispls.resize(nprocs);
     std::exclusive_scan(readcounts.begin(), readcounts.end(), readdispls.begin(), static_cast<MPI_Displ_type>(0));
     readdispls.push_back(readdispls.back() + readcounts.back());
@@ -82,13 +116,17 @@ FastaIndex::FastaIndex(const std::string& fasta_fname, Grid commgrid) : commgrid
      * below, however we still do it because every processor will need to know
      * those things later.
      */
-
     myrecords.resize(readcounts[myrank]);
 
     MPI_Datatype faidx_dtype_t;
     MPI_Type_contiguous(3, MPI_SIZE_T, &faidx_dtype_t);
     MPI_Type_commit(&faidx_dtype_t);
+
+    /*
+     * Scatter the read counts according to the load-balanced read partitioning.
+     */
     MPI_SCATTERV(rootrecords.data(), readcounts.data(), readdispls.data(), faidx_dtype_t, myrecords.data(), readcounts[myrank], faidx_dtype_t, 0, comm);
+
     MPI_Type_free(&faidx_dtype_t);
 
     Logger logger(commgrid);
@@ -102,6 +140,11 @@ FastaIndex::FastaIndex(const std::string& fasta_fname, Grid commgrid) : commgrid
 
 std::vector<size_t> FastaIndex::getmyreadlens() const
 {
+    /*
+     *  Because we store sequence information using "array of structs"
+     *  instead of "structs of arrays", if we want a linear array
+     *  of read lengths we have to unpack them.
+     */
     std::vector<size_t> readlens(getmyreadcount());
     std::transform(myrecords.cbegin(), myrecords.cend(), readlens.begin(), [](const auto& record) { return record.len; });
     return readlens;
@@ -113,29 +156,48 @@ std::shared_ptr<DnaBuffer> FastaIndex::getmydna() const
     int nprocs = commgrid->GetSize();
     MPI_Comm comm = commgrid->GetWorld();
 
+    /*
+     * Allocate local sequence buffer.
+     */
     auto readlens = getmyreadlens();
     size_t bufsize = DnaBuffer::computebufsize(readlens);
     auto dnabuf = std::make_shared<DnaBuffer>(bufsize);
+    size_t numreads = readlens.size();
 
-    size_t numreads;
     MPI_Offset startpos, endpos, filesize, readbufsize;
     MPI_File fh;
 
-    numreads = myrecords.size();
-    startpos = myrecords.front().pos;
-    endpos = myrecords.back().pos + myrecords.back().len + (myrecords.back().len / myrecords.back().bases);
-
+    /*
+     * FASTA file will be read using MPI collective I/O.
+     */
     MPI_File_open(comm, get_fasta_fname().c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
     MPI_File_get_size(fh, &filesize);
+
+    /*
+     * Get start and end coordinates within FASTA of the sequences
+     * this processor requires.
+     */
+    startpos = myrecords.front().pos;
+    endpos = myrecords.back().pos + myrecords.back().len + (myrecords.back().len / myrecords.back().bases);
     if (endpos > filesize) endpos = filesize;
+
+    /*
+     * Allocate a char buffer to read my FASTA chunk into to,
+     * and then do the reading.
+     */
     readbufsize = endpos - startpos;
     std::unique_ptr<char[]> readbuf(new char[readbufsize]);
+
     MPI_FILE_READ_AT_ALL(fh, startpos, &readbuf[0], readbufsize, MPI_CHAR, MPI_STATUS_IGNORE);
     MPI_File_close(&fh);
 
     size_t totbases = std::accumulate(readlens.begin(), readlens.end(), static_cast<size_t>(0), std::plus<size_t>{});
     size_t maxlen = *std::max_element(readlens.begin(), readlens.end());
 
+    /*
+     * ASCII sequences are first read into this char buffer
+     * before they are compressed into the sequence buffer.
+     */
     std::unique_ptr<char[]> tmpbuf(new char[maxlen]);
 
     MPI_Barrier(comm);
@@ -157,6 +219,9 @@ std::shared_ptr<DnaBuffer> FastaIndex::getmydna() const
             locpos += (cnt+1);
         }
 
+        /*
+         * Compress sequence into local sequence buffer.
+         */
         dnabuf->push_back(&tmpbuf[0], itr->len);
     }
 
@@ -164,7 +229,7 @@ std::shared_ptr<DnaBuffer> FastaIndex::getmydna() const
     double mbspersecond = (totbases / 1048576.0) / elapsed;
     Logger logger(commgrid);
     logger() << std::fixed << std::setprecision(2) << mbspersecond << " Mbs/second";
-    logger.Flush("FASTA parsing rates (FastaData):");
+    logger.Flush("FASTA parsing rates (DnaBuffer):");
 
     return dnabuf;
 }

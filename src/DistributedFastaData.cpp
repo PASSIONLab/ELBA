@@ -85,7 +85,7 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
         size_t reqstart = std::max(static_cast<size_t>(*iditr++), globalstartid);
         size_t reqend = std::min(static_cast<size_t>(*iditr), globalstartid + count);
         if (owner != requester) myrequests.emplace_back(owner, requester, reqstart, reqend-reqstart, rc);
-        else myrequests.emplace_back(owner, requester, reqstart, reqend-reqstart, 3);
+        else myrequests.emplace_back(owner, requester, reqstart, reqend-reqstart, rc+2);
     }
 }
 
@@ -105,7 +105,6 @@ void DistributedFastaData::getremoterequests(std::vector<FastaDataRequest>& allr
      */
     myrequests.resize(0);
     getgridrequests(myrequests, rowstartid, numrowreads, 0);
-    if (!isdiag) getgridrequests(myrequests, colstartid, numcolreads, 1);
 
     Logger logger(commgrid);
     logger() << "\n";
@@ -166,19 +165,14 @@ void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> myd
     std::vector<FastaDataRequest> allrequests, myrequests;
     getremoterequests(allrequests, myrequests);
 
-    // std::vector<FastaDataRequest> myrealrequests;
-    // std::copy_if(myrequests.begin(), myrequests.end(), std::back_inserter(myrealrequests), [](const auto& req) { return req.rc != 3; });
+    size_t numallrequests, nummyrequests, nummysends;
+    std::vector<size_t> recvbufsizes;
+    std::vector<MPI_Request> recvrequests, sendrequests;
 
-    // Logger logger(index->getcommgrid());
-    // logger() << "\n";
-    // for (auto itr = myrealrequests.begin(); itr != myrealrequests.end(); ++itr)
-        // logger() << *itr << "\n";
-    // logger.Flush("myrealrequests");
-
-    size_t nummyrequests = myrequests.size();
-    size_t numallrequests = allrequests.size();
-    std::vector<size_t> recvbufsizes(nummyrequests);
-    std::vector<MPI_Request> recvrequests(nummyrequests);
+    nummyrequests = myrequests.size();
+    numallrequests = allrequests.size();
+    recvbufsizes.resize(nummyrequests);
+    recvrequests.resize(nummyrequests);
 
     for (size_t i = 0; i < nummyrequests; ++i)
     {
@@ -186,7 +180,6 @@ void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> myd
     }
 
     std::vector<std::tuple<size_t, int, unsigned short>> sendinfo;
-
 
     for (size_t i = 0; i < numallrequests; ++i)
     {
@@ -198,8 +191,8 @@ void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> myd
         }
     }
 
-    size_t nummysends = sendinfo.size();
-    std::vector<MPI_Request> sendrequests(nummysends);
+    nummysends = sendinfo.size();
+    sendrequests.resize(nummysends);
 
     for (size_t i = 0; i < nummysends; ++i)
     {
@@ -212,6 +205,8 @@ void DistributedFastaData::blocking_read_exchange(std::shared_ptr<DnaBuffer> myd
     assert(nummyrequests <= std::numeric_limits<int>::max());
     assert(nummysends <= std::numeric_limits<int>::max());
 
-    MPI_Waitall(static_cast<int>(nummysends), sendrequests.data(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(static_cast<int>(nummysends),    sendrequests.data(), MPI_STATUSES_IGNORE);
     MPI_Waitall(static_cast<int>(nummyrequests), recvrequests.data(), MPI_STATUSES_IGNORE);
+
+    // rowbuf.reset(new DnaBuffer())
 }

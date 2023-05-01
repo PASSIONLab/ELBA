@@ -40,8 +40,8 @@ private:
     size_t rowstartid, colstartid;
     size_t numrowreads, numcolreads;
 
-    std::unique_ptr<DnaBuffer> rowbuf, colbuf;
-    std::vector<DnaSeq> rowseqs, colseqs;
+    std::unique_ptr<DnaBuffer> rowbuf;
+    std::vector<DnaSeq> rowseqs;
 
     void getremoterequests(std::vector<FastaDataRequest>& allrequests, std::vector<FastaDataRequest>& myrequests) const;
     void getgridrequests(std::vector<FastaDataRequest>& myrequests, size_t globalstartid, size_t count, unsigned short rc) const;
