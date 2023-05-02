@@ -227,9 +227,9 @@ std::shared_ptr<DnaBuffer> FastaIndex::getmydna() const
 
     elapsed += MPI_Wtime();
     double mbspersecond = (totbases / 1048576.0) / elapsed;
-    Logger logger(commgrid);
-    logger() << std::fixed << std::setprecision(2) << mbspersecond << " Mbs/second";
-    logger.Flush("FASTA parsing rates (DnaBuffer):");
+    // Logger logger(commgrid);
+    // logger() << std::fixed << std::setprecision(2) << mbspersecond << " Mbs/second";
+    // logger.Flush("FASTA parsing rates (DnaBuffer):");
 
     return dnabuf;
 }

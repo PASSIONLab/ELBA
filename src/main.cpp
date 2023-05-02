@@ -149,15 +149,15 @@ int main(int argc, char **argv)
 /***********************************************************/
 
         elapsed += MPI_Wtime();
-        MPI_Reduce(&elapsed, &maxtime, 1, MPI_DOUBLE, MPI_MAX, root, comm);
-        MPI_Reduce(&elapsed, &avgtime, 1, MPI_DOUBLE, MPI_SUM, root, comm);
+        // MPI_Reduce(&elapsed, &maxtime, 1, MPI_DOUBLE, MPI_MAX, root, comm);
+        // MPI_Reduce(&elapsed, &avgtime, 1, MPI_DOUBLE, MPI_SUM, root, comm);
 
-        if (myrank == root)
-        {
-            std::cout << "Total time (user secs): " << std::fixed << std::setprecision(3) << elapsed << "\n"
-                      << "Total work (proc secs): " << std::fixed << std::setprecision(3) << avgtime << "\n"
-                      << "Total cost (proc secs): " << std::fixed << std::setprecision(3) << (elapsed*nprocs) << std::endl;
-        }
+        // if (myrank == root)
+        // {
+            // std::cout << "Total time (user secs): " << std::fixed << std::setprecision(3) << elapsed << "\n"
+                      // << "Total work (proc secs): " << std::fixed << std::setprecision(3) << avgtime << "\n"
+                      // << "Total cost (proc secs): " << std::fixed << std::setprecision(3) << (elapsed*nprocs) << std::endl;
+        // }
 
         MPI_Barrier(comm);
 
