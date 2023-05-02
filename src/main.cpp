@@ -91,6 +91,29 @@ int main(int argc, char **argv)
         dfd.collect_col_sequences(mydna);
         dfd.wait();
 
+        auto rowbuf = dfd.getrowbuf();
+        auto colbuf = dfd.getcolbuf();
+
+        std::ostringstream ss;
+        ss << "rowgrid.rank" << myrank+1 << ".txt";
+        std::ofstream rowstream(ss.str());
+        ss.clear();
+        ss.str("");
+        ss << "colgrid.rank" << myrank+1 << ".txt";
+        std::ofstream colstream(ss.str());
+
+        for (size_t i = 0; i < rowbuf->size(); ++i)
+        {
+            rowstream << (*rowbuf)[i].ascii() << "\n";
+        }
+        rowstream.close();
+
+        for (size_t i = 0; i < colbuf->size(); ++i)
+        {
+            colstream << (*colbuf)[i].ascii() << "\n";
+        }
+        colstream.close();
+
 /***********************************************************/
 /************************* END *****************************/
 /***********************************************************/

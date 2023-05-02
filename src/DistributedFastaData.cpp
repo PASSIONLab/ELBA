@@ -379,5 +379,4 @@ void DistributedFastaData::wait()
     MPI_Waitall(static_cast<int>(colsendreqs.size()), colsendreqs.data(), MPI_STATUSES_IGNORE);
     MPI_Waitall(static_cast<int>(colrecvreqs.size()), colrecvreqs.data(), MPI_STATUSES_IGNORE);
     colbuf.reset(new DnaBuffer(colreqbufsize, colreqnumreads, colreqbuf.release(), colreqreadlens.get()));
-    std::cout << "done waiting" << std::endl;
 }

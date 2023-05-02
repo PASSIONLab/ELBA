@@ -36,13 +36,16 @@ public:
     void collect_col_sequences(std::shared_ptr<DnaBuffer> mydna);
     void wait();
 
+    std::shared_ptr<DnaBuffer> getrowbuf() { return rowbuf; }
+    std::shared_ptr<DnaBuffer> getcolbuf() { return colbuf; }
+
 private:
     std::shared_ptr<FastaIndex> index;
     bool isdiag;
     size_t rowstartid, colstartid;
     size_t numrowreads, numcolreads;
 
-    std::unique_ptr<DnaBuffer> rowbuf, colbuf;
+    std::shared_ptr<DnaBuffer> rowbuf, colbuf;
 
     size_t rowreqbufsize, rowreqnumreads;
     size_t colreqbufsize, colreqnumreads;
