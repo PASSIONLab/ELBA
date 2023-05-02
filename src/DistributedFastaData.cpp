@@ -1,5 +1,4 @@
 #include "DistributedFastaData.hpp"
-#include "MPITypeHandler.hpp"
 #include "Logger.hpp"
 #include <limits>
 
@@ -379,3 +378,72 @@ void DistributedFastaData::wait()
     MPI_Waitall(static_cast<int>(colrecvreqs.size()), colrecvreqs.data(), MPI_STATUSES_IGNORE);
     colbuf.reset(new DnaBuffer(colreqbufsize, colreqnumreads, colreqbuf.release(), colreqreadlens.get()));
 }
+
+void DistributedFastaData::parallel_write_colgrid(char const *fname, int rowid) const
+{
+    auto commgrid = index->getcommgrid();
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    int myrowid = commgrid->GetRankInProcCol();
+    int mycolid = commgrid->GetRankInProcRow();
+    int procdim = commgrid->GetGridRows();
+    MPI_Comm comm = commgrid->GetWorld();
+    MPI_Comm rowcomm = commgrid->GetRowWorld();
+
+    if (myrowid == (rowid%procdim))
+    {
+        size_t mynumreads = colbuf->size();
+        assert(mynumreads == getnumcolreads());
+
+        std::ostringstream myfilestrstream;
+
+        for (size_t i = 0; i < mynumreads; ++i)
+        {
+            myfilestrstream << (*colbuf)[i].ascii() << "\n";
+        }
+        std::string myfilecontents = myfilestrstream.str();
+        MPI_Offset count = myfilecontents.size();
+
+        MPI_File fh;
+        MPI_File_open(rowcomm, fname, MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+        MPI_File_write_ordered(fh, myfilecontents.c_str(), count, MPI_CHAR, MPI_STATUS_IGNORE);
+        MPI_File_close(&fh);
+    }
+
+    MPI_Barrier(comm);
+}
+
+void DistributedFastaData::parallel_write_rowgrid(char const *fname, int colid) const
+{
+    auto commgrid = index->getcommgrid();
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    int myrowid = commgrid->GetRankInProcCol();
+    int mycolid = commgrid->GetRankInProcRow();
+    int procdim = commgrid->GetGridRows();
+    MPI_Comm comm = commgrid->GetWorld();
+    MPI_Comm colcomm = commgrid->GetColWorld();
+
+    if (mycolid == (colid%procdim))
+    {
+        size_t mynumreads = rowbuf->size();
+        assert(mynumreads == getnumrowreads());
+
+        std::ostringstream myfilestrstream;
+
+        for (size_t i = 0; i < mynumreads; ++i)
+        {
+            myfilestrstream << (*rowbuf)[i].ascii() << "\n";
+        }
+        std::string myfilecontents = myfilestrstream.str();
+        MPI_Offset count = myfilecontents.size();
+
+        MPI_File fh;
+        MPI_File_open(colcomm, fname, MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+        MPI_File_write_ordered(fh, myfilecontents.c_str(), count, MPI_CHAR, MPI_STATUS_IGNORE);
+        MPI_File_close(&fh);
+    }
+
+    MPI_Barrier(comm);
+}
+

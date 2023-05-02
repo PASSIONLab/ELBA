@@ -94,8 +94,20 @@ int main(int argc, char **argv)
         dfd.collect_col_sequences(mydna);
         dfd.wait();
 
-        auto rowbuf = dfd.getrowbuf();
-        auto colbuf = dfd.getcolbuf();
+        // dfd.parallel_write_rowgrid("rowgrid0.txt", 0);
+        // dfd.parallel_write_rowgrid("rowgrid1.txt", 1);
+        // dfd.parallel_write_rowgrid("rowgrid2.txt", 2);
+        // dfd.parallel_write_rowgrid("rowgrid3.txt", 3);
+
+        // dfd.parallel_write_colgrid("colgrid0.txt", 0);
+        // dfd.parallel_write_colgrid("colgrid1.txt", 1);
+        // dfd.parallel_write_colgrid("colgrid2.txt", 2);
+        // dfd.parallel_write_colgrid("colgrid3.txt", 3);
+
+        // auto rowbuf = dfd.getrowbuf();
+        // auto colbuf = dfd.getcolbuf();
+
+
         // std::vector<DnaSeq> myreads = lfd.getdnaseqs();
 
         //KmerCountMap kmermap = GetKmerCountMapKeys(myreads, commgrid);
