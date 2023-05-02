@@ -57,7 +57,7 @@ double elapsed, mintime, maxtime, avgtime;
  */
 int parse_cli(int argc, char *argv[]);
 void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid);
-CT<PosInRead>::PSpParMat CreateKmerMatrix(const std::vector<DnaSeq>& myreads, const KmerCountMap& kmermap, Grid commgrid);
+CT<PosInRead>::PSpParMat CreateKmerMatrix(const DnaBuffer&  myreads, const KmerCountMap& kmermap, Grid commgrid);
 
 int main(int argc, char **argv)
 {
@@ -90,8 +90,7 @@ int main(int argc, char **argv)
         std::shared_ptr<FastaIndex> index(new FastaIndex(fasta_fname, commgrid));
         std::shared_ptr<DnaBuffer> mydna = index->getmydna();
         DistributedFastaData dfd(index);
-        //dfd.collect_sequences(mydna);
-        //dfd.wait();
+        dfd.collect_sequences(mydna);
 
         // auto rowbuf = dfd.getrowbuf();
         // auto colbuf = dfd.getcolbuf();
@@ -100,17 +99,19 @@ int main(int argc, char **argv)
         GetKmerCountMapValues(*mydna, kmermap, commgrid);
         PrintKmerHistogram(kmermap, commgrid);
 
-        //auto A = CreateKmerMatrix(myreads, kmermap, commgrid);
+        dfd.wait();
 
-        //size_t numreads = A.getnrow();
-        //size_t numkmers = A.getncol();
-        //size_t numseeds = A.getnnz();
+        auto A = CreateKmerMatrix(*mydna, kmermap, commgrid);
 
-        //if (!myrank)
-        //{
-        //    std::cout << "K-mer matrix A has " << numreads << " rows (readids), " << numkmers << " columns (k-mers), and " << numseeds << " nonzeros (k-mer seeds)\n" << std::endl;
-        //}
-        //MPI_Barrier(comm);
+        size_t numreads = A.getnrow();
+        size_t numkmers = A.getncol();
+        size_t numseeds = A.getnnz();
+
+        if (!myrank)
+        {
+           std::cout << "K-mer matrix A has " << numreads << " rows (readids), " << numkmers << " columns (k-mers), and " << numseeds << " nonzeros (k-mer seeds)\n" << std::endl;
+        }
+        MPI_Barrier(comm);
 
         //A.ParallelWriteMM("A.mtx", false);
 
@@ -276,7 +277,7 @@ void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid)
     MPI_Barrier(commgrid->GetWorld());
 }
 
-CT<PosInRead>::PSpParMat CreateKmerMatrix(const std::vector<DnaSeq>& myreads, const KmerCountMap& kmermap, Grid commgrid)
+CT<PosInRead>::PSpParMat CreateKmerMatrix(const DnaBuffer& myreads, const KmerCountMap& kmermap, Grid commgrid)
 {
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
