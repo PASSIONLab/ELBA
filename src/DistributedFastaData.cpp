@@ -237,24 +237,8 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     }
     logger.Flush("posted send calls:");
 
-    std::vector<MPI_Status> sendstatuses(2*mynumsends), recvstatuses(2*mynumreqs);
-
-    MPI_Waitall(static_cast<int>(2*mynumsends), sendreqs.data(), sendstatuses.data());
-
-    logger() << "\n";
-    for (size_t i = 0; i < 2*mynumsends; ++i)
-    {
-        logger() << "sendstatuses[" << i << "]" << sendstatuses[i].MPI_SOURCE << "/" << sendstatuses[i].MPI_TAG << "/" << sendstatuses[i].MPI_ERROR << "\n";
-    }
-    logger.Flush("Send Statuses:");
-
-    MPI_Waitall(static_cast<int>(2*mynumreqs), recvreqs.data(), recvstatuses.data());
-    logger() << "\n";
-    for (size_t i = 0; i < 2*mynumreqs; ++i)
-    {
-        logger() << "recvstatuses[" << i << "]" << recvstatuses[i].MPI_SOURCE << "/" << recvstatuses[i].MPI_TAG << "/" << recvstatuses[i].MPI_ERROR << "\n";
-    }
-    logger.Flush("Receive Statuses:");
+    MPI_Waitall(static_cast<int>(2*mynumsends), sendreqs.data(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(static_cast<int>(2*mynumreqs), recvreqs.data(), MPI_STATUSES_IGNORE);
 
     return std::make_shared<DnaBuffer>(1);
 }
