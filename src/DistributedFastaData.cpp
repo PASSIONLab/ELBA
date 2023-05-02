@@ -159,7 +159,7 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     mynumsends = mysends.size();
 
     std::vector<size_t> reqinfo(2*mynumreqs); /* even indices are number of reads, odd indices are buffer sizes */
-    std::vector<MPI_Request> recvreqs(2*mynumreqs), sendreqs(mynumsends);
+    std::vector<MPI_Request> recvreqs(2*mynumreqs), sendreqs(2*mynumsends);
 
     for (size_t i = 0; i < mynumreqs; ++i)
     {
@@ -233,7 +233,7 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
         logger() << "sending " << sendlens[i] << " read lengths to " << logger.rankstr(mysends[i].requester) << "\n";
         logger() << "sending " << sendbufsizes[i] << " buffer bytes to " << logger.rankstr(mysends[i].requester) << "\n";
         MPI_ISEND(sendreadlens, static_cast<MPI_Count_type>(sendlens[i]), MPI_SIZE_T, mysends[i].requester, 100, comm, sendreqs.data() + i);
-        MPI_ISEND(sendbuf, static_cast<MPI_Count_type>(reqinfo[2*i+1]), MPI_UINT8_T, mysends[i].requester, 101, comm, sendreqs.data() + mynumsends + i);
+        MPI_ISEND(sendbuf, static_cast<MPI_Count_type>(sendbufsizes[i]), MPI_UINT8_T, mysends[i].requester, 101, comm, sendreqs.data() + mynumsends + i);
     }
     logger.Flush("posted send calls:");
 
