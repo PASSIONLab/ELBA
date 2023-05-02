@@ -283,13 +283,13 @@ void DistributedFastaData::write_grid_sequences(char const *fname_prefix) const
     MPI_File_write_ordered(fh_rows, mycolcontents.c_str(), mycolcount, MPI_CHAR, MPI_STATUS_IGNORE);
     MPI_File_close(&fh_rows);
 
-    /* std::string mycolfname = getgridfname(fname_prefix, mycolid, 1);                                      */
-    /* std::string myrowcontents = rowbuf->getasciifilecontents();                                           */
-    /* MPI_Count myrowcount = myrowcontents.size();                                                          */
-    /* MPI_File fh_cols;                                                                                     */
-    /* MPI_File_open(colcomm, mycolfname.c_str(), MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh_cols); */
-    /* MPI_File_write_ordered(fh_cols, myrowcontents.c_str(), myrowcount, MPI_CHAR, MPI_STATUS_IGNORE);      */
-    /* MPI_File_close(&fh_cols);                                                                             */
+    std::string mycolfname = getgridfname(fname_prefix, mycolid, 1);
+    std::string myrowcontents = rowbuf->getasciifilecontents();
+    MPI_Count myrowcount = myrowcontents.size();
+    MPI_File fh_cols;
+    MPI_File_open(colcomm, mycolfname.c_str(), MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh_cols);
+    MPI_File_write_ordered(fh_cols, myrowcontents.c_str(), myrowcount, MPI_CHAR, MPI_STATUS_IGNORE);
+    MPI_File_close(&fh_cols);
 
     MPI_Barrier(comm);
 }
