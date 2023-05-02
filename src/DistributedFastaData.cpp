@@ -159,12 +159,12 @@ void DistributedFastaData::collect_row_sequences(std::shared_ptr<DnaBuffer> mydn
     mynumsends = mysends.size();
 
     std::vector<size_t> reqinfo(2*mynumreqs); /* even indices are number of reads, odd indices are buffer sizes */
-    rowrecvreqs.resize(2*mynumreqs);
-    rowsendreqs.resize(2*mynumsends);
+    rowinfo.recvreqs.resize(2*mynumreqs);
+    rowinfo.sendreqs.resize(2*mynumsends);
 
     for (size_t i = 0; i < mynumreqs; ++i)
     {
-        MPI_IRECV(reqinfo.data() + (2*i), 2, MPI_SIZE_T, myreqs[i].owner, 99, comm, rowrecvreqs.data() + i);
+        MPI_IRECV(reqinfo.data() + (2*i), 2, MPI_SIZE_T, myreqs[i].owner, 99, comm, rowinfo.recvreqs.data() + i);
     }
 
     std::vector<size_t> sendlens(mynumsends), sendbufsizes(mynumsends);
@@ -181,45 +181,45 @@ void DistributedFastaData::collect_row_sequences(std::shared_ptr<DnaBuffer> mydn
         sendbufsizes[i] = mydna->getrangebufsize(localoffset, sendlens[i]);
         sendbufs[i] = mydna->getbufoffset(localoffset);
         size_t sendbuf[2] = {sendlens[i], sendbufsizes[i]};
-        MPI_ISEND(sendbuf, 2, MPI_SIZE_T, mysends[i].requester, 99, comm, rowsendreqs.data() + i);
+        MPI_ISEND(sendbuf, 2, MPI_SIZE_T, mysends[i].requester, 99, comm, rowinfo.sendreqs.data() + i);
         logger() << "sent " << sendlens[i] << "/" << sendbufsizes[i] << " to " << logger.rankstr(mysends[i].requester) << " :: " << mysends[i] << "\n";
     }
 
     assert(2*mynumreqs <= std::numeric_limits<int>::max());
     assert(2*mynumsends <= std::numeric_limits<int>::max());
 
-    MPI_Waitall(static_cast<int>(mynumsends), rowsendreqs.data(), MPI_STATUSES_IGNORE);
-    MPI_Waitall(static_cast<int>(mynumreqs), rowrecvreqs.data(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(static_cast<int>(mynumsends), rowinfo.sendreqs.data(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(static_cast<int>(mynumreqs), rowinfo.recvreqs.data(), MPI_STATUSES_IGNORE);
 
     logger() << "\n";
     for (size_t i = 0; i < mynumreqs; ++i) logger() << "received " << reqinfo[2*i] << "/" << reqinfo[2*i + 1] << " from " << logger.rankstr(myreqs[i].owner) << " :: " << myreqs[i] << "\n";
     logger.Flush("Exchanges:");
 
     std::vector<size_t> reqreadlendispls(mynumreqs+1);
-    std::vector<size_t> rowreqbufdispls(mynumreqs+1);
-    reqreadlendispls.front() = rowreqbufdispls.front() = 0;
+    std::vector<size_t> reqbufdispls(mynumreqs+1);
+    reqreadlendispls.front() = reqbufdispls.front() = 0;
 
     for (size_t i = 0; i < mynumreqs; ++i)
     {
         reqreadlendispls[i+1] = reqreadlendispls[i] + reqinfo[2*i];
-        rowreqbufdispls[i+1] = rowreqbufdispls[i] + reqinfo[2*i+1];
+        reqbufdispls[i+1] = reqbufdispls[i] + reqinfo[2*i+1];
     }
 
-    rowreqnumreads = reqreadlendispls.back();
-    rowreqbufsize = rowreqbufdispls.back();
-    rowreqreadlens.reset(new size_t[rowreqnumreads]);
-    rowreqbuf.reset(new uint8_t[rowreqbufsize]);
+    rowinfo.reqnumreads = reqreadlendispls.back();
+    rowinfo.reqbufsize = reqbufdispls.back();
+    rowinfo.reqreadlens.reset(new size_t[rowinfo.reqnumreads]);
+    rowinfo.reqbuf.reset(new uint8_t[rowinfo.reqbufsize]);
 
     logger() << "\n";
     for (size_t i = 0; i < mynumreqs; ++i)
     {
         MPI_Count_type count = reqreadlendispls[i+1] - reqreadlendispls[i];
-        MPI_Count_type bufsize = rowreqbufdispls[i+1] - rowreqbufdispls[i];
+        MPI_Count_type bufsize = reqbufdispls[i+1] - reqbufdispls[i];
 
         logger() << "receiving " << count << " read lengths at displacement " << reqreadlendispls[i] << " from " << logger.rankstr(myreqs[i].owner) << "\n";
-        logger() << "receiving " << bufsize << " buffer bytes at displacement " << rowreqbufdispls[i] << " from " << logger.rankstr(myreqs[i].owner) << "\n";
-        MPI_IRECV(rowreqreadlens.get() + reqreadlendispls[i], count, MPI_SIZE_T, myreqs[i].owner, 100, comm, rowrecvreqs.data() + i);
-        MPI_IRECV(rowreqbuf.get() + rowreqbufdispls[i], bufsize, MPI_UINT8_T, myreqs[i].owner, 101, comm, rowrecvreqs.data() + mynumreqs + i);
+        logger() << "receiving " << bufsize << " buffer bytes at displacement " << reqbufdispls[i] << " from " << logger.rankstr(myreqs[i].owner) << "\n";
+        MPI_IRECV(rowinfo.reqreadlens.get() + reqreadlendispls[i], count, MPI_SIZE_T, myreqs[i].owner, 100, comm, rowinfo.recvreqs.data() + i);
+        MPI_IRECV(rowinfo.reqbuf.get() + reqbufdispls[i], bufsize, MPI_UINT8_T, myreqs[i].owner, 101, comm, rowinfo.recvreqs.data() + mynumreqs + i);
     }
     logger.Flush("posted received calls:");
 
@@ -233,8 +233,8 @@ void DistributedFastaData::collect_row_sequences(std::shared_ptr<DnaBuffer> mydn
         const uint8_t *sendbuf = mydna->getbufoffset(localoffset);
         logger() << "sending " << sendlens[i] << " read lengths to " << logger.rankstr(mysends[i].requester) << "\n";
         logger() << "sending " << sendbufsizes[i] << " buffer bytes to " << logger.rankstr(mysends[i].requester) << "\n";
-        MPI_ISEND(sendreadlens, static_cast<MPI_Count_type>(sendlens[i]), MPI_SIZE_T, mysends[i].requester, 100, comm, rowsendreqs.data() + i);
-        MPI_ISEND(sendbuf, static_cast<MPI_Count_type>(sendbufsizes[i]), MPI_UINT8_T, mysends[i].requester, 101, comm, rowsendreqs.data() + mynumsends + i);
+        MPI_ISEND(sendreadlens, static_cast<MPI_Count_type>(sendlens[i]), MPI_SIZE_T, mysends[i].requester, 100, comm, rowinfo.sendreqs.data() + i);
+        MPI_ISEND(sendbuf, static_cast<MPI_Count_type>(sendbufsizes[i]), MPI_UINT8_T, mysends[i].requester, 101, comm, rowinfo.sendreqs.data() + mynumsends + i);
     }
     logger.Flush("posted send calls:");
 }
@@ -290,12 +290,12 @@ void DistributedFastaData::collect_col_sequences(std::shared_ptr<DnaBuffer> mydn
     mynumsends = mysends.size();
 
     std::vector<size_t> reqinfo(2*mynumreqs); /* even indices are number of reads, odd indices are buffer sizes */
-    colrecvreqs.resize(2*mynumreqs);
-    colsendreqs.resize(2*mynumsends);
+    colinfo.recvreqs.resize(2*mynumreqs);
+    colinfo.sendreqs.resize(2*mynumsends);
 
     for (size_t i = 0; i < mynumreqs; ++i)
     {
-        MPI_IRECV(reqinfo.data() + (2*i), 2, MPI_SIZE_T, myreqs[i].owner, 99, comm, colrecvreqs.data() + i);
+        MPI_IRECV(reqinfo.data() + (2*i), 2, MPI_SIZE_T, myreqs[i].owner, 99, comm, colinfo.recvreqs.data() + i);
     }
 
     std::vector<size_t> sendlens(mynumsends), sendbufsizes(mynumsends);
@@ -312,45 +312,45 @@ void DistributedFastaData::collect_col_sequences(std::shared_ptr<DnaBuffer> mydn
         sendbufsizes[i] = mydna->getrangebufsize(localoffset, sendlens[i]);
         sendbufs[i] = mydna->getbufoffset(localoffset);
         size_t sendbuf[2] = {sendlens[i], sendbufsizes[i]};
-        MPI_ISEND(sendbuf, 2, MPI_SIZE_T, mysends[i].requester, 99, comm, colsendreqs.data() + i);
+        MPI_ISEND(sendbuf, 2, MPI_SIZE_T, mysends[i].requester, 99, comm, colinfo.sendreqs.data() + i);
         logger() << "sent " << sendlens[i] << "/" << sendbufsizes[i] << " to " << logger.rankstr(mysends[i].requester) << " :: " << mysends[i] << "\n";
     }
 
     assert(2*mynumreqs <= std::numeric_limits<int>::max());
     assert(2*mynumsends <= std::numeric_limits<int>::max());
 
-    MPI_Waitall(static_cast<int>(mynumsends), colsendreqs.data(), MPI_STATUSES_IGNORE);
-    MPI_Waitall(static_cast<int>(mynumreqs), colrecvreqs.data(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(static_cast<int>(mynumsends), colinfo.sendreqs.data(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(static_cast<int>(mynumreqs), colinfo.recvreqs.data(), MPI_STATUSES_IGNORE);
 
     logger() << "\n";
     for (size_t i = 0; i < mynumreqs; ++i) logger() << "received " << reqinfo[2*i] << "/" << reqinfo[2*i + 1] << " from " << logger.rankstr(myreqs[i].owner) << " :: " << myreqs[i] << "\n";
     logger.Flush("Exchanges:");
 
     std::vector<size_t> reqreadlendispls(mynumreqs+1);
-    std::vector<size_t> colreqbufdispls(mynumreqs+1);
-    reqreadlendispls.front() = colreqbufdispls.front() = 0;
+    std::vector<size_t> reqbufdispls(mynumreqs+1);
+    reqreadlendispls.front() = reqbufdispls.front() = 0;
 
     for (size_t i = 0; i < mynumreqs; ++i)
     {
         reqreadlendispls[i+1] = reqreadlendispls[i] + reqinfo[2*i];
-        colreqbufdispls[i+1] = colreqbufdispls[i] + reqinfo[2*i+1];
+        reqbufdispls[i+1] = reqbufdispls[i] + reqinfo[2*i+1];
     }
 
-    colreqnumreads = reqreadlendispls.back();
-    colreqbufsize = colreqbufdispls.back();
-    colreqreadlens.reset(new size_t[colreqnumreads]);
-    colreqbuf.reset(new uint8_t[colreqbufsize]);
+    colinfo.reqnumreads = reqreadlendispls.back();
+    colinfo.reqbufsize = reqbufdispls.back();
+    colinfo.reqreadlens.reset(new size_t[colinfo.reqnumreads]);
+    colinfo.reqbuf.reset(new uint8_t[colinfo.reqbufsize]);
 
     logger() << "\n";
     for (size_t i = 0; i < mynumreqs; ++i)
     {
         MPI_Count_type count = reqreadlendispls[i+1] - reqreadlendispls[i];
-        MPI_Count_type bufsize = colreqbufdispls[i+1] - colreqbufdispls[i];
+        MPI_Count_type bufsize = reqbufdispls[i+1] - reqbufdispls[i];
 
         logger() << "receiving " << count << " read lengths at displacement " << reqreadlendispls[i] << " from " << logger.rankstr(myreqs[i].owner) << "\n";
-        logger() << "receiving " << bufsize << " buffer bytes at displacement " << colreqbufdispls[i] << " from " << logger.rankstr(myreqs[i].owner) << "\n";
-        MPI_IRECV(colreqreadlens.get() + reqreadlendispls[i], count, MPI_SIZE_T, myreqs[i].owner, 100, comm, colrecvreqs.data() + i);
-        MPI_IRECV(colreqbuf.get() + colreqbufdispls[i], bufsize, MPI_UINT8_T, myreqs[i].owner, 101, comm, colrecvreqs.data() + mynumreqs + i);
+        logger() << "receiving " << bufsize << " buffer bytes at displacement " << reqbufdispls[i] << " from " << logger.rankstr(myreqs[i].owner) << "\n";
+        MPI_IRECV(colinfo.reqreadlens.get() + reqreadlendispls[i], count, MPI_SIZE_T, myreqs[i].owner, 100, comm, colinfo.recvreqs.data() + i);
+        MPI_IRECV(colinfo.reqbuf.get() + reqbufdispls[i], bufsize, MPI_UINT8_T, myreqs[i].owner, 101, comm, colinfo.recvreqs.data() + mynumreqs + i);
     }
     logger.Flush("posted received calls:");
 
@@ -364,20 +364,20 @@ void DistributedFastaData::collect_col_sequences(std::shared_ptr<DnaBuffer> mydn
         const uint8_t *sendbuf = mydna->getbufoffset(localoffset);
         logger() << "sending " << sendlens[i] << " read lengths to " << logger.rankstr(mysends[i].requester) << "\n";
         logger() << "sending " << sendbufsizes[i] << " buffer bytes to " << logger.rankstr(mysends[i].requester) << "\n";
-        MPI_ISEND(sendreadlens, static_cast<MPI_Count_type>(sendlens[i]), MPI_SIZE_T, mysends[i].requester, 100, comm, colsendreqs.data() + i);
-        MPI_ISEND(sendbuf, static_cast<MPI_Count_type>(sendbufsizes[i]), MPI_UINT8_T, mysends[i].requester, 101, comm, colsendreqs.data() + mynumsends + i);
+        MPI_ISEND(sendreadlens, static_cast<MPI_Count_type>(sendlens[i]), MPI_SIZE_T, mysends[i].requester, 100, comm, colinfo.sendreqs.data() + i);
+        MPI_ISEND(sendbuf, static_cast<MPI_Count_type>(sendbufsizes[i]), MPI_UINT8_T, mysends[i].requester, 101, comm, colinfo.sendreqs.data() + mynumsends + i);
     }
     logger.Flush("posted send calls:");
 }
 
 void DistributedFastaData::wait()
 {
-    MPI_Waitall(static_cast<int>(rowsendreqs.size()), rowsendreqs.data(), MPI_STATUSES_IGNORE);
-    MPI_Waitall(static_cast<int>(rowrecvreqs.size()), rowrecvreqs.data(), MPI_STATUSES_IGNORE);
-    rowbuf.reset(new DnaBuffer(rowreqbufsize, rowreqnumreads, rowreqbuf.release(), rowreqreadlens.get()));
-    MPI_Waitall(static_cast<int>(colsendreqs.size()), colsendreqs.data(), MPI_STATUSES_IGNORE);
-    MPI_Waitall(static_cast<int>(colrecvreqs.size()), colrecvreqs.data(), MPI_STATUSES_IGNORE);
-    colbuf.reset(new DnaBuffer(colreqbufsize, colreqnumreads, colreqbuf.release(), colreqreadlens.get()));
+    MPI_Waitall(static_cast<int>(rowinfo.sendreqs.size()), rowinfo.sendreqs.data(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(static_cast<int>(rowinfo.recvreqs.size()), rowinfo.recvreqs.data(), MPI_STATUSES_IGNORE);
+    rowbuf.reset(new DnaBuffer(rowinfo.reqbufsize, rowinfo.reqnumreads, rowinfo.reqbuf.release(), rowinfo.reqreadlens.get()));
+    MPI_Waitall(static_cast<int>(colinfo.sendreqs.size()), colinfo.sendreqs.data(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(static_cast<int>(colinfo.recvreqs.size()), colinfo.recvreqs.data(), MPI_STATUSES_IGNORE);
+    colbuf.reset(new DnaBuffer(colinfo.reqbufsize, colinfo.reqnumreads, colinfo.reqbuf.release(), colinfo.reqreadlens.get()));
 }
 
 std::string getgridfname(char const *fname_prefix, int rank, bool rc)
