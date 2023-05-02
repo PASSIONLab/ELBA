@@ -11,7 +11,7 @@ public:
     struct FastaDataRequest
     {
         int owner, requester; /* owner is orignal data owner, requester is remote requester */
-        size_t offset, count; /* offset is local to the data owned by the requester, count is the number of sequences requested */
+        size_t offset, count; /* offset is global sequence offset, count is the number of sequences requested */
         unsigned short rc; /* rc=0 means sequences are common cross the row processor dimension, rc=1 ... column processor dimension */
 
         FastaDataRequest() = default;
