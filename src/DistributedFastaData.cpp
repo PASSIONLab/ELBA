@@ -108,7 +108,7 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
     }
 }
 
-std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shared_ptr<DnaBuffer> mydna)
+void DistributedFastaData::collect_row_sequences(std::shared_ptr<DnaBuffer> mydna)
 {
     Grid commgrid = index->getcommgrid();
     int nprocs = commgrid->GetSize();
@@ -159,7 +159,8 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     mynumsends = mysends.size();
 
     std::vector<size_t> reqinfo(2*mynumreqs); /* even indices are number of reads, odd indices are buffer sizes */
-    std::vector<MPI_Request> recvreqs(2*mynumreqs), sendreqs(2*mynumsends);
+    recvreqs.resize(2*mynumreqs);
+    sendreqs.resize(2*mynumsends);
 
     for (size_t i = 0; i < mynumreqs; ++i)
     {
@@ -204,10 +205,10 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
         reqbufdispls[i+1] = reqbufdispls[i] + reqinfo[2*i+1];
     }
 
-    size_t reqnumreads = reqreadlendispls.back();
-    size_t reqbufsize = reqbufdispls.back();
-    size_t *reqreadlens = new size_t[reqnumreads];
-    uint8_t *reqbuf = new uint8_t[reqbufsize];
+    reqnumreads = reqreadlendispls.back();
+    reqbufsize = reqbufdispls.back();
+    reqreadlens.reset(new size_t[reqnumreads]);
+    reqbuf.reset(new uint8_t[reqbufsize]);
 
     logger() << "\n";
     for (size_t i = 0; i < mynumreqs; ++i)
@@ -217,8 +218,8 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
 
         logger() << "receiving " << count << " read lengths at displacement " << reqreadlendispls[i] << " from " << logger.rankstr(myreqs[i].owner) << "\n";
         logger() << "receiving " << bufsize << " buffer bytes at displacement " << reqbufdispls[i] << " from " << logger.rankstr(myreqs[i].owner) << "\n";
-        MPI_IRECV(reqreadlens + reqreadlendispls[i], count, MPI_SIZE_T, myreqs[i].owner, 100, comm, recvreqs.data() + i);
-        MPI_IRECV(reqbuf + reqbufdispls[i], bufsize, MPI_UINT8_T, myreqs[i].owner, 101, comm, recvreqs.data() + mynumreqs + i);
+        MPI_IRECV(reqreadlens.get() + reqreadlendispls[i], count, MPI_SIZE_T, myreqs[i].owner, 100, comm, recvreqs.data() + i);
+        MPI_IRECV(reqbuf.get() + reqbufdispls[i], bufsize, MPI_UINT8_T, myreqs[i].owner, 101, comm, recvreqs.data() + mynumreqs + i);
     }
     logger.Flush("posted received calls:");
 
@@ -236,9 +237,12 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
         MPI_ISEND(sendbuf, static_cast<MPI_Count_type>(sendbufsizes[i]), MPI_UINT8_T, mysends[i].requester, 101, comm, sendreqs.data() + mynumsends + i);
     }
     logger.Flush("posted send calls:");
+}
 
-    MPI_Waitall(static_cast<int>(2*mynumsends), sendreqs.data(), MPI_STATUSES_IGNORE);
-    MPI_Waitall(static_cast<int>(2*mynumreqs), recvreqs.data(), MPI_STATUSES_IGNORE);
-
-    return std::make_shared<DnaBuffer>(reqbufsize, reqnumreads, reqbuf, reqreadlens);
+void DistributedFastaData::wait()
+{
+    MPI_Waitall(static_cast<int>(sendreqs.size()), sendreqs.data(), MPI_STATUSES_IGNORE);
+    MPI_Waitall(static_cast<int>(recvreqs.size()), recvreqs.data(), MPI_STATUSES_IGNORE);
+    rowbuf.reset(new DnaBuffer(reqbufsize, reqnumreads, reqbuf.release(), reqreadlens.get()));
+    std::cout << "done waiting" << std::endl;
 }

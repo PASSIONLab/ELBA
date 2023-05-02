@@ -32,7 +32,8 @@ public:
     size_t getnumrowreads() const { return numrowreads; }
     size_t getnumcolreads() const { return numcolreads; }
 
-    std::shared_ptr<DnaBuffer> collect_row_sequences(std::shared_ptr<DnaBuffer> mydna);
+    void collect_row_sequences(std::shared_ptr<DnaBuffer> mydna);
+    void wait();
 
 private:
     std::shared_ptr<FastaIndex> index;
@@ -41,7 +42,11 @@ private:
     size_t numrowreads, numcolreads;
 
     std::unique_ptr<DnaBuffer> rowbuf;
-    std::vector<DnaSeq> rowseqs;
+
+    size_t reqbufsize, reqnumreads;
+    std::unique_ptr<size_t[]> reqreadlens;
+    std::unique_ptr<uint8_t[]> reqbuf;
+    std::vector<MPI_Request> sendreqs, recvreqs;
 
     void getremoterequests(std::vector<FastaDataRequest>& allrequests, std::vector<FastaDataRequest>& myrequests) const;
     void getgridrequests(std::vector<FastaDataRequest>& myrequests, size_t globalstartid, size_t count, unsigned short rc) const;
