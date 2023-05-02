@@ -42,9 +42,6 @@ public:
 
     void write_grid_sequences(char const *fname_prefix) const;
 
-    void parallel_write_rowgrid(char const *fname, int colid) const;
-    void parallel_write_colgrid(char const *fname, int rowid) const;
-
 private:
     std::shared_ptr<FastaIndex> index;
     bool isdiag;
