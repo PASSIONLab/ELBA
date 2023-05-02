@@ -33,6 +33,7 @@ public:
     size_t getnumcolreads() const { return numcolreads; }
 
     void collect_row_sequences(std::shared_ptr<DnaBuffer> mydna);
+    void collect_col_sequences(std::shared_ptr<DnaBuffer> mydna);
     void wait();
 
 private:
@@ -41,12 +42,16 @@ private:
     size_t rowstartid, colstartid;
     size_t numrowreads, numcolreads;
 
-    std::unique_ptr<DnaBuffer> rowbuf;
+    std::unique_ptr<DnaBuffer> rowbuf, colbuf;
 
-    size_t reqbufsize, reqnumreads;
-    std::unique_ptr<size_t[]> reqreadlens;
-    std::unique_ptr<uint8_t[]> reqbuf;
-    std::vector<MPI_Request> sendreqs, recvreqs;
+    size_t rowreqbufsize, rowreqnumreads;
+    size_t colreqbufsize, colreqnumreads;
+    std::unique_ptr<size_t[]> rowreqreadlens;
+    std::unique_ptr<size_t[]> colreqreadlens;
+    std::unique_ptr<uint8_t[]> rowreqbuf;
+    std::unique_ptr<uint8_t[]> colreqbuf;
+    std::vector<MPI_Request> rowsendreqs, rowrecvreqs;
+    std::vector<MPI_Request> colsendreqs, colrecvreqs;
 
     void getremoterequests(std::vector<FastaDataRequest>& allrequests, std::vector<FastaDataRequest>& myrequests) const;
     void getgridrequests(std::vector<FastaDataRequest>& myrequests, size_t globalstartid, size_t count, unsigned short rc) const;
