@@ -97,9 +97,9 @@ int main(int argc, char **argv)
         // auto colbuf = dfd.getcolbuf();
 
         KmerCountMap kmermap = GetKmerCountMapKeys(*mydna, commgrid);
-        //GetKmerCountMapValues(myreads, kmermap, commgrid);
+        GetKmerCountMapValues(*mydna, kmermap, commgrid);
+        PrintKmerHistogram(kmermap, commgrid);
 
-        //PrintKmerHistogram(kmermap, commgrid);
         //auto A = CreateKmerMatrix(myreads, kmermap, commgrid);
 
         //size_t numreads = A.getnrow();

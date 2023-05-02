@@ -7,7 +7,7 @@
 #include "DnaBuffer.hpp"
 
 #ifndef MAX_ALLTOALL_MEM
-#define MAX_ALLTOALL_MEM (1024 * 1024 * 1024)
+#define MAX_ALLTOALL_MEM (128 * 1024 * 1024)
 #endif
 
 typedef uint16_t PosInRead;
@@ -21,7 +21,7 @@ typedef std::tuple<READIDS, POSITIONS, int> KmerCountEntry;
 typedef std::unordered_map<TKmer, KmerCountEntry> KmerCountMap;
 
 KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, Grid commgrid);
-void GetKmerCountMapValues(const std::vector<DnaSeq>& myreads, KmerCountMap& kmermap, Grid commgrid);
+void GetKmerCountMapValues(const DnaBuffer& myreads, KmerCountMap& kmermap, Grid commgrid);
 int GetKmerOwner(const TKmer& kmer, int nprocs);
 
 struct BatchState
