@@ -94,6 +94,8 @@ int main(int argc, char **argv)
         dfd.collect_col_sequences(mydna);
         dfd.wait();
 
+        dfd.write_grid_sequences("grid");
+
         // auto rowbuf = dfd.getrowbuf();
         // auto colbuf = dfd.getcolbuf();
 
