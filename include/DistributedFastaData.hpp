@@ -28,13 +28,12 @@ public:
 
     DistributedFastaData(std::shared_ptr<FastaIndex> index);
 
-    size_t getrowstartid() const { return rowstartid; }
-    size_t getcolstartid() const { return colstartid; }
-    size_t getnumrowreads() const { return numrowreads; }
-    size_t getnumcolreads() const { return numcolreads; }
+    size_t getrowstartid() const { return rowinfo.startid; }
+    size_t getcolstartid() const { return colinfo.startid; }
+    size_t getnumrowreads() const { return rowinfo.numreads; }
+    size_t getnumcolreads() const { return colinfo.numreads; }
 
-    void collect_row_sequences(std::shared_ptr<DnaBuffer> mydna);
-    void collect_col_sequences(std::shared_ptr<DnaBuffer> mydna);
+    void collect_sequences(std::shared_ptr<DnaBuffer> mydna);
     void wait();
 
     std::shared_ptr<DnaBuffer> getrowbuf() { return rowbuf; }
@@ -44,6 +43,7 @@ public:
 
     struct DimExchangeInfo
     {
+        size_t startid, numreads;
         size_t reqbufsize, reqnumreads;
         std::unique_ptr<size_t[]> reqreadlens;
         std::unique_ptr<uint8_t[]> reqbuf;
@@ -53,12 +53,13 @@ public:
 private:
     std::shared_ptr<FastaIndex> index;
     bool isdiag;
-    size_t rowstartid, colstartid;
-    size_t numrowreads, numcolreads;
+    // size_t rowstartid, colstartid;
+    // size_t numrowreads, numcolreads;
 
     std::shared_ptr<DnaBuffer> rowbuf, colbuf;
     DimExchangeInfo rowinfo, colinfo;
 
+    void collect_dim_sequences(std::shared_ptr<DnaBuffer> mydna, DimExchangeInfo& diminfo);
     void getremoterequests(std::vector<FastaDataRequest>& allrequests, std::vector<FastaDataRequest>& myrequests) const;
     void getgridrequests(std::vector<FastaDataRequest>& myrequests, size_t globalstartid, size_t count, unsigned short rc) const;
 };
