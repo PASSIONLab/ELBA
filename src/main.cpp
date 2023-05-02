@@ -87,9 +87,19 @@ int main(int argc, char **argv)
         std::shared_ptr<FastaIndex> index(new FastaIndex(fasta_fname, commgrid));
         std::shared_ptr<DnaBuffer> mydna = index->getmydna();
         index->logall(mydna);
-        // index->log(mydna);
         DistributedFastaData dfd(index);
         auto rowdna = dfd.collect_row_sequences(mydna);
+
+        Logger logger(commgrid);
+        logger() << "numseqs=" << rowdna->size() << ", bufsize=" << rowdna->getbufsize() << "\n";
+        size_t a = dfd.getrowstartid(), b = dfd.getnumrowreads();
+        logger() << Logger::readrangestr(a, b) << ": ";
+        for (size_t i = 0; i < b; ++i)
+        {
+            const auto& dnaseq = (*rowdna)[i];
+            logger() << "readid=" << i+a << ", size=" << dnaseq.size() << ", numbytes=" << dnaseq.numbytes() << ", ascii=" << std::quoted(dnaseq.ascii()) << "\n";
+        }
+        logger.Flush("logall2");
 
 
 /***********************************************************/

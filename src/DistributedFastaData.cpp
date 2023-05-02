@@ -240,5 +240,5 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     MPI_Waitall(static_cast<int>(2*mynumsends), sendreqs.data(), MPI_STATUSES_IGNORE);
     MPI_Waitall(static_cast<int>(2*mynumreqs), recvreqs.data(), MPI_STATUSES_IGNORE);
 
-    return std::make_shared<DnaBuffer>(1);
+    return std::make_shared<DnaBuffer>(reqbufsize, reqnumreads, reqbuf, reqreadlens);
 }

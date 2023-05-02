@@ -2,31 +2,16 @@
 #include "Logger.hpp"
 #include <cassert>
 
-// void DnaBufferContainer::assign(const std::vector<DnaSeq>& sequences)
-// {
-    // assert(sequences.size() == numseqs);
+DnaBuffer::DnaBuffer(size_t bufsize, size_t numreads, uint8_t *buf, const size_t *readlens) : bufhead(0), bufsize(bufsize), buf(buf)
+{
+    sequences.reserve(numreads);
 
-    // size_t bufhead = 0;
-
-    // for (size_t i = 0; i < numseqs; ++i)
-    // {
-        // sequences[i].copyto(readlens + i, buf + bufhead);
-        // bufhead += sequences[i].numbytes();
-    // }
-// }
-
-// DnaBuffer::DnaBuffer(DnaBufferContainer& container) : bufhead(0), bufsize(container.bufsize), buf(container.buf)
-// {
-    // sequences.reserve(container.numseqs);
-
-    // for (size_t i = 0; i < container.numseqs; ++i)
-    // {
-        // sequences.emplace_back(container.readlens[i], buf + bufhead);
-        // bufhead += sequences.back().numbytes();
-    // }
-
-    // container.releasebuffer();
-// }
+    for (size_t i = 0; i < numreads; ++i)
+    {
+        sequences.emplace_back(readlens[i], buf + bufhead);
+        bufhead += sequences.back().numbytes();
+    }
+}
 
 size_t DnaBuffer::computebufsize(const std::vector<size_t>& seqlens)
 {
