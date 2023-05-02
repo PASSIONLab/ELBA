@@ -26,6 +26,8 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "DistributedFastaData.hpp"
 #include "Kmer.hpp"
 #include "KmerOps.hpp"
+#include "ReadOverlap.hpp"
+#include "KmerIntersect.hpp"
 
 int returncode;
 std::string fasta_fname;
@@ -113,23 +115,23 @@ int main(int argc, char **argv)
         }
         MPI_Barrier(comm);
 
-        //A.ParallelWriteMM("A.mtx", false);
+        A.ParallelWriteMM("A.mtx", false);
 
-        // auto AT = A;
-        // AT.Transpose();
+        auto AT = A;
+        AT.Transpose();
 
-        // CT<ReadOverlap>::PSpParMat B = Mult_AnXBn_DoubleBuff<KmerIntersect, ReadOverlap, CT<ReadOverlap>::PSpDCCols>(A, AT);
+        CT<ReadOverlap>::PSpParMat B = Mult_AnXBn_DoubleBuff<KmerIntersect, ReadOverlap, CT<ReadOverlap>::PSpDCCols>(A, AT);
 
-        // B.Prune([](const auto& item) { return item.count <= 1; });
+        B.Prune([](const auto& item) { return item.count <= 1; });
 
-        // size_t numovlpseeds = B.getnnz();
+        size_t numovlpseeds = B.getnnz();
 
-        // if (!myrank)
-        // {
-            // std::cout << "Overlap matrix B has " << numreads << " rows (readids), " << numreads << " columns (readids), and " << numovlpseeds << " nonzeros (overlap seeds)\n" << std::endl;
-        // }
-        // MPI_Barrier(comm);
-        // B.ParallelWriteMM("B.mtx", false, OverlapHandler());
+        if (!myrank)
+        {
+            std::cout << "Overlap matrix B has " << numreads << " rows (readids), " << numreads << " columns (readids), and " << numovlpseeds << " nonzeros (overlap seeds)\n" << std::endl;
+        }
+        MPI_Barrier(comm);
+        B.ParallelWriteMM("B.mtx", false, OverlapHandler());
 
 /***********************************************************/
 /************************* END *****************************/

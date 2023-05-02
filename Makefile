@@ -33,6 +33,7 @@ OBJECTS=obj/Logger.o \
 		obj/HyperLogLog.o \
 		obj/Bloom.o \
 		obj/KmerOps.o \
+		obj/ReadOverlap.o \
 		obj/CommGrid.o \
 		obj/MPIType.o
 
@@ -49,11 +50,12 @@ obj/%.o: src/%.cpp
 	@echo CXX $(COMPILE_TIME_PARAMETERS) -c -o $@ $<
 	@$(COMPILER) $(FLAGS) $(INCADD) -c -o $@ $<
 
-obj/main.o: src/main.cpp include/common.h src/Kmer.cpp include/Kmer.hpp
+obj/main.o: src/main.cpp include/common.h src/Kmer.cpp include/Kmer.hpp src/KmerOps.cpp include/KmerOps.hpp src/ReadOverlap.cpp include/ReadOverlap.hpp include/KmerIntersect.hpp
 obj/Logger.o: src/Logger.cpp include/Logger.hpp
 obj/FastaIndex.o: src/FastaIndex.cpp include/FastaIndex.hpp
 obj/DistributedFastaData.o: src/DistributedFastaData.cpp include/DistributedFastaData.hpp
 obj/KmerOps.o: src/KmerOps.cpp include/KmerOps.hpp
+obj/ReadOverlap.o: src/ReadOverlap.cpp include/ReadOverlap.hpp
 obj/DnaSeq.o: src/DnaSeq.cpp include/DnaSeq.hpp
 obj/DnaBuffer.o: src/DnaBuffer.cpp include/DnaBuffer.hpp
 obj/HashFuncs.o: src/HashFuncs.cpp include/HashFuncs.hpp

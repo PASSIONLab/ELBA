@@ -1,131 +1,51 @@
-#ifndef READ_OVERLAPS_H_
-#define READ_OVERLAPS_H_
+#ifndef READ_OVERLAP_H_
+#define READ_OVERLAP_H_
 
-#include <limits>
-#include <cassert>
+#include "KmerOps.hpp"
 #include <iostream>
-#include "kmer/CommonKmers.hpp"
-
-using namespace elba;
-
-static constexpr int MAX_INT = std::numeric_limits<int>::max();
-extern int xdrop;
 
 struct ReadOverlap
 {
     int sfx, sfxT, dir, dirT;
-    int b[2], e[2], l[2], coords[2], sfxpath[4];
-    bool transpose, rc;
     int score;
+    PosInRead begQs[2], begTs[2];
+    PosInRead b[2], e[2], l[2], coords[2];
+    int sfxpath[4];
+    int count;
+    bool transpose, passed, rc;
 
-    void SetPathInf() { sfxpath[0] = sfxpath[1] = sfxpath[2] = sfxpath[3] = MAX_INT; }
+    void SetPathInf();
 
-    ReadOverlap() : sfx(0), dir(-1), score(-1), transpose(false)
-    {
-        SetPathInf();
-    }
+    ReadOverlap();
+    ReadOverlap(int count);
+    ReadOverlap(const ReadOverlap& rhs);
 
-    ReadOverlap(const ReadOverlap& rhs)
-        : sfx(rhs.sfx), sfxT(rhs.sfxT), dir(rhs.dir), dirT(rhs.dirT), transpose(rhs.transpose), rc(rhs.rc), score(rhs.score)
-    {
-        b[0] = rhs.b[0]; b[1] = rhs.b[1];
-        e[0] = rhs.e[0]; e[1] = rhs.e[1];
-        l[0] = rhs.l[0]; l[1] = rhs.l[1];
+    bool is_invalid() const;
 
-        coords[0] = rhs.coords[0];
-        coords[1] = rhs.coords[1];
-
-        for (int i = 0; i < 4; ++i)
-            sfxpath[i] = rhs.sfxpath[i]; 
-    }
-
-    ReadOverlap(const CommonKmers& cks) : transpose(false), score(static_cast<int>(cks.score))
-    {
-        b[0] = cks.first.first;  b[1] = cks.second.first;
-        e[0] = cks.first.second; e[1] = cks.second.second;
-        l[0] = cks.lenv;         l[1] = cks.lenh;
-
-        rc = cks.rc;
-
-        sfx  = cks.sfx;
-        sfxT = cks.sfxT;
-        dir  = cks.dir;
-        dirT = cks.dirT;
-
-        SetPathInf();
-
-        sfxpath[dir] = sfx;
-    }
-
-    bool is_invalid() const { return (dir == -1); }
-
-    bool arrows(int& t, int& h) const
-    {
-        if (is_invalid())
-            return false;
-
-        t = (dir>>1)&1;
-        h = dir&1;
-
-        return true;
-    }
-
-    operator bool() const { return true; } /* for T = R in transitive reduction */
-
-    friend bool operator==(const ReadOverlap& lhs, const ReadOverlap& rhs)
-    {
-        return (lhs.sfx == rhs.sfx && lhs.dir == rhs.dir);
-    }
+    bool arrows(int& t, int& h) const;
 
     ReadOverlap operator+(const ReadOverlap& b)
     {
-        ReadOverlap myobj = b;
-        return myobj;
+        ReadOverlap o = b;
+        return o;
     }
-};
 
-int intplus(int a, int b)
-{
-    return (a == MAX_INT || b == MAX_INT) ? MAX_INT : a + b;
-}
+    int intplus(int a, int b);
 
-struct Tupleize : unary_function<ReadOverlap, ReadOverlap>
-{
-    ReadOverlap operator() (ReadOverlap& e)
+    friend std::ostream& operator<<(std::ostream& os, const ReadOverlap& o)
     {
-        ReadOverlap out = e;
-        switch (e.dir) {
-            case 0:
-                out.coords[0] = e.b[0] + xdrop;
-                out.coords[1] = e.l[1] - e.b[1];
-                break;
-            case 1:
-                out.coords[0] = (e.transpose)? (e.l[0] - e.e[0] + xdrop) : (e.b[0] + xdrop);
-                out.coords[1] = (e.transpose)? (e.l[1] - e.e[1]) : (e.b[1]);
-                break;
-            case 2:
-                out.coords[0] = (e.transpose)? (e.l[0] - e.b[0] - xdrop) : (e.e[0] - xdrop);
-                out.coords[1] = (e.transpose)? (e.l[1] - e.b[1]) : (e.e[1]);
-                break;
-            case 3:
-                out.coords[0] = e.e[0] - xdrop;
-                out.coords[1] = e.l[1] - e.e[1];
-                break;
-            default:
-                break;
-        }
-        return out;
+        os << o.begQs[0] << "\t" << o.begTs[0] << "\t" << o.begQs[1] << "\t" << o.begTs[1];
+        return os;
     }
 };
 
-struct ReadOverlapGraphHandler
+struct OverlapHandler
 {
     template <typename c, typename t>
-    void save(std::basic_ostream<c,t>& os, const ReadOverlap& e, int64_t row, int64_t col)
+    void save(std::basic_ostream<c,t>& os, const ReadOverlap& o, uint64_t row, uint64_t col)
     {
-        os << e.score << "\t" << e.l[0] << "\t" << e.b[0] << "\t" << e.e[0] << "\t" << e.l[1] << "\t" << e.b[1] << "\t" << e.e[1] << "\t" << e.dir << "\t" << e.sfx;
+        os << o;
     }
 };
-
 
 #endif
