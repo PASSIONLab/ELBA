@@ -1,6 +1,7 @@
 #include "DistributedFastaData.hpp"
 #include "Logger.hpp"
 #include <limits>
+#include <iomanip>
 
 DistributedFastaData::DistributedFastaData(std::shared_ptr<FastaIndex> index) : index(index)
 {
@@ -444,6 +445,41 @@ void DistributedFastaData::parallel_write_rowgrid(char const *fname, int colid) 
         MPI_File_close(&fh);
     }
 
+    MPI_Barrier(comm);
+}
+
+std::string getgridfname(char const *fname_prefix, int rank, bool rc)
+{
+    std::ostringstream ss;
+    ss << fname_prefix << (rc? "col" : "row") << rank+1 << ".txt";
+    return ss.str();
+}
+
+void DistributedFastaData::write_grid_sequences(char const *fname_prefix) const
+{
+    auto commgrid = index->getcommgrid();
+    MPI_Comm comm = commgrid->GetWorld();
+    MPI_Comm rowcomm = commgrid->GetRowWorld();
+    MPI_Comm colcomm = commgrid->GetColWorld();
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    int myrowid = commgrid->GetRankInProcCol(); /* same as MPI_Comm_rank(colcomm, &myrowid) */
+    int mycolid = commgrid->GetRankInProcRow(); /* same as MPI_Comm_rank(rowcomm, &mycolid) */
+    int procdim = commgrid->GetGridRows();
+
+    std::string myrowfname = getgridfname(fname_prefix, myrowid, 0);
+    std::string mycolfname = getgridfname(fname_prefix, mycolid, 1);
+    std::string mycolcontents = colbuf->getasciifilecontents();
+    std::string myrowcontents = rowbuf->getasciifilecontents();
+    MPI_Count mycolcount = mycolcontents.size();
+    MPI_Count myrowcount = myrowcontents.size();
+    MPI_File fh_rows, fh_cols;
+    MPI_File_open(rowcomm, myrowfname.c_str(), MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh_rows);
+    MPI_File_open(colcomm, mycolfname.c_str(), MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh_cols);
+    MPI_File_write_ordered(fh_rows, mycolcontents.c_str(), mycolcount, MPI_CHAR, MPI_STATUS_IGNORE);
+    MPI_File_write_ordered(fh_cols, myrowcontents.c_str(), myrowcount, MPI_CHAR, MPI_STATUS_IGNORE);
+    MPI_File_close(&fh_rows);
+    MPI_File_close(&fh_cols);
     MPI_Barrier(comm);
 }
 

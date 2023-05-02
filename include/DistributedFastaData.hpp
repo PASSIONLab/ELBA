@@ -40,6 +40,8 @@ public:
     std::shared_ptr<DnaBuffer> getrowbuf() { return rowbuf; }
     std::shared_ptr<DnaBuffer> getcolbuf() { return colbuf; }
 
+    void write_grid_sequences(char const *fname_prefix) const;
+
     void parallel_write_rowgrid(char const *fname, int colid) const;
     void parallel_write_colgrid(char const *fname, int rowid) const;
 

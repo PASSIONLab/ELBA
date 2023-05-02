@@ -36,3 +36,15 @@ size_t DnaBuffer::getrangebufsize(size_t start, size_t count) const
     const uint8_t* endmem = sequences[end].data() + sequences[end].numbytes();
     return (endmem-startmem);
 }
+
+std::string DnaBuffer::getasciifilecontents() const
+{
+    std::ostringstream ss;
+
+    for (size_t i = 0; i < size(); ++i)
+    {
+        ss << sequences[i].ascii() << "\n";
+    }
+
+    return ss.str();
+}

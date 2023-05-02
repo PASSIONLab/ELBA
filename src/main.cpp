@@ -93,16 +93,7 @@ int main(int argc, char **argv)
         dfd.collect_row_sequences(mydna);
         dfd.collect_col_sequences(mydna);
         dfd.wait();
-
-        // dfd.parallel_write_rowgrid("rowgrid0.txt", 0);
-        // dfd.parallel_write_rowgrid("rowgrid1.txt", 1);
-        // dfd.parallel_write_rowgrid("rowgrid2.txt", 2);
-        // dfd.parallel_write_rowgrid("rowgrid3.txt", 3);
-
-        // dfd.parallel_write_colgrid("colgrid0.txt", 0);
-        // dfd.parallel_write_colgrid("colgrid1.txt", 1);
-        // dfd.parallel_write_colgrid("colgrid2.txt", 2);
-        // dfd.parallel_write_colgrid("colgrid3.txt", 3);
+        dfd.write_grid_sequences("grid");
 
         // auto rowbuf = dfd.getrowbuf();
         // auto colbuf = dfd.getcolbuf();

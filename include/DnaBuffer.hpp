@@ -18,6 +18,8 @@ public:
     const uint8_t* getbufoffset(size_t i) const { return sequences[i].data(); }
     const DnaSeq& operator[](size_t i) const { return sequences[i]; }
 
+    std::string getasciifilecontents() const;
+
     static size_t computebufsize(const std::vector<size_t>& seqlens);
 
     ~DnaBuffer() { delete[] buf; }
