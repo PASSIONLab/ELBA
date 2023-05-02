@@ -158,12 +158,12 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     std::copy_if(allreqs.begin(), allreqs.end(), std::back_inserter(mysends), [&](const auto& req) { return req.owner == myrank; });
     mynumsends = mysends.size();
 
-    std::vector<size_t> reqbufsizes(mynumreqs);
+    std::vector<size_t> reqinfo(2*mynumreqs); /* even indices are number of reads, odd indices are buffer sizes */
     std::vector<MPI_Request> recvreqs(mynumreqs), sendreqs(mynumsends);
 
     for (size_t i = 0; i < mynumreqs; ++i)
     {
-        MPI_IRECV(reqbufsizes.data() + i, 1, MPI_SIZE_T, myreqs[i].owner, 99, comm, recvreqs.data() + i);
+        MPI_IRECV(reqinfo.data() + (2*i), 2, MPI_SIZE_T, myreqs[i].owner, 99, comm, recvreqs.data() + i);
     }
 
     logger() << "\n";
@@ -174,8 +174,9 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
         size_t count = mysends[i].count;
         assert(index->getmyreaddispl() <= offset && offset + count <= index->getmyreaddispl() + index->getmyreadcount());
         size_t rangebufsize = mydna->getrangebufsize(offset - index->getmyreaddispl(), count);
-        MPI_ISEND(&rangebufsize, 1, MPI_SIZE_T, mysends[i].requester, 99, comm, sendreqs.data() + i);
-        logger() << "sent " << rangebufsize << " to " << logger.rankstr(mysends[i].requester) << " :: " << mysends[i] << "\n";
+        size_t sendbuf[2] = {count, rangebufsize};
+        MPI_ISEND(sendbuf, 2, MPI_SIZE_T, mysends[i].requester, 99, comm, sendreqs.data() + i);
+        logger() << "sent " << count << "/" << rangebufsize << " to " << logger.rankstr(mysends[i].requester) << " :: " << mysends[i] << "\n";
     }
 
     assert(mynumreqs <= std::numeric_limits<int>::max());
@@ -185,12 +186,12 @@ std::shared_ptr<DnaBuffer> DistributedFastaData::collect_row_sequences(std::shar
     MPI_Waitall(static_cast<int>(mynumreqs), recvreqs.data(), MPI_STATUSES_IGNORE);
 
     logger() << "\n";
-    for (size_t i = 0; i < mynumreqs; ++i) logger() << "received " << reqbufsizes[i] << " from " << logger.rankstr(myreqs[i].owner) << " :: " << myreqs[i] << "\n";
+    for (size_t i = 0; i < mynumreqs; ++i) logger() << "received " << reqinfo[2*i] << "/" << reqinfo[2*i + 1] << " from " << logger.rankstr(myreqs[i].owner) << " :: " << myreqs[i] << "\n";
     logger.Flush("Exchanges:");
 
-    std::vector<size_t> myreqcounts(mynumreqs), myreqcountsdispls(mynumreqs);
-    std::transform(myreqs.cbegin(), myreqs.cend(), myreqcounts.begin(), [](const auto& req) { return req.count; });
-    std::exclusive_scan(myreqcounts.cbegin(), myreqcounts.cend(), myreqcountsdispls.begin(), static_cast<size_t>(0));
+    // std::vector<size_t> myreqcounts(mynumreqs), myreqcountsdispls(mynumreqs);
+    // std::transform(myreqs.cbegin(), myreqs.cend(), myreqcounts.begin(), [](const auto& req) { return req.count; });
+    // std::exclusive_scan(myreqcounts.cbegin(), myreqcounts.cend(), myreqcountsdispls.begin(), static_cast<size_t>(0));
 
 
     /* size_t totreqreadlens = std::accumulate(myreqs.begin(), myreqs.end(), static_cast<size_t>(0), [](size_t sum, const auto& req) { return sum + req.count; }); */
