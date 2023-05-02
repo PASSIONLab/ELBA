@@ -1,0 +1,2184 @@
+-DKMER_SIZE=31
+-DLOWER_KMER_FREQ=15
+-DUPPER_KMER_FREQ=35
+-DMPI_HAS_LARGE_COUNTS=1
+-DUSE_BLOOM
+
+int mat = 1;
+int mis = -1;
+int gap = -1;
+int xdrop_cutoff = 15;
+String fname = "ecoli.fa";
+
+Fasta index construction:
+=========================
+
+rank[1/25] ::  is responsible for sequences [0..343] (344 reads) (5010629 nucleotides, 3.999%)
+rank[2/25] ::  is responsible for sequences [344..686] (343 reads) (5005160 nucleotides, 3.995%)
+rank[3/25] ::  is responsible for sequences [687..1030] (344 reads) (4999619 nucleotides, 3.991%)
+rank[4/25] ::  is responsible for sequences [1031..1373] (343 reads) (4999724 nucleotides, 3.991%)
+rank[5/25] ::  is responsible for sequences [1374..1715] (342 reads) (4993981 nucleotides, 3.986%)
+rank[6/25] ::  is responsible for sequences [1716..2060] (345 reads) (5001719 nucleotides, 3.992%)
+rank[7/25] ::  is responsible for sequences [2061..2403] (343 reads) (5000838 nucleotides, 3.991%)
+rank[8/25] ::  is responsible for sequences [2404..2745] (342 reads) (5000938 nucleotides, 3.992%)
+rank[9/25] ::  is responsible for sequences [2746..3090] (345 reads) (5005145 nucleotides, 3.995%)
+rank[10/25] ::  is responsible for sequences [3091..3434] (344 reads) (4999441 nucleotides, 3.990%)
+rank[11/25] ::  is responsible for sequences [3435..3776] (342 reads) (5001882 nucleotides, 3.992%)
+rank[12/25] ::  is responsible for sequences [3777..4121] (345 reads) (5009168 nucleotides, 3.998%)
+rank[13/25] ::  is responsible for sequences [4122..4465] (344 reads) (5008687 nucleotides, 3.998%)
+rank[14/25] ::  is responsible for sequences [4466..4808] (343 reads) (4998591 nucleotides, 3.990%)
+rank[15/25] ::  is responsible for sequences [4809..5152] (344 reads) (5011097 nucleotides, 4.000%)
+rank[16/25] ::  is responsible for sequences [5153..5499] (347 reads) (5011398 nucleotides, 4.000%)
+rank[17/25] ::  is responsible for sequences [5500..5839] (340 reads) (4996587 nucleotides, 3.988%)
+rank[18/25] ::  is responsible for sequences [5840..6184] (345 reads) (5005661 nucleotides, 3.995%)
+rank[19/25] ::  is responsible for sequences [6185..6527] (343 reads) (5006697 nucleotides, 3.996%)
+rank[20/25] ::  is responsible for sequences [6528..6873] (346 reads) (5002387 nucleotides, 3.993%)
+rank[21/25] ::  is responsible for sequences [6874..7218] (345 reads) (5002307 nucleotides, 3.993%)
+rank[22/25] ::  is responsible for sequences [7219..7562] (344 reads) (4999369 nucleotides, 3.990%)
+rank[23/25] ::  is responsible for sequences [7563..7905] (343 reads) (5007330 nucleotides, 3.997%)
+rank[24/25] ::  is responsible for sequences [7906..8247] (342 reads) (5004506 nucleotides, 3.994%)
+rank[25/25] ::  is responsible for sequences [8248..8604] (357 reads) (5204857 nucleotides, 4.154%)
+
+DistributedFastaData::DistributedFastaData
+==========================================
+
+rank[1/25] :: P(1, 1) [0..1720] (1721 reads); [0..1720] (1721 reads)
+rank[2/25] :: P(1, 2) [0..1720] (1721 reads); [1721..3441] (1721 reads)
+rank[3/25] :: P(1, 3) [0..1720] (1721 reads); [3442..5162] (1721 reads)
+rank[4/25] :: P(1, 4) [0..1720] (1721 reads); [5163..6883] (1721 reads)
+rank[5/25] :: P(1, 5) [0..1720] (1721 reads); [6884..8604] (1721 reads)
+rank[6/25] :: P(2, 1) [1721..3441] (1721 reads); [0..1720] (1721 reads)
+rank[7/25] :: P(2, 2) [1721..3441] (1721 reads); [1721..3441] (1721 reads)
+rank[8/25] :: P(2, 3) [1721..3441] (1721 reads); [3442..5162] (1721 reads)
+rank[9/25] :: P(2, 4) [1721..3441] (1721 reads); [5163..6883] (1721 reads)
+rank[10/25] :: P(2, 5) [1721..3441] (1721 reads); [6884..8604] (1721 reads)
+rank[11/25] :: P(3, 1) [3442..5162] (1721 reads); [0..1720] (1721 reads)
+rank[12/25] :: P(3, 2) [3442..5162] (1721 reads); [1721..3441] (1721 reads)
+rank[13/25] :: P(3, 3) [3442..5162] (1721 reads); [3442..5162] (1721 reads)
+rank[14/25] :: P(3, 4) [3442..5162] (1721 reads); [5163..6883] (1721 reads)
+rank[15/25] :: P(3, 5) [3442..5162] (1721 reads); [6884..8604] (1721 reads)
+rank[16/25] :: P(4, 1) [5163..6883] (1721 reads); [0..1720] (1721 reads)
+rank[17/25] :: P(4, 2) [5163..6883] (1721 reads); [1721..3441] (1721 reads)
+rank[18/25] :: P(4, 3) [5163..6883] (1721 reads); [3442..5162] (1721 reads)
+rank[19/25] :: P(4, 4) [5163..6883] (1721 reads); [5163..6883] (1721 reads)
+rank[20/25] :: P(4, 5) [5163..6883] (1721 reads); [6884..8604] (1721 reads)
+rank[21/25] :: P(5, 1) [6884..8604] (1721 reads); [0..1720] (1721 reads)
+rank[22/25] :: P(5, 2) [6884..8604] (1721 reads); [1721..3441] (1721 reads)
+rank[23/25] :: P(5, 3) [6884..8604] (1721 reads); [3442..5162] (1721 reads)
+rank[24/25] :: P(5, 4) [6884..8604] (1721 reads); [5163..6883] (1721 reads)
+rank[25/25] :: P(5, 5) [6884..8604] (1721 reads); [6884..8604] (1721 reads)
+
+Exchanges:
+==========
+
+rank[1/25] :: 
+sent 344/1252783 to rank[1/25] :: {owner=0;requester=0;offset=0;count=344;rc=2}
+sent 344/1252783 to rank[2/25] :: {owner=0;requester=1;offset=0;count=344;rc=0}
+sent 344/1252783 to rank[3/25] :: {owner=0;requester=2;offset=0;count=344;rc=0}
+sent 344/1252783 to rank[4/25] :: {owner=0;requester=3;offset=0;count=344;rc=0}
+sent 344/1252783 to rank[5/25] :: {owner=0;requester=4;offset=0;count=344;rc=0}
+
+received 344/1252783 from rank[1/25] :: {owner=0;requester=0;offset=0;count=344;rc=2}
+received 343/1251417 from rank[2/25] :: {owner=1;requester=0;offset=344;count=343;rc=0}
+received 344/1250030 from rank[3/25] :: {owner=2;requester=0;offset=687;count=344;rc=0}
+received 343/1250059 from rank[4/25] :: {owner=3;requester=0;offset=1031;count=343;rc=0}
+received 342/1248628 from rank[5/25] :: {owner=4;requester=0;offset=1374;count=342;rc=0}
+received 5/19185 from rank[6/25] :: {owner=5;requester=0;offset=1716;count=5;rc=0}
+
+rank[2/25] :: 
+sent 343/1251417 to rank[1/25] :: {owner=1;requester=0;offset=344;count=343;rc=0}
+sent 343/1251417 to rank[2/25] :: {owner=1;requester=1;offset=344;count=343;rc=2}
+sent 343/1251417 to rank[3/25] :: {owner=1;requester=2;offset=344;count=343;rc=0}
+sent 343/1251417 to rank[4/25] :: {owner=1;requester=3;offset=344;count=343;rc=0}
+sent 343/1251417 to rank[5/25] :: {owner=1;requester=4;offset=344;count=343;rc=0}
+
+received 344/1252783 from rank[1/25] :: {owner=0;requester=1;offset=0;count=344;rc=0}
+received 343/1251417 from rank[2/25] :: {owner=1;requester=1;offset=344;count=343;rc=2}
+received 344/1250030 from rank[3/25] :: {owner=2;requester=1;offset=687;count=344;rc=0}
+received 343/1250059 from rank[4/25] :: {owner=3;requester=1;offset=1031;count=343;rc=0}
+received 342/1248628 from rank[5/25] :: {owner=4;requester=1;offset=1374;count=342;rc=0}
+received 5/19185 from rank[6/25] :: {owner=5;requester=1;offset=1716;count=5;rc=0}
+
+rank[3/25] :: 
+sent 344/1250030 to rank[1/25] :: {owner=2;requester=0;offset=687;count=344;rc=0}
+sent 344/1250030 to rank[2/25] :: {owner=2;requester=1;offset=687;count=344;rc=0}
+sent 344/1250030 to rank[3/25] :: {owner=2;requester=2;offset=687;count=344;rc=2}
+sent 344/1250030 to rank[4/25] :: {owner=2;requester=3;offset=687;count=344;rc=0}
+sent 344/1250030 to rank[5/25] :: {owner=2;requester=4;offset=687;count=344;rc=0}
+
+received 344/1252783 from rank[1/25] :: {owner=0;requester=2;offset=0;count=344;rc=0}
+received 343/1251417 from rank[2/25] :: {owner=1;requester=2;offset=344;count=343;rc=0}
+received 344/1250030 from rank[3/25] :: {owner=2;requester=2;offset=687;count=344;rc=2}
+received 343/1250059 from rank[4/25] :: {owner=3;requester=2;offset=1031;count=343;rc=0}
+received 342/1248628 from rank[5/25] :: {owner=4;requester=2;offset=1374;count=342;rc=0}
+received 5/19185 from rank[6/25] :: {owner=5;requester=2;offset=1716;count=5;rc=0}
+
+rank[4/25] :: 
+sent 343/1250059 to rank[1/25] :: {owner=3;requester=0;offset=1031;count=343;rc=0}
+sent 343/1250059 to rank[2/25] :: {owner=3;requester=1;offset=1031;count=343;rc=0}
+sent 343/1250059 to rank[3/25] :: {owner=3;requester=2;offset=1031;count=343;rc=0}
+sent 343/1250059 to rank[4/25] :: {owner=3;requester=3;offset=1031;count=343;rc=2}
+sent 343/1250059 to rank[5/25] :: {owner=3;requester=4;offset=1031;count=343;rc=0}
+
+received 344/1252783 from rank[1/25] :: {owner=0;requester=3;offset=0;count=344;rc=0}
+received 343/1251417 from rank[2/25] :: {owner=1;requester=3;offset=344;count=343;rc=0}
+received 344/1250030 from rank[3/25] :: {owner=2;requester=3;offset=687;count=344;rc=0}
+received 343/1250059 from rank[4/25] :: {owner=3;requester=3;offset=1031;count=343;rc=2}
+received 342/1248628 from rank[5/25] :: {owner=4;requester=3;offset=1374;count=342;rc=0}
+received 5/19185 from rank[6/25] :: {owner=5;requester=3;offset=1716;count=5;rc=0}
+
+rank[5/25] :: 
+sent 342/1248628 to rank[1/25] :: {owner=4;requester=0;offset=1374;count=342;rc=0}
+sent 342/1248628 to rank[2/25] :: {owner=4;requester=1;offset=1374;count=342;rc=0}
+sent 342/1248628 to rank[3/25] :: {owner=4;requester=2;offset=1374;count=342;rc=0}
+sent 342/1248628 to rank[4/25] :: {owner=4;requester=3;offset=1374;count=342;rc=0}
+sent 342/1248628 to rank[5/25] :: {owner=4;requester=4;offset=1374;count=342;rc=2}
+
+received 344/1252783 from rank[1/25] :: {owner=0;requester=4;offset=0;count=344;rc=0}
+received 343/1251417 from rank[2/25] :: {owner=1;requester=4;offset=344;count=343;rc=0}
+received 344/1250030 from rank[3/25] :: {owner=2;requester=4;offset=687;count=344;rc=0}
+received 343/1250059 from rank[4/25] :: {owner=3;requester=4;offset=1031;count=343;rc=0}
+received 342/1248628 from rank[5/25] :: {owner=4;requester=4;offset=1374;count=342;rc=2}
+received 5/19185 from rank[6/25] :: {owner=5;requester=4;offset=1716;count=5;rc=0}
+
+rank[6/25] :: 
+sent 5/19185 to rank[1/25] :: {owner=5;requester=0;offset=1716;count=5;rc=0}
+sent 5/19185 to rank[2/25] :: {owner=5;requester=1;offset=1716;count=5;rc=0}
+sent 5/19185 to rank[3/25] :: {owner=5;requester=2;offset=1716;count=5;rc=0}
+sent 5/19185 to rank[4/25] :: {owner=5;requester=3;offset=1716;count=5;rc=0}
+sent 5/19185 to rank[5/25] :: {owner=5;requester=4;offset=1716;count=5;rc=0}
+sent 340/1231381 to rank[6/25] :: {owner=5;requester=5;offset=1721;count=340;rc=2}
+sent 340/1231381 to rank[7/25] :: {owner=5;requester=6;offset=1721;count=340;rc=0}
+sent 340/1231381 to rank[8/25] :: {owner=5;requester=7;offset=1721;count=340;rc=0}
+sent 340/1231381 to rank[9/25] :: {owner=5;requester=8;offset=1721;count=340;rc=0}
+sent 340/1231381 to rank[10/25] :: {owner=5;requester=9;offset=1721;count=340;rc=0}
+
+received 340/1231381 from rank[6/25] :: {owner=5;requester=5;offset=1721;count=340;rc=2}
+received 343/1250333 from rank[7/25] :: {owner=6;requester=5;offset=2061;count=343;rc=0}
+received 342/1250365 from rank[8/25] :: {owner=7;requester=5;offset=2404;count=342;rc=0}
+received 345/1251417 from rank[9/25] :: {owner=8;requester=5;offset=2746;count=345;rc=0}
+received 344/1249989 from rank[10/25] :: {owner=9;requester=5;offset=3091;count=344;rc=0}
+received 7/24313 from rank[11/25] :: {owner=10;requester=5;offset=3435;count=7;rc=0}
+
+rank[7/25] :: 
+sent 343/1250333 to rank[6/25] :: {owner=6;requester=5;offset=2061;count=343;rc=0}
+sent 343/1250333 to rank[7/25] :: {owner=6;requester=6;offset=2061;count=343;rc=2}
+sent 343/1250333 to rank[8/25] :: {owner=6;requester=7;offset=2061;count=343;rc=0}
+sent 343/1250333 to rank[9/25] :: {owner=6;requester=8;offset=2061;count=343;rc=0}
+sent 343/1250333 to rank[10/25] :: {owner=6;requester=9;offset=2061;count=343;rc=0}
+
+received 340/1231381 from rank[6/25] :: {owner=5;requester=6;offset=1721;count=340;rc=0}
+received 343/1250333 from rank[7/25] :: {owner=6;requester=6;offset=2061;count=343;rc=2}
+received 342/1250365 from rank[8/25] :: {owner=7;requester=6;offset=2404;count=342;rc=0}
+received 345/1251417 from rank[9/25] :: {owner=8;requester=6;offset=2746;count=345;rc=0}
+received 344/1249989 from rank[10/25] :: {owner=9;requester=6;offset=3091;count=344;rc=0}
+received 7/24313 from rank[11/25] :: {owner=10;requester=6;offset=3435;count=7;rc=0}
+
+rank[8/25] :: 
+sent 342/1250365 to rank[6/25] :: {owner=7;requester=5;offset=2404;count=342;rc=0}
+sent 342/1250365 to rank[7/25] :: {owner=7;requester=6;offset=2404;count=342;rc=0}
+sent 342/1250365 to rank[8/25] :: {owner=7;requester=7;offset=2404;count=342;rc=2}
+sent 342/1250365 to rank[9/25] :: {owner=7;requester=8;offset=2404;count=342;rc=0}
+sent 342/1250365 to rank[10/25] :: {owner=7;requester=9;offset=2404;count=342;rc=0}
+
+received 340/1231381 from rank[6/25] :: {owner=5;requester=7;offset=1721;count=340;rc=0}
+received 343/1250333 from rank[7/25] :: {owner=6;requester=7;offset=2061;count=343;rc=0}
+received 342/1250365 from rank[8/25] :: {owner=7;requester=7;offset=2404;count=342;rc=2}
+received 345/1251417 from rank[9/25] :: {owner=8;requester=7;offset=2746;count=345;rc=0}
+received 344/1249989 from rank[10/25] :: {owner=9;requester=7;offset=3091;count=344;rc=0}
+received 7/24313 from rank[11/25] :: {owner=10;requester=7;offset=3435;count=7;rc=0}
+
+rank[9/25] :: 
+sent 345/1251417 to rank[6/25] :: {owner=8;requester=5;offset=2746;count=345;rc=0}
+sent 345/1251417 to rank[7/25] :: {owner=8;requester=6;offset=2746;count=345;rc=0}
+sent 345/1251417 to rank[8/25] :: {owner=8;requester=7;offset=2746;count=345;rc=0}
+sent 345/1251417 to rank[9/25] :: {owner=8;requester=8;offset=2746;count=345;rc=2}
+sent 345/1251417 to rank[10/25] :: {owner=8;requester=9;offset=2746;count=345;rc=0}
+
+received 340/1231381 from rank[6/25] :: {owner=5;requester=8;offset=1721;count=340;rc=0}
+received 343/1250333 from rank[7/25] :: {owner=6;requester=8;offset=2061;count=343;rc=0}
+received 342/1250365 from rank[8/25] :: {owner=7;requester=8;offset=2404;count=342;rc=0}
+received 345/1251417 from rank[9/25] :: {owner=8;requester=8;offset=2746;count=345;rc=2}
+received 344/1249989 from rank[10/25] :: {owner=9;requester=8;offset=3091;count=344;rc=0}
+received 7/24313 from rank[11/25] :: {owner=10;requester=8;offset=3435;count=7;rc=0}
+
+rank[10/25] :: 
+sent 344/1249989 to rank[6/25] :: {owner=9;requester=5;offset=3091;count=344;rc=0}
+sent 344/1249989 to rank[7/25] :: {owner=9;requester=6;offset=3091;count=344;rc=0}
+sent 344/1249989 to rank[8/25] :: {owner=9;requester=7;offset=3091;count=344;rc=0}
+sent 344/1249989 to rank[9/25] :: {owner=9;requester=8;offset=3091;count=344;rc=0}
+sent 344/1249989 to rank[10/25] :: {owner=9;requester=9;offset=3091;count=344;rc=2}
+
+received 340/1231381 from rank[6/25] :: {owner=5;requester=9;offset=1721;count=340;rc=0}
+received 343/1250333 from rank[7/25] :: {owner=6;requester=9;offset=2061;count=343;rc=0}
+received 342/1250365 from rank[8/25] :: {owner=7;requester=9;offset=2404;count=342;rc=0}
+received 345/1251417 from rank[9/25] :: {owner=8;requester=9;offset=2746;count=345;rc=0}
+received 344/1249989 from rank[10/25] :: {owner=9;requester=9;offset=3091;count=344;rc=2}
+received 7/24313 from rank[11/25] :: {owner=10;requester=9;offset=3435;count=7;rc=0}
+
+rank[11/25] :: 
+sent 7/24313 to rank[6/25] :: {owner=10;requester=5;offset=3435;count=7;rc=0}
+sent 7/24313 to rank[7/25] :: {owner=10;requester=6;offset=3435;count=7;rc=0}
+sent 7/24313 to rank[8/25] :: {owner=10;requester=7;offset=3435;count=7;rc=0}
+sent 7/24313 to rank[9/25] :: {owner=10;requester=8;offset=3435;count=7;rc=0}
+sent 7/24313 to rank[10/25] :: {owner=10;requester=9;offset=3435;count=7;rc=0}
+sent 335/1226295 to rank[11/25] :: {owner=10;requester=10;offset=3442;count=335;rc=2}
+sent 335/1226295 to rank[12/25] :: {owner=10;requester=11;offset=3442;count=335;rc=0}
+sent 335/1226295 to rank[13/25] :: {owner=10;requester=12;offset=3442;count=335;rc=0}
+sent 335/1226295 to rank[14/25] :: {owner=10;requester=13;offset=3442;count=335;rc=0}
+sent 335/1226295 to rank[15/25] :: {owner=10;requester=14;offset=3442;count=335;rc=0}
+
+received 335/1226295 from rank[11/25] :: {owner=10;requester=10;offset=3442;count=335;rc=2}
+received 345/1252416 from rank[12/25] :: {owner=11;requester=10;offset=3777;count=345;rc=0}
+received 344/1252305 from rank[13/25] :: {owner=12;requester=10;offset=4122;count=344;rc=0}
+received 343/1249775 from rank[14/25] :: {owner=13;requester=10;offset=4466;count=343;rc=0}
+received 344/1252907 from rank[15/25] :: {owner=14;requester=10;offset=4809;count=344;rc=0}
+received 10/37171 from rank[16/25] :: {owner=15;requester=10;offset=5153;count=10;rc=0}
+
+rank[12/25] :: 
+sent 345/1252416 to rank[11/25] :: {owner=11;requester=10;offset=3777;count=345;rc=0}
+sent 345/1252416 to rank[12/25] :: {owner=11;requester=11;offset=3777;count=345;rc=2}
+sent 345/1252416 to rank[13/25] :: {owner=11;requester=12;offset=3777;count=345;rc=0}
+sent 345/1252416 to rank[14/25] :: {owner=11;requester=13;offset=3777;count=345;rc=0}
+sent 345/1252416 to rank[15/25] :: {owner=11;requester=14;offset=3777;count=345;rc=0}
+
+received 335/1226295 from rank[11/25] :: {owner=10;requester=11;offset=3442;count=335;rc=0}
+received 345/1252416 from rank[12/25] :: {owner=11;requester=11;offset=3777;count=345;rc=2}
+received 344/1252305 from rank[13/25] :: {owner=12;requester=11;offset=4122;count=344;rc=0}
+received 343/1249775 from rank[14/25] :: {owner=13;requester=11;offset=4466;count=343;rc=0}
+received 344/1252907 from rank[15/25] :: {owner=14;requester=11;offset=4809;count=344;rc=0}
+received 10/37171 from rank[16/25] :: {owner=15;requester=11;offset=5153;count=10;rc=0}
+
+rank[13/25] :: 
+sent 344/1252305 to rank[11/25] :: {owner=12;requester=10;offset=4122;count=344;rc=0}
+sent 344/1252305 to rank[12/25] :: {owner=12;requester=11;offset=4122;count=344;rc=0}
+sent 344/1252305 to rank[13/25] :: {owner=12;requester=12;offset=4122;count=344;rc=2}
+sent 344/1252305 to rank[14/25] :: {owner=12;requester=13;offset=4122;count=344;rc=0}
+sent 344/1252305 to rank[15/25] :: {owner=12;requester=14;offset=4122;count=344;rc=0}
+
+received 335/1226295 from rank[11/25] :: {owner=10;requester=12;offset=3442;count=335;rc=0}
+received 345/1252416 from rank[12/25] :: {owner=11;requester=12;offset=3777;count=345;rc=0}
+received 344/1252305 from rank[13/25] :: {owner=12;requester=12;offset=4122;count=344;rc=2}
+received 343/1249775 from rank[14/25] :: {owner=13;requester=12;offset=4466;count=343;rc=0}
+received 344/1252907 from rank[15/25] :: {owner=14;requester=12;offset=4809;count=344;rc=0}
+received 10/37171 from rank[16/25] :: {owner=15;requester=12;offset=5153;count=10;rc=0}
+
+rank[14/25] :: 
+sent 343/1249775 to rank[11/25] :: {owner=13;requester=10;offset=4466;count=343;rc=0}
+sent 343/1249775 to rank[12/25] :: {owner=13;requester=11;offset=4466;count=343;rc=0}
+sent 343/1249775 to rank[13/25] :: {owner=13;requester=12;offset=4466;count=343;rc=0}
+sent 343/1249775 to rank[14/25] :: {owner=13;requester=13;offset=4466;count=343;rc=2}
+sent 343/1249775 to rank[15/25] :: {owner=13;requester=14;offset=4466;count=343;rc=0}
+
+received 335/1226295 from rank[11/25] :: {owner=10;requester=13;offset=3442;count=335;rc=0}
+received 345/1252416 from rank[12/25] :: {owner=11;requester=13;offset=3777;count=345;rc=0}
+received 344/1252305 from rank[13/25] :: {owner=12;requester=13;offset=4122;count=344;rc=0}
+received 343/1249775 from rank[14/25] :: {owner=13;requester=13;offset=4466;count=343;rc=2}
+received 344/1252907 from rank[15/25] :: {owner=14;requester=13;offset=4809;count=344;rc=0}
+received 10/37171 from rank[16/25] :: {owner=15;requester=13;offset=5153;count=10;rc=0}
+
+rank[15/25] :: 
+sent 344/1252907 to rank[11/25] :: {owner=14;requester=10;offset=4809;count=344;rc=0}
+sent 344/1252907 to rank[12/25] :: {owner=14;requester=11;offset=4809;count=344;rc=0}
+sent 344/1252907 to rank[13/25] :: {owner=14;requester=12;offset=4809;count=344;rc=0}
+sent 344/1252907 to rank[14/25] :: {owner=14;requester=13;offset=4809;count=344;rc=0}
+sent 344/1252907 to rank[15/25] :: {owner=14;requester=14;offset=4809;count=344;rc=2}
+
+received 335/1226295 from rank[11/25] :: {owner=10;requester=14;offset=3442;count=335;rc=0}
+received 345/1252416 from rank[12/25] :: {owner=11;requester=14;offset=3777;count=345;rc=0}
+received 344/1252305 from rank[13/25] :: {owner=12;requester=14;offset=4122;count=344;rc=0}
+received 343/1249775 from rank[14/25] :: {owner=13;requester=14;offset=4466;count=343;rc=0}
+received 344/1252907 from rank[15/25] :: {owner=14;requester=14;offset=4809;count=344;rc=2}
+received 10/37171 from rank[16/25] :: {owner=15;requester=14;offset=5153;count=10;rc=0}
+
+rank[16/25] :: 
+sent 10/37171 to rank[11/25] :: {owner=15;requester=10;offset=5153;count=10;rc=0}
+sent 10/37171 to rank[12/25] :: {owner=15;requester=11;offset=5153;count=10;rc=0}
+sent 10/37171 to rank[13/25] :: {owner=15;requester=12;offset=5153;count=10;rc=0}
+sent 10/37171 to rank[14/25] :: {owner=15;requester=13;offset=5153;count=10;rc=0}
+sent 10/37171 to rank[15/25] :: {owner=15;requester=14;offset=5153;count=10;rc=0}
+sent 337/1215812 to rank[16/25] :: {owner=15;requester=15;offset=5163;count=337;rc=2}
+sent 337/1215812 to rank[17/25] :: {owner=15;requester=16;offset=5163;count=337;rc=0}
+sent 337/1215812 to rank[18/25] :: {owner=15;requester=17;offset=5163;count=337;rc=0}
+sent 337/1215812 to rank[19/25] :: {owner=15;requester=18;offset=5163;count=337;rc=0}
+sent 337/1215812 to rank[20/25] :: {owner=15;requester=19;offset=5163;count=337;rc=0}
+
+received 337/1215812 from rank[16/25] :: {owner=15;requester=15;offset=5163;count=337;rc=2}
+received 340/1249275 from rank[17/25] :: {owner=16;requester=15;offset=5500;count=340;rc=0}
+received 345/1251560 from rank[18/25] :: {owner=17;requester=15;offset=5840;count=345;rc=0}
+received 343/1251808 from rank[19/25] :: {owner=18;requester=15;offset=6185;count=343;rc=0}
+received 346/1250731 from rank[20/25] :: {owner=19;requester=15;offset=6528;count=346;rc=0}
+received 10/35884 from rank[21/25] :: {owner=20;requester=15;offset=6874;count=10;rc=0}
+
+rank[17/25] :: 
+sent 340/1249275 to rank[16/25] :: {owner=16;requester=15;offset=5500;count=340;rc=0}
+sent 340/1249275 to rank[17/25] :: {owner=16;requester=16;offset=5500;count=340;rc=2}
+sent 340/1249275 to rank[18/25] :: {owner=16;requester=17;offset=5500;count=340;rc=0}
+sent 340/1249275 to rank[19/25] :: {owner=16;requester=18;offset=5500;count=340;rc=0}
+sent 340/1249275 to rank[20/25] :: {owner=16;requester=19;offset=5500;count=340;rc=0}
+
+received 337/1215812 from rank[16/25] :: {owner=15;requester=16;offset=5163;count=337;rc=0}
+received 340/1249275 from rank[17/25] :: {owner=16;requester=16;offset=5500;count=340;rc=2}
+received 345/1251560 from rank[18/25] :: {owner=17;requester=16;offset=5840;count=345;rc=0}
+received 343/1251808 from rank[19/25] :: {owner=18;requester=16;offset=6185;count=343;rc=0}
+received 346/1250731 from rank[20/25] :: {owner=19;requester=16;offset=6528;count=346;rc=0}
+received 10/35884 from rank[21/25] :: {owner=20;requester=16;offset=6874;count=10;rc=0}
+
+rank[18/25] :: 
+sent 345/1251560 to rank[16/25] :: {owner=17;requester=15;offset=5840;count=345;rc=0}
+sent 345/1251560 to rank[17/25] :: {owner=17;requester=16;offset=5840;count=345;rc=0}
+sent 345/1251560 to rank[18/25] :: {owner=17;requester=17;offset=5840;count=345;rc=2}
+sent 345/1251560 to rank[19/25] :: {owner=17;requester=18;offset=5840;count=345;rc=0}
+sent 345/1251560 to rank[20/25] :: {owner=17;requester=19;offset=5840;count=345;rc=0}
+
+received 337/1215812 from rank[16/25] :: {owner=15;requester=17;offset=5163;count=337;rc=0}
+received 340/1249275 from rank[17/25] :: {owner=16;requester=17;offset=5500;count=340;rc=0}
+received 345/1251560 from rank[18/25] :: {owner=17;requester=17;offset=5840;count=345;rc=2}
+received 343/1251808 from rank[19/25] :: {owner=18;requester=17;offset=6185;count=343;rc=0}
+received 346/1250731 from rank[20/25] :: {owner=19;requester=17;offset=6528;count=346;rc=0}
+received 10/35884 from rank[21/25] :: {owner=20;requester=17;offset=6874;count=10;rc=0}
+
+rank[19/25] :: 
+sent 343/1251808 to rank[16/25] :: {owner=18;requester=15;offset=6185;count=343;rc=0}
+sent 343/1251808 to rank[17/25] :: {owner=18;requester=16;offset=6185;count=343;rc=0}
+sent 343/1251808 to rank[18/25] :: {owner=18;requester=17;offset=6185;count=343;rc=0}
+sent 343/1251808 to rank[19/25] :: {owner=18;requester=18;offset=6185;count=343;rc=2}
+sent 343/1251808 to rank[20/25] :: {owner=18;requester=19;offset=6185;count=343;rc=0}
+
+received 337/1215812 from rank[16/25] :: {owner=15;requester=18;offset=5163;count=337;rc=0}
+received 340/1249275 from rank[17/25] :: {owner=16;requester=18;offset=5500;count=340;rc=0}
+received 345/1251560 from rank[18/25] :: {owner=17;requester=18;offset=5840;count=345;rc=0}
+received 343/1251808 from rank[19/25] :: {owner=18;requester=18;offset=6185;count=343;rc=2}
+received 346/1250731 from rank[20/25] :: {owner=19;requester=18;offset=6528;count=346;rc=0}
+received 10/35884 from rank[21/25] :: {owner=20;requester=18;offset=6874;count=10;rc=0}
+
+rank[20/25] :: 
+sent 346/1250731 to rank[16/25] :: {owner=19;requester=15;offset=6528;count=346;rc=0}
+sent 346/1250731 to rank[17/25] :: {owner=19;requester=16;offset=6528;count=346;rc=0}
+sent 346/1250731 to rank[18/25] :: {owner=19;requester=17;offset=6528;count=346;rc=0}
+sent 346/1250731 to rank[19/25] :: {owner=19;requester=18;offset=6528;count=346;rc=0}
+sent 346/1250731 to rank[20/25] :: {owner=19;requester=19;offset=6528;count=346;rc=2}
+
+received 337/1215812 from rank[16/25] :: {owner=15;requester=19;offset=5163;count=337;rc=0}
+received 340/1249275 from rank[17/25] :: {owner=16;requester=19;offset=5500;count=340;rc=0}
+received 345/1251560 from rank[18/25] :: {owner=17;requester=19;offset=5840;count=345;rc=0}
+received 343/1251808 from rank[19/25] :: {owner=18;requester=19;offset=6185;count=343;rc=0}
+received 346/1250731 from rank[20/25] :: {owner=19;requester=19;offset=6528;count=346;rc=2}
+received 10/35884 from rank[21/25] :: {owner=20;requester=19;offset=6874;count=10;rc=0}
+
+rank[21/25] :: 
+sent 10/35884 to rank[16/25] :: {owner=20;requester=15;offset=6874;count=10;rc=0}
+sent 10/35884 to rank[17/25] :: {owner=20;requester=16;offset=6874;count=10;rc=0}
+sent 10/35884 to rank[18/25] :: {owner=20;requester=17;offset=6874;count=10;rc=0}
+sent 10/35884 to rank[19/25] :: {owner=20;requester=18;offset=6874;count=10;rc=0}
+sent 10/35884 to rank[20/25] :: {owner=20;requester=19;offset=6874;count=10;rc=0}
+sent 335/1214826 to rank[21/25] :: {owner=20;requester=20;offset=6884;count=335;rc=2}
+sent 335/1214826 to rank[22/25] :: {owner=20;requester=21;offset=6884;count=335;rc=0}
+sent 335/1214826 to rank[23/25] :: {owner=20;requester=22;offset=6884;count=335;rc=0}
+sent 335/1214826 to rank[24/25] :: {owner=20;requester=23;offset=6884;count=335;rc=0}
+sent 335/1214826 to rank[25/25] :: {owner=20;requester=24;offset=6884;count=335;rc=0}
+
+received 335/1214826 from rank[21/25] :: {owner=20;requester=20;offset=6884;count=335;rc=2}
+received 344/1249966 from rank[22/25] :: {owner=21;requester=20;offset=7219;count=344;rc=0}
+received 343/1251969 from rank[23/25] :: {owner=22;requester=20;offset=7563;count=343;rc=0}
+received 342/1251251 from rank[24/25] :: {owner=23;requester=20;offset=7906;count=342;rc=0}
+received 357/1301359 from rank[25/25] :: {owner=24;requester=20;offset=8248;count=357;rc=0}
+
+rank[22/25] :: 
+sent 344/1249966 to rank[21/25] :: {owner=21;requester=20;offset=7219;count=344;rc=0}
+sent 344/1249966 to rank[22/25] :: {owner=21;requester=21;offset=7219;count=344;rc=2}
+sent 344/1249966 to rank[23/25] :: {owner=21;requester=22;offset=7219;count=344;rc=0}
+sent 344/1249966 to rank[24/25] :: {owner=21;requester=23;offset=7219;count=344;rc=0}
+sent 344/1249966 to rank[25/25] :: {owner=21;requester=24;offset=7219;count=344;rc=0}
+
+received 335/1214826 from rank[21/25] :: {owner=20;requester=21;offset=6884;count=335;rc=0}
+received 344/1249966 from rank[22/25] :: {owner=21;requester=21;offset=7219;count=344;rc=2}
+received 343/1251969 from rank[23/25] :: {owner=22;requester=21;offset=7563;count=343;rc=0}
+received 342/1251251 from rank[24/25] :: {owner=23;requester=21;offset=7906;count=342;rc=0}
+received 357/1301359 from rank[25/25] :: {owner=24;requester=21;offset=8248;count=357;rc=0}
+
+rank[23/25] :: 
+sent 343/1251969 to rank[21/25] :: {owner=22;requester=20;offset=7563;count=343;rc=0}
+sent 343/1251969 to rank[22/25] :: {owner=22;requester=21;offset=7563;count=343;rc=0}
+sent 343/1251969 to rank[23/25] :: {owner=22;requester=22;offset=7563;count=343;rc=2}
+sent 343/1251969 to rank[24/25] :: {owner=22;requester=23;offset=7563;count=343;rc=0}
+sent 343/1251969 to rank[25/25] :: {owner=22;requester=24;offset=7563;count=343;rc=0}
+
+received 335/1214826 from rank[21/25] :: {owner=20;requester=22;offset=6884;count=335;rc=0}
+received 344/1249966 from rank[22/25] :: {owner=21;requester=22;offset=7219;count=344;rc=0}
+received 343/1251969 from rank[23/25] :: {owner=22;requester=22;offset=7563;count=343;rc=2}
+received 342/1251251 from rank[24/25] :: {owner=23;requester=22;offset=7906;count=342;rc=0}
+received 357/1301359 from rank[25/25] :: {owner=24;requester=22;offset=8248;count=357;rc=0}
+
+rank[24/25] :: 
+sent 342/1251251 to rank[21/25] :: {owner=23;requester=20;offset=7906;count=342;rc=0}
+sent 342/1251251 to rank[22/25] :: {owner=23;requester=21;offset=7906;count=342;rc=0}
+sent 342/1251251 to rank[23/25] :: {owner=23;requester=22;offset=7906;count=342;rc=0}
+sent 342/1251251 to rank[24/25] :: {owner=23;requester=23;offset=7906;count=342;rc=2}
+sent 342/1251251 to rank[25/25] :: {owner=23;requester=24;offset=7906;count=342;rc=0}
+
+received 335/1214826 from rank[21/25] :: {owner=20;requester=23;offset=6884;count=335;rc=0}
+received 344/1249966 from rank[22/25] :: {owner=21;requester=23;offset=7219;count=344;rc=0}
+received 343/1251969 from rank[23/25] :: {owner=22;requester=23;offset=7563;count=343;rc=0}
+received 342/1251251 from rank[24/25] :: {owner=23;requester=23;offset=7906;count=342;rc=2}
+received 357/1301359 from rank[25/25] :: {owner=24;requester=23;offset=8248;count=357;rc=0}
+
+rank[25/25] :: 
+sent 357/1301359 to rank[21/25] :: {owner=24;requester=20;offset=8248;count=357;rc=0}
+sent 357/1301359 to rank[22/25] :: {owner=24;requester=21;offset=8248;count=357;rc=0}
+sent 357/1301359 to rank[23/25] :: {owner=24;requester=22;offset=8248;count=357;rc=0}
+sent 357/1301359 to rank[24/25] :: {owner=24;requester=23;offset=8248;count=357;rc=0}
+sent 357/1301359 to rank[25/25] :: {owner=24;requester=24;offset=8248;count=357;rc=2}
+
+received 335/1214826 from rank[21/25] :: {owner=20;requester=24;offset=6884;count=335;rc=0}
+received 344/1249966 from rank[22/25] :: {owner=21;requester=24;offset=7219;count=344;rc=0}
+received 343/1251969 from rank[23/25] :: {owner=22;requester=24;offset=7563;count=343;rc=0}
+received 342/1251251 from rank[24/25] :: {owner=23;requester=24;offset=7906;count=342;rc=0}
+received 357/1301359 from rank[25/25] :: {owner=24;requester=24;offset=8248;count=357;rc=2}
+
+
+posted received calls:
+======================
+
+rank[1/25] :: 
+receiving 344 read lengths at displacement 0 from rank[1/25]
+receiving 1252783 buffer bytes at displacement 0 from rank[1/25]
+receiving 343 read lengths at displacement 344 from rank[2/25]
+receiving 1251417 buffer bytes at displacement 1252783 from rank[2/25]
+receiving 344 read lengths at displacement 687 from rank[3/25]
+receiving 1250030 buffer bytes at displacement 2504200 from rank[3/25]
+receiving 343 read lengths at displacement 1031 from rank[4/25]
+receiving 1250059 buffer bytes at displacement 3754230 from rank[4/25]
+receiving 342 read lengths at displacement 1374 from rank[5/25]
+receiving 1248628 buffer bytes at displacement 5004289 from rank[5/25]
+receiving 5 read lengths at displacement 1716 from rank[6/25]
+receiving 19185 buffer bytes at displacement 6252917 from rank[6/25]
+
+rank[2/25] :: 
+receiving 344 read lengths at displacement 0 from rank[1/25]
+receiving 1252783 buffer bytes at displacement 0 from rank[1/25]
+receiving 343 read lengths at displacement 344 from rank[2/25]
+receiving 1251417 buffer bytes at displacement 1252783 from rank[2/25]
+receiving 344 read lengths at displacement 687 from rank[3/25]
+receiving 1250030 buffer bytes at displacement 2504200 from rank[3/25]
+receiving 343 read lengths at displacement 1031 from rank[4/25]
+receiving 1250059 buffer bytes at displacement 3754230 from rank[4/25]
+receiving 342 read lengths at displacement 1374 from rank[5/25]
+receiving 1248628 buffer bytes at displacement 5004289 from rank[5/25]
+receiving 5 read lengths at displacement 1716 from rank[6/25]
+receiving 19185 buffer bytes at displacement 6252917 from rank[6/25]
+
+rank[3/25] :: 
+receiving 344 read lengths at displacement 0 from rank[1/25]
+receiving 1252783 buffer bytes at displacement 0 from rank[1/25]
+receiving 343 read lengths at displacement 344 from rank[2/25]
+receiving 1251417 buffer bytes at displacement 1252783 from rank[2/25]
+receiving 344 read lengths at displacement 687 from rank[3/25]
+receiving 1250030 buffer bytes at displacement 2504200 from rank[3/25]
+receiving 343 read lengths at displacement 1031 from rank[4/25]
+receiving 1250059 buffer bytes at displacement 3754230 from rank[4/25]
+receiving 342 read lengths at displacement 1374 from rank[5/25]
+receiving 1248628 buffer bytes at displacement 5004289 from rank[5/25]
+receiving 5 read lengths at displacement 1716 from rank[6/25]
+receiving 19185 buffer bytes at displacement 6252917 from rank[6/25]
+
+rank[4/25] :: 
+receiving 344 read lengths at displacement 0 from rank[1/25]
+receiving 1252783 buffer bytes at displacement 0 from rank[1/25]
+receiving 343 read lengths at displacement 344 from rank[2/25]
+receiving 1251417 buffer bytes at displacement 1252783 from rank[2/25]
+receiving 344 read lengths at displacement 687 from rank[3/25]
+receiving 1250030 buffer bytes at displacement 2504200 from rank[3/25]
+receiving 343 read lengths at displacement 1031 from rank[4/25]
+receiving 1250059 buffer bytes at displacement 3754230 from rank[4/25]
+receiving 342 read lengths at displacement 1374 from rank[5/25]
+receiving 1248628 buffer bytes at displacement 5004289 from rank[5/25]
+receiving 5 read lengths at displacement 1716 from rank[6/25]
+receiving 19185 buffer bytes at displacement 6252917 from rank[6/25]
+
+rank[5/25] :: 
+receiving 344 read lengths at displacement 0 from rank[1/25]
+receiving 1252783 buffer bytes at displacement 0 from rank[1/25]
+receiving 343 read lengths at displacement 344 from rank[2/25]
+receiving 1251417 buffer bytes at displacement 1252783 from rank[2/25]
+receiving 344 read lengths at displacement 687 from rank[3/25]
+receiving 1250030 buffer bytes at displacement 2504200 from rank[3/25]
+receiving 343 read lengths at displacement 1031 from rank[4/25]
+receiving 1250059 buffer bytes at displacement 3754230 from rank[4/25]
+receiving 342 read lengths at displacement 1374 from rank[5/25]
+receiving 1248628 buffer bytes at displacement 5004289 from rank[5/25]
+receiving 5 read lengths at displacement 1716 from rank[6/25]
+receiving 19185 buffer bytes at displacement 6252917 from rank[6/25]
+
+rank[6/25] :: 
+receiving 340 read lengths at displacement 0 from rank[6/25]
+receiving 1231381 buffer bytes at displacement 0 from rank[6/25]
+receiving 343 read lengths at displacement 340 from rank[7/25]
+receiving 1250333 buffer bytes at displacement 1231381 from rank[7/25]
+receiving 342 read lengths at displacement 683 from rank[8/25]
+receiving 1250365 buffer bytes at displacement 2481714 from rank[8/25]
+receiving 345 read lengths at displacement 1025 from rank[9/25]
+receiving 1251417 buffer bytes at displacement 3732079 from rank[9/25]
+receiving 344 read lengths at displacement 1370 from rank[10/25]
+receiving 1249989 buffer bytes at displacement 4983496 from rank[10/25]
+receiving 7 read lengths at displacement 1714 from rank[11/25]
+receiving 24313 buffer bytes at displacement 6233485 from rank[11/25]
+
+rank[7/25] :: 
+receiving 340 read lengths at displacement 0 from rank[6/25]
+receiving 1231381 buffer bytes at displacement 0 from rank[6/25]
+receiving 343 read lengths at displacement 340 from rank[7/25]
+receiving 1250333 buffer bytes at displacement 1231381 from rank[7/25]
+receiving 342 read lengths at displacement 683 from rank[8/25]
+receiving 1250365 buffer bytes at displacement 2481714 from rank[8/25]
+receiving 345 read lengths at displacement 1025 from rank[9/25]
+receiving 1251417 buffer bytes at displacement 3732079 from rank[9/25]
+receiving 344 read lengths at displacement 1370 from rank[10/25]
+receiving 1249989 buffer bytes at displacement 4983496 from rank[10/25]
+receiving 7 read lengths at displacement 1714 from rank[11/25]
+receiving 24313 buffer bytes at displacement 6233485 from rank[11/25]
+
+rank[8/25] :: 
+receiving 340 read lengths at displacement 0 from rank[6/25]
+receiving 1231381 buffer bytes at displacement 0 from rank[6/25]
+receiving 343 read lengths at displacement 340 from rank[7/25]
+receiving 1250333 buffer bytes at displacement 1231381 from rank[7/25]
+receiving 342 read lengths at displacement 683 from rank[8/25]
+receiving 1250365 buffer bytes at displacement 2481714 from rank[8/25]
+receiving 345 read lengths at displacement 1025 from rank[9/25]
+receiving 1251417 buffer bytes at displacement 3732079 from rank[9/25]
+receiving 344 read lengths at displacement 1370 from rank[10/25]
+receiving 1249989 buffer bytes at displacement 4983496 from rank[10/25]
+receiving 7 read lengths at displacement 1714 from rank[11/25]
+receiving 24313 buffer bytes at displacement 6233485 from rank[11/25]
+
+rank[9/25] :: 
+receiving 340 read lengths at displacement 0 from rank[6/25]
+receiving 1231381 buffer bytes at displacement 0 from rank[6/25]
+receiving 343 read lengths at displacement 340 from rank[7/25]
+receiving 1250333 buffer bytes at displacement 1231381 from rank[7/25]
+receiving 342 read lengths at displacement 683 from rank[8/25]
+receiving 1250365 buffer bytes at displacement 2481714 from rank[8/25]
+receiving 345 read lengths at displacement 1025 from rank[9/25]
+receiving 1251417 buffer bytes at displacement 3732079 from rank[9/25]
+receiving 344 read lengths at displacement 1370 from rank[10/25]
+receiving 1249989 buffer bytes at displacement 4983496 from rank[10/25]
+receiving 7 read lengths at displacement 1714 from rank[11/25]
+receiving 24313 buffer bytes at displacement 6233485 from rank[11/25]
+
+rank[10/25] :: 
+receiving 340 read lengths at displacement 0 from rank[6/25]
+receiving 1231381 buffer bytes at displacement 0 from rank[6/25]
+receiving 343 read lengths at displacement 340 from rank[7/25]
+receiving 1250333 buffer bytes at displacement 1231381 from rank[7/25]
+receiving 342 read lengths at displacement 683 from rank[8/25]
+receiving 1250365 buffer bytes at displacement 2481714 from rank[8/25]
+receiving 345 read lengths at displacement 1025 from rank[9/25]
+receiving 1251417 buffer bytes at displacement 3732079 from rank[9/25]
+receiving 344 read lengths at displacement 1370 from rank[10/25]
+receiving 1249989 buffer bytes at displacement 4983496 from rank[10/25]
+receiving 7 read lengths at displacement 1714 from rank[11/25]
+receiving 24313 buffer bytes at displacement 6233485 from rank[11/25]
+
+rank[11/25] :: 
+receiving 335 read lengths at displacement 0 from rank[11/25]
+receiving 1226295 buffer bytes at displacement 0 from rank[11/25]
+receiving 345 read lengths at displacement 335 from rank[12/25]
+receiving 1252416 buffer bytes at displacement 1226295 from rank[12/25]
+receiving 344 read lengths at displacement 680 from rank[13/25]
+receiving 1252305 buffer bytes at displacement 2478711 from rank[13/25]
+receiving 343 read lengths at displacement 1024 from rank[14/25]
+receiving 1249775 buffer bytes at displacement 3731016 from rank[14/25]
+receiving 344 read lengths at displacement 1367 from rank[15/25]
+receiving 1252907 buffer bytes at displacement 4980791 from rank[15/25]
+receiving 10 read lengths at displacement 1711 from rank[16/25]
+receiving 37171 buffer bytes at displacement 6233698 from rank[16/25]
+
+rank[12/25] :: 
+receiving 335 read lengths at displacement 0 from rank[11/25]
+receiving 1226295 buffer bytes at displacement 0 from rank[11/25]
+receiving 345 read lengths at displacement 335 from rank[12/25]
+receiving 1252416 buffer bytes at displacement 1226295 from rank[12/25]
+receiving 344 read lengths at displacement 680 from rank[13/25]
+receiving 1252305 buffer bytes at displacement 2478711 from rank[13/25]
+receiving 343 read lengths at displacement 1024 from rank[14/25]
+receiving 1249775 buffer bytes at displacement 3731016 from rank[14/25]
+receiving 344 read lengths at displacement 1367 from rank[15/25]
+receiving 1252907 buffer bytes at displacement 4980791 from rank[15/25]
+receiving 10 read lengths at displacement 1711 from rank[16/25]
+receiving 37171 buffer bytes at displacement 6233698 from rank[16/25]
+
+rank[13/25] :: 
+receiving 335 read lengths at displacement 0 from rank[11/25]
+receiving 1226295 buffer bytes at displacement 0 from rank[11/25]
+receiving 345 read lengths at displacement 335 from rank[12/25]
+receiving 1252416 buffer bytes at displacement 1226295 from rank[12/25]
+receiving 344 read lengths at displacement 680 from rank[13/25]
+receiving 1252305 buffer bytes at displacement 2478711 from rank[13/25]
+receiving 343 read lengths at displacement 1024 from rank[14/25]
+receiving 1249775 buffer bytes at displacement 3731016 from rank[14/25]
+receiving 344 read lengths at displacement 1367 from rank[15/25]
+receiving 1252907 buffer bytes at displacement 4980791 from rank[15/25]
+receiving 10 read lengths at displacement 1711 from rank[16/25]
+receiving 37171 buffer bytes at displacement 6233698 from rank[16/25]
+
+rank[14/25] :: 
+receiving 335 read lengths at displacement 0 from rank[11/25]
+receiving 1226295 buffer bytes at displacement 0 from rank[11/25]
+receiving 345 read lengths at displacement 335 from rank[12/25]
+receiving 1252416 buffer bytes at displacement 1226295 from rank[12/25]
+receiving 344 read lengths at displacement 680 from rank[13/25]
+receiving 1252305 buffer bytes at displacement 2478711 from rank[13/25]
+receiving 343 read lengths at displacement 1024 from rank[14/25]
+receiving 1249775 buffer bytes at displacement 3731016 from rank[14/25]
+receiving 344 read lengths at displacement 1367 from rank[15/25]
+receiving 1252907 buffer bytes at displacement 4980791 from rank[15/25]
+receiving 10 read lengths at displacement 1711 from rank[16/25]
+receiving 37171 buffer bytes at displacement 6233698 from rank[16/25]
+
+rank[15/25] :: 
+receiving 335 read lengths at displacement 0 from rank[11/25]
+receiving 1226295 buffer bytes at displacement 0 from rank[11/25]
+receiving 345 read lengths at displacement 335 from rank[12/25]
+receiving 1252416 buffer bytes at displacement 1226295 from rank[12/25]
+receiving 344 read lengths at displacement 680 from rank[13/25]
+receiving 1252305 buffer bytes at displacement 2478711 from rank[13/25]
+receiving 343 read lengths at displacement 1024 from rank[14/25]
+receiving 1249775 buffer bytes at displacement 3731016 from rank[14/25]
+receiving 344 read lengths at displacement 1367 from rank[15/25]
+receiving 1252907 buffer bytes at displacement 4980791 from rank[15/25]
+receiving 10 read lengths at displacement 1711 from rank[16/25]
+receiving 37171 buffer bytes at displacement 6233698 from rank[16/25]
+
+rank[16/25] :: 
+receiving 337 read lengths at displacement 0 from rank[16/25]
+receiving 1215812 buffer bytes at displacement 0 from rank[16/25]
+receiving 340 read lengths at displacement 337 from rank[17/25]
+receiving 1249275 buffer bytes at displacement 1215812 from rank[17/25]
+receiving 345 read lengths at displacement 677 from rank[18/25]
+receiving 1251560 buffer bytes at displacement 2465087 from rank[18/25]
+receiving 343 read lengths at displacement 1022 from rank[19/25]
+receiving 1251808 buffer bytes at displacement 3716647 from rank[19/25]
+receiving 346 read lengths at displacement 1365 from rank[20/25]
+receiving 1250731 buffer bytes at displacement 4968455 from rank[20/25]
+receiving 10 read lengths at displacement 1711 from rank[21/25]
+receiving 35884 buffer bytes at displacement 6219186 from rank[21/25]
+
+rank[17/25] :: 
+receiving 337 read lengths at displacement 0 from rank[16/25]
+receiving 1215812 buffer bytes at displacement 0 from rank[16/25]
+receiving 340 read lengths at displacement 337 from rank[17/25]
+receiving 1249275 buffer bytes at displacement 1215812 from rank[17/25]
+receiving 345 read lengths at displacement 677 from rank[18/25]
+receiving 1251560 buffer bytes at displacement 2465087 from rank[18/25]
+receiving 343 read lengths at displacement 1022 from rank[19/25]
+receiving 1251808 buffer bytes at displacement 3716647 from rank[19/25]
+receiving 346 read lengths at displacement 1365 from rank[20/25]
+receiving 1250731 buffer bytes at displacement 4968455 from rank[20/25]
+receiving 10 read lengths at displacement 1711 from rank[21/25]
+receiving 35884 buffer bytes at displacement 6219186 from rank[21/25]
+
+rank[18/25] :: 
+receiving 337 read lengths at displacement 0 from rank[16/25]
+receiving 1215812 buffer bytes at displacement 0 from rank[16/25]
+receiving 340 read lengths at displacement 337 from rank[17/25]
+receiving 1249275 buffer bytes at displacement 1215812 from rank[17/25]
+receiving 345 read lengths at displacement 677 from rank[18/25]
+receiving 1251560 buffer bytes at displacement 2465087 from rank[18/25]
+receiving 343 read lengths at displacement 1022 from rank[19/25]
+receiving 1251808 buffer bytes at displacement 3716647 from rank[19/25]
+receiving 346 read lengths at displacement 1365 from rank[20/25]
+receiving 1250731 buffer bytes at displacement 4968455 from rank[20/25]
+receiving 10 read lengths at displacement 1711 from rank[21/25]
+receiving 35884 buffer bytes at displacement 6219186 from rank[21/25]
+
+rank[19/25] :: 
+receiving 337 read lengths at displacement 0 from rank[16/25]
+receiving 1215812 buffer bytes at displacement 0 from rank[16/25]
+receiving 340 read lengths at displacement 337 from rank[17/25]
+receiving 1249275 buffer bytes at displacement 1215812 from rank[17/25]
+receiving 345 read lengths at displacement 677 from rank[18/25]
+receiving 1251560 buffer bytes at displacement 2465087 from rank[18/25]
+receiving 343 read lengths at displacement 1022 from rank[19/25]
+receiving 1251808 buffer bytes at displacement 3716647 from rank[19/25]
+receiving 346 read lengths at displacement 1365 from rank[20/25]
+receiving 1250731 buffer bytes at displacement 4968455 from rank[20/25]
+receiving 10 read lengths at displacement 1711 from rank[21/25]
+receiving 35884 buffer bytes at displacement 6219186 from rank[21/25]
+
+rank[20/25] :: 
+receiving 337 read lengths at displacement 0 from rank[16/25]
+receiving 1215812 buffer bytes at displacement 0 from rank[16/25]
+receiving 340 read lengths at displacement 337 from rank[17/25]
+receiving 1249275 buffer bytes at displacement 1215812 from rank[17/25]
+receiving 345 read lengths at displacement 677 from rank[18/25]
+receiving 1251560 buffer bytes at displacement 2465087 from rank[18/25]
+receiving 343 read lengths at displacement 1022 from rank[19/25]
+receiving 1251808 buffer bytes at displacement 3716647 from rank[19/25]
+receiving 346 read lengths at displacement 1365 from rank[20/25]
+receiving 1250731 buffer bytes at displacement 4968455 from rank[20/25]
+receiving 10 read lengths at displacement 1711 from rank[21/25]
+receiving 35884 buffer bytes at displacement 6219186 from rank[21/25]
+
+rank[21/25] :: 
+receiving 335 read lengths at displacement 0 from rank[21/25]
+receiving 1214826 buffer bytes at displacement 0 from rank[21/25]
+receiving 344 read lengths at displacement 335 from rank[22/25]
+receiving 1249966 buffer bytes at displacement 1214826 from rank[22/25]
+receiving 343 read lengths at displacement 679 from rank[23/25]
+receiving 1251969 buffer bytes at displacement 2464792 from rank[23/25]
+receiving 342 read lengths at displacement 1022 from rank[24/25]
+receiving 1251251 buffer bytes at displacement 3716761 from rank[24/25]
+receiving 357 read lengths at displacement 1364 from rank[25/25]
+receiving 1301359 buffer bytes at displacement 4968012 from rank[25/25]
+
+rank[22/25] :: 
+receiving 335 read lengths at displacement 0 from rank[21/25]
+receiving 1214826 buffer bytes at displacement 0 from rank[21/25]
+receiving 344 read lengths at displacement 335 from rank[22/25]
+receiving 1249966 buffer bytes at displacement 1214826 from rank[22/25]
+receiving 343 read lengths at displacement 679 from rank[23/25]
+receiving 1251969 buffer bytes at displacement 2464792 from rank[23/25]
+receiving 342 read lengths at displacement 1022 from rank[24/25]
+receiving 1251251 buffer bytes at displacement 3716761 from rank[24/25]
+receiving 357 read lengths at displacement 1364 from rank[25/25]
+receiving 1301359 buffer bytes at displacement 4968012 from rank[25/25]
+
+rank[23/25] :: 
+receiving 335 read lengths at displacement 0 from rank[21/25]
+receiving 1214826 buffer bytes at displacement 0 from rank[21/25]
+receiving 344 read lengths at displacement 335 from rank[22/25]
+receiving 1249966 buffer bytes at displacement 1214826 from rank[22/25]
+receiving 343 read lengths at displacement 679 from rank[23/25]
+receiving 1251969 buffer bytes at displacement 2464792 from rank[23/25]
+receiving 342 read lengths at displacement 1022 from rank[24/25]
+receiving 1251251 buffer bytes at displacement 3716761 from rank[24/25]
+receiving 357 read lengths at displacement 1364 from rank[25/25]
+receiving 1301359 buffer bytes at displacement 4968012 from rank[25/25]
+
+rank[24/25] :: 
+receiving 335 read lengths at displacement 0 from rank[21/25]
+receiving 1214826 buffer bytes at displacement 0 from rank[21/25]
+receiving 344 read lengths at displacement 335 from rank[22/25]
+receiving 1249966 buffer bytes at displacement 1214826 from rank[22/25]
+receiving 343 read lengths at displacement 679 from rank[23/25]
+receiving 1251969 buffer bytes at displacement 2464792 from rank[23/25]
+receiving 342 read lengths at displacement 1022 from rank[24/25]
+receiving 1251251 buffer bytes at displacement 3716761 from rank[24/25]
+receiving 357 read lengths at displacement 1364 from rank[25/25]
+receiving 1301359 buffer bytes at displacement 4968012 from rank[25/25]
+
+rank[25/25] :: 
+receiving 335 read lengths at displacement 0 from rank[21/25]
+receiving 1214826 buffer bytes at displacement 0 from rank[21/25]
+receiving 344 read lengths at displacement 335 from rank[22/25]
+receiving 1249966 buffer bytes at displacement 1214826 from rank[22/25]
+receiving 343 read lengths at displacement 679 from rank[23/25]
+receiving 1251969 buffer bytes at displacement 2464792 from rank[23/25]
+receiving 342 read lengths at displacement 1022 from rank[24/25]
+receiving 1251251 buffer bytes at displacement 3716761 from rank[24/25]
+receiving 357 read lengths at displacement 1364 from rank[25/25]
+receiving 1301359 buffer bytes at displacement 4968012 from rank[25/25]
+
+
+posted send calls:
+==================
+
+rank[1/25] :: 
+sending 344 read lengths to rank[1/25]
+sending 1252783 buffer bytes to rank[1/25]
+sending 344 read lengths to rank[2/25]
+sending 1252783 buffer bytes to rank[2/25]
+sending 344 read lengths to rank[3/25]
+sending 1252783 buffer bytes to rank[3/25]
+sending 344 read lengths to rank[4/25]
+sending 1252783 buffer bytes to rank[4/25]
+sending 344 read lengths to rank[5/25]
+sending 1252783 buffer bytes to rank[5/25]
+
+rank[2/25] :: 
+sending 343 read lengths to rank[1/25]
+sending 1251417 buffer bytes to rank[1/25]
+sending 343 read lengths to rank[2/25]
+sending 1251417 buffer bytes to rank[2/25]
+sending 343 read lengths to rank[3/25]
+sending 1251417 buffer bytes to rank[3/25]
+sending 343 read lengths to rank[4/25]
+sending 1251417 buffer bytes to rank[4/25]
+sending 343 read lengths to rank[5/25]
+sending 1251417 buffer bytes to rank[5/25]
+
+rank[3/25] :: 
+sending 344 read lengths to rank[1/25]
+sending 1250030 buffer bytes to rank[1/25]
+sending 344 read lengths to rank[2/25]
+sending 1250030 buffer bytes to rank[2/25]
+sending 344 read lengths to rank[3/25]
+sending 1250030 buffer bytes to rank[3/25]
+sending 344 read lengths to rank[4/25]
+sending 1250030 buffer bytes to rank[4/25]
+sending 344 read lengths to rank[5/25]
+sending 1250030 buffer bytes to rank[5/25]
+
+rank[4/25] :: 
+sending 343 read lengths to rank[1/25]
+sending 1250059 buffer bytes to rank[1/25]
+sending 343 read lengths to rank[2/25]
+sending 1250059 buffer bytes to rank[2/25]
+sending 343 read lengths to rank[3/25]
+sending 1250059 buffer bytes to rank[3/25]
+sending 343 read lengths to rank[4/25]
+sending 1250059 buffer bytes to rank[4/25]
+sending 343 read lengths to rank[5/25]
+sending 1250059 buffer bytes to rank[5/25]
+
+rank[5/25] :: 
+sending 342 read lengths to rank[1/25]
+sending 1248628 buffer bytes to rank[1/25]
+sending 342 read lengths to rank[2/25]
+sending 1248628 buffer bytes to rank[2/25]
+sending 342 read lengths to rank[3/25]
+sending 1248628 buffer bytes to rank[3/25]
+sending 342 read lengths to rank[4/25]
+sending 1248628 buffer bytes to rank[4/25]
+sending 342 read lengths to rank[5/25]
+sending 1248628 buffer bytes to rank[5/25]
+
+rank[6/25] :: 
+sending 5 read lengths to rank[1/25]
+sending 19185 buffer bytes to rank[1/25]
+sending 5 read lengths to rank[2/25]
+sending 19185 buffer bytes to rank[2/25]
+sending 5 read lengths to rank[3/25]
+sending 19185 buffer bytes to rank[3/25]
+sending 5 read lengths to rank[4/25]
+sending 19185 buffer bytes to rank[4/25]
+sending 5 read lengths to rank[5/25]
+sending 19185 buffer bytes to rank[5/25]
+sending 340 read lengths to rank[6/25]
+sending 1231381 buffer bytes to rank[6/25]
+sending 340 read lengths to rank[7/25]
+sending 1231381 buffer bytes to rank[7/25]
+sending 340 read lengths to rank[8/25]
+sending 1231381 buffer bytes to rank[8/25]
+sending 340 read lengths to rank[9/25]
+sending 1231381 buffer bytes to rank[9/25]
+sending 340 read lengths to rank[10/25]
+sending 1231381 buffer bytes to rank[10/25]
+
+rank[7/25] :: 
+sending 343 read lengths to rank[6/25]
+sending 1250333 buffer bytes to rank[6/25]
+sending 343 read lengths to rank[7/25]
+sending 1250333 buffer bytes to rank[7/25]
+sending 343 read lengths to rank[8/25]
+sending 1250333 buffer bytes to rank[8/25]
+sending 343 read lengths to rank[9/25]
+sending 1250333 buffer bytes to rank[9/25]
+sending 343 read lengths to rank[10/25]
+sending 1250333 buffer bytes to rank[10/25]
+
+rank[8/25] :: 
+sending 342 read lengths to rank[6/25]
+sending 1250365 buffer bytes to rank[6/25]
+sending 342 read lengths to rank[7/25]
+sending 1250365 buffer bytes to rank[7/25]
+sending 342 read lengths to rank[8/25]
+sending 1250365 buffer bytes to rank[8/25]
+sending 342 read lengths to rank[9/25]
+sending 1250365 buffer bytes to rank[9/25]
+sending 342 read lengths to rank[10/25]
+sending 1250365 buffer bytes to rank[10/25]
+
+rank[9/25] :: 
+sending 345 read lengths to rank[6/25]
+sending 1251417 buffer bytes to rank[6/25]
+sending 345 read lengths to rank[7/25]
+sending 1251417 buffer bytes to rank[7/25]
+sending 345 read lengths to rank[8/25]
+sending 1251417 buffer bytes to rank[8/25]
+sending 345 read lengths to rank[9/25]
+sending 1251417 buffer bytes to rank[9/25]
+sending 345 read lengths to rank[10/25]
+sending 1251417 buffer bytes to rank[10/25]
+
+rank[10/25] :: 
+sending 344 read lengths to rank[6/25]
+sending 1249989 buffer bytes to rank[6/25]
+sending 344 read lengths to rank[7/25]
+sending 1249989 buffer bytes to rank[7/25]
+sending 344 read lengths to rank[8/25]
+sending 1249989 buffer bytes to rank[8/25]
+sending 344 read lengths to rank[9/25]
+sending 1249989 buffer bytes to rank[9/25]
+sending 344 read lengths to rank[10/25]
+sending 1249989 buffer bytes to rank[10/25]
+
+rank[11/25] :: 
+sending 7 read lengths to rank[6/25]
+sending 24313 buffer bytes to rank[6/25]
+sending 7 read lengths to rank[7/25]
+sending 24313 buffer bytes to rank[7/25]
+sending 7 read lengths to rank[8/25]
+sending 24313 buffer bytes to rank[8/25]
+sending 7 read lengths to rank[9/25]
+sending 24313 buffer bytes to rank[9/25]
+sending 7 read lengths to rank[10/25]
+sending 24313 buffer bytes to rank[10/25]
+sending 335 read lengths to rank[11/25]
+sending 1226295 buffer bytes to rank[11/25]
+sending 335 read lengths to rank[12/25]
+sending 1226295 buffer bytes to rank[12/25]
+sending 335 read lengths to rank[13/25]
+sending 1226295 buffer bytes to rank[13/25]
+sending 335 read lengths to rank[14/25]
+sending 1226295 buffer bytes to rank[14/25]
+sending 335 read lengths to rank[15/25]
+sending 1226295 buffer bytes to rank[15/25]
+
+rank[12/25] :: 
+sending 345 read lengths to rank[11/25]
+sending 1252416 buffer bytes to rank[11/25]
+sending 345 read lengths to rank[12/25]
+sending 1252416 buffer bytes to rank[12/25]
+sending 345 read lengths to rank[13/25]
+sending 1252416 buffer bytes to rank[13/25]
+sending 345 read lengths to rank[14/25]
+sending 1252416 buffer bytes to rank[14/25]
+sending 345 read lengths to rank[15/25]
+sending 1252416 buffer bytes to rank[15/25]
+
+rank[13/25] :: 
+sending 344 read lengths to rank[11/25]
+sending 1252305 buffer bytes to rank[11/25]
+sending 344 read lengths to rank[12/25]
+sending 1252305 buffer bytes to rank[12/25]
+sending 344 read lengths to rank[13/25]
+sending 1252305 buffer bytes to rank[13/25]
+sending 344 read lengths to rank[14/25]
+sending 1252305 buffer bytes to rank[14/25]
+sending 344 read lengths to rank[15/25]
+sending 1252305 buffer bytes to rank[15/25]
+
+rank[14/25] :: 
+sending 343 read lengths to rank[11/25]
+sending 1249775 buffer bytes to rank[11/25]
+sending 343 read lengths to rank[12/25]
+sending 1249775 buffer bytes to rank[12/25]
+sending 343 read lengths to rank[13/25]
+sending 1249775 buffer bytes to rank[13/25]
+sending 343 read lengths to rank[14/25]
+sending 1249775 buffer bytes to rank[14/25]
+sending 343 read lengths to rank[15/25]
+sending 1249775 buffer bytes to rank[15/25]
+
+rank[15/25] :: 
+sending 344 read lengths to rank[11/25]
+sending 1252907 buffer bytes to rank[11/25]
+sending 344 read lengths to rank[12/25]
+sending 1252907 buffer bytes to rank[12/25]
+sending 344 read lengths to rank[13/25]
+sending 1252907 buffer bytes to rank[13/25]
+sending 344 read lengths to rank[14/25]
+sending 1252907 buffer bytes to rank[14/25]
+sending 344 read lengths to rank[15/25]
+sending 1252907 buffer bytes to rank[15/25]
+
+rank[16/25] :: 
+sending 10 read lengths to rank[11/25]
+sending 37171 buffer bytes to rank[11/25]
+sending 10 read lengths to rank[12/25]
+sending 37171 buffer bytes to rank[12/25]
+sending 10 read lengths to rank[13/25]
+sending 37171 buffer bytes to rank[13/25]
+sending 10 read lengths to rank[14/25]
+sending 37171 buffer bytes to rank[14/25]
+sending 10 read lengths to rank[15/25]
+sending 37171 buffer bytes to rank[15/25]
+sending 337 read lengths to rank[16/25]
+sending 1215812 buffer bytes to rank[16/25]
+sending 337 read lengths to rank[17/25]
+sending 1215812 buffer bytes to rank[17/25]
+sending 337 read lengths to rank[18/25]
+sending 1215812 buffer bytes to rank[18/25]
+sending 337 read lengths to rank[19/25]
+sending 1215812 buffer bytes to rank[19/25]
+sending 337 read lengths to rank[20/25]
+sending 1215812 buffer bytes to rank[20/25]
+
+rank[17/25] :: 
+sending 340 read lengths to rank[16/25]
+sending 1249275 buffer bytes to rank[16/25]
+sending 340 read lengths to rank[17/25]
+sending 1249275 buffer bytes to rank[17/25]
+sending 340 read lengths to rank[18/25]
+sending 1249275 buffer bytes to rank[18/25]
+sending 340 read lengths to rank[19/25]
+sending 1249275 buffer bytes to rank[19/25]
+sending 340 read lengths to rank[20/25]
+sending 1249275 buffer bytes to rank[20/25]
+
+rank[18/25] :: 
+sending 345 read lengths to rank[16/25]
+sending 1251560 buffer bytes to rank[16/25]
+sending 345 read lengths to rank[17/25]
+sending 1251560 buffer bytes to rank[17/25]
+sending 345 read lengths to rank[18/25]
+sending 1251560 buffer bytes to rank[18/25]
+sending 345 read lengths to rank[19/25]
+sending 1251560 buffer bytes to rank[19/25]
+sending 345 read lengths to rank[20/25]
+sending 1251560 buffer bytes to rank[20/25]
+
+rank[19/25] :: 
+sending 343 read lengths to rank[16/25]
+sending 1251808 buffer bytes to rank[16/25]
+sending 343 read lengths to rank[17/25]
+sending 1251808 buffer bytes to rank[17/25]
+sending 343 read lengths to rank[18/25]
+sending 1251808 buffer bytes to rank[18/25]
+sending 343 read lengths to rank[19/25]
+sending 1251808 buffer bytes to rank[19/25]
+sending 343 read lengths to rank[20/25]
+sending 1251808 buffer bytes to rank[20/25]
+
+rank[20/25] :: 
+sending 346 read lengths to rank[16/25]
+sending 1250731 buffer bytes to rank[16/25]
+sending 346 read lengths to rank[17/25]
+sending 1250731 buffer bytes to rank[17/25]
+sending 346 read lengths to rank[18/25]
+sending 1250731 buffer bytes to rank[18/25]
+sending 346 read lengths to rank[19/25]
+sending 1250731 buffer bytes to rank[19/25]
+sending 346 read lengths to rank[20/25]
+sending 1250731 buffer bytes to rank[20/25]
+
+rank[21/25] :: 
+sending 10 read lengths to rank[16/25]
+sending 35884 buffer bytes to rank[16/25]
+sending 10 read lengths to rank[17/25]
+sending 35884 buffer bytes to rank[17/25]
+sending 10 read lengths to rank[18/25]
+sending 35884 buffer bytes to rank[18/25]
+sending 10 read lengths to rank[19/25]
+sending 35884 buffer bytes to rank[19/25]
+sending 10 read lengths to rank[20/25]
+sending 35884 buffer bytes to rank[20/25]
+sending 335 read lengths to rank[21/25]
+sending 1214826 buffer bytes to rank[21/25]
+sending 335 read lengths to rank[22/25]
+sending 1214826 buffer bytes to rank[22/25]
+sending 335 read lengths to rank[23/25]
+sending 1214826 buffer bytes to rank[23/25]
+sending 335 read lengths to rank[24/25]
+sending 1214826 buffer bytes to rank[24/25]
+sending 335 read lengths to rank[25/25]
+sending 1214826 buffer bytes to rank[25/25]
+
+rank[22/25] :: 
+sending 344 read lengths to rank[21/25]
+sending 1249966 buffer bytes to rank[21/25]
+sending 344 read lengths to rank[22/25]
+sending 1249966 buffer bytes to rank[22/25]
+sending 344 read lengths to rank[23/25]
+sending 1249966 buffer bytes to rank[23/25]
+sending 344 read lengths to rank[24/25]
+sending 1249966 buffer bytes to rank[24/25]
+sending 344 read lengths to rank[25/25]
+sending 1249966 buffer bytes to rank[25/25]
+
+rank[23/25] :: 
+sending 343 read lengths to rank[21/25]
+sending 1251969 buffer bytes to rank[21/25]
+sending 343 read lengths to rank[22/25]
+sending 1251969 buffer bytes to rank[22/25]
+sending 343 read lengths to rank[23/25]
+sending 1251969 buffer bytes to rank[23/25]
+sending 343 read lengths to rank[24/25]
+sending 1251969 buffer bytes to rank[24/25]
+sending 343 read lengths to rank[25/25]
+sending 1251969 buffer bytes to rank[25/25]
+
+rank[24/25] :: 
+sending 342 read lengths to rank[21/25]
+sending 1251251 buffer bytes to rank[21/25]
+sending 342 read lengths to rank[22/25]
+sending 1251251 buffer bytes to rank[22/25]
+sending 342 read lengths to rank[23/25]
+sending 1251251 buffer bytes to rank[23/25]
+sending 342 read lengths to rank[24/25]
+sending 1251251 buffer bytes to rank[24/25]
+sending 342 read lengths to rank[25/25]
+sending 1251251 buffer bytes to rank[25/25]
+
+rank[25/25] :: 
+sending 357 read lengths to rank[21/25]
+sending 1301359 buffer bytes to rank[21/25]
+sending 357 read lengths to rank[22/25]
+sending 1301359 buffer bytes to rank[22/25]
+sending 357 read lengths to rank[23/25]
+sending 1301359 buffer bytes to rank[23/25]
+sending 357 read lengths to rank[24/25]
+sending 1301359 buffer bytes to rank[24/25]
+sending 357 read lengths to rank[25/25]
+sending 1301359 buffer bytes to rank[25/25]
+
+
+Exchanges:
+==========
+
+rank[1/25] :: 
+sent 344/1252783 to rank[1/25] :: {owner=0;requester=0;offset=0;count=344;rc=2}
+sent 344/1252783 to rank[6/25] :: {owner=0;requester=5;offset=0;count=344;rc=0}
+sent 344/1252783 to rank[11/25] :: {owner=0;requester=10;offset=0;count=344;rc=0}
+sent 344/1252783 to rank[16/25] :: {owner=0;requester=15;offset=0;count=344;rc=0}
+sent 344/1252783 to rank[21/25] :: {owner=0;requester=20;offset=0;count=344;rc=0}
+
+received 344/1252783 from rank[1/25] :: {owner=0;requester=0;offset=0;count=344;rc=2}
+received 343/1251417 from rank[2/25] :: {owner=1;requester=0;offset=344;count=343;rc=0}
+received 344/1250030 from rank[3/25] :: {owner=2;requester=0;offset=687;count=344;rc=0}
+received 343/1250059 from rank[4/25] :: {owner=3;requester=0;offset=1031;count=343;rc=0}
+received 342/1248628 from rank[5/25] :: {owner=4;requester=0;offset=1374;count=342;rc=0}
+received 5/19185 from rank[6/25] :: {owner=5;requester=0;offset=1716;count=5;rc=0}
+
+rank[2/25] :: 
+sent 343/1251417 to rank[1/25] :: {owner=1;requester=0;offset=344;count=343;rc=0}
+sent 343/1251417 to rank[6/25] :: {owner=1;requester=5;offset=344;count=343;rc=0}
+sent 343/1251417 to rank[11/25] :: {owner=1;requester=10;offset=344;count=343;rc=0}
+sent 343/1251417 to rank[16/25] :: {owner=1;requester=15;offset=344;count=343;rc=0}
+sent 343/1251417 to rank[21/25] :: {owner=1;requester=20;offset=344;count=343;rc=0}
+
+received 340/1231381 from rank[6/25] :: {owner=5;requester=1;offset=1721;count=340;rc=0}
+received 343/1250333 from rank[7/25] :: {owner=6;requester=1;offset=2061;count=343;rc=0}
+received 342/1250365 from rank[8/25] :: {owner=7;requester=1;offset=2404;count=342;rc=0}
+received 345/1251417 from rank[9/25] :: {owner=8;requester=1;offset=2746;count=345;rc=0}
+received 344/1249989 from rank[10/25] :: {owner=9;requester=1;offset=3091;count=344;rc=0}
+received 7/24313 from rank[11/25] :: {owner=10;requester=1;offset=3435;count=7;rc=0}
+
+rank[3/25] :: 
+sent 344/1250030 to rank[1/25] :: {owner=2;requester=0;offset=687;count=344;rc=0}
+sent 344/1250030 to rank[6/25] :: {owner=2;requester=5;offset=687;count=344;rc=0}
+sent 344/1250030 to rank[11/25] :: {owner=2;requester=10;offset=687;count=344;rc=0}
+sent 344/1250030 to rank[16/25] :: {owner=2;requester=15;offset=687;count=344;rc=0}
+sent 344/1250030 to rank[21/25] :: {owner=2;requester=20;offset=687;count=344;rc=0}
+
+received 335/1226295 from rank[11/25] :: {owner=10;requester=2;offset=3442;count=335;rc=0}
+received 345/1252416 from rank[12/25] :: {owner=11;requester=2;offset=3777;count=345;rc=0}
+received 344/1252305 from rank[13/25] :: {owner=12;requester=2;offset=4122;count=344;rc=0}
+received 343/1249775 from rank[14/25] :: {owner=13;requester=2;offset=4466;count=343;rc=0}
+received 344/1252907 from rank[15/25] :: {owner=14;requester=2;offset=4809;count=344;rc=0}
+received 10/37171 from rank[16/25] :: {owner=15;requester=2;offset=5153;count=10;rc=0}
+
+rank[4/25] :: 
+sent 343/1250059 to rank[1/25] :: {owner=3;requester=0;offset=1031;count=343;rc=0}
+sent 343/1250059 to rank[6/25] :: {owner=3;requester=5;offset=1031;count=343;rc=0}
+sent 343/1250059 to rank[11/25] :: {owner=3;requester=10;offset=1031;count=343;rc=0}
+sent 343/1250059 to rank[16/25] :: {owner=3;requester=15;offset=1031;count=343;rc=0}
+sent 343/1250059 to rank[21/25] :: {owner=3;requester=20;offset=1031;count=343;rc=0}
+
+received 337/1215812 from rank[16/25] :: {owner=15;requester=3;offset=5163;count=337;rc=0}
+received 340/1249275 from rank[17/25] :: {owner=16;requester=3;offset=5500;count=340;rc=0}
+received 345/1251560 from rank[18/25] :: {owner=17;requester=3;offset=5840;count=345;rc=0}
+received 343/1251808 from rank[19/25] :: {owner=18;requester=3;offset=6185;count=343;rc=0}
+received 346/1250731 from rank[20/25] :: {owner=19;requester=3;offset=6528;count=346;rc=0}
+received 10/35884 from rank[21/25] :: {owner=20;requester=3;offset=6874;count=10;rc=0}
+
+rank[5/25] :: 
+sent 342/1248628 to rank[1/25] :: {owner=4;requester=0;offset=1374;count=342;rc=0}
+sent 342/1248628 to rank[6/25] :: {owner=4;requester=5;offset=1374;count=342;rc=0}
+sent 342/1248628 to rank[11/25] :: {owner=4;requester=10;offset=1374;count=342;rc=0}
+sent 342/1248628 to rank[16/25] :: {owner=4;requester=15;offset=1374;count=342;rc=0}
+sent 342/1248628 to rank[21/25] :: {owner=4;requester=20;offset=1374;count=342;rc=0}
+
+received 335/1214826 from rank[21/25] :: {owner=20;requester=4;offset=6884;count=335;rc=0}
+received 344/1249966 from rank[22/25] :: {owner=21;requester=4;offset=7219;count=344;rc=0}
+received 343/1251969 from rank[23/25] :: {owner=22;requester=4;offset=7563;count=343;rc=0}
+received 342/1251251 from rank[24/25] :: {owner=23;requester=4;offset=7906;count=342;rc=0}
+received 357/1301359 from rank[25/25] :: {owner=24;requester=4;offset=8248;count=357;rc=0}
+
+rank[6/25] :: 
+sent 5/19185 to rank[1/25] :: {owner=5;requester=0;offset=1716;count=5;rc=0}
+sent 340/1231381 to rank[2/25] :: {owner=5;requester=1;offset=1721;count=340;rc=0}
+sent 5/19185 to rank[6/25] :: {owner=5;requester=5;offset=1716;count=5;rc=2}
+sent 340/1231381 to rank[7/25] :: {owner=5;requester=6;offset=1721;count=340;rc=0}
+sent 5/19185 to rank[11/25] :: {owner=5;requester=10;offset=1716;count=5;rc=0}
+sent 340/1231381 to rank[12/25] :: {owner=5;requester=11;offset=1721;count=340;rc=0}
+sent 5/19185 to rank[16/25] :: {owner=5;requester=15;offset=1716;count=5;rc=0}
+sent 340/1231381 to rank[17/25] :: {owner=5;requester=16;offset=1721;count=340;rc=0}
+sent 5/19185 to rank[21/25] :: {owner=5;requester=20;offset=1716;count=5;rc=0}
+sent 340/1231381 to rank[22/25] :: {owner=5;requester=21;offset=1721;count=340;rc=0}
+
+received 344/1252783 from rank[1/25] :: {owner=0;requester=5;offset=0;count=344;rc=0}
+received 343/1251417 from rank[2/25] :: {owner=1;requester=5;offset=344;count=343;rc=0}
+received 344/1250030 from rank[3/25] :: {owner=2;requester=5;offset=687;count=344;rc=0}
+received 343/1250059 from rank[4/25] :: {owner=3;requester=5;offset=1031;count=343;rc=0}
+received 342/1248628 from rank[5/25] :: {owner=4;requester=5;offset=1374;count=342;rc=0}
+received 5/19185 from rank[6/25] :: {owner=5;requester=5;offset=1716;count=5;rc=2}
+
+rank[7/25] :: 
+sent 343/1250333 to rank[2/25] :: {owner=6;requester=1;offset=2061;count=343;rc=0}
+sent 343/1250333 to rank[7/25] :: {owner=6;requester=6;offset=2061;count=343;rc=2}
+sent 343/1250333 to rank[12/25] :: {owner=6;requester=11;offset=2061;count=343;rc=0}
+sent 343/1250333 to rank[17/25] :: {owner=6;requester=16;offset=2061;count=343;rc=0}
+sent 343/1250333 to rank[22/25] :: {owner=6;requester=21;offset=2061;count=343;rc=0}
+
+received 340/1231381 from rank[6/25] :: {owner=5;requester=6;offset=1721;count=340;rc=0}
+received 343/1250333 from rank[7/25] :: {owner=6;requester=6;offset=2061;count=343;rc=2}
+received 342/1250365 from rank[8/25] :: {owner=7;requester=6;offset=2404;count=342;rc=0}
+received 345/1251417 from rank[9/25] :: {owner=8;requester=6;offset=2746;count=345;rc=0}
+received 344/1249989 from rank[10/25] :: {owner=9;requester=6;offset=3091;count=344;rc=0}
+received 7/24313 from rank[11/25] :: {owner=10;requester=6;offset=3435;count=7;rc=0}
+
+rank[8/25] :: 
+sent 342/1250365 to rank[2/25] :: {owner=7;requester=1;offset=2404;count=342;rc=0}
+sent 342/1250365 to rank[7/25] :: {owner=7;requester=6;offset=2404;count=342;rc=0}
+sent 342/1250365 to rank[12/25] :: {owner=7;requester=11;offset=2404;count=342;rc=0}
+sent 342/1250365 to rank[17/25] :: {owner=7;requester=16;offset=2404;count=342;rc=0}
+sent 342/1250365 to rank[22/25] :: {owner=7;requester=21;offset=2404;count=342;rc=0}
+
+received 335/1226295 from rank[11/25] :: {owner=10;requester=7;offset=3442;count=335;rc=0}
+received 345/1252416 from rank[12/25] :: {owner=11;requester=7;offset=3777;count=345;rc=0}
+received 344/1252305 from rank[13/25] :: {owner=12;requester=7;offset=4122;count=344;rc=0}
+received 343/1249775 from rank[14/25] :: {owner=13;requester=7;offset=4466;count=343;rc=0}
+received 344/1252907 from rank[15/25] :: {owner=14;requester=7;offset=4809;count=344;rc=0}
+received 10/37171 from rank[16/25] :: {owner=15;requester=7;offset=5153;count=10;rc=0}
+
+rank[9/25] :: 
+sent 345/1251417 to rank[2/25] :: {owner=8;requester=1;offset=2746;count=345;rc=0}
+sent 345/1251417 to rank[7/25] :: {owner=8;requester=6;offset=2746;count=345;rc=0}
+sent 345/1251417 to rank[12/25] :: {owner=8;requester=11;offset=2746;count=345;rc=0}
+sent 345/1251417 to rank[17/25] :: {owner=8;requester=16;offset=2746;count=345;rc=0}
+sent 345/1251417 to rank[22/25] :: {owner=8;requester=21;offset=2746;count=345;rc=0}
+
+received 337/1215812 from rank[16/25] :: {owner=15;requester=8;offset=5163;count=337;rc=0}
+received 340/1249275 from rank[17/25] :: {owner=16;requester=8;offset=5500;count=340;rc=0}
+received 345/1251560 from rank[18/25] :: {owner=17;requester=8;offset=5840;count=345;rc=0}
+received 343/1251808 from rank[19/25] :: {owner=18;requester=8;offset=6185;count=343;rc=0}
+received 346/1250731 from rank[20/25] :: {owner=19;requester=8;offset=6528;count=346;rc=0}
+received 10/35884 from rank[21/25] :: {owner=20;requester=8;offset=6874;count=10;rc=0}
+
+rank[10/25] :: 
+sent 344/1249989 to rank[2/25] :: {owner=9;requester=1;offset=3091;count=344;rc=0}
+sent 344/1249989 to rank[7/25] :: {owner=9;requester=6;offset=3091;count=344;rc=0}
+sent 344/1249989 to rank[12/25] :: {owner=9;requester=11;offset=3091;count=344;rc=0}
+sent 344/1249989 to rank[17/25] :: {owner=9;requester=16;offset=3091;count=344;rc=0}
+sent 344/1249989 to rank[22/25] :: {owner=9;requester=21;offset=3091;count=344;rc=0}
+
+received 335/1214826 from rank[21/25] :: {owner=20;requester=9;offset=6884;count=335;rc=0}
+received 344/1249966 from rank[22/25] :: {owner=21;requester=9;offset=7219;count=344;rc=0}
+received 343/1251969 from rank[23/25] :: {owner=22;requester=9;offset=7563;count=343;rc=0}
+received 342/1251251 from rank[24/25] :: {owner=23;requester=9;offset=7906;count=342;rc=0}
+received 357/1301359 from rank[25/25] :: {owner=24;requester=9;offset=8248;count=357;rc=0}
+
+rank[11/25] :: 
+sent 7/24313 to rank[2/25] :: {owner=10;requester=1;offset=3435;count=7;rc=0}
+sent 335/1226295 to rank[3/25] :: {owner=10;requester=2;offset=3442;count=335;rc=0}
+sent 7/24313 to rank[7/25] :: {owner=10;requester=6;offset=3435;count=7;rc=0}
+sent 335/1226295 to rank[8/25] :: {owner=10;requester=7;offset=3442;count=335;rc=0}
+sent 7/24313 to rank[12/25] :: {owner=10;requester=11;offset=3435;count=7;rc=0}
+sent 335/1226295 to rank[13/25] :: {owner=10;requester=12;offset=3442;count=335;rc=0}
+sent 7/24313 to rank[17/25] :: {owner=10;requester=16;offset=3435;count=7;rc=0}
+sent 335/1226295 to rank[18/25] :: {owner=10;requester=17;offset=3442;count=335;rc=0}
+sent 7/24313 to rank[22/25] :: {owner=10;requester=21;offset=3435;count=7;rc=0}
+sent 335/1226295 to rank[23/25] :: {owner=10;requester=22;offset=3442;count=335;rc=0}
+
+received 344/1252783 from rank[1/25] :: {owner=0;requester=10;offset=0;count=344;rc=0}
+received 343/1251417 from rank[2/25] :: {owner=1;requester=10;offset=344;count=343;rc=0}
+received 344/1250030 from rank[3/25] :: {owner=2;requester=10;offset=687;count=344;rc=0}
+received 343/1250059 from rank[4/25] :: {owner=3;requester=10;offset=1031;count=343;rc=0}
+received 342/1248628 from rank[5/25] :: {owner=4;requester=10;offset=1374;count=342;rc=0}
+received 5/19185 from rank[6/25] :: {owner=5;requester=10;offset=1716;count=5;rc=0}
+
+rank[12/25] :: 
+sent 345/1252416 to rank[3/25] :: {owner=11;requester=2;offset=3777;count=345;rc=0}
+sent 345/1252416 to rank[8/25] :: {owner=11;requester=7;offset=3777;count=345;rc=0}
+sent 345/1252416 to rank[13/25] :: {owner=11;requester=12;offset=3777;count=345;rc=0}
+sent 345/1252416 to rank[18/25] :: {owner=11;requester=17;offset=3777;count=345;rc=0}
+sent 345/1252416 to rank[23/25] :: {owner=11;requester=22;offset=3777;count=345;rc=0}
+
+received 340/1231381 from rank[6/25] :: {owner=5;requester=11;offset=1721;count=340;rc=0}
+received 343/1250333 from rank[7/25] :: {owner=6;requester=11;offset=2061;count=343;rc=0}
+received 342/1250365 from rank[8/25] :: {owner=7;requester=11;offset=2404;count=342;rc=0}
+received 345/1251417 from rank[9/25] :: {owner=8;requester=11;offset=2746;count=345;rc=0}
+received 344/1249989 from rank[10/25] :: {owner=9;requester=11;offset=3091;count=344;rc=0}
+received 7/24313 from rank[11/25] :: {owner=10;requester=11;offset=3435;count=7;rc=0}
+
+rank[13/25] :: 
+sent 344/1252305 to rank[3/25] :: {owner=12;requester=2;offset=4122;count=344;rc=0}
+sent 344/1252305 to rank[8/25] :: {owner=12;requester=7;offset=4122;count=344;rc=0}
+sent 344/1252305 to rank[13/25] :: {owner=12;requester=12;offset=4122;count=344;rc=2}
+sent 344/1252305 to rank[18/25] :: {owner=12;requester=17;offset=4122;count=344;rc=0}
+sent 344/1252305 to rank[23/25] :: {owner=12;requester=22;offset=4122;count=344;rc=0}
+
+received 335/1226295 from rank[11/25] :: {owner=10;requester=12;offset=3442;count=335;rc=0}
+received 345/1252416 from rank[12/25] :: {owner=11;requester=12;offset=3777;count=345;rc=0}
+received 344/1252305 from rank[13/25] :: {owner=12;requester=12;offset=4122;count=344;rc=2}
+received 343/1249775 from rank[14/25] :: {owner=13;requester=12;offset=4466;count=343;rc=0}
+received 344/1252907 from rank[15/25] :: {owner=14;requester=12;offset=4809;count=344;rc=0}
+received 10/37171 from rank[16/25] :: {owner=15;requester=12;offset=5153;count=10;rc=0}
+
+rank[14/25] :: 
+sent 343/1249775 to rank[3/25] :: {owner=13;requester=2;offset=4466;count=343;rc=0}
+sent 343/1249775 to rank[8/25] :: {owner=13;requester=7;offset=4466;count=343;rc=0}
+sent 343/1249775 to rank[13/25] :: {owner=13;requester=12;offset=4466;count=343;rc=0}
+sent 343/1249775 to rank[18/25] :: {owner=13;requester=17;offset=4466;count=343;rc=0}
+sent 343/1249775 to rank[23/25] :: {owner=13;requester=22;offset=4466;count=343;rc=0}
+
+received 337/1215812 from rank[16/25] :: {owner=15;requester=13;offset=5163;count=337;rc=0}
+received 340/1249275 from rank[17/25] :: {owner=16;requester=13;offset=5500;count=340;rc=0}
+received 345/1251560 from rank[18/25] :: {owner=17;requester=13;offset=5840;count=345;rc=0}
+received 343/1251808 from rank[19/25] :: {owner=18;requester=13;offset=6185;count=343;rc=0}
+received 346/1250731 from rank[20/25] :: {owner=19;requester=13;offset=6528;count=346;rc=0}
+received 10/35884 from rank[21/25] :: {owner=20;requester=13;offset=6874;count=10;rc=0}
+
+rank[15/25] :: 
+sent 344/1252907 to rank[3/25] :: {owner=14;requester=2;offset=4809;count=344;rc=0}
+sent 344/1252907 to rank[8/25] :: {owner=14;requester=7;offset=4809;count=344;rc=0}
+sent 344/1252907 to rank[13/25] :: {owner=14;requester=12;offset=4809;count=344;rc=0}
+sent 344/1252907 to rank[18/25] :: {owner=14;requester=17;offset=4809;count=344;rc=0}
+sent 344/1252907 to rank[23/25] :: {owner=14;requester=22;offset=4809;count=344;rc=0}
+
+received 335/1214826 from rank[21/25] :: {owner=20;requester=14;offset=6884;count=335;rc=0}
+received 344/1249966 from rank[22/25] :: {owner=21;requester=14;offset=7219;count=344;rc=0}
+received 343/1251969 from rank[23/25] :: {owner=22;requester=14;offset=7563;count=343;rc=0}
+received 342/1251251 from rank[24/25] :: {owner=23;requester=14;offset=7906;count=342;rc=0}
+received 357/1301359 from rank[25/25] :: {owner=24;requester=14;offset=8248;count=357;rc=0}
+
+rank[16/25] :: 
+sent 10/37171 to rank[3/25] :: {owner=15;requester=2;offset=5153;count=10;rc=0}
+sent 337/1215812 to rank[4/25] :: {owner=15;requester=3;offset=5163;count=337;rc=0}
+sent 10/37171 to rank[8/25] :: {owner=15;requester=7;offset=5153;count=10;rc=0}
+sent 337/1215812 to rank[9/25] :: {owner=15;requester=8;offset=5163;count=337;rc=0}
+sent 10/37171 to rank[13/25] :: {owner=15;requester=12;offset=5153;count=10;rc=0}
+sent 337/1215812 to rank[14/25] :: {owner=15;requester=13;offset=5163;count=337;rc=0}
+sent 10/37171 to rank[18/25] :: {owner=15;requester=17;offset=5153;count=10;rc=0}
+sent 337/1215812 to rank[19/25] :: {owner=15;requester=18;offset=5163;count=337;rc=0}
+sent 10/37171 to rank[23/25] :: {owner=15;requester=22;offset=5153;count=10;rc=0}
+sent 337/1215812 to rank[24/25] :: {owner=15;requester=23;offset=5163;count=337;rc=0}
+
+received 344/1252783 from rank[1/25] :: {owner=0;requester=15;offset=0;count=344;rc=0}
+received 343/1251417 from rank[2/25] :: {owner=1;requester=15;offset=344;count=343;rc=0}
+received 344/1250030 from rank[3/25] :: {owner=2;requester=15;offset=687;count=344;rc=0}
+received 343/1250059 from rank[4/25] :: {owner=3;requester=15;offset=1031;count=343;rc=0}
+received 342/1248628 from rank[5/25] :: {owner=4;requester=15;offset=1374;count=342;rc=0}
+received 5/19185 from rank[6/25] :: {owner=5;requester=15;offset=1716;count=5;rc=0}
+
+rank[17/25] :: 
+sent 340/1249275 to rank[4/25] :: {owner=16;requester=3;offset=5500;count=340;rc=0}
+sent 340/1249275 to rank[9/25] :: {owner=16;requester=8;offset=5500;count=340;rc=0}
+sent 340/1249275 to rank[14/25] :: {owner=16;requester=13;offset=5500;count=340;rc=0}
+sent 340/1249275 to rank[19/25] :: {owner=16;requester=18;offset=5500;count=340;rc=0}
+sent 340/1249275 to rank[24/25] :: {owner=16;requester=23;offset=5500;count=340;rc=0}
+
+received 340/1231381 from rank[6/25] :: {owner=5;requester=16;offset=1721;count=340;rc=0}
+received 343/1250333 from rank[7/25] :: {owner=6;requester=16;offset=2061;count=343;rc=0}
+received 342/1250365 from rank[8/25] :: {owner=7;requester=16;offset=2404;count=342;rc=0}
+received 345/1251417 from rank[9/25] :: {owner=8;requester=16;offset=2746;count=345;rc=0}
+received 344/1249989 from rank[10/25] :: {owner=9;requester=16;offset=3091;count=344;rc=0}
+received 7/24313 from rank[11/25] :: {owner=10;requester=16;offset=3435;count=7;rc=0}
+
+rank[18/25] :: 
+sent 345/1251560 to rank[4/25] :: {owner=17;requester=3;offset=5840;count=345;rc=0}
+sent 345/1251560 to rank[9/25] :: {owner=17;requester=8;offset=5840;count=345;rc=0}
+sent 345/1251560 to rank[14/25] :: {owner=17;requester=13;offset=5840;count=345;rc=0}
+sent 345/1251560 to rank[19/25] :: {owner=17;requester=18;offset=5840;count=345;rc=0}
+sent 345/1251560 to rank[24/25] :: {owner=17;requester=23;offset=5840;count=345;rc=0}
+
+received 335/1226295 from rank[11/25] :: {owner=10;requester=17;offset=3442;count=335;rc=0}
+received 345/1252416 from rank[12/25] :: {owner=11;requester=17;offset=3777;count=345;rc=0}
+received 344/1252305 from rank[13/25] :: {owner=12;requester=17;offset=4122;count=344;rc=0}
+received 343/1249775 from rank[14/25] :: {owner=13;requester=17;offset=4466;count=343;rc=0}
+received 344/1252907 from rank[15/25] :: {owner=14;requester=17;offset=4809;count=344;rc=0}
+received 10/37171 from rank[16/25] :: {owner=15;requester=17;offset=5153;count=10;rc=0}
+
+rank[19/25] :: 
+sent 343/1251808 to rank[4/25] :: {owner=18;requester=3;offset=6185;count=343;rc=0}
+sent 343/1251808 to rank[9/25] :: {owner=18;requester=8;offset=6185;count=343;rc=0}
+sent 343/1251808 to rank[14/25] :: {owner=18;requester=13;offset=6185;count=343;rc=0}
+sent 343/1251808 to rank[19/25] :: {owner=18;requester=18;offset=6185;count=343;rc=2}
+sent 343/1251808 to rank[24/25] :: {owner=18;requester=23;offset=6185;count=343;rc=0}
+
+received 337/1215812 from rank[16/25] :: {owner=15;requester=18;offset=5163;count=337;rc=0}
+received 340/1249275 from rank[17/25] :: {owner=16;requester=18;offset=5500;count=340;rc=0}
+received 345/1251560 from rank[18/25] :: {owner=17;requester=18;offset=5840;count=345;rc=0}
+received 343/1251808 from rank[19/25] :: {owner=18;requester=18;offset=6185;count=343;rc=2}
+received 346/1250731 from rank[20/25] :: {owner=19;requester=18;offset=6528;count=346;rc=0}
+received 10/35884 from rank[21/25] :: {owner=20;requester=18;offset=6874;count=10;rc=0}
+
+rank[20/25] :: 
+sent 346/1250731 to rank[4/25] :: {owner=19;requester=3;offset=6528;count=346;rc=0}
+sent 346/1250731 to rank[9/25] :: {owner=19;requester=8;offset=6528;count=346;rc=0}
+sent 346/1250731 to rank[14/25] :: {owner=19;requester=13;offset=6528;count=346;rc=0}
+sent 346/1250731 to rank[19/25] :: {owner=19;requester=18;offset=6528;count=346;rc=0}
+sent 346/1250731 to rank[24/25] :: {owner=19;requester=23;offset=6528;count=346;rc=0}
+
+received 335/1214826 from rank[21/25] :: {owner=20;requester=19;offset=6884;count=335;rc=0}
+received 344/1249966 from rank[22/25] :: {owner=21;requester=19;offset=7219;count=344;rc=0}
+received 343/1251969 from rank[23/25] :: {owner=22;requester=19;offset=7563;count=343;rc=0}
+received 342/1251251 from rank[24/25] :: {owner=23;requester=19;offset=7906;count=342;rc=0}
+received 357/1301359 from rank[25/25] :: {owner=24;requester=19;offset=8248;count=357;rc=0}
+
+rank[21/25] :: 
+sent 10/35884 to rank[4/25] :: {owner=20;requester=3;offset=6874;count=10;rc=0}
+sent 335/1214826 to rank[5/25] :: {owner=20;requester=4;offset=6884;count=335;rc=0}
+sent 10/35884 to rank[9/25] :: {owner=20;requester=8;offset=6874;count=10;rc=0}
+sent 335/1214826 to rank[10/25] :: {owner=20;requester=9;offset=6884;count=335;rc=0}
+sent 10/35884 to rank[14/25] :: {owner=20;requester=13;offset=6874;count=10;rc=0}
+sent 335/1214826 to rank[15/25] :: {owner=20;requester=14;offset=6884;count=335;rc=0}
+sent 10/35884 to rank[19/25] :: {owner=20;requester=18;offset=6874;count=10;rc=0}
+sent 335/1214826 to rank[20/25] :: {owner=20;requester=19;offset=6884;count=335;rc=0}
+sent 10/35884 to rank[24/25] :: {owner=20;requester=23;offset=6874;count=10;rc=0}
+sent 335/1214826 to rank[25/25] :: {owner=20;requester=24;offset=6884;count=335;rc=0}
+
+received 344/1252783 from rank[1/25] :: {owner=0;requester=20;offset=0;count=344;rc=0}
+received 343/1251417 from rank[2/25] :: {owner=1;requester=20;offset=344;count=343;rc=0}
+received 344/1250030 from rank[3/25] :: {owner=2;requester=20;offset=687;count=344;rc=0}
+received 343/1250059 from rank[4/25] :: {owner=3;requester=20;offset=1031;count=343;rc=0}
+received 342/1248628 from rank[5/25] :: {owner=4;requester=20;offset=1374;count=342;rc=0}
+received 5/19185 from rank[6/25] :: {owner=5;requester=20;offset=1716;count=5;rc=0}
+
+rank[22/25] :: 
+sent 344/1249966 to rank[5/25] :: {owner=21;requester=4;offset=7219;count=344;rc=0}
+sent 344/1249966 to rank[10/25] :: {owner=21;requester=9;offset=7219;count=344;rc=0}
+sent 344/1249966 to rank[15/25] :: {owner=21;requester=14;offset=7219;count=344;rc=0}
+sent 344/1249966 to rank[20/25] :: {owner=21;requester=19;offset=7219;count=344;rc=0}
+sent 344/1249966 to rank[25/25] :: {owner=21;requester=24;offset=7219;count=344;rc=0}
+
+received 340/1231381 from rank[6/25] :: {owner=5;requester=21;offset=1721;count=340;rc=0}
+received 343/1250333 from rank[7/25] :: {owner=6;requester=21;offset=2061;count=343;rc=0}
+received 342/1250365 from rank[8/25] :: {owner=7;requester=21;offset=2404;count=342;rc=0}
+received 345/1251417 from rank[9/25] :: {owner=8;requester=21;offset=2746;count=345;rc=0}
+received 344/1249989 from rank[10/25] :: {owner=9;requester=21;offset=3091;count=344;rc=0}
+received 7/24313 from rank[11/25] :: {owner=10;requester=21;offset=3435;count=7;rc=0}
+
+rank[23/25] :: 
+sent 343/1251969 to rank[5/25] :: {owner=22;requester=4;offset=7563;count=343;rc=0}
+sent 343/1251969 to rank[10/25] :: {owner=22;requester=9;offset=7563;count=343;rc=0}
+sent 343/1251969 to rank[15/25] :: {owner=22;requester=14;offset=7563;count=343;rc=0}
+sent 343/1251969 to rank[20/25] :: {owner=22;requester=19;offset=7563;count=343;rc=0}
+sent 343/1251969 to rank[25/25] :: {owner=22;requester=24;offset=7563;count=343;rc=0}
+
+received 335/1226295 from rank[11/25] :: {owner=10;requester=22;offset=3442;count=335;rc=0}
+received 345/1252416 from rank[12/25] :: {owner=11;requester=22;offset=3777;count=345;rc=0}
+received 344/1252305 from rank[13/25] :: {owner=12;requester=22;offset=4122;count=344;rc=0}
+received 343/1249775 from rank[14/25] :: {owner=13;requester=22;offset=4466;count=343;rc=0}
+received 344/1252907 from rank[15/25] :: {owner=14;requester=22;offset=4809;count=344;rc=0}
+received 10/37171 from rank[16/25] :: {owner=15;requester=22;offset=5153;count=10;rc=0}
+
+rank[24/25] :: 
+sent 342/1251251 to rank[5/25] :: {owner=23;requester=4;offset=7906;count=342;rc=0}
+sent 342/1251251 to rank[10/25] :: {owner=23;requester=9;offset=7906;count=342;rc=0}
+sent 342/1251251 to rank[15/25] :: {owner=23;requester=14;offset=7906;count=342;rc=0}
+sent 342/1251251 to rank[20/25] :: {owner=23;requester=19;offset=7906;count=342;rc=0}
+sent 342/1251251 to rank[25/25] :: {owner=23;requester=24;offset=7906;count=342;rc=0}
+
+received 337/1215812 from rank[16/25] :: {owner=15;requester=23;offset=5163;count=337;rc=0}
+received 340/1249275 from rank[17/25] :: {owner=16;requester=23;offset=5500;count=340;rc=0}
+received 345/1251560 from rank[18/25] :: {owner=17;requester=23;offset=5840;count=345;rc=0}
+received 343/1251808 from rank[19/25] :: {owner=18;requester=23;offset=6185;count=343;rc=0}
+received 346/1250731 from rank[20/25] :: {owner=19;requester=23;offset=6528;count=346;rc=0}
+received 10/35884 from rank[21/25] :: {owner=20;requester=23;offset=6874;count=10;rc=0}
+
+rank[25/25] :: 
+sent 357/1301359 to rank[5/25] :: {owner=24;requester=4;offset=8248;count=357;rc=0}
+sent 357/1301359 to rank[10/25] :: {owner=24;requester=9;offset=8248;count=357;rc=0}
+sent 357/1301359 to rank[15/25] :: {owner=24;requester=14;offset=8248;count=357;rc=0}
+sent 357/1301359 to rank[20/25] :: {owner=24;requester=19;offset=8248;count=357;rc=0}
+sent 357/1301359 to rank[25/25] :: {owner=24;requester=24;offset=8248;count=357;rc=2}
+
+received 335/1214826 from rank[21/25] :: {owner=20;requester=24;offset=6884;count=335;rc=0}
+received 344/1249966 from rank[22/25] :: {owner=21;requester=24;offset=7219;count=344;rc=0}
+received 343/1251969 from rank[23/25] :: {owner=22;requester=24;offset=7563;count=343;rc=0}
+received 342/1251251 from rank[24/25] :: {owner=23;requester=24;offset=7906;count=342;rc=0}
+received 357/1301359 from rank[25/25] :: {owner=24;requester=24;offset=8248;count=357;rc=2}
+
+
+posted received calls:
+======================
+
+rank[1/25] :: 
+receiving 344 read lengths at displacement 0 from rank[1/25]
+receiving 1252783 buffer bytes at displacement 0 from rank[1/25]
+receiving 343 read lengths at displacement 344 from rank[2/25]
+receiving 1251417 buffer bytes at displacement 1252783 from rank[2/25]
+receiving 344 read lengths at displacement 687 from rank[3/25]
+receiving 1250030 buffer bytes at displacement 2504200 from rank[3/25]
+receiving 343 read lengths at displacement 1031 from rank[4/25]
+receiving 1250059 buffer bytes at displacement 3754230 from rank[4/25]
+receiving 342 read lengths at displacement 1374 from rank[5/25]
+receiving 1248628 buffer bytes at displacement 5004289 from rank[5/25]
+receiving 5 read lengths at displacement 1716 from rank[6/25]
+receiving 19185 buffer bytes at displacement 6252917 from rank[6/25]
+
+rank[2/25] :: 
+receiving 340 read lengths at displacement 0 from rank[6/25]
+receiving 1231381 buffer bytes at displacement 0 from rank[6/25]
+receiving 343 read lengths at displacement 340 from rank[7/25]
+receiving 1250333 buffer bytes at displacement 1231381 from rank[7/25]
+receiving 342 read lengths at displacement 683 from rank[8/25]
+receiving 1250365 buffer bytes at displacement 2481714 from rank[8/25]
+receiving 345 read lengths at displacement 1025 from rank[9/25]
+receiving 1251417 buffer bytes at displacement 3732079 from rank[9/25]
+receiving 344 read lengths at displacement 1370 from rank[10/25]
+receiving 1249989 buffer bytes at displacement 4983496 from rank[10/25]
+receiving 7 read lengths at displacement 1714 from rank[11/25]
+receiving 24313 buffer bytes at displacement 6233485 from rank[11/25]
+
+rank[3/25] :: 
+receiving 335 read lengths at displacement 0 from rank[11/25]
+receiving 1226295 buffer bytes at displacement 0 from rank[11/25]
+receiving 345 read lengths at displacement 335 from rank[12/25]
+receiving 1252416 buffer bytes at displacement 1226295 from rank[12/25]
+receiving 344 read lengths at displacement 680 from rank[13/25]
+receiving 1252305 buffer bytes at displacement 2478711 from rank[13/25]
+receiving 343 read lengths at displacement 1024 from rank[14/25]
+receiving 1249775 buffer bytes at displacement 3731016 from rank[14/25]
+receiving 344 read lengths at displacement 1367 from rank[15/25]
+receiving 1252907 buffer bytes at displacement 4980791 from rank[15/25]
+receiving 10 read lengths at displacement 1711 from rank[16/25]
+receiving 37171 buffer bytes at displacement 6233698 from rank[16/25]
+
+rank[4/25] :: 
+receiving 337 read lengths at displacement 0 from rank[16/25]
+receiving 1215812 buffer bytes at displacement 0 from rank[16/25]
+receiving 340 read lengths at displacement 337 from rank[17/25]
+receiving 1249275 buffer bytes at displacement 1215812 from rank[17/25]
+receiving 345 read lengths at displacement 677 from rank[18/25]
+receiving 1251560 buffer bytes at displacement 2465087 from rank[18/25]
+receiving 343 read lengths at displacement 1022 from rank[19/25]
+receiving 1251808 buffer bytes at displacement 3716647 from rank[19/25]
+receiving 346 read lengths at displacement 1365 from rank[20/25]
+receiving 1250731 buffer bytes at displacement 4968455 from rank[20/25]
+receiving 10 read lengths at displacement 1711 from rank[21/25]
+receiving 35884 buffer bytes at displacement 6219186 from rank[21/25]
+
+rank[5/25] :: 
+receiving 335 read lengths at displacement 0 from rank[21/25]
+receiving 1214826 buffer bytes at displacement 0 from rank[21/25]
+receiving 344 read lengths at displacement 335 from rank[22/25]
+receiving 1249966 buffer bytes at displacement 1214826 from rank[22/25]
+receiving 343 read lengths at displacement 679 from rank[23/25]
+receiving 1251969 buffer bytes at displacement 2464792 from rank[23/25]
+receiving 342 read lengths at displacement 1022 from rank[24/25]
+receiving 1251251 buffer bytes at displacement 3716761 from rank[24/25]
+receiving 357 read lengths at displacement 1364 from rank[25/25]
+receiving 1301359 buffer bytes at displacement 4968012 from rank[25/25]
+
+rank[6/25] :: 
+receiving 344 read lengths at displacement 0 from rank[1/25]
+receiving 1252783 buffer bytes at displacement 0 from rank[1/25]
+receiving 343 read lengths at displacement 344 from rank[2/25]
+receiving 1251417 buffer bytes at displacement 1252783 from rank[2/25]
+receiving 344 read lengths at displacement 687 from rank[3/25]
+receiving 1250030 buffer bytes at displacement 2504200 from rank[3/25]
+receiving 343 read lengths at displacement 1031 from rank[4/25]
+receiving 1250059 buffer bytes at displacement 3754230 from rank[4/25]
+receiving 342 read lengths at displacement 1374 from rank[5/25]
+receiving 1248628 buffer bytes at displacement 5004289 from rank[5/25]
+receiving 5 read lengths at displacement 1716 from rank[6/25]
+receiving 19185 buffer bytes at displacement 6252917 from rank[6/25]
+
+rank[7/25] :: 
+receiving 340 read lengths at displacement 0 from rank[6/25]
+receiving 1231381 buffer bytes at displacement 0 from rank[6/25]
+receiving 343 read lengths at displacement 340 from rank[7/25]
+receiving 1250333 buffer bytes at displacement 1231381 from rank[7/25]
+receiving 342 read lengths at displacement 683 from rank[8/25]
+receiving 1250365 buffer bytes at displacement 2481714 from rank[8/25]
+receiving 345 read lengths at displacement 1025 from rank[9/25]
+receiving 1251417 buffer bytes at displacement 3732079 from rank[9/25]
+receiving 344 read lengths at displacement 1370 from rank[10/25]
+receiving 1249989 buffer bytes at displacement 4983496 from rank[10/25]
+receiving 7 read lengths at displacement 1714 from rank[11/25]
+receiving 24313 buffer bytes at displacement 6233485 from rank[11/25]
+
+rank[8/25] :: 
+receiving 335 read lengths at displacement 0 from rank[11/25]
+receiving 1226295 buffer bytes at displacement 0 from rank[11/25]
+receiving 345 read lengths at displacement 335 from rank[12/25]
+receiving 1252416 buffer bytes at displacement 1226295 from rank[12/25]
+receiving 344 read lengths at displacement 680 from rank[13/25]
+receiving 1252305 buffer bytes at displacement 2478711 from rank[13/25]
+receiving 343 read lengths at displacement 1024 from rank[14/25]
+receiving 1249775 buffer bytes at displacement 3731016 from rank[14/25]
+receiving 344 read lengths at displacement 1367 from rank[15/25]
+receiving 1252907 buffer bytes at displacement 4980791 from rank[15/25]
+receiving 10 read lengths at displacement 1711 from rank[16/25]
+receiving 37171 buffer bytes at displacement 6233698 from rank[16/25]
+
+rank[9/25] :: 
+receiving 337 read lengths at displacement 0 from rank[16/25]
+receiving 1215812 buffer bytes at displacement 0 from rank[16/25]
+receiving 340 read lengths at displacement 337 from rank[17/25]
+receiving 1249275 buffer bytes at displacement 1215812 from rank[17/25]
+receiving 345 read lengths at displacement 677 from rank[18/25]
+receiving 1251560 buffer bytes at displacement 2465087 from rank[18/25]
+receiving 343 read lengths at displacement 1022 from rank[19/25]
+receiving 1251808 buffer bytes at displacement 3716647 from rank[19/25]
+receiving 346 read lengths at displacement 1365 from rank[20/25]
+receiving 1250731 buffer bytes at displacement 4968455 from rank[20/25]
+receiving 10 read lengths at displacement 1711 from rank[21/25]
+receiving 35884 buffer bytes at displacement 6219186 from rank[21/25]
+
+rank[10/25] :: 
+receiving 335 read lengths at displacement 0 from rank[21/25]
+receiving 1214826 buffer bytes at displacement 0 from rank[21/25]
+receiving 344 read lengths at displacement 335 from rank[22/25]
+receiving 1249966 buffer bytes at displacement 1214826 from rank[22/25]
+receiving 343 read lengths at displacement 679 from rank[23/25]
+receiving 1251969 buffer bytes at displacement 2464792 from rank[23/25]
+receiving 342 read lengths at displacement 1022 from rank[24/25]
+receiving 1251251 buffer bytes at displacement 3716761 from rank[24/25]
+receiving 357 read lengths at displacement 1364 from rank[25/25]
+receiving 1301359 buffer bytes at displacement 4968012 from rank[25/25]
+
+rank[11/25] :: 
+receiving 344 read lengths at displacement 0 from rank[1/25]
+receiving 1252783 buffer bytes at displacement 0 from rank[1/25]
+receiving 343 read lengths at displacement 344 from rank[2/25]
+receiving 1251417 buffer bytes at displacement 1252783 from rank[2/25]
+receiving 344 read lengths at displacement 687 from rank[3/25]
+receiving 1250030 buffer bytes at displacement 2504200 from rank[3/25]
+receiving 343 read lengths at displacement 1031 from rank[4/25]
+receiving 1250059 buffer bytes at displacement 3754230 from rank[4/25]
+receiving 342 read lengths at displacement 1374 from rank[5/25]
+receiving 1248628 buffer bytes at displacement 5004289 from rank[5/25]
+receiving 5 read lengths at displacement 1716 from rank[6/25]
+receiving 19185 buffer bytes at displacement 6252917 from rank[6/25]
+
+rank[12/25] :: 
+receiving 340 read lengths at displacement 0 from rank[6/25]
+receiving 1231381 buffer bytes at displacement 0 from rank[6/25]
+receiving 343 read lengths at displacement 340 from rank[7/25]
+receiving 1250333 buffer bytes at displacement 1231381 from rank[7/25]
+receiving 342 read lengths at displacement 683 from rank[8/25]
+receiving 1250365 buffer bytes at displacement 2481714 from rank[8/25]
+receiving 345 read lengths at displacement 1025 from rank[9/25]
+receiving 1251417 buffer bytes at displacement 3732079 from rank[9/25]
+receiving 344 read lengths at displacement 1370 from rank[10/25]
+receiving 1249989 buffer bytes at displacement 4983496 from rank[10/25]
+receiving 7 read lengths at displacement 1714 from rank[11/25]
+receiving 24313 buffer bytes at displacement 6233485 from rank[11/25]
+
+rank[13/25] :: 
+receiving 335 read lengths at displacement 0 from rank[11/25]
+receiving 1226295 buffer bytes at displacement 0 from rank[11/25]
+receiving 345 read lengths at displacement 335 from rank[12/25]
+receiving 1252416 buffer bytes at displacement 1226295 from rank[12/25]
+receiving 344 read lengths at displacement 680 from rank[13/25]
+receiving 1252305 buffer bytes at displacement 2478711 from rank[13/25]
+receiving 343 read lengths at displacement 1024 from rank[14/25]
+receiving 1249775 buffer bytes at displacement 3731016 from rank[14/25]
+receiving 344 read lengths at displacement 1367 from rank[15/25]
+receiving 1252907 buffer bytes at displacement 4980791 from rank[15/25]
+receiving 10 read lengths at displacement 1711 from rank[16/25]
+receiving 37171 buffer bytes at displacement 6233698 from rank[16/25]
+
+rank[14/25] :: 
+receiving 337 read lengths at displacement 0 from rank[16/25]
+receiving 1215812 buffer bytes at displacement 0 from rank[16/25]
+receiving 340 read lengths at displacement 337 from rank[17/25]
+receiving 1249275 buffer bytes at displacement 1215812 from rank[17/25]
+receiving 345 read lengths at displacement 677 from rank[18/25]
+receiving 1251560 buffer bytes at displacement 2465087 from rank[18/25]
+receiving 343 read lengths at displacement 1022 from rank[19/25]
+receiving 1251808 buffer bytes at displacement 3716647 from rank[19/25]
+receiving 346 read lengths at displacement 1365 from rank[20/25]
+receiving 1250731 buffer bytes at displacement 4968455 from rank[20/25]
+receiving 10 read lengths at displacement 1711 from rank[21/25]
+receiving 35884 buffer bytes at displacement 6219186 from rank[21/25]
+
+rank[15/25] :: 
+receiving 335 read lengths at displacement 0 from rank[21/25]
+receiving 1214826 buffer bytes at displacement 0 from rank[21/25]
+receiving 344 read lengths at displacement 335 from rank[22/25]
+receiving 1249966 buffer bytes at displacement 1214826 from rank[22/25]
+receiving 343 read lengths at displacement 679 from rank[23/25]
+receiving 1251969 buffer bytes at displacement 2464792 from rank[23/25]
+receiving 342 read lengths at displacement 1022 from rank[24/25]
+receiving 1251251 buffer bytes at displacement 3716761 from rank[24/25]
+receiving 357 read lengths at displacement 1364 from rank[25/25]
+receiving 1301359 buffer bytes at displacement 4968012 from rank[25/25]
+
+rank[16/25] :: 
+receiving 344 read lengths at displacement 0 from rank[1/25]
+receiving 1252783 buffer bytes at displacement 0 from rank[1/25]
+receiving 343 read lengths at displacement 344 from rank[2/25]
+receiving 1251417 buffer bytes at displacement 1252783 from rank[2/25]
+receiving 344 read lengths at displacement 687 from rank[3/25]
+receiving 1250030 buffer bytes at displacement 2504200 from rank[3/25]
+receiving 343 read lengths at displacement 1031 from rank[4/25]
+receiving 1250059 buffer bytes at displacement 3754230 from rank[4/25]
+receiving 342 read lengths at displacement 1374 from rank[5/25]
+receiving 1248628 buffer bytes at displacement 5004289 from rank[5/25]
+receiving 5 read lengths at displacement 1716 from rank[6/25]
+receiving 19185 buffer bytes at displacement 6252917 from rank[6/25]
+
+rank[17/25] :: 
+receiving 340 read lengths at displacement 0 from rank[6/25]
+receiving 1231381 buffer bytes at displacement 0 from rank[6/25]
+receiving 343 read lengths at displacement 340 from rank[7/25]
+receiving 1250333 buffer bytes at displacement 1231381 from rank[7/25]
+receiving 342 read lengths at displacement 683 from rank[8/25]
+receiving 1250365 buffer bytes at displacement 2481714 from rank[8/25]
+receiving 345 read lengths at displacement 1025 from rank[9/25]
+receiving 1251417 buffer bytes at displacement 3732079 from rank[9/25]
+receiving 344 read lengths at displacement 1370 from rank[10/25]
+receiving 1249989 buffer bytes at displacement 4983496 from rank[10/25]
+receiving 7 read lengths at displacement 1714 from rank[11/25]
+receiving 24313 buffer bytes at displacement 6233485 from rank[11/25]
+
+rank[18/25] :: 
+receiving 335 read lengths at displacement 0 from rank[11/25]
+receiving 1226295 buffer bytes at displacement 0 from rank[11/25]
+receiving 345 read lengths at displacement 335 from rank[12/25]
+receiving 1252416 buffer bytes at displacement 1226295 from rank[12/25]
+receiving 344 read lengths at displacement 680 from rank[13/25]
+receiving 1252305 buffer bytes at displacement 2478711 from rank[13/25]
+receiving 343 read lengths at displacement 1024 from rank[14/25]
+receiving 1249775 buffer bytes at displacement 3731016 from rank[14/25]
+receiving 344 read lengths at displacement 1367 from rank[15/25]
+receiving 1252907 buffer bytes at displacement 4980791 from rank[15/25]
+receiving 10 read lengths at displacement 1711 from rank[16/25]
+receiving 37171 buffer bytes at displacement 6233698 from rank[16/25]
+
+rank[19/25] :: 
+receiving 337 read lengths at displacement 0 from rank[16/25]
+receiving 1215812 buffer bytes at displacement 0 from rank[16/25]
+receiving 340 read lengths at displacement 337 from rank[17/25]
+receiving 1249275 buffer bytes at displacement 1215812 from rank[17/25]
+receiving 345 read lengths at displacement 677 from rank[18/25]
+receiving 1251560 buffer bytes at displacement 2465087 from rank[18/25]
+receiving 343 read lengths at displacement 1022 from rank[19/25]
+receiving 1251808 buffer bytes at displacement 3716647 from rank[19/25]
+receiving 346 read lengths at displacement 1365 from rank[20/25]
+receiving 1250731 buffer bytes at displacement 4968455 from rank[20/25]
+receiving 10 read lengths at displacement 1711 from rank[21/25]
+receiving 35884 buffer bytes at displacement 6219186 from rank[21/25]
+
+rank[20/25] :: 
+receiving 335 read lengths at displacement 0 from rank[21/25]
+receiving 1214826 buffer bytes at displacement 0 from rank[21/25]
+receiving 344 read lengths at displacement 335 from rank[22/25]
+receiving 1249966 buffer bytes at displacement 1214826 from rank[22/25]
+receiving 343 read lengths at displacement 679 from rank[23/25]
+receiving 1251969 buffer bytes at displacement 2464792 from rank[23/25]
+receiving 342 read lengths at displacement 1022 from rank[24/25]
+receiving 1251251 buffer bytes at displacement 3716761 from rank[24/25]
+receiving 357 read lengths at displacement 1364 from rank[25/25]
+receiving 1301359 buffer bytes at displacement 4968012 from rank[25/25]
+
+rank[21/25] :: 
+receiving 344 read lengths at displacement 0 from rank[1/25]
+receiving 1252783 buffer bytes at displacement 0 from rank[1/25]
+receiving 343 read lengths at displacement 344 from rank[2/25]
+receiving 1251417 buffer bytes at displacement 1252783 from rank[2/25]
+receiving 344 read lengths at displacement 687 from rank[3/25]
+receiving 1250030 buffer bytes at displacement 2504200 from rank[3/25]
+receiving 343 read lengths at displacement 1031 from rank[4/25]
+receiving 1250059 buffer bytes at displacement 3754230 from rank[4/25]
+receiving 342 read lengths at displacement 1374 from rank[5/25]
+receiving 1248628 buffer bytes at displacement 5004289 from rank[5/25]
+receiving 5 read lengths at displacement 1716 from rank[6/25]
+receiving 19185 buffer bytes at displacement 6252917 from rank[6/25]
+
+rank[22/25] :: 
+receiving 340 read lengths at displacement 0 from rank[6/25]
+receiving 1231381 buffer bytes at displacement 0 from rank[6/25]
+receiving 343 read lengths at displacement 340 from rank[7/25]
+receiving 1250333 buffer bytes at displacement 1231381 from rank[7/25]
+receiving 342 read lengths at displacement 683 from rank[8/25]
+receiving 1250365 buffer bytes at displacement 2481714 from rank[8/25]
+receiving 345 read lengths at displacement 1025 from rank[9/25]
+receiving 1251417 buffer bytes at displacement 3732079 from rank[9/25]
+receiving 344 read lengths at displacement 1370 from rank[10/25]
+receiving 1249989 buffer bytes at displacement 4983496 from rank[10/25]
+receiving 7 read lengths at displacement 1714 from rank[11/25]
+receiving 24313 buffer bytes at displacement 6233485 from rank[11/25]
+
+rank[23/25] :: 
+receiving 335 read lengths at displacement 0 from rank[11/25]
+receiving 1226295 buffer bytes at displacement 0 from rank[11/25]
+receiving 345 read lengths at displacement 335 from rank[12/25]
+receiving 1252416 buffer bytes at displacement 1226295 from rank[12/25]
+receiving 344 read lengths at displacement 680 from rank[13/25]
+receiving 1252305 buffer bytes at displacement 2478711 from rank[13/25]
+receiving 343 read lengths at displacement 1024 from rank[14/25]
+receiving 1249775 buffer bytes at displacement 3731016 from rank[14/25]
+receiving 344 read lengths at displacement 1367 from rank[15/25]
+receiving 1252907 buffer bytes at displacement 4980791 from rank[15/25]
+receiving 10 read lengths at displacement 1711 from rank[16/25]
+receiving 37171 buffer bytes at displacement 6233698 from rank[16/25]
+
+rank[24/25] :: 
+receiving 337 read lengths at displacement 0 from rank[16/25]
+receiving 1215812 buffer bytes at displacement 0 from rank[16/25]
+receiving 340 read lengths at displacement 337 from rank[17/25]
+receiving 1249275 buffer bytes at displacement 1215812 from rank[17/25]
+receiving 345 read lengths at displacement 677 from rank[18/25]
+receiving 1251560 buffer bytes at displacement 2465087 from rank[18/25]
+receiving 343 read lengths at displacement 1022 from rank[19/25]
+receiving 1251808 buffer bytes at displacement 3716647 from rank[19/25]
+receiving 346 read lengths at displacement 1365 from rank[20/25]
+receiving 1250731 buffer bytes at displacement 4968455 from rank[20/25]
+receiving 10 read lengths at displacement 1711 from rank[21/25]
+receiving 35884 buffer bytes at displacement 6219186 from rank[21/25]
+
+rank[25/25] :: 
+receiving 335 read lengths at displacement 0 from rank[21/25]
+receiving 1214826 buffer bytes at displacement 0 from rank[21/25]
+receiving 344 read lengths at displacement 335 from rank[22/25]
+receiving 1249966 buffer bytes at displacement 1214826 from rank[22/25]
+receiving 343 read lengths at displacement 679 from rank[23/25]
+receiving 1251969 buffer bytes at displacement 2464792 from rank[23/25]
+receiving 342 read lengths at displacement 1022 from rank[24/25]
+receiving 1251251 buffer bytes at displacement 3716761 from rank[24/25]
+receiving 357 read lengths at displacement 1364 from rank[25/25]
+receiving 1301359 buffer bytes at displacement 4968012 from rank[25/25]
+
+
+posted send calls:
+==================
+
+rank[1/25] :: 
+sending 344 read lengths to rank[1/25]
+sending 1252783 buffer bytes to rank[1/25]
+sending 344 read lengths to rank[6/25]
+sending 1252783 buffer bytes to rank[6/25]
+sending 344 read lengths to rank[11/25]
+sending 1252783 buffer bytes to rank[11/25]
+sending 344 read lengths to rank[16/25]
+sending 1252783 buffer bytes to rank[16/25]
+sending 344 read lengths to rank[21/25]
+sending 1252783 buffer bytes to rank[21/25]
+
+rank[2/25] :: 
+sending 343 read lengths to rank[1/25]
+sending 1251417 buffer bytes to rank[1/25]
+sending 343 read lengths to rank[6/25]
+sending 1251417 buffer bytes to rank[6/25]
+sending 343 read lengths to rank[11/25]
+sending 1251417 buffer bytes to rank[11/25]
+sending 343 read lengths to rank[16/25]
+sending 1251417 buffer bytes to rank[16/25]
+sending 343 read lengths to rank[21/25]
+sending 1251417 buffer bytes to rank[21/25]
+
+rank[3/25] :: 
+sending 344 read lengths to rank[1/25]
+sending 1250030 buffer bytes to rank[1/25]
+sending 344 read lengths to rank[6/25]
+sending 1250030 buffer bytes to rank[6/25]
+sending 344 read lengths to rank[11/25]
+sending 1250030 buffer bytes to rank[11/25]
+sending 344 read lengths to rank[16/25]
+sending 1250030 buffer bytes to rank[16/25]
+sending 344 read lengths to rank[21/25]
+sending 1250030 buffer bytes to rank[21/25]
+
+rank[4/25] :: 
+sending 343 read lengths to rank[1/25]
+sending 1250059 buffer bytes to rank[1/25]
+sending 343 read lengths to rank[6/25]
+sending 1250059 buffer bytes to rank[6/25]
+sending 343 read lengths to rank[11/25]
+sending 1250059 buffer bytes to rank[11/25]
+sending 343 read lengths to rank[16/25]
+sending 1250059 buffer bytes to rank[16/25]
+sending 343 read lengths to rank[21/25]
+sending 1250059 buffer bytes to rank[21/25]
+
+rank[5/25] :: 
+sending 342 read lengths to rank[1/25]
+sending 1248628 buffer bytes to rank[1/25]
+sending 342 read lengths to rank[6/25]
+sending 1248628 buffer bytes to rank[6/25]
+sending 342 read lengths to rank[11/25]
+sending 1248628 buffer bytes to rank[11/25]
+sending 342 read lengths to rank[16/25]
+sending 1248628 buffer bytes to rank[16/25]
+sending 342 read lengths to rank[21/25]
+sending 1248628 buffer bytes to rank[21/25]
+
+rank[6/25] :: 
+sending 5 read lengths to rank[1/25]
+sending 19185 buffer bytes to rank[1/25]
+sending 340 read lengths to rank[2/25]
+sending 1231381 buffer bytes to rank[2/25]
+sending 5 read lengths to rank[6/25]
+sending 19185 buffer bytes to rank[6/25]
+sending 340 read lengths to rank[7/25]
+sending 1231381 buffer bytes to rank[7/25]
+sending 5 read lengths to rank[11/25]
+sending 19185 buffer bytes to rank[11/25]
+sending 340 read lengths to rank[12/25]
+sending 1231381 buffer bytes to rank[12/25]
+sending 5 read lengths to rank[16/25]
+sending 19185 buffer bytes to rank[16/25]
+sending 340 read lengths to rank[17/25]
+sending 1231381 buffer bytes to rank[17/25]
+sending 5 read lengths to rank[21/25]
+sending 19185 buffer bytes to rank[21/25]
+sending 340 read lengths to rank[22/25]
+sending 1231381 buffer bytes to rank[22/25]
+
+rank[7/25] :: 
+sending 343 read lengths to rank[2/25]
+sending 1250333 buffer bytes to rank[2/25]
+sending 343 read lengths to rank[7/25]
+sending 1250333 buffer bytes to rank[7/25]
+sending 343 read lengths to rank[12/25]
+sending 1250333 buffer bytes to rank[12/25]
+sending 343 read lengths to rank[17/25]
+sending 1250333 buffer bytes to rank[17/25]
+sending 343 read lengths to rank[22/25]
+sending 1250333 buffer bytes to rank[22/25]
+
+rank[8/25] :: 
+sending 342 read lengths to rank[2/25]
+sending 1250365 buffer bytes to rank[2/25]
+sending 342 read lengths to rank[7/25]
+sending 1250365 buffer bytes to rank[7/25]
+sending 342 read lengths to rank[12/25]
+sending 1250365 buffer bytes to rank[12/25]
+sending 342 read lengths to rank[17/25]
+sending 1250365 buffer bytes to rank[17/25]
+sending 342 read lengths to rank[22/25]
+sending 1250365 buffer bytes to rank[22/25]
+
+rank[9/25] :: 
+sending 345 read lengths to rank[2/25]
+sending 1251417 buffer bytes to rank[2/25]
+sending 345 read lengths to rank[7/25]
+sending 1251417 buffer bytes to rank[7/25]
+sending 345 read lengths to rank[12/25]
+sending 1251417 buffer bytes to rank[12/25]
+sending 345 read lengths to rank[17/25]
+sending 1251417 buffer bytes to rank[17/25]
+sending 345 read lengths to rank[22/25]
+sending 1251417 buffer bytes to rank[22/25]
+
+rank[10/25] :: 
+sending 344 read lengths to rank[2/25]
+sending 1249989 buffer bytes to rank[2/25]
+sending 344 read lengths to rank[7/25]
+sending 1249989 buffer bytes to rank[7/25]
+sending 344 read lengths to rank[12/25]
+sending 1249989 buffer bytes to rank[12/25]
+sending 344 read lengths to rank[17/25]
+sending 1249989 buffer bytes to rank[17/25]
+sending 344 read lengths to rank[22/25]
+sending 1249989 buffer bytes to rank[22/25]
+
+rank[11/25] :: 
+sending 7 read lengths to rank[2/25]
+sending 24313 buffer bytes to rank[2/25]
+sending 335 read lengths to rank[3/25]
+sending 1226295 buffer bytes to rank[3/25]
+sending 7 read lengths to rank[7/25]
+sending 24313 buffer bytes to rank[7/25]
+sending 335 read lengths to rank[8/25]
+sending 1226295 buffer bytes to rank[8/25]
+sending 7 read lengths to rank[12/25]
+sending 24313 buffer bytes to rank[12/25]
+sending 335 read lengths to rank[13/25]
+sending 1226295 buffer bytes to rank[13/25]
+sending 7 read lengths to rank[17/25]
+sending 24313 buffer bytes to rank[17/25]
+sending 335 read lengths to rank[18/25]
+sending 1226295 buffer bytes to rank[18/25]
+sending 7 read lengths to rank[22/25]
+sending 24313 buffer bytes to rank[22/25]
+sending 335 read lengths to rank[23/25]
+sending 1226295 buffer bytes to rank[23/25]
+
+rank[12/25] :: 
+sending 345 read lengths to rank[3/25]
+sending 1252416 buffer bytes to rank[3/25]
+sending 345 read lengths to rank[8/25]
+sending 1252416 buffer bytes to rank[8/25]
+sending 345 read lengths to rank[13/25]
+sending 1252416 buffer bytes to rank[13/25]
+sending 345 read lengths to rank[18/25]
+sending 1252416 buffer bytes to rank[18/25]
+sending 345 read lengths to rank[23/25]
+sending 1252416 buffer bytes to rank[23/25]
+
+rank[13/25] :: 
+sending 344 read lengths to rank[3/25]
+sending 1252305 buffer bytes to rank[3/25]
+sending 344 read lengths to rank[8/25]
+sending 1252305 buffer bytes to rank[8/25]
+sending 344 read lengths to rank[13/25]
+sending 1252305 buffer bytes to rank[13/25]
+sending 344 read lengths to rank[18/25]
+sending 1252305 buffer bytes to rank[18/25]
+sending 344 read lengths to rank[23/25]
+sending 1252305 buffer bytes to rank[23/25]
+
+rank[14/25] :: 
+sending 343 read lengths to rank[3/25]
+sending 1249775 buffer bytes to rank[3/25]
+sending 343 read lengths to rank[8/25]
+sending 1249775 buffer bytes to rank[8/25]
+sending 343 read lengths to rank[13/25]
+sending 1249775 buffer bytes to rank[13/25]
+sending 343 read lengths to rank[18/25]
+sending 1249775 buffer bytes to rank[18/25]
+sending 343 read lengths to rank[23/25]
+sending 1249775 buffer bytes to rank[23/25]
+
+rank[15/25] :: 
+sending 344 read lengths to rank[3/25]
+sending 1252907 buffer bytes to rank[3/25]
+sending 344 read lengths to rank[8/25]
+sending 1252907 buffer bytes to rank[8/25]
+sending 344 read lengths to rank[13/25]
+sending 1252907 buffer bytes to rank[13/25]
+sending 344 read lengths to rank[18/25]
+sending 1252907 buffer bytes to rank[18/25]
+sending 344 read lengths to rank[23/25]
+sending 1252907 buffer bytes to rank[23/25]
+
+rank[16/25] :: 
+sending 10 read lengths to rank[3/25]
+sending 37171 buffer bytes to rank[3/25]
+sending 337 read lengths to rank[4/25]
+sending 1215812 buffer bytes to rank[4/25]
+sending 10 read lengths to rank[8/25]
+sending 37171 buffer bytes to rank[8/25]
+sending 337 read lengths to rank[9/25]
+sending 1215812 buffer bytes to rank[9/25]
+sending 10 read lengths to rank[13/25]
+sending 37171 buffer bytes to rank[13/25]
+sending 337 read lengths to rank[14/25]
+sending 1215812 buffer bytes to rank[14/25]
+sending 10 read lengths to rank[18/25]
+sending 37171 buffer bytes to rank[18/25]
+sending 337 read lengths to rank[19/25]
+sending 1215812 buffer bytes to rank[19/25]
+sending 10 read lengths to rank[23/25]
+sending 37171 buffer bytes to rank[23/25]
+sending 337 read lengths to rank[24/25]
+sending 1215812 buffer bytes to rank[24/25]
+
+rank[17/25] :: 
+sending 340 read lengths to rank[4/25]
+sending 1249275 buffer bytes to rank[4/25]
+sending 340 read lengths to rank[9/25]
+sending 1249275 buffer bytes to rank[9/25]
+sending 340 read lengths to rank[14/25]
+sending 1249275 buffer bytes to rank[14/25]
+sending 340 read lengths to rank[19/25]
+sending 1249275 buffer bytes to rank[19/25]
+sending 340 read lengths to rank[24/25]
+sending 1249275 buffer bytes to rank[24/25]
+
+rank[18/25] :: 
+sending 345 read lengths to rank[4/25]
+sending 1251560 buffer bytes to rank[4/25]
+sending 345 read lengths to rank[9/25]
+sending 1251560 buffer bytes to rank[9/25]
+sending 345 read lengths to rank[14/25]
+sending 1251560 buffer bytes to rank[14/25]
+sending 345 read lengths to rank[19/25]
+sending 1251560 buffer bytes to rank[19/25]
+sending 345 read lengths to rank[24/25]
+sending 1251560 buffer bytes to rank[24/25]
+
+rank[19/25] :: 
+sending 343 read lengths to rank[4/25]
+sending 1251808 buffer bytes to rank[4/25]
+sending 343 read lengths to rank[9/25]
+sending 1251808 buffer bytes to rank[9/25]
+sending 343 read lengths to rank[14/25]
+sending 1251808 buffer bytes to rank[14/25]
+sending 343 read lengths to rank[19/25]
+sending 1251808 buffer bytes to rank[19/25]
+sending 343 read lengths to rank[24/25]
+sending 1251808 buffer bytes to rank[24/25]
+
+rank[20/25] :: 
+sending 346 read lengths to rank[4/25]
+sending 1250731 buffer bytes to rank[4/25]
+sending 346 read lengths to rank[9/25]
+sending 1250731 buffer bytes to rank[9/25]
+sending 346 read lengths to rank[14/25]
+sending 1250731 buffer bytes to rank[14/25]
+sending 346 read lengths to rank[19/25]
+sending 1250731 buffer bytes to rank[19/25]
+sending 346 read lengths to rank[24/25]
+sending 1250731 buffer bytes to rank[24/25]
+
+rank[21/25] :: 
+sending 10 read lengths to rank[4/25]
+sending 35884 buffer bytes to rank[4/25]
+sending 335 read lengths to rank[5/25]
+sending 1214826 buffer bytes to rank[5/25]
+sending 10 read lengths to rank[9/25]
+sending 35884 buffer bytes to rank[9/25]
+sending 335 read lengths to rank[10/25]
+sending 1214826 buffer bytes to rank[10/25]
+sending 10 read lengths to rank[14/25]
+sending 35884 buffer bytes to rank[14/25]
+sending 335 read lengths to rank[15/25]
+sending 1214826 buffer bytes to rank[15/25]
+sending 10 read lengths to rank[19/25]
+sending 35884 buffer bytes to rank[19/25]
+sending 335 read lengths to rank[20/25]
+sending 1214826 buffer bytes to rank[20/25]
+sending 10 read lengths to rank[24/25]
+sending 35884 buffer bytes to rank[24/25]
+sending 335 read lengths to rank[25/25]
+sending 1214826 buffer bytes to rank[25/25]
+
+rank[22/25] :: 
+sending 344 read lengths to rank[5/25]
+sending 1249966 buffer bytes to rank[5/25]
+sending 344 read lengths to rank[10/25]
+sending 1249966 buffer bytes to rank[10/25]
+sending 344 read lengths to rank[15/25]
+sending 1249966 buffer bytes to rank[15/25]
+sending 344 read lengths to rank[20/25]
+sending 1249966 buffer bytes to rank[20/25]
+sending 344 read lengths to rank[25/25]
+sending 1249966 buffer bytes to rank[25/25]
+
+rank[23/25] :: 
+sending 343 read lengths to rank[5/25]
+sending 1251969 buffer bytes to rank[5/25]
+sending 343 read lengths to rank[10/25]
+sending 1251969 buffer bytes to rank[10/25]
+sending 343 read lengths to rank[15/25]
+sending 1251969 buffer bytes to rank[15/25]
+sending 343 read lengths to rank[20/25]
+sending 1251969 buffer bytes to rank[20/25]
+sending 343 read lengths to rank[25/25]
+sending 1251969 buffer bytes to rank[25/25]
+
+rank[24/25] :: 
+sending 342 read lengths to rank[5/25]
+sending 1251251 buffer bytes to rank[5/25]
+sending 342 read lengths to rank[10/25]
+sending 1251251 buffer bytes to rank[10/25]
+sending 342 read lengths to rank[15/25]
+sending 1251251 buffer bytes to rank[15/25]
+sending 342 read lengths to rank[20/25]
+sending 1251251 buffer bytes to rank[20/25]
+sending 342 read lengths to rank[25/25]
+sending 1251251 buffer bytes to rank[25/25]
+
+rank[25/25] :: 
+sending 357 read lengths to rank[5/25]
+sending 1301359 buffer bytes to rank[5/25]
+sending 357 read lengths to rank[10/25]
+sending 1301359 buffer bytes to rank[10/25]
+sending 357 read lengths to rank[15/25]
+sending 1301359 buffer bytes to rank[15/25]
+sending 357 read lengths to rank[20/25]
+sending 1301359 buffer bytes to rank[20/25]
+sending 357 read lengths to rank[25/25]
+sending 1301359 buffer bytes to rank[25/25]
+
+

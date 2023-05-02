@@ -1,0 +1,228 @@
+-DKMER_SIZE=31
+-DLOWER_KMER_FREQ=15
+-DUPPER_KMER_FREQ=35
+-DMPI_HAS_LARGE_COUNTS=1
+-DUSE_BLOOM
+
+int mat = 1;
+int mis = -1;
+int gap = -1;
+int xdrop_cutoff = 15;
+String fname = "ecoli.fa";
+
+Fasta index construction:
+=========================
+
+rank[1/4] ::  is responsible for sequences [0..2149] (2150 reads) (31306817 nucleotides, 24.988%)
+rank[2/4] ::  is responsible for sequences [2150..4299] (2150 reads) (31316495 nucleotides, 24.996%)
+rank[3/4] ::  is responsible for sequences [4300..6450] (2151 reads) (31319589 nucleotides, 24.998%)
+rank[4/4] ::  is responsible for sequences [6451..8604] (2154 reads) (31344817 nucleotides, 25.018%)
+
+DistributedFastaData::DistributedFastaData
+==========================================
+
+rank[1/4] :: P(1, 1) [0..4301] (4302 reads); [0..4301] (4302 reads)
+rank[2/4] :: P(1, 2) [0..4301] (4302 reads); [4302..8604] (4303 reads)
+rank[3/4] :: P(2, 1) [4302..8604] (4303 reads); [0..4301] (4302 reads)
+rank[4/4] :: P(2, 2) [4302..8604] (4303 reads); [4302..8604] (4303 reads)
+
+Exchanges:
+==========
+
+rank[1/4] :: 
+sent 2150/7827514 to rank[1/4] :: {owner=0;requester=0;offset=0;count=2150;rc=2}
+sent 2150/7827514 to rank[2/4] :: {owner=0;requester=1;offset=0;count=2150;rc=0}
+
+received 2150/7827514 from rank[1/4] :: {owner=0;requester=0;offset=0;count=2150;rc=2}
+received 2150/7829934 from rank[2/4] :: {owner=1;requester=0;offset=2150;count=2150;rc=0}
+received 2/8054 from rank[3/4] :: {owner=2;requester=0;offset=4300;count=2;rc=0}
+
+rank[2/4] :: 
+sent 2150/7829934 to rank[1/4] :: {owner=1;requester=0;offset=2150;count=2150;rc=0}
+sent 2150/7829934 to rank[2/4] :: {owner=1;requester=1;offset=2150;count=2150;rc=2}
+
+received 2150/7827514 from rank[1/4] :: {owner=0;requester=1;offset=0;count=2150;rc=0}
+received 2150/7829934 from rank[2/4] :: {owner=1;requester=1;offset=2150;count=2150;rc=2}
+received 2/8054 from rank[3/4] :: {owner=2;requester=1;offset=4300;count=2;rc=0}
+
+rank[3/4] :: 
+sent 2/8054 to rank[1/4] :: {owner=2;requester=0;offset=4300;count=2;rc=0}
+sent 2/8054 to rank[2/4] :: {owner=2;requester=1;offset=4300;count=2;rc=0}
+sent 2149/7822674 to rank[3/4] :: {owner=2;requester=2;offset=4302;count=2149;rc=2}
+sent 2149/7822674 to rank[4/4] :: {owner=2;requester=3;offset=4302;count=2149;rc=0}
+
+received 2149/7822674 from rank[3/4] :: {owner=2;requester=2;offset=4302;count=2149;rc=2}
+received 2154/7837034 from rank[4/4] :: {owner=3;requester=2;offset=6451;count=2154;rc=0}
+
+rank[4/4] :: 
+sent 2154/7837034 to rank[3/4] :: {owner=3;requester=2;offset=6451;count=2154;rc=0}
+sent 2154/7837034 to rank[4/4] :: {owner=3;requester=3;offset=6451;count=2154;rc=2}
+
+received 2149/7822674 from rank[3/4] :: {owner=2;requester=3;offset=4302;count=2149;rc=0}
+received 2154/7837034 from rank[4/4] :: {owner=3;requester=3;offset=6451;count=2154;rc=2}
+
+
+posted received calls:
+======================
+
+rank[1/4] :: 
+receiving 2150 read lengths at displacement 0 from rank[1/4]
+receiving 7827514 buffer bytes at displacement 0 from rank[1/4]
+receiving 2150 read lengths at displacement 2150 from rank[2/4]
+receiving 7829934 buffer bytes at displacement 7827514 from rank[2/4]
+receiving 2 read lengths at displacement 4300 from rank[3/4]
+receiving 8054 buffer bytes at displacement 15657448 from rank[3/4]
+
+rank[2/4] :: 
+receiving 2150 read lengths at displacement 0 from rank[1/4]
+receiving 7827514 buffer bytes at displacement 0 from rank[1/4]
+receiving 2150 read lengths at displacement 2150 from rank[2/4]
+receiving 7829934 buffer bytes at displacement 7827514 from rank[2/4]
+receiving 2 read lengths at displacement 4300 from rank[3/4]
+receiving 8054 buffer bytes at displacement 15657448 from rank[3/4]
+
+rank[3/4] :: 
+receiving 2149 read lengths at displacement 0 from rank[3/4]
+receiving 7822674 buffer bytes at displacement 0 from rank[3/4]
+receiving 2154 read lengths at displacement 2149 from rank[4/4]
+receiving 7837034 buffer bytes at displacement 7822674 from rank[4/4]
+
+rank[4/4] :: 
+receiving 2149 read lengths at displacement 0 from rank[3/4]
+receiving 7822674 buffer bytes at displacement 0 from rank[3/4]
+receiving 2154 read lengths at displacement 2149 from rank[4/4]
+receiving 7837034 buffer bytes at displacement 7822674 from rank[4/4]
+
+
+posted send calls:
+==================
+
+rank[1/4] :: 
+sending 2150 read lengths to rank[1/4]
+sending 7827514 buffer bytes to rank[1/4]
+sending 2150 read lengths to rank[2/4]
+sending 7827514 buffer bytes to rank[2/4]
+
+rank[2/4] :: 
+sending 2150 read lengths to rank[1/4]
+sending 7829934 buffer bytes to rank[1/4]
+sending 2150 read lengths to rank[2/4]
+sending 7829934 buffer bytes to rank[2/4]
+
+rank[3/4] :: 
+sending 2 read lengths to rank[1/4]
+sending 8054 buffer bytes to rank[1/4]
+sending 2 read lengths to rank[2/4]
+sending 8054 buffer bytes to rank[2/4]
+sending 2149 read lengths to rank[3/4]
+sending 7822674 buffer bytes to rank[3/4]
+sending 2149 read lengths to rank[4/4]
+sending 7822674 buffer bytes to rank[4/4]
+
+rank[4/4] :: 
+sending 2154 read lengths to rank[3/4]
+sending 7837034 buffer bytes to rank[3/4]
+sending 2154 read lengths to rank[4/4]
+sending 7837034 buffer bytes to rank[4/4]
+
+
+Exchanges:
+==========
+
+rank[1/4] :: 
+sent 2150/7827514 to rank[1/4] :: {owner=0;requester=0;offset=0;count=2150;rc=2}
+sent 2150/7827514 to rank[3/4] :: {owner=0;requester=2;offset=0;count=2150;rc=0}
+
+received 2150/7827514 from rank[1/4] :: {owner=0;requester=0;offset=0;count=2150;rc=2}
+received 2150/7829934 from rank[2/4] :: {owner=1;requester=0;offset=2150;count=2150;rc=0}
+received 2/8054 from rank[3/4] :: {owner=2;requester=0;offset=4300;count=2;rc=0}
+
+rank[2/4] :: 
+sent 2150/7829934 to rank[1/4] :: {owner=1;requester=0;offset=2150;count=2150;rc=0}
+sent 2150/7829934 to rank[3/4] :: {owner=1;requester=2;offset=2150;count=2150;rc=0}
+
+received 2149/7822674 from rank[3/4] :: {owner=2;requester=1;offset=4302;count=2149;rc=0}
+received 2154/7837034 from rank[4/4] :: {owner=3;requester=1;offset=6451;count=2154;rc=0}
+
+rank[3/4] :: 
+sent 2/8054 to rank[1/4] :: {owner=2;requester=0;offset=4300;count=2;rc=0}
+sent 2149/7822674 to rank[2/4] :: {owner=2;requester=1;offset=4302;count=2149;rc=0}
+sent 2/8054 to rank[3/4] :: {owner=2;requester=2;offset=4300;count=2;rc=2}
+sent 2149/7822674 to rank[4/4] :: {owner=2;requester=3;offset=4302;count=2149;rc=0}
+
+received 2150/7827514 from rank[1/4] :: {owner=0;requester=2;offset=0;count=2150;rc=0}
+received 2150/7829934 from rank[2/4] :: {owner=1;requester=2;offset=2150;count=2150;rc=0}
+received 2/8054 from rank[3/4] :: {owner=2;requester=2;offset=4300;count=2;rc=2}
+
+rank[4/4] :: 
+sent 2154/7837034 to rank[2/4] :: {owner=3;requester=1;offset=6451;count=2154;rc=0}
+sent 2154/7837034 to rank[4/4] :: {owner=3;requester=3;offset=6451;count=2154;rc=2}
+
+received 2149/7822674 from rank[3/4] :: {owner=2;requester=3;offset=4302;count=2149;rc=0}
+received 2154/7837034 from rank[4/4] :: {owner=3;requester=3;offset=6451;count=2154;rc=2}
+
+
+posted received calls:
+======================
+
+rank[1/4] :: 
+receiving 2150 read lengths at displacement 0 from rank[1/4]
+receiving 7827514 buffer bytes at displacement 0 from rank[1/4]
+receiving 2150 read lengths at displacement 2150 from rank[2/4]
+receiving 7829934 buffer bytes at displacement 7827514 from rank[2/4]
+receiving 2 read lengths at displacement 4300 from rank[3/4]
+receiving 8054 buffer bytes at displacement 15657448 from rank[3/4]
+
+rank[2/4] :: 
+receiving 2149 read lengths at displacement 0 from rank[3/4]
+receiving 7822674 buffer bytes at displacement 0 from rank[3/4]
+receiving 2154 read lengths at displacement 2149 from rank[4/4]
+receiving 7837034 buffer bytes at displacement 7822674 from rank[4/4]
+
+rank[3/4] :: 
+receiving 2150 read lengths at displacement 0 from rank[1/4]
+receiving 7827514 buffer bytes at displacement 0 from rank[1/4]
+receiving 2150 read lengths at displacement 2150 from rank[2/4]
+receiving 7829934 buffer bytes at displacement 7827514 from rank[2/4]
+receiving 2 read lengths at displacement 4300 from rank[3/4]
+receiving 8054 buffer bytes at displacement 15657448 from rank[3/4]
+
+rank[4/4] :: 
+receiving 2149 read lengths at displacement 0 from rank[3/4]
+receiving 7822674 buffer bytes at displacement 0 from rank[3/4]
+receiving 2154 read lengths at displacement 2149 from rank[4/4]
+receiving 7837034 buffer bytes at displacement 7822674 from rank[4/4]
+
+
+posted send calls:
+==================
+
+rank[1/4] :: 
+sending 2150 read lengths to rank[1/4]
+sending 7827514 buffer bytes to rank[1/4]
+sending 2150 read lengths to rank[3/4]
+sending 7827514 buffer bytes to rank[3/4]
+
+rank[2/4] :: 
+sending 2150 read lengths to rank[1/4]
+sending 7829934 buffer bytes to rank[1/4]
+sending 2150 read lengths to rank[3/4]
+sending 7829934 buffer bytes to rank[3/4]
+
+rank[3/4] :: 
+sending 2 read lengths to rank[1/4]
+sending 8054 buffer bytes to rank[1/4]
+sending 2149 read lengths to rank[2/4]
+sending 7822674 buffer bytes to rank[2/4]
+sending 2 read lengths to rank[3/4]
+sending 8054 buffer bytes to rank[3/4]
+sending 2149 read lengths to rank[4/4]
+sending 7822674 buffer bytes to rank[4/4]
+
+rank[4/4] :: 
+sending 2154 read lengths to rank[2/4]
+sending 7837034 buffer bytes to rank[2/4]
+sending 2154 read lengths to rank[4/4]
+sending 7837034 buffer bytes to rank[4/4]
+
+
