@@ -2,57 +2,48 @@
 #include <cassert>
 #include <cstring>
 #include <vector>
+#include <cmath>
 
-DnaSeq::DnaSeq(char const *sequence, size_t len) : numbytes((len+3)/4), remain(4*numbytes - len), owns_memory(true)
+void DnaSeq::compress(char const *s)
 {
-    assert(remain < 4);
-
-    memory = new uint8_t[numbytes];
-
+    const size_t nbytes = numbytes();
+    const int remain = remainder();
+    char const *p = s;
     size_t b = 0;
-    char const *sb = sequence;
 
-    while (b < numbytes)
+    while (b < nbytes)
     {
         uint8_t byte = 0;
-        int left = (b != numbytes-1? 4 : 4-remain);
+        int left = (b != nbytes-1? 4 : 4-remain);
 
         for (int i = 0; i < left; ++i)
         {
-            uint8_t code = DnaSeq::getcharcode(sb[i]);
+            uint8_t code = DnaSeq::getcharcode(p[i]);
             uint8_t shift = code << (6 - (2*i));
             byte |= shift;
         }
 
         memory[b++] = byte;
-        sb += 4;
+        p += 4;
     }
-}
-
-DnaSeq::DnaSeq(const DnaSeq& rhs) : numbytes(rhs.numbytes), remain(rhs.remain), owns_memory(true)
-{
-    memory = new uint8_t[numbytes];
-    std::memcpy(memory, rhs.memory, numbytes);
 }
 
 std::string DnaSeq::ascii() const
 {
     size_t len = size();
-    uint8_t const *bb = memory;
-    std::vector<char> s(len);
+    uint8_t const *p = memory;
+    std::string s(len, '\0');
 
     for (size_t i = 0; i < len; ++i)
     {
-        int code = (*bb >> (6 - (2*(i%4)))) & 3;
+        int code = (*p >> (6 - (2*(i%4)))) & 3;
         s[i] = DnaSeq::getcodechar(code);
 
         if ((i+1) % 4 == 0)
-            bb++;
+            p++;
     }
-
-    return std::string(s.begin(), s.end());
+    return s;
 }
-
 
 int DnaSeq::operator[](size_t i) const
 {

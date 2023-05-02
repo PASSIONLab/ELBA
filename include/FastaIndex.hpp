@@ -2,6 +2,7 @@
 #define FASTA_INDEX_H_
 
 #include "common.h"
+#include "DnaBuffer.hpp"
 
 class FastaIndex
 {
@@ -11,18 +12,26 @@ public:
     FastaIndex(const std::string& fasta_fname, Grid commgrid);
 
     Grid getcommgrid() const { return commgrid; }
-    size_t getnumrecords() const { return readcounts[commgrid->GetRank()]; }
-    size_t gettotrecords() const { return readdispls.back(); }
     std::string get_fasta_fname() const { return fasta_fname; }
     std::string get_faidx_fname() const { return fasta_fname + ".fai"; }
-    size_t getsomefirstid(int rank) const { return static_cast<size_t>(readdispls[rank]); }
-    size_t getmyfirstid() const { return getsomefirstid(commgrid->GetRank()); }
-    size_t getreadcount(int rank) const { return static_cast<size_t>(readcounts[rank]); }
-    std::vector<int> collectowners(size_t startid, size_t count) const;
-    static Record get_faidx_record(const std::string& line);
+
+    size_t gettotrecords() const { return readdispls.back(); }
+    size_t getreadcount(size_t i) const { return static_cast<size_t>(readcounts[i]); }
+    size_t getreaddispl(size_t i) const { return static_cast<size_t>(readdispls[i]); }
+    size_t getmyreadcount() const { return getreadcount(commgrid->GetRank()); }
+    size_t getmyreaddispl() const { return getreaddispl(commgrid->GetRank()); }
+
+    std::vector<size_t> getmyreadlens() const;
 
     const std::vector<Record>& getmyrecords() const { return myrecords; }
-    const std::vector<MPI_Displ_type>& getreaddispls() const { return readdispls; }
+    const std::vector<MPI_Count_type> getreadcounts() const { return readcounts; }
+    const std::vector<MPI_Displ_type> getreaddispls() const { return readdispls; }
+
+    std::shared_ptr<DnaBuffer> getmydna() const;
+    void log(std::shared_ptr<DnaBuffer> buffer) const;
+    void logall(std::shared_ptr<DnaBuffer> buffer) const;
+
+    static Record get_faidx_record(const std::string& line);
 
 private:
     Grid commgrid;
@@ -32,10 +41,7 @@ private:
     std::vector<MPI_Displ_type> readdispls; /* displacement counts for reads across all processors. Each processor gets a copy. |readdispls| == nprocs+1 */
     std::string fasta_fname; /* FASTA file name */
 
-    void get_idbalanced_partition(std::vector<MPI_Count_type>& sendcounts);
-    void get_membalanced_partition(std::vector<MPI_Count_type>& sendcounts);
+    void getpartition(std::vector<MPI_Count_type>& sendcounts);
 };
-
-using FIndex = std::shared_ptr<FastaIndex>;
 
 #endif

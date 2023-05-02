@@ -23,7 +23,6 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "compiletime.h"
 #include "Logger.hpp"
 #include "FastaIndex.hpp"
-#include "FastaData.hpp"
 #include "DistributedFastaData.hpp"
 #include "Kmer.hpp"
 #include "KmerOps.hpp"
@@ -60,8 +59,6 @@ int parse_cli(int argc, char *argv[]);
 void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid);
 CT<PosInRead>::PSpParMat CreateKmerMatrix(const std::vector<DnaSeq>& myreads, const KmerCountMap& kmermap, Grid commgrid);
 
-using NbrData = typename DistributedFastaData::NbrData;
-
 int main(int argc, char **argv)
 {
     MPI_Init(&argc, &argv);
@@ -86,37 +83,38 @@ int main(int argc, char **argv)
         MPI_Barrier(comm);
         elapsed = -MPI_Wtime();
 
-        /*
-         * Start pipeline
-         */
+/***********************************************************/
+/************************ START ****************************/
+/***********************************************************/
 
-        FIndex index(new FastaIndex(fasta_fname, commgrid));
-        FastaData lfd(index);
-        lfd.log();
-        // DistributedFastaData dfd(index);
-        // dfd.allgather_neighbors();
-        // dfd.exchange_reads();
+        std::shared_ptr<FastaIndex> index(new FastaIndex(fasta_fname, commgrid));
+        std::shared_ptr<DnaBuffer> mydna = index->getmydna();
+        DistributedFastaData dfd(index);
+        dfd.collect_row_sequences(mydna);
+        dfd.collect_col_sequences(mydna);
+        dfd.wait();
 
-        std::vector<DnaSeq> myreads = lfd.getdnaseqs();
+        auto rowbuf = dfd.getrowbuf();
+        auto colbuf = dfd.getcolbuf();
+        // std::vector<DnaSeq> myreads = lfd.getdnaseqs();
 
+        //KmerCountMap kmermap = GetKmerCountMapKeys(myreads, commgrid);
+        //GetKmerCountMapValues(myreads, kmermap, commgrid);
 
-        KmerCountMap kmermap = GetKmerCountMapKeys(myreads, commgrid);
-        GetKmerCountMapValues(myreads, kmermap, commgrid);
+        //PrintKmerHistogram(kmermap, commgrid);
+        //auto A = CreateKmerMatrix(myreads, kmermap, commgrid);
 
-        PrintKmerHistogram(kmermap, commgrid);
-        auto A = CreateKmerMatrix(myreads, kmermap, commgrid);
+        //size_t numreads = A.getnrow();
+        //size_t numkmers = A.getncol();
+        //size_t numseeds = A.getnnz();
 
-        size_t numreads = A.getnrow();
-        size_t numkmers = A.getncol();
-        size_t numseeds = A.getnnz();
+        //if (!myrank)
+        //{
+        //    std::cout << "K-mer matrix A has " << numreads << " rows (readids), " << numkmers << " columns (k-mers), and " << numseeds << " nonzeros (k-mer seeds)\n" << std::endl;
+        //}
+        //MPI_Barrier(comm);
 
-        if (!myrank)
-        {
-            std::cout << "K-mer matrix A has " << numreads << " rows (readids), " << numkmers << " columns (k-mers), and " << numseeds << " nonzeros (k-mer seeds)\n" << std::endl;
-        }
-        MPI_Barrier(comm);
-
-        A.ParallelWriteMM("A.mtx", false);
+        //A.ParallelWriteMM("A.mtx", false);
 
         // auto AT = A;
         // AT.Transpose();
@@ -134,10 +132,9 @@ int main(int argc, char **argv)
         // MPI_Barrier(comm);
         // B.ParallelWriteMM("B.mtx", false, OverlapHandler());
 
-
-        /*
-         * Finish pipeline
-         */
+/***********************************************************/
+/************************* END *****************************/
+/***********************************************************/
 
         elapsed += MPI_Wtime();
         MPI_Reduce(&elapsed, &maxtime, 1, MPI_DOUBLE, MPI_MAX, root, comm);
