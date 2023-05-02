@@ -38,6 +38,9 @@ OBJECTS=obj/Logger.o \
 
 all: elba
 
+test: elba
+	./runtests.sh
+
 elba: obj/main.o $(OBJECTS)
 	@echo CXX -c -o $@ $^
 	@$(COMPILER) $(FLAGS) $(INCADD) -o $@ $^ $(MPICH_FLAGS) -lz
