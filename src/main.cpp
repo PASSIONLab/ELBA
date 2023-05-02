@@ -101,8 +101,6 @@ int main(int argc, char **argv)
         GetKmerCountMapValues(*mydna, kmermap, commgrid);
         PrintKmerHistogram(kmermap, commgrid);
 
-        dfd.wait();
-
         auto A = CreateKmerMatrix(*mydna, kmermap, commgrid);
 
         size_t numreads = A.getnrow();
@@ -132,6 +130,9 @@ int main(int argc, char **argv)
         }
         MPI_Barrier(comm);
         B.ParallelWriteMM("B.mtx", false, OverlapHandler());
+
+        dfd.wait();
+
 
 /***********************************************************/
 /************************* END *****************************/
