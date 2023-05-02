@@ -46,9 +46,7 @@ KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, Grid commgrid)
     mycardinality = hll.estimate();
 
     log() << std::setprecision(3) << std::fixed << mycardinality << " k-mers";
-
-    log.Flush("[k-mer cardinality estimate]\n"
-              "============================\n");
+    log.Flush("[k-mer cardinality estimate]");
 
     /*
      * Estimate the number of distinct k-mers in the entire FASTA
@@ -59,7 +57,7 @@ KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, Grid commgrid)
 
     avgcardinality = static_cast<size_t>(std::ceil(cardinality / nprocs));
 
-    rootlog << "global 'column' k-mer cardinality (merging all " << nprocs << " procesors results) is " << cardinality << ", or an average of " << avgcardinality << " per processor" << std::endl;
+    rootlog << "global 'column' k-mer cardinality (merging all " << nprocs << " procesors results) is " << std::setprecision(3) << std::fixed << cardinality << ", or an average of " << avgcardinality << " per processor" << std::endl;
     log.Flush(rootlog, 0);
 
     /*
@@ -185,7 +183,7 @@ KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, Grid commgrid)
         total_totrecv += (totrecv / TKmer::NBYTES);
 
         log() << " has sent " << total_totsend << " k-mers parsed from " << batch_state.myreadid << " reads of " << numreads << " and received " << total_totrecv << " k-mers";
-        rootlog << "Round " << batch_round++ << "\n";
+        rootlog << "Round " << batch_round++;
         log.Flush(rootlog);
 
     } while (!batch_state.Finished());
