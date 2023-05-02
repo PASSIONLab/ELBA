@@ -93,15 +93,10 @@ int main(int argc, char **argv)
         dfd.collect_sequences(mydna);
         dfd.wait();
 
-        dfd.write_grid_sequences("grid");
-
         // auto rowbuf = dfd.getrowbuf();
         // auto colbuf = dfd.getcolbuf();
 
-
-        // std::vector<DnaSeq> myreads = lfd.getdnaseqs();
-
-        //KmerCountMap kmermap = GetKmerCountMapKeys(myreads, commgrid);
+        KmerCountMap kmermap = GetKmerCountMapKeys(*mydna, commgrid);
         //GetKmerCountMapValues(myreads, kmermap, commgrid);
 
         //PrintKmerHistogram(kmermap, commgrid);

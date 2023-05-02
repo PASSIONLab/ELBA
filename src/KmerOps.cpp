@@ -15,7 +15,7 @@ static Bloom *bm = nullptr;
 static_assert(USE_BLOOM == 0);
 #endif
 
-KmerCountMap GetKmerCountMapKeys(const std::vector<DnaSeq>& myreads, Grid commgrid)
+KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, Grid commgrid)
 {
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
@@ -193,113 +193,113 @@ KmerCountMap GetKmerCountMapKeys(const std::vector<DnaSeq>& myreads, Grid commgr
     return kmermap;
 }
 
-void GetKmerCountMapValues(const std::vector<DnaSeq>& myreads, KmerCountMap& kmermap, Grid commgrid)
-{
-    std::unique_ptr<std::ostringstream> logstream;
-    int myrank = commgrid->GetRank();
-    int nprocs = commgrid->GetSize();
-    size_t numreads = myreads.size();
-    std::vector<std::vector<KmerSeed>> kmerseeds(nprocs);
-    size_t readoffset = numreads;
-    MPI_Exscan(&numreads, &readoffset, 1, MPI_SIZE_T, MPI_SUM, commgrid->GetWorld());
-    if (!myrank) readoffset = 0;
-    KmerParserHandler parser(kmerseeds, static_cast<ReadId>(readoffset));
-    ForeachKmer(myreads, parser);
-    std::vector<MPI_Count_type> sendcnt(nprocs), recvcnt(nprocs);
-    std::vector<MPI_Displ_type> sdispls(nprocs), rdispls(nprocs);
-    constexpr size_t seedbytes = TKmer::NBYTES + sizeof(ReadId) + sizeof(PosInRead);
-    logstream.reset(new std::ostringstream());
-    *logstream << std::setprecision(4) << "sending 'row' k-mers to each processor in this amount (megabytes): {";
-    for (int i = 0; i < nprocs; ++i)
-    {
-        sendcnt[i] = kmerseeds[i].size() * seedbytes;
-        *logstream << (static_cast<double>(sendcnt[i]) / (1024 * 1024)) << ",";
-    }
-    *logstream << "}";
-    LogAll(logstream->str(), commgrid);
-    MPI_ALLTOALL(sendcnt.data(), 1, MPI_COUNT_TYPE, recvcnt.data(), 1, MPI_COUNT_TYPE, commgrid->GetWorld());
-    sdispls.front() = rdispls.front() = 0;
-    std::partial_sum(sendcnt.begin(), sendcnt.end()-1, sdispls.begin()+1);
-    std::partial_sum(recvcnt.begin(), recvcnt.end()-1, rdispls.begin()+1);
-    size_t totsend = std::accumulate(sendcnt.begin(), sendcnt.end(), 0);
-    size_t totrecv = std::accumulate(recvcnt.begin(), recvcnt.end(), 0);
-    std::vector<uint8_t> sendbuf(totsend, 0);
-    for (int i = 0; i < nprocs; ++i)
-    {
-        assert(kmerseeds[i].size() == (sendcnt[i] / seedbytes));
-        uint8_t *addrs2fill = sendbuf.data() + sdispls[i];
-        for (MPI_Count_type j = 0; j < kmerseeds[i].size(); ++j)
-        {
-            auto& seeditr = kmerseeds[i][j];
-            TKmer kmer = std::get<0>(seeditr);
-            ReadId readid = std::get<1>(seeditr);
-            PosInRead pos = std::get<2>(seeditr);
-            memcpy(addrs2fill, kmer.GetBytes(), TKmer::NBYTES);
-            memcpy(addrs2fill + TKmer::NBYTES, &readid, sizeof(ReadId));
-            memcpy(addrs2fill + TKmer::NBYTES + sizeof(ReadId), &pos, sizeof(PosInRead));
-            addrs2fill += seedbytes;
-        }
-        kmerseeds[i].clear();
-    }
-    std::vector<uint8_t> recvbuf(totrecv, 0);
-    MPI_ALLTOALLV(sendbuf.data(), sendcnt.data(), sdispls.data(), MPI_BYTE, recvbuf.data(), recvcnt.data(), rdispls.data(), MPI_BYTE, commgrid->GetWorld());
-    size_t numkmerseeds = totrecv / seedbytes;
-    logstream.reset(new std::ostringstream());
-    *logstream << "received a total of " << numkmerseeds << " 'row' k-mers in second ALLTOALL exchange";
-    LogAll(logstream->str(), commgrid);
-    uint8_t *addrs2read = recvbuf.data();
-    for (size_t i = 0; i < numkmerseeds; ++i)
-    {
-        TKmer kmer(addrs2read);
-#if USE_BLOOM == 1
-        if (!bm->Check(kmer.GetBytes(), TKmer::NBYTES))
-            continue;
-#else
-        static_assert(USE_BLOOM == 0);
-#endif
-        ReadId readid = *((ReadId*)(addrs2read + TKmer::NBYTES));
-        PosInRead pos = *((PosInRead*)(addrs2read + TKmer::NBYTES + sizeof(ReadId)));
-        addrs2read += seedbytes;
-        auto kmitr = kmermap.find(kmer);
-        if (kmitr == kmermap.end())
-            continue;
-        KmerCountEntry& entry = kmitr->second;
-        READIDS& readids      = std::get<0>(entry);
-        POSITIONS& positions  = std::get<1>(entry);
-        int& count            = std::get<2>(entry);
-        if (count >= UPPER_KMER_FREQ)
-        {
-            kmermap.erase(kmer);
-            continue;
-        }
-        readids[count] = readid;
-        positions[count] = pos;
-        count++;
-    }
-    logstream.reset(new std::ostringstream());
-    *logstream << numkmerseeds;
-#if USE_BLOOM == 1
-    *logstream << " row k-mers filtered by Bloom filter, hash table, and upper k-mer bound threshold into " << kmermap.size() << " semi-reliable 'column' k-mers";
-    delete bm;
-#else
-    static_assert(USE_BLOOM == 0);
-    *logstream << " row k-mers filtered by hash table and upper k-mer bound threshold into " << kmermap.size() << " semi-reliable 'column' k-mers";
-#endif
-    LogAll(logstream->str(), commgrid);
-    auto itr = kmermap.begin();
-    while (itr != kmermap.end())
-    {
-        if (std::get<2>(itr->second) < LOWER_KMER_FREQ) itr = kmermap.erase(itr);
-        else itr++;
-    }
-    size_t numkmers = kmermap.size();
-    MPI_Allreduce(MPI_IN_PLACE, &numkmers, 1, MPI_SIZE_T, MPI_SUM, commgrid->GetWorld());
-    if (!myrank)
-    {
-        std::cout << "A total of " << numkmers << " reliable 'column' k-mers found\n" << std::endl;
-    }
-    MPI_Barrier(commgrid->GetWorld());
-}
+// void GetKmerCountMapValues(const std::vector<DnaSeq>& myreads, KmerCountMap& kmermap, Grid commgrid)
+// {
+    // std::unique_ptr<std::ostringstream> logstream;
+    // int myrank = commgrid->GetRank();
+    // int nprocs = commgrid->GetSize();
+    // size_t numreads = myreads.size();
+    // std::vector<std::vector<KmerSeed>> kmerseeds(nprocs);
+    // size_t readoffset = numreads;
+    // MPI_Exscan(&numreads, &readoffset, 1, MPI_SIZE_T, MPI_SUM, commgrid->GetWorld());
+    // if (!myrank) readoffset = 0;
+    // KmerParserHandler parser(kmerseeds, static_cast<ReadId>(readoffset));
+    // ForeachKmer(myreads, parser);
+    // std::vector<MPI_Count_type> sendcnt(nprocs), recvcnt(nprocs);
+    // std::vector<MPI_Displ_type> sdispls(nprocs), rdispls(nprocs);
+    // constexpr size_t seedbytes = TKmer::NBYTES + sizeof(ReadId) + sizeof(PosInRead);
+    // logstream.reset(new std::ostringstream());
+    // *logstream << std::setprecision(4) << "sending 'row' k-mers to each processor in this amount (megabytes): {";
+    // for (int i = 0; i < nprocs; ++i)
+    // {
+        // sendcnt[i] = kmerseeds[i].size() * seedbytes;
+        // *logstream << (static_cast<double>(sendcnt[i]) / (1024 * 1024)) << ",";
+    // }
+    // *logstream << "}";
+    // LogAll(logstream->str(), commgrid);
+    // MPI_ALLTOALL(sendcnt.data(), 1, MPI_COUNT_TYPE, recvcnt.data(), 1, MPI_COUNT_TYPE, commgrid->GetWorld());
+    // sdispls.front() = rdispls.front() = 0;
+    // std::partial_sum(sendcnt.begin(), sendcnt.end()-1, sdispls.begin()+1);
+    // std::partial_sum(recvcnt.begin(), recvcnt.end()-1, rdispls.begin()+1);
+    // size_t totsend = std::accumulate(sendcnt.begin(), sendcnt.end(), 0);
+    // size_t totrecv = std::accumulate(recvcnt.begin(), recvcnt.end(), 0);
+    // std::vector<uint8_t> sendbuf(totsend, 0);
+    // for (int i = 0; i < nprocs; ++i)
+    // {
+        // assert(kmerseeds[i].size() == (sendcnt[i] / seedbytes));
+        // uint8_t *addrs2fill = sendbuf.data() + sdispls[i];
+        // for (MPI_Count_type j = 0; j < kmerseeds[i].size(); ++j)
+        // {
+            // auto& seeditr = kmerseeds[i][j];
+            // TKmer kmer = std::get<0>(seeditr);
+            // ReadId readid = std::get<1>(seeditr);
+            // PosInRead pos = std::get<2>(seeditr);
+            // memcpy(addrs2fill, kmer.GetBytes(), TKmer::NBYTES);
+            // memcpy(addrs2fill + TKmer::NBYTES, &readid, sizeof(ReadId));
+            // memcpy(addrs2fill + TKmer::NBYTES + sizeof(ReadId), &pos, sizeof(PosInRead));
+            // addrs2fill += seedbytes;
+        // }
+        // kmerseeds[i].clear();
+    // }
+    // std::vector<uint8_t> recvbuf(totrecv, 0);
+    // MPI_ALLTOALLV(sendbuf.data(), sendcnt.data(), sdispls.data(), MPI_BYTE, recvbuf.data(), recvcnt.data(), rdispls.data(), MPI_BYTE, commgrid->GetWorld());
+    // size_t numkmerseeds = totrecv / seedbytes;
+    // logstream.reset(new std::ostringstream());
+    // *logstream << "received a total of " << numkmerseeds << " 'row' k-mers in second ALLTOALL exchange";
+    // LogAll(logstream->str(), commgrid);
+    // uint8_t *addrs2read = recvbuf.data();
+    // for (size_t i = 0; i < numkmerseeds; ++i)
+    // {
+        // TKmer kmer(addrs2read);
+// #if USE_BLOOM == 1
+        // if (!bm->Check(kmer.GetBytes(), TKmer::NBYTES))
+            // continue;
+// #else
+        // static_assert(USE_BLOOM == 0);
+// #endif
+        // ReadId readid = *((ReadId*)(addrs2read + TKmer::NBYTES));
+        // PosInRead pos = *((PosInRead*)(addrs2read + TKmer::NBYTES + sizeof(ReadId)));
+        // addrs2read += seedbytes;
+        // auto kmitr = kmermap.find(kmer);
+        // if (kmitr == kmermap.end())
+            // continue;
+        // KmerCountEntry& entry = kmitr->second;
+        // READIDS& readids      = std::get<0>(entry);
+        // POSITIONS& positions  = std::get<1>(entry);
+        // int& count            = std::get<2>(entry);
+        // if (count >= UPPER_KMER_FREQ)
+        // {
+            // kmermap.erase(kmer);
+            // continue;
+        // }
+        // readids[count] = readid;
+        // positions[count] = pos;
+        // count++;
+    // }
+    // logstream.reset(new std::ostringstream());
+    // *logstream << numkmerseeds;
+// #if USE_BLOOM == 1
+    // *logstream << " row k-mers filtered by Bloom filter, hash table, and upper k-mer bound threshold into " << kmermap.size() << " semi-reliable 'column' k-mers";
+    // delete bm;
+// #else
+    // static_assert(USE_BLOOM == 0);
+    // *logstream << " row k-mers filtered by hash table and upper k-mer bound threshold into " << kmermap.size() << " semi-reliable 'column' k-mers";
+// #endif
+    // LogAll(logstream->str(), commgrid);
+    // auto itr = kmermap.begin();
+    // while (itr != kmermap.end())
+    // {
+        // if (std::get<2>(itr->second) < LOWER_KMER_FREQ) itr = kmermap.erase(itr);
+        // else itr++;
+    // }
+    // size_t numkmers = kmermap.size();
+    // MPI_Allreduce(MPI_IN_PLACE, &numkmers, 1, MPI_SIZE_T, MPI_SUM, commgrid->GetWorld());
+    // if (!myrank)
+    // {
+        // std::cout << "A total of " << numkmers << " reliable 'column' k-mers found\n" << std::endl;
+    // }
+    // MPI_Barrier(commgrid->GetWorld());
+// }
 
 int GetKmerOwner(const TKmer& kmer, int nprocs)
 {

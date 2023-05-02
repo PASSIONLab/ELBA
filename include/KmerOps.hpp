@@ -4,6 +4,7 @@
 #include "common.h"
 #include "Kmer.hpp"
 #include "DnaSeq.hpp"
+#include "DnaBuffer.hpp"
 
 #ifndef MAX_ALLTOALL_MEM
 #define MAX_ALLTOALL_MEM (1024 * 1024 * 1024)
@@ -19,7 +20,7 @@ typedef std::tuple<TKmer, ReadId, PosInRead> KmerSeed;
 typedef std::tuple<READIDS, POSITIONS, int> KmerCountEntry;
 typedef std::unordered_map<TKmer, KmerCountEntry> KmerCountMap;
 
-KmerCountMap GetKmerCountMapKeys(const std::vector<DnaSeq>& myreads, Grid commgrid);
+KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, Grid commgrid);
 void GetKmerCountMapValues(const std::vector<DnaSeq>& myreads, KmerCountMap& kmermap, Grid commgrid);
 int GetKmerOwner(const TKmer& kmer, int nprocs);
 
@@ -96,24 +97,25 @@ struct KmerParserHandler
 };
 
 template <typename KmerHandler>
-void ForeachKmer(const std::vector<DnaSeq>& myreads, KmerHandler& handler)
+void ForeachKmer(const DnaBuffer& myreads, KmerHandler& handler)
 {
-    size_t i = 0;
+    size_t i;
     /*
      * Go through each local read.
      */
-    for (auto readitr = myreads.begin(); readitr != myreads.end(); ++readitr, ++i)
+    // for (auto readitr = myreads.begin(); readitr != myreads.end(); ++readitr, ++i)
+    for (i = 0; i < myreads.size(); ++i)
     {
         /*
          * If it is too small then continue to the next one.
          */
-        if (readitr->size() < KMER_SIZE)
+        if (myreads[i].size() < KMER_SIZE)
             continue;
 
         /*
          * Get all the representative k-mer seeds.
          */
-        std::vector<TKmer> repmers = TKmer::GetRepKmers(*readitr);
+        std::vector<TKmer> repmers = TKmer::GetRepKmers(myreads[i]);
 
         size_t j = 0;
 
@@ -129,7 +131,7 @@ void ForeachKmer(const std::vector<DnaSeq>& myreads, KmerHandler& handler)
 
 
 template <typename KmerHandler>
-void ForeachKmer(const std::vector<DnaSeq>& myreads, KmerHandler& handler, BatchState& state)
+void ForeachKmer(const DnaBuffer& myreads, KmerHandler& handler, BatchState& state)
 {
     for (; state.myreadid < static_cast<ReadId>(myreads.size()); state.myreadid++)
     {
