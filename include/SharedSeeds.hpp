@@ -11,18 +11,26 @@ class Seed
 public:
     Seed() : numshared(0) {}
     Seed(const Seed& rhs) : seeds(rhs.seeds), numshared(rhs.numshared) {}
-    Seed(PosInRead begQ, PosInRead begT) : numshared(1) { push(SeedPair(begQ, begT)); }
+    Seed(PosInRead begQ, PosInRead begT) : numshared(1)
+    {
+        std::get<0>(seeds[0]) = begQ;
+        std::get<1>(seeds[0]) = begT;
+    }
 
-    int getnumstored() const { return seeds.size(); }
+    int getnumstored() const { return std::min(MAX_SEEDS, numshared); }
     int getnumshared() const { return numshared; }
 
     void push(const SeedPair& seed)
     {
+        if (numshared < MAX_SEEDS)
+        {
+            seeds[numshared] = seed;
+        }
+
         numshared++;
-        seeds.push_back(seed);
     }
 
-    const SeedPair* getseeds() const { return seeds.data(); }
+    const SeedPair* getseeds() const { return &seeds[0]; }
 
     Seed& operator=(const Seed& rhs)
     {
@@ -34,7 +42,7 @@ public:
 
     Seed& operator+=(const Seed& rhs)
     {
-        push(rhs.seeds.back());
+        push(rhs.seeds[0]);
         return *this;
     }
 
@@ -50,7 +58,7 @@ public:
             int i;
             for (i = 0; i < o.getnumstored()-1; ++i)
                 os << "(" << std::get<0>(o.seeds[i]) << ", " << std::get<1>(o.seeds[i]) << "), ";
-            os << "(" << std::get<0>(o.seeds[i]) << ", " << std::get<1>(o.seeds[i]) << ")} :: numshared: " << o.numshared;
+            os << "(" << std::get<0>(o.seeds[i]) << ", " << std::get<1>(o.seeds[i]) << ")} :: numshared: " << o.getnumshared();
         }
         return os;
     }
@@ -85,7 +93,7 @@ public:
     };
 
 private:
-    std::vector<SeedPair> seeds;
+    SeedPair seeds[MAX_SEEDS];
     int numshared;
 };
 
