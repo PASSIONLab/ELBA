@@ -3,6 +3,7 @@
 
 #include "KmerOps.hpp"
 #include <iostream>
+#include <algorithm>
 
 using SeedPair = std::tuple<PosInRead, PosInRead>;
 
@@ -44,6 +45,20 @@ public:
     }
 
     friend std::ostream& operator<<(std::ostream& os, const Seed& o)
+    {
+        int seedstoprint = std::min(static_cast<int>(o.getnumstored()), 2);
+
+        for (int i = 0; i < seedstoprint; ++i)
+        {
+            os << std::get<0>(o.seeds[i]) << "," << std::get<1>(o.seeds[i]) << "\t";
+        }
+
+        os << o.getnumshared();
+
+        return os;
+    }
+
+    friend std::ostream& oldoperator(std::ostream& os, const Seed& o)
     {
         if (o.getnumstored() == 0)
         {

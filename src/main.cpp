@@ -138,7 +138,7 @@ int main(int argc, char **argv)
             std::cout << "Overlap matrix B has " << numreads << " rows (readids), " << numreads << " columns (readids), and " << numovlpseeds << " nonzeros (overlap seeds)\n" << std::endl;
         }
 
-        B.ParallelWriteMM(getmatfname("B.mtx").c_str(), false, Seed::IOHandlerBrief());
+        B.ParallelWriteMM(getmatfname("B.mtx").c_str(), false, Seed::IOHandler());
 
         dfd.wait();
 
