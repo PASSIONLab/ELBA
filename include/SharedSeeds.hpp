@@ -20,16 +20,6 @@ public:
     int getnumstored() const { return std::min(MAX_SEEDS, numshared); }
     int getnumshared() const { return numshared; }
 
-    void push(const SeedPair& seed)
-    {
-        if (numshared < MAX_SEEDS)
-        {
-            seeds[numshared] = seed;
-        }
-
-        numshared++;
-    }
-
     const SeedPair* getseeds() const { return &seeds[0]; }
 
     Seed& operator=(const Seed& rhs)
@@ -42,8 +32,15 @@ public:
 
     Seed& operator+=(const Seed& rhs)
     {
-        push(rhs.seeds[0]);
+        if (numshared < MAX_SEEDS)
+        {
+            seeds[numshared] = rhs.seeds[0];
+        }
+
+        numshared += rhs.numshared;
+
         return *this;
+
     }
 
     friend std::ostream& operator<<(std::ostream& os, const Seed& o)
@@ -91,6 +88,16 @@ public:
         template <typename c, typename t>
         void save(std::basic_ostream<c,t>& os, const Seed& o, uint64_t row, uint64_t col) { os << o; }
     };
+
+    struct IOHandlerBrief
+    {
+        template <typename c, typename t>
+        void save(std::basic_ostream<c,t>& os, const Seed& o, uint64_t row, uint64_t col)
+        {
+            os << o.getnumstored() << "\t" << o.getnumshared();
+        }
+    };
+
 
 private:
     SeedPair seeds[MAX_SEEDS];
