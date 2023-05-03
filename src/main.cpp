@@ -26,11 +26,13 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "DistributedFastaData.hpp"
 #include "Kmer.hpp"
 #include "KmerOps.hpp"
-#include "ReadOverlap.hpp"
-#include "KmerIntersect.hpp"
+#include "SharedSeeds.hpp"
+/* #include "ReadOverlap.hpp" */
+/* #include "KmerIntersect.hpp" */
 
 int returncode;
 std::string fasta_fname;
+std::string output_prefix = "elba";
 
 /*
  * MPI communicator info.
@@ -60,6 +62,13 @@ double elapsed, mintime, maxtime, avgtime;
 int parse_cli(int argc, char *argv[]);
 void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid);
 CT<PosInRead>::PSpParMat CreateKmerMatrix(const DnaBuffer&  myreads, const KmerCountMap& kmermap, Grid commgrid);
+
+std::string getmatfname(const std::string matname)
+{
+    std::ostringstream ss;
+    ss << output_prefix << "." << matname;
+    return ss.str();
+}
 
 int main(int argc, char **argv)
 {
@@ -113,14 +122,14 @@ int main(int argc, char **argv)
         }
         MPI_Barrier(comm);
 
-        A.ParallelWriteMM("A.mtx", false);
+        A.ParallelWriteMM(getmatfname("A.mtx").c_str(), false);
 
         auto AT = A;
         AT.Transpose();
 
-        CT<ReadOverlap>::PSpParMat B = Mult_AnXBn_DoubleBuff<KmerIntersect, ReadOverlap, CT<ReadOverlap>::PSpDCCols>(A, AT);
+        CT<Seed>::PSpParMat B = Mult_AnXBn_DoubleBuff<Seed::Semiring, Seed, CT<Seed>::PSpDCCols>(A, AT);
 
-        B.Prune([](const auto& item) { return item.count <= 1; });
+        /* B.Prune([](const auto& item) { return item.count <= 1; }); */
 
         size_t numovlpseeds = B.getnnz();
 
@@ -128,8 +137,8 @@ int main(int argc, char **argv)
         {
             std::cout << "Overlap matrix B has " << numreads << " rows (readids), " << numreads << " columns (readids), and " << numovlpseeds << " nonzeros (overlap seeds)\n" << std::endl;
         }
-        MPI_Barrier(comm);
-        B.ParallelWriteMM("B.mtx", false, OverlapHandler());
+
+        B.ParallelWriteMM(getmatfname("B.mtx").c_str(), false, Seed::IOHandler());
 
         dfd.wait();
 
@@ -139,15 +148,15 @@ int main(int argc, char **argv)
 /***********************************************************/
 
         elapsed += MPI_Wtime();
-        // MPI_Reduce(&elapsed, &maxtime, 1, MPI_DOUBLE, MPI_MAX, root, comm);
-        // MPI_Reduce(&elapsed, &avgtime, 1, MPI_DOUBLE, MPI_SUM, root, comm);
+        MPI_Reduce(&elapsed, &maxtime, 1, MPI_DOUBLE, MPI_MAX, root, comm);
+        MPI_Reduce(&elapsed, &avgtime, 1, MPI_DOUBLE, MPI_SUM, root, comm);
 
-        // if (myrank == root)
-        // {
-            // std::cout << "Total time (user secs): " << std::fixed << std::setprecision(3) << elapsed << "\n"
-                      // << "Total work (proc secs): " << std::fixed << std::setprecision(3) << avgtime << "\n"
-                      // << "Total cost (proc secs): " << std::fixed << std::setprecision(3) << (elapsed*nprocs) << std::endl;
-        // }
+        if (myrank == root)
+        {
+            std::cout << "Total time (user secs): " << std::fixed << std::setprecision(3) << elapsed << "\n"
+                      << "Total work (proc secs): " << std::fixed << std::setprecision(3) << avgtime << "\n"
+                      << "Total cost (proc secs): " << std::fixed << std::setprecision(3) << (elapsed*nprocs) << std::endl;
+        }
 
         MPI_Barrier(comm);
 
@@ -162,10 +171,11 @@ done: MPI_Finalize();
 void usage(char const *prg)
 {
     std::cerr << "Usage: " << prg << " [options] <reads.fa>\n"
-              << "Options: -x INT   x-drop alignment threshold [" <<  xdrop_cutoff << "]\n"
-              << "         -A INT   matching score ["             <<  mat          << "]\n"
-              << "         -B INT   mismatch penalty ["           << -mis          << "]\n"
-              << "         -G INT   gap penalty ["                << -gap          << "]\n"
+              << "Options: -x INT   x-drop alignment threshold [" <<  xdrop_cutoff               << "]\n"
+              << "         -A INT   matching score ["             <<  mat                        << "]\n"
+              << "         -B INT   mismatch penalty ["           << -mis                        << "]\n"
+              << "         -G INT   gap penalty ["                << -gap                        << "]\n"
+              << "         -o STR   output file name prefix"      <<  std::quoted(output_prefix) << "\n"
               << "         -h       help message"
               << std::endl;
 }
@@ -179,12 +189,13 @@ int parse_cli(int argc, char *argv[])
     {
         int c;
 
-        while ((c = getopt(argc, argv, "x:A:B:G:h")) >= 0)
+        while ((c = getopt(argc, argv, "x:A:B:G:o:h")) >= 0)
         {
             if      (c == 'A') params[0] =  atoi(optarg);
             else if (c == 'B') params[1] = -atoi(optarg);
             else if (c == 'G') params[2] = -atoi(optarg);
             else if (c == 'x') params[3] =  atoi(optarg);
+            else if (c == 'o') output_prefix = std::string(optarg);
             else if (c == 'h') show_help = 1;
         }
     }
@@ -212,34 +223,43 @@ int parse_cli(int argc, char *argv[])
     MPI_BCAST(&fasta_provided, 1, MPI_INT, root, comm);
     if (!fasta_provided) return -1;
 
-    int fnamelen;
+    int fnamelen, onamelen;
 
     if (myrank == root)
     {
         fasta_fname = argv[optind];
         fnamelen = fasta_fname.size();
+        onamelen = output_prefix.size();
 
         std::cout << "-DKMER_SIZE="            << KMER_SIZE            << "\n"
                   << "-DLOWER_KMER_FREQ="      << LOWER_KMER_FREQ      << "\n"
                   << "-DUPPER_KMER_FREQ="      << UPPER_KMER_FREQ      << "\n"
+                  << "-DMAX_SEEDS="            << MAX_SEEDS            << "\n"
                   << "-DMPI_HAS_LARGE_COUNTS=" << MPI_HAS_LARGE_COUNTS << "\n"
         #ifdef USE_BLOOM
                   << "-DUSE_BLOOM\n"
         #endif
                   << "\n"
-                  << "int mat = "          << mat          <<   ";\n"
-                  << "int mis = "          << mis          <<   ";\n"
-                  << "int gap = "          << gap          <<   ";\n"
-                  << "int xdrop_cutoff = " << xdrop_cutoff <<   ";\n"
-                  << "String fname = \""   << fasta_fname  << "\";\n"
+                  << "int mat = "              << mat                        << ";\n"
+                  << "int mis = "              << mis                        << ";\n"
+                  << "int gap = "              << gap                        << ";\n"
+                  << "int xdrop_cutoff = "     << xdrop_cutoff               << ";\n"
+                  << "String fname = "         << std::quoted(fasta_fname)   << ";\n"
+                  << "String output_prefix = " << std::quoted(output_prefix) << ";\n"
                   << std::endl;
     }
 
     MPI_BCAST(&fnamelen, 1, MPI_INT, root, comm);
+    MPI_BCAST(&onamelen, 1, MPI_INT, root, comm);
 
-    if (myrank != root) fasta_fname.assign(fnamelen, '\0');
+    if (myrank != root)
+    {
+        fasta_fname.assign(fnamelen, '\0');
+        output_prefix.assign(onamelen, '\0');
+    }
 
     MPI_BCAST(fasta_fname.data(), fnamelen, MPI_CHAR, root, comm);
+    MPI_BCAST(output_prefix.data(), onamelen, MPI_CHAR, root, comm);
 
     return 0;
 }

@@ -21,4 +21,9 @@ static_assert(0 < SMER_SIZE && SMER_SIZE <= KMER_SIZE);
 static_assert(0 < LOWER_KMER_FREQ && LOWER_KMER_FREQ <= UPPER_KMER_FREQ && UPPER_KMER_FREQ <= std::numeric_limits<uint16_t>::max());
 #endif
 
+#ifndef MAX_SEEDS
+#error "MAX_SEEDS must be defined"
+static_assert(2 <= MAX_SEEDS <= 32);
+#endif
+
 #endif
