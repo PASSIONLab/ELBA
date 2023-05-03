@@ -128,6 +128,6 @@ NOTICE. This Software was developed under funding from the U.S. Department of En
 # HiFi Dataset
 
 1 - [E. coli 29X](https://portal.nersc.gov/project/m1982/bella/ecoli_hifi_29x.fasta) - UPPERBOUND = 30, LOWERBOUND = 20;
-2 - [E. coli 100X](https://portal.nersc.gov/project/m1982/bella/ecoli100x.fa) - UPPERBOUND = 20, LOWERBOUND = 50;
-3 - [C. elegans 40X](https://portal.nersc.gov/project/m1982/bella/celegans_hifi_sim.40x.fa) - UPPERBOUND = 31, LOWERBOUND = 40;
+2 - [E. coli 100X](https://portal.nersc.gov/project/m1982/bella/ecoli100x.fa) - UPPERBOUND = 50, LOWERBOUND = 20;
+3 - [C. elegans 40X](https://portal.nersc.gov/project/m1982/bella/celegans_hifi_sim.40x.fa) - UPPERBOUND = 40, LOWERBOUND = 31;
 4 - [H. sapiens 10X](https://portal.nersc.gov/project/m1982/bella/human10x.fa) - UPPERBOUND = ?, LOWERBOUND = ?;
