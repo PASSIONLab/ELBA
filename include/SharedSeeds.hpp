@@ -6,48 +6,41 @@
 
 using SeedPair = std::tuple<PosInRead, PosInRead>;
 
-template <size_t MAXSEEDS>
-class SharedSeeds
+class Seed
 {
 public:
-    SharedSeeds() : seeds{}, numstored(0), numshared(0) {}
-    SharedSeeds(const SharedSeeds& rhs) : seeds(rhs.seeds), numstored(rhs.numstored), numshared(rhs.numshared) {}
-    SharedSeeds(PosInRead begQ, PosInRead begT) : seeds{}, numstored(1), numshared(1) { push(SeedPair(begQ, begT)); }
-    /* SharedSeeds(PosInRead begQ, PosInRead begT) : seeds{}, numstored(1), numshared(1) { std::get<0>(seeds[0])} */
+    Seed() : numshared(0) {}
+    Seed(const Seed& rhs) : seeds(rhs.seeds), numshared(rhs.numshared) {}
+    Seed(PosInRead begQ, PosInRead begT) : numshared(1) { push(SeedPair(begQ, begT)); }
 
-    int getnumstored() const { return numstored; }
+    int getnumstored() const { return seeds.size(); }
     int getnumshared() const { return numshared; }
 
     void push(const SeedPair& seed)
     {
         numshared++;
-
-        if (numstored < MAXSEEDS)
-        {
-            seeds[numstored++] = seed;
-        }
+        seeds.push_back(seed);
     }
 
     const SeedPair* getseeds() const { return seeds.data(); }
 
-    SharedSeeds& operator=(const SharedSeeds& rhs)
+    Seed& operator=(const Seed& rhs)
     {
-        SharedSeeds tmp(rhs);
+        Seed tmp(rhs);
         std::swap(seeds, tmp.seeds);
         numshared = tmp.numshared;
-        numstored = tmp.numstored;
         return *this;
     }
 
-    SharedSeeds& operator+=(const SharedSeeds& rhs)
+    Seed& operator+=(const Seed& rhs)
     {
         push(rhs.seeds.back());
         return *this;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const SharedSeeds& o)
+    friend std::ostream& operator<<(std::ostream& os, const Seed& o)
     {
-        if (o.numstored == 0)
+        if (o.getnumstored() == 0)
         {
             os << "stored: {}";
         }
@@ -55,7 +48,7 @@ public:
         {
             os << "stored: {";
             int i;
-            for (i = 0; i < o.numstored-1; ++i)
+            for (i = 0; i < o.getnumstored()-1; ++i)
                 os << "(" << std::get<0>(o.seeds[i]) << ", " << std::get<1>(o.seeds[i]) << "), ";
             os << "(" << std::get<0>(o.seeds[i]) << ", " << std::get<1>(o.seeds[i]) << ")} :: numshared: " << o.numshared;
         }
@@ -64,22 +57,22 @@ public:
 
     struct Semiring
     {
-        static SharedSeeds id() { return SharedSeeds(); }
+        static Seed id() { return Seed(); }
         static bool returnedSAID() { return false; }
 
-        static SharedSeeds add(const SharedSeeds& lhs, const SharedSeeds& rhs)
+        static Seed add(const Seed& lhs, const Seed& rhs)
         {
-            SharedSeeds result(lhs);
+            Seed result(lhs);
             result += rhs;
             return result;
         }
 
-        static SharedSeeds multiply(const PosInRead& lhs, const PosInRead& rhs)
+        static Seed multiply(const PosInRead& lhs, const PosInRead& rhs)
         {
-            return SharedSeeds(lhs, rhs);
+            return Seed(lhs, rhs);
         }
 
-        static void axpy(PosInRead a, const PosInRead& x, SharedSeeds& y)
+        static void axpy(PosInRead a, const PosInRead& x, Seed& y)
         {
             y = add(y, multiply(a, x));
         }
@@ -88,14 +81,12 @@ public:
     struct IOHandler
     {
         template <typename c, typename t>
-        void save(std::basic_ostream<c,t>& os, const SharedSeeds& o, uint64_t row, uint64_t col) { os << o; }
+        void save(std::basic_ostream<c,t>& os, const Seed& o, uint64_t row, uint64_t col) { os << o; }
     };
 
 private:
-    std::array<SeedPair, MAXSEEDS> seeds;
-    int numstored, numshared;
+    std::vector<SeedPair> seeds;
+    int numshared;
 };
-
-using Seed = SharedSeeds<2>;
 
 #endif
