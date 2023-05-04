@@ -7,12 +7,12 @@
 
 using SeedPair = std::tuple<PosInRead, PosInRead>;
 
-class Seed
+class SharedSeeds
 {
 public:
-    Seed() : numshared(0) {}
-    Seed(const Seed& rhs) : seeds(rhs.seeds), numshared(rhs.numshared) {}
-    Seed(PosInRead begQ, PosInRead begT) : numshared(1)
+    SharedSeeds() : numshared(0) {}
+    SharedSeeds(const SharedSeeds& rhs) : seeds(rhs.seeds), numshared(rhs.numshared) {}
+    SharedSeeds(PosInRead begQ, PosInRead begT) : numshared(1)
     {
         std::get<0>(seeds[0]) = begQ;
         std::get<1>(seeds[0]) = begT;
@@ -23,15 +23,15 @@ public:
 
     const SeedPair* getseeds() const { return &seeds[0]; }
 
-    Seed& operator=(const Seed& rhs)
+    SharedSeeds& operator=(const SharedSeeds& rhs)
     {
-        Seed tmp(rhs);
+        SharedSeeds tmp(rhs);
         std::swap(seeds, tmp.seeds);
         numshared = tmp.numshared;
         return *this;
     }
 
-    Seed& operator+=(const Seed& rhs)
+    SharedSeeds& operator+=(const SharedSeeds& rhs)
     {
         if (numshared < MAX_SEEDS)
         {
@@ -44,7 +44,7 @@ public:
 
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const Seed& o)
+    friend std::ostream& operator<<(std::ostream& os, const SharedSeeds& o)
     {
         int seedstoprint = std::min(static_cast<int>(o.getnumstored()), 2);
 
@@ -58,7 +58,7 @@ public:
         return os;
     }
 
-    friend std::ostream& oldoperator(std::ostream& os, const Seed& o)
+    friend std::ostream& oldoperator(std::ostream& os, const SharedSeeds& o)
     {
         if (o.getnumstored() == 0)
         {
@@ -77,22 +77,22 @@ public:
 
     struct Semiring
     {
-        static Seed id() { return Seed(); }
+        static SharedSeeds id() { return SharedSeeds(); }
         static bool returnedSAID() { return false; }
 
-        static Seed add(const Seed& lhs, const Seed& rhs)
+        static SharedSeeds add(const SharedSeeds& lhs, const SharedSeeds& rhs)
         {
-            Seed result(lhs);
+            SharedSeeds result(lhs);
             result += rhs;
             return result;
         }
 
-        static Seed multiply(const PosInRead& lhs, const PosInRead& rhs)
+        static SharedSeeds multiply(const PosInRead& lhs, const PosInRead& rhs)
         {
-            return Seed(lhs, rhs);
+            return SharedSeeds(lhs, rhs);
         }
 
-        static void axpy(PosInRead a, const PosInRead& x, Seed& y)
+        static void axpy(PosInRead a, const PosInRead& x, SharedSeeds& y)
         {
             y = add(y, multiply(a, x));
         }
@@ -101,13 +101,13 @@ public:
     struct IOHandler
     {
         template <typename c, typename t>
-        void save(std::basic_ostream<c,t>& os, const Seed& o, uint64_t row, uint64_t col) { os << o; }
+        void save(std::basic_ostream<c,t>& os, const SharedSeeds& o, uint64_t row, uint64_t col) { os << o; }
     };
 
     struct IOHandlerBrief
     {
         template <typename c, typename t>
-        void save(std::basic_ostream<c,t>& os, const Seed& o, uint64_t row, uint64_t col)
+        void save(std::basic_ostream<c,t>& os, const SharedSeeds& o, uint64_t row, uint64_t col)
         {
             os << o.getnumstored() << "\t" << o.getnumshared();
         }

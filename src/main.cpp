@@ -127,7 +127,7 @@ int main(int argc, char **argv)
         auto AT = A;
         AT.Transpose();
 
-        CT<Seed>::PSpParMat B = Mult_AnXBn_DoubleBuff<Seed::Semiring, Seed, CT<Seed>::PSpDCCols>(A, AT);
+        CT<SharedSeeds>::PSpParMat B = Mult_AnXBn_DoubleBuff<SharedSeeds::Semiring, SharedSeeds, CT<SharedSeeds>::PSpDCCols>(A, AT);
 
         /* B.Prune([](const auto& item) { return item.count <= 1; }); */
 
@@ -138,7 +138,7 @@ int main(int argc, char **argv)
             std::cout << "Overlap matrix B has " << numreads << " rows (readids), " << numreads << " columns (readids), and " << numovlpseeds << " nonzeros (overlap seeds)\n" << std::endl;
         }
 
-        B.ParallelWriteMM(getmatfname("B.mtx").c_str(), false, Seed::IOHandler());
+        B.ParallelWriteMM(getmatfname("B.mtx").c_str(), false, SharedSeeds::IOHandler());
 
         dfd.wait();
 
