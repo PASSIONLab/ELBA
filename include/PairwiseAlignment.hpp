@@ -5,41 +5,8 @@
 #include "DnaSeq.hpp"
 #include "DistributedFastaData.hpp"
 #include "SharedSeeds.hpp"
+#include "Overlap.hpp"
 #include "Logger.hpp"
-
-// void RunAlignments(DistributedFastaData& dfd, std::vector<CT<SharedSeeds>::ref_tuples>& alignin, std::vector<CT<Overlap>::ref_tuples>& alignout, int mat, int mis, int gap, int dropoff)
-// {
-    // auto rowbuf = dfd.getrowbuf();
-    // auto colbuf = dfd.getcolbuf();
-
-    // alignout.reserve(alignin.size());
-
-    // auto commgrid = dfd.getindex()->getcommgrid();
-    // Logger logger(commgrid);
-
-    // for (auto itr = alignin.begin(); itr != alignin.end(); ++itr)
-    // {
-        // uint64_t localrow = std::get<0>(*itr);
-        // uint64_t localcol = std::get<1>(*itr);
-        // SharedSeeds *sseed = std::get<2>(*itr);
-
-        // const DnaSeq& seqQ = (*rowbuf)[localrow];
-        // const DnaSeq& seqT = (*colbuf)[localcol];
-
-        // auto seedpairs = sseed->getseeds();
-        // int numseeds = sseed->getnumstored();
-
-        // for (int i = 0; i < numseeds; ++i)
-        // {
-            // alignout.emplace_back(seqQ, seqT, seedpairs[i]);
-        // }
-    // }
-
-    // for (auto itr = alignout.begin(); itr != alignout.end(); ++itr)
-    // {
-        // itr->XDropSeedExtension(mat, mis, gap, dropoff);
-    // }
-// }
 
 void PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, int dropoff)
 {
@@ -48,6 +15,8 @@ void PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bm
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
     MPI_Comm comm = commgrid->GetWorld();
+    auto rowbuf = dfd.getrowbuf();
+    auto colbuf = dfd.getcolbuf();
 
     size_t localnnzs = Bmat.seqptr()->getnnz();
     std::vector<CT<SharedSeeds>::ref_tuples> alignseeds;
@@ -77,9 +46,22 @@ void PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bm
     logger() << "performing " << nalignments << "/" << totalignments << " alignments";
     logger.Flush("Alignment Counts:");
 
-    // std::vector<CT<Overlap>::ref_tuples> overlaps;
+    std::vector<Overlap> overlaps;
 
-    // RunAlignments(dfd, alignments, overlaps, mat, mis, gap, dropoff);
+    for (size_t i = 0; i < nalignments; ++i)
+    {
+        uint64_t localrow = std::get<0>(alignseeds[i]);
+        uint64_t localcol = std::get<1>(alignseeds[i]);
+
+        const DnaSeq& seqQ = (*rowbuf)[localrow];
+        const DnaSeq& seqT = (*colbuf)[localcol];
+
+        SeedPair len(static_cast<PosInRead>(seqQ.size()), static_cast<PosInRead>(seqT.size()));
+
+        overlaps.emplace_back(len, std::get<2>(alignseeds[i])->getseeds()[0]);
+
+        overlaps.back().extend_overlap(seqQ, seqT, mat, mis, gap, dropoff);
+    }
 }
 
 #endif
