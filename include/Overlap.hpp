@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <iostream>
 #include <cassert>
 #include "SharedSeeds.hpp"
 
@@ -30,6 +31,23 @@ struct Overlap
     bool rc, passed, containedQ, containedT;
 
     void SetPathInf() { std::fill_n(suffix_paths, 4, std::numeric_limits<int>::max()); }
+
+    friend std::ostream& operator<<(std::ostream& os, const Overlap& o)
+    {
+        char rcflag = o.rc? '-' : '+';
+        os << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << rcflag << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score;
+        return os;
+    }
+
+    struct IOHandler
+    {
+        template <typename c, typename t>
+        void save(std::basic_ostream<c,t>& os, const Overlap& o, uint64_t row, uint64_t col) { os << o; }
+    };
+
+    Overlap& operator+=(const Overlap& lhs) { return *this; }
+    friend Overlap operator+(const Overlap& lhs, const Overlap& rhs) { return lhs; }
+    friend bool operator<(const Overlap& lhs, const Overlap& rhs) { return true; }
 };
 
 #endif
