@@ -12,14 +12,13 @@
 
 using Record = typename FastaIndex::Record;
 
-Record FastaIndex::get_faidx_record(const std::string& line)
+Record FastaIndex::get_faidx_record(const std::string& line, std::string& name)
 {
     /*
      * Read a line from a FASTA index file into a record object.
      */
-    std::string dummy;
     Record record;
-    std::istringstream(line) >> dummy >> record.len >> record.pos >> record.bases;
+    std::istringstream(line) >> name >> record.len >> record.pos >> record.bases;
     return record;
 }
 
@@ -85,9 +84,15 @@ FastaIndex::FastaIndex(const std::string& fasta_fname, Grid commgrid) : commgrid
      */
     if (myrank == 0)
     {
-        std::string line;
+        std::string line, name;
         std::ifstream filestream(get_faidx_fname());
-        while (std::getline(filestream, line)) rootrecords.push_back(get_faidx_record(line));
+
+        while (std::getline(filestream, line))
+        {
+            rootrecords.push_back(get_faidx_record(line, name));
+            rootnames.push_back(name);
+        }
+
         filestream.close();
 
         /*
@@ -227,11 +232,65 @@ std::shared_ptr<DnaBuffer> FastaIndex::getmydna() const
 
     elapsed += MPI_Wtime();
     double mbspersecond = (totbases / 1048576.0) / elapsed;
-    // Logger logger(commgrid);
-    // logger() << std::fixed << std::setprecision(2) << mbspersecond << " Mbs/second";
-    // logger.Flush("FASTA parsing rates (DnaBuffer):");
+    Logger logger(commgrid);
+    logger() << std::fixed << std::setprecision(2) << mbspersecond << " Mbs/second";
+    logger.Flush("FASTA parsing rates (DnaBuffer):");
 
     return dnabuf;
+}
+
+std::vector<std::string> FastaIndex::bcastnames()
+{
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    MPI_Comm comm = commgrid->GetWorld();
+
+    MPI_Count_type numchars;
+    MPI_Count_type numreads = gettotrecords();
+    std::vector<char> flatbuf;
+    std::vector<size_t> namelens(numreads);
+
+    if (myrank == 0)
+    {
+        numchars = std::accumulate(rootnames.begin(), rootnames.end(), static_cast<MPI_Count_type>(0), [](MPI_Count_type sum, const std::string& s) { return sum + s.size(); });
+    }
+
+    MPI_BCAST(&numchars, 1, MPI_COUNT_TYPE, 0, comm);
+
+    flatbuf.reserve(numchars);
+
+    if (myrank == 0)
+    {
+        auto itr = rootnames.begin();
+
+        for (size_t i = 0; i < static_cast<size_t>(numreads); ++i)
+        {
+            flatbuf.insert(flatbuf.end(), itr->begin(), itr->end());
+            namelens[i] = itr->size();
+            ++itr;
+        }
+    }
+
+    MPI_BCAST(namelens.data(), numreads, MPI_COUNT_TYPE, 0, comm);
+    MPI_BCAST(flatbuf.data(), numchars, MPI_CHAR, 0, comm);
+
+    if (myrank == 0)
+    {
+        return rootnames;
+    }
+
+    std::vector<std::string> recvnames;
+    recvnames.reserve(numreads);
+
+    auto itr = flatbuf.begin();
+
+    for (size_t i = 0; i < static_cast<size_t>(numreads); ++i)
+    {
+        recvnames.emplace_back(itr, itr + namelens[i]);
+        itr += namelens[i];
+    }
+
+    return recvnames;
 }
 
 #include <iomanip>

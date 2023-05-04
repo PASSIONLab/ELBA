@@ -98,6 +98,19 @@ int main(int argc, char **argv)
 /***********************************************************/
 
         std::shared_ptr<FastaIndex> index(new FastaIndex(fasta_fname, commgrid));
+
+        std::vector<std::string> names = index->bcastnames();
+
+        if (myrank == nprocs-1)
+        {
+            for (auto itr = names.begin(); itr != names.end(); ++itr)
+            {
+                std::cout << *itr << std::endl;
+            }
+        }
+
+        MPI_Barrier(comm);
+
         std::shared_ptr<DnaBuffer> mydna = index->getmydna();
         DistributedFastaData dfd(index);
         dfd.collect_sequences(mydna);
@@ -302,6 +315,32 @@ void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid)
 
     MPI_Barrier(commgrid->GetWorld());
 }
+
+// void ParallelWritePAF(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd)
+// {
+    // auto index = dfd.getindex();
+    // auto commgrid = index->getcommgrid();
+    // int myrank = commgrid->GetRank();
+    // int nprocs = commgrid->GetSize();
+    // MPI_Comm comm = commgrid->GetWorld();
+
+    // std::vector<CT<Overlap>::ref_tuples> localtuples;
+    // localtuples.reserve(R.seqptr()->getnnz());
+    // auto dcsc = R.seqptr()->GetDCSC();
+
+    // index.allgathernames();
+
+    // for (uint64_t i = 0; i < dcsc->nzc; ++i)
+        // for (uint64_t j = dcsc->cp[i]; j < dcsc->cp[i+1]; ++j)
+        // {
+            // uint64_t localrow = dcsc->ir[j];
+            // uint64_t localcol = dcsc->jc[i];
+            // uint64_t globalrow = localrow + rowoffset;
+            // uint64_t globalcol = localcol + coloffset;
+
+        // }
+
+// }
 
 CT<PosInRead>::PSpParMat CreateKmerMatrix(const DnaBuffer& myreads, const KmerCountMap& kmermap, Grid commgrid)
 {

@@ -31,7 +31,9 @@ public:
     void log(std::shared_ptr<DnaBuffer> buffer) const;
     void logall(std::shared_ptr<DnaBuffer> buffer) const;
 
-    static Record get_faidx_record(const std::string& line);
+    static Record get_faidx_record(const std::string& line, std::string& name);
+
+    std::vector<std::string> bcastnames();
 
 private:
     Grid commgrid;
@@ -40,6 +42,8 @@ private:
     std::vector<MPI_Count_type> readcounts; /* number of reads assigned to each processor. Each processor gets a copy. |readcounts| == nprocs */
     std::vector<MPI_Displ_type> readdispls; /* displacement counts for reads across all processors. Each processor gets a copy. |readdispls| == nprocs+1 */
     std::string fasta_fname; /* FASTA file name */
+
+    std::vector<std::string> rootnames;
 
     void getpartition(std::vector<MPI_Count_type>& sendcounts);
 };
