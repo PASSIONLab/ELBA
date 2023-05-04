@@ -10,7 +10,8 @@
 #define MAX_ALLTOALL_MEM (128 * 1024 * 1024)
 #endif
 
-typedef uint16_t PosInRead;
+// typedef uint16_t PosInRead;
+typedef uint32_t PosInRead;
 typedef uint64_t ReadId;
 
 typedef std::array<PosInRead, UPPER_KMER_FREQ> POSITIONS;
