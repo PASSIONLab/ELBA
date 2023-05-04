@@ -7,35 +7,39 @@
 #include "SharedSeeds.hpp"
 #include "Logger.hpp"
 
-void RunAlignments(DistributedFastaData& dfd, std::vector<CT<SharedSeeds>::ref_tuples>& localtuples, int mat, int mis, int gap, int dropoff)
-{
-    auto rowbuf = dfd.getrowbuf();
-    auto colbuf = dfd.getcolbuf();
+// void RunAlignments(DistributedFastaData& dfd, std::vector<CT<SharedSeeds>::ref_tuples>& alignin, std::vector<CT<Overlap>::ref_tuples>& alignout, int mat, int mis, int gap, int dropoff)
+// {
+    // auto rowbuf = dfd.getrowbuf();
+    // auto colbuf = dfd.getcolbuf();
 
-    auto commgrid = dfd.getindex()->getcommgrid();
-    Logger logger(commgrid);
+    // alignout.reserve(alignin.size());
 
-    logger() << "\n";
-    for (auto itr = localtuples.begin(); itr != localtuples.end(); ++itr)
-    {
-        uint64_t localrow = std::get<0>(*itr);
-        uint64_t localcol = std::get<1>(*itr);
-        SharedSeeds *sseed = std::get<2>(*itr);
+    // auto commgrid = dfd.getindex()->getcommgrid();
+    // Logger logger(commgrid);
 
-        int rowseqlen = (*rowbuf)[localrow].size();
-        int colseqlen = (*colbuf)[localcol].size();
+    // for (auto itr = alignin.begin(); itr != alignin.end(); ++itr)
+    // {
+        // uint64_t localrow = std::get<0>(*itr);
+        // uint64_t localcol = std::get<1>(*itr);
+        // SharedSeeds *sseed = std::get<2>(*itr);
 
-        auto seedpairs = sseed->getseeds();
-        int numseeds = sseed->getnumstored();
+        // const DnaSeq& seqQ = (*rowbuf)[localrow];
+        // const DnaSeq& seqT = (*colbuf)[localcol];
 
-        for (int i = 0; i < numseeds; ++i)
-        {
-            const SeedPair& p = seedpairs[i];
-            logger() << localrow << "\t" << localcol << "\t" << std::get<0>(p) << "\t" << std::get<1>(p) << "\t" << rowseqlen << "\t" << colseqlen << "\n";
-        }
-    }
-    logger.Flush("Alignments to perform:");
-}
+        // auto seedpairs = sseed->getseeds();
+        // int numseeds = sseed->getnumstored();
+
+        // for (int i = 0; i < numseeds; ++i)
+        // {
+            // alignout.emplace_back(seqQ, seqT, seedpairs[i]);
+        // }
+    // }
+
+    // for (auto itr = alignout.begin(); itr != alignout.end(); ++itr)
+    // {
+        // itr->XDropSeedExtension(mat, mis, gap, dropoff);
+    // }
+// }
 
 void PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, int dropoff)
 {
@@ -46,40 +50,36 @@ void PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bm
     MPI_Comm comm = commgrid->GetWorld();
 
     size_t localnnzs = Bmat.seqptr()->getnnz();
-    std::vector<CT<SharedSeeds>::ref_tuples> localtuples, alignments;
-    localtuples.reserve(localnnzs);
+    std::vector<CT<SharedSeeds>::ref_tuples> alignseeds;
+    alignseeds.reserve(localnnzs);
     auto dcsc = Bmat.seqptr()->GetDCSC();
 
     for (uint64_t i = 0; i < dcsc->nzc; ++i)
         for (uint64_t j = dcsc->cp[i]; j < dcsc->cp[i+1]; ++j)
-            localtuples.emplace_back(dcsc->ir[j], dcsc->jc[i], &dcsc->numx[j]);
-
-    size_t nalignments = 0;
-
-    for (size_t i = 0; i < localnnzs; ++i)
-    {
-        uint64_t localrow = std::get<0>(localtuples[i]);
-        uint64_t localcol = std::get<1>(localtuples[i]);
-        SharedSeeds *sseed = std::get<2>(localtuples[i]);
-
-        uint64_t globalrow = localrow + dfd.getrowstartid();
-        uint64_t globalcol = localcol + dfd.getcolstartid();
-
-        if ((localrow < localcol) || (localrow <= localcol && globalrow < globalcol))
         {
-            nalignments++;
-            alignments.emplace_back(localrow, localcol, sseed);
-        }
-    }
+            uint64_t localrow = dcsc->ir[j];
+            uint64_t localcol = dcsc->jc[i];
+            uint64_t globalrow = localrow + dfd.getrowstartid();
+            uint64_t globalcol = localcol + dfd.getcolstartid();
 
+            if ((localrow < localcol) || (localrow <= localcol && globalrow < globalcol))
+            {
+                alignseeds.emplace_back(localrow, localcol, &(dcsc->numx[j]));
+            }
+        }
+
+    size_t nalignments = alignseeds.size();
     size_t totalignments;
+
     MPI_ALLREDUCE(&nalignments, &totalignments, 1, MPI_SIZE_T, MPI_SUM, comm);
 
     Logger logger(commgrid);
     logger() << "performing " << nalignments << "/" << totalignments << " alignments";
     logger.Flush("Alignment Counts:");
 
-    RunAlignments(dfd, alignments, mat, mis, gap, dropoff);
+    // std::vector<CT<Overlap>::ref_tuples> overlaps;
+
+    // RunAlignments(dfd, alignments, overlaps, mat, mis, gap, dropoff);
 }
 
 #endif
