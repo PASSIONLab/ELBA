@@ -64,6 +64,7 @@ struct CT
     typedef SpDCCols<uint64_t, NT> PSpDCCols;
     typedef SpParMat<uint64_t, NT, PSpDCCols> PSpParMat;
     typedef FullyDistVec<uint64_t, NT> PDistVec;
+    typedef std::tuple<uint64_t, uint64_t, NT*> ref_tuples;
 };
 
 #ifndef USE_BLOOM

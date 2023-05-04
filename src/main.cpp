@@ -27,6 +27,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "Kmer.hpp"
 #include "KmerOps.hpp"
 #include "SharedSeeds.hpp"
+#include "PairwiseAlignment.hpp"
 /* #include "ReadOverlap.hpp" */
 /* #include "KmerIntersect.hpp" */
 
@@ -142,6 +143,7 @@ int main(int argc, char **argv)
 
         dfd.wait();
 
+        PairwiseAlignment(dfd, B, mat, mis, gap, xdrop_cutoff);
 
 /***********************************************************/
 /************************* END *****************************/
