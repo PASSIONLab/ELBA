@@ -50,7 +50,7 @@ public:
 
         for (int i = 0; i < seedstoprint; ++i)
         {
-            os << std::get<0>(o.seeds[i]) << "," << std::get<1>(o.seeds[i]) << "\t";
+            os << std::get<0>(o.seeds[i]) << "\t" << std::get<1>(o.seeds[i]) << "\t";
         }
 
         os << o.getnumshared();
