@@ -49,7 +49,6 @@ int _extend_seed_one_direction(const DnaSeq& seqQ, const DnaSeq& seqT, bool extl
     int lenT = seqT.size();
 
     const DnaSeq seqTr(seqT);
-    // seqan::Dna5StringReverseComplement seqTr(seqT);
 
     int lenQ_ext = extleft? xseed.begQ : lenQ - xseed.endQ;
     int lenT_ext = extleft? xseed.begT : lenT - xseed.endT;
@@ -118,7 +117,6 @@ int _extend_seed_one_direction(const DnaSeq& seqQ, const DnaSeq& seqT, bool extl
 
             int temp = std::max(ad2[i2-1], ad2[i2]) + gap;
             int temp2 = ad1[i1-1] + ((seqQ[posQ] == (xseed.rc? seqT.revcomp_at(posT) : seqT.regular_at(posT)))? mat : mis);
-            // int temp2 = ad1[i1-1] + ((seqQ[posQ] == (xseed.rc? seqTr[posT] : seqT[posT]))? mat : mis);
             temp = std::max(temp, temp2);
 
             if (temp < best - dropoff)
@@ -237,8 +235,6 @@ int xdrop_aligner(const DnaSeq& seqQ, const DnaSeq& seqT, int begQ, int begT, in
 
     int lenQ = seqQ.size();
     int lenT = seqT.size();
-
-    // std::cout << lenQ << "\t" << lenT << "\t" << begQ << "\t" << begQ+KMER_SIZE << "\t" << begT << "\t" << begT+KMER_SIZE << std::endl;
 
     if (begQ < 0 || begQ + KMER_SIZE > lenQ)
         return -1;
