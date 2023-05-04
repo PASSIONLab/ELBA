@@ -61,11 +61,19 @@ double elapsed, mintime, maxtime, avgtime;
 int parse_cli(int argc, char *argv[]);
 void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid);
 CT<PosInRead>::PSpParMat CreateKmerMatrix(const DnaBuffer&  myreads, const KmerCountMap& kmermap, Grid commgrid);
+void ParallelWritePAF(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname);
 
 std::string getmatfname(const std::string matname)
 {
     std::ostringstream ss;
     ss << output_prefix << "." << matname;
+    return ss.str();
+}
+
+std::string getpafname()
+{
+    std::ostringstream ss;
+    ss << output_prefix << ".paf";
     return ss.str();
 }
 
@@ -98,19 +106,6 @@ int main(int argc, char **argv)
 /***********************************************************/
 
         std::shared_ptr<FastaIndex> index(new FastaIndex(fasta_fname, commgrid));
-
-        std::vector<std::string> names = index->bcastnames();
-
-        if (myrank == nprocs-1)
-        {
-            for (auto itr = names.begin(); itr != names.end(); ++itr)
-            {
-                std::cout << *itr << std::endl;
-            }
-        }
-
-        MPI_Barrier(comm);
-
         std::shared_ptr<DnaBuffer> mydna = index->getmydna();
         DistributedFastaData dfd(index);
         dfd.collect_sequences(mydna);
@@ -158,6 +153,8 @@ int main(int argc, char **argv)
         CT<Overlap>::PSpParMat R = PairwiseAlignment(dfd, B, mat, mis, gap, xdrop_cutoff);
 
         R.ParallelWriteMM(getmatfname("R.mtx").c_str(), true, Overlap::IOHandler());
+
+        ParallelWritePAF(R, dfd, getpafname().c_str());
 
 /***********************************************************/
 /************************* END *****************************/
@@ -316,31 +313,44 @@ void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid)
     MPI_Barrier(commgrid->GetWorld());
 }
 
-// void ParallelWritePAF(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd)
-// {
-    // auto index = dfd.getindex();
-    // auto commgrid = index->getcommgrid();
-    // int myrank = commgrid->GetRank();
-    // int nprocs = commgrid->GetSize();
-    // MPI_Comm comm = commgrid->GetWorld();
+void ParallelWritePAF(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname)
+{
+    auto index = dfd.getindex();
+    auto commgrid = index->getcommgrid();
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    MPI_Comm comm = commgrid->GetWorld();
 
-    // std::vector<CT<Overlap>::ref_tuples> localtuples;
-    // localtuples.reserve(R.seqptr()->getnnz());
-    // auto dcsc = R.seqptr()->GetDCSC();
+    std::vector<std::string> names = index->bcastnames();
 
-    // index.allgathernames();
+    auto dcsc = R.seqptr()->GetDCSC();
 
-    // for (uint64_t i = 0; i < dcsc->nzc; ++i)
-        // for (uint64_t j = dcsc->cp[i]; j < dcsc->cp[i+1]; ++j)
-        // {
-            // uint64_t localrow = dcsc->ir[j];
-            // uint64_t localcol = dcsc->jc[i];
-            // uint64_t globalrow = localrow + rowoffset;
-            // uint64_t globalcol = localcol + coloffset;
+    std::ostringstream ss;
 
-        // }
+    for (uint64_t i = 0; i < dcsc->nzc; ++i)
+        for (uint64_t j = dcsc->cp[i]; j < dcsc->cp[i+1]; ++j)
+        {
+            uint64_t localrow = dcsc->ir[j];
+            uint64_t localcol = dcsc->jc[i];
+            uint64_t globalrow = localrow + dfd.getrowstartid();
+            uint64_t globalcol = localcol + dfd.getcolstartid();
 
-// }
+            const Overlap& o = dcsc->numx[j];
+
+            int maplen = std::max(std::get<0>(o.end) - std::get<0>(o.beg), std::get<1>(o.end) - std::get<1>(o.end));
+
+            ss << names[globalrow] << "\t" << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << "+-"[static_cast<int>(o.rc)] << "\t"
+               << names[globalcol] << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score << "\t" << maplen << "\n";
+        }
+
+    std::string pafcontents = ss.str();
+
+    MPI_Count count = pafcontents.size();
+    MPI_File fh;
+    MPI_File_open(comm, pafname, MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+    MPI_File_write_ordered(fh, pafcontents.c_str(), count, MPI_CHAR, MPI_STATUS_IGNORE);
+    MPI_File_close(&fh);
+}
 
 CT<PosInRead>::PSpParMat CreateKmerMatrix(const DnaBuffer& myreads, const KmerCountMap& kmermap, Grid commgrid)
 {
