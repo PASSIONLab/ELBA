@@ -28,8 +28,6 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "KmerOps.hpp"
 #include "SharedSeeds.hpp"
 #include "PairwiseAlignment.hpp"
-/* #include "ReadOverlap.hpp" */
-/* #include "KmerIntersect.hpp" */
 
 int returncode;
 std::string fasta_fname;
@@ -120,7 +118,7 @@ int main(int argc, char **argv)
         }
         MPI_Barrier(comm);
 
-        A.ParallelWriteMM(getmatfname("A.mtx").c_str(), false);
+        A.ParallelWriteMM(getmatfname("A.mtx").c_str(), true);
 
         auto AT = A;
         AT.Transpose();
@@ -139,11 +137,14 @@ int main(int argc, char **argv)
             std::cout << "Overlap matrix B has " << numreads << " rows (readids), " << numreads << " columns (readids), and " << numsharedseeds_after << " nonzeros (overlap seeds)\n" << std::endl;
         }
 
-        B.ParallelWriteMM(getmatfname("B.mtx").c_str(), false, SharedSeeds::IOHandler());
+        B.ParallelWriteMM(getmatfname("B.mtx").c_str(), true, SharedSeeds::IOHandler());
 
         dfd.wait();
 
-        PairwiseAlignment(dfd, B, mat, mis, gap, xdrop_cutoff);
+
+        CT<Overlap>::PSpParMat R = PairwiseAlignment(dfd, B, mat, mis, gap, xdrop_cutoff);
+
+        R.ParallelWriteMM(getmatfname("R.mtx").c_str(), true, Overlap::IOHandler());
 
 /***********************************************************/
 /************************* END *****************************/

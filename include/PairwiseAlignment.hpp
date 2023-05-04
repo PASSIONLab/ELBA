@@ -4,7 +4,8 @@
 #include "common.h"
 #include "DistributedFastaData.hpp"
 #include "SharedSeeds.hpp"
+#include "Overlap.hpp"
 
-void PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, int dropoff);
+CT<Overlap>::PSpParMat PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, int dropoff);
 
 #endif

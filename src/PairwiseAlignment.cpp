@@ -1,9 +1,8 @@
 #include "PairwiseAlignment.hpp"
 #include "DnaSeq.hpp"
-#include "Overlap.hpp"
 #include "Logger.hpp"
 
-void PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, int dropoff)
+CT<Overlap>::PSpParMat PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, int dropoff)
 {
     auto index = dfd.getindex();
     auto commgrid = index->getcommgrid();
@@ -72,7 +71,5 @@ void PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bm
 
     uint64_t numreads = index->gettotrecords();
 
-    CT<Overlap>::PSpParMat Rmat(numreads, numreads, drows, dcols, dvals, false);
-
-    Rmat.ParallelWriteMM("R.mtx", true, Overlap::IOHandler());
+    return CT<Overlap>::PSpParMat(numreads, numreads, drows, dcols, dvals, false);
 }
