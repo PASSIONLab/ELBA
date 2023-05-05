@@ -5,6 +5,7 @@
 #include "Kmer.hpp"
 #include "DnaSeq.hpp"
 #include "DnaBuffer.hpp"
+#include "HyperLogLog.hpp"
 
 #ifndef MAX_ALLTOALL_MEM
 #define MAX_ALLTOALL_MEM (128 * 1024 * 1024)
@@ -21,20 +22,23 @@ typedef std::tuple<TKmer, ReadId, PosInRead> KmerSeed;
 typedef std::tuple<READIDS, POSITIONS, int> KmerCountEntry;
 typedef std::unordered_map<TKmer, KmerCountEntry> KmerCountMap;
 
-KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, Grid commgrid);
-void GetKmerCountMapValues(const DnaBuffer& myreads, KmerCountMap& kmermap, Grid commgrid);
+std::unique_ptr<CT<PosInRead>::PSpParMat>
+create_kmer_matrix(const DnaBuffer& myreads, const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
+
+KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> commgrid);
+void GetKmerCountMapValues(const DnaBuffer& myreads, KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
 int GetKmerOwner(const TKmer& kmer, int nprocs);
 
 struct BatchState
 {
-    Grid commgrid;
+    std::shared_ptr<CommGrid> commgrid;
     size_t mynumreads;
     size_t memthreshold;
     size_t mykmerssofar;
     size_t mymaxsending;
     ReadId myreadid;
 
-    BatchState(size_t mynumreads, Grid commgrid) : commgrid(commgrid), mynumreads(mynumreads), memthreshold((MAX_ALLTOALL_MEM / commgrid->GetSize()) << 1), mykmerssofar(0), mymaxsending(0), myreadid(0) {}
+    BatchState(size_t mynumreads, std::shared_ptr<CommGrid> commgrid) : commgrid(commgrid), mynumreads(mynumreads), memthreshold((MAX_ALLTOALL_MEM / commgrid->GetSize()) << 1), mykmerssofar(0), mymaxsending(0), myreadid(0) {}
 
     bool ReachedThreshold(const size_t len)
     {

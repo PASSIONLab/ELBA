@@ -9,9 +9,9 @@ class FastaIndex
 public:
     typedef struct { size_t len, pos, bases; } Record;
 
-    FastaIndex(const std::string& fasta_fname, Grid commgrid);
+    FastaIndex(const std::string& fasta_fname, std::shared_ptr<CommGrid> commgrid);
 
-    Grid getcommgrid() const { return commgrid; }
+    std::shared_ptr<CommGrid> getcommgrid() const { return commgrid; }
     std::string get_fasta_fname() const { return fasta_fname; }
     std::string get_faidx_fname() const { return fasta_fname + ".fai"; }
 
@@ -36,7 +36,7 @@ public:
     std::vector<std::string> bcastnames();
 
 private:
-    Grid commgrid;
+    std::shared_ptr<CommGrid> commgrid;
     std::vector<Record> myrecords; /* records for the reads local processor is responsible for */
     std::vector<Record> rootrecords; /* records for all the reads across all processors (parsed by root rank in constructor) */
     std::vector<MPI_Count_type> readcounts; /* number of reads assigned to each processor. Each processor gets a copy. |readcounts| == nprocs */

@@ -4,12 +4,16 @@
 #include "DnaSeq.hpp"
 #include <memory>
 #include <numeric>
+#include <vector>
+#include <cstdint>
+#include <cstddef>
+#include <string>
 
 class DnaBuffer
 {
 public:
     DnaBuffer(size_t bufsize) : bufhead(0), bufsize(bufsize), buf(new uint8_t[bufsize]) {}
-    DnaBuffer(size_t bufsize, size_t numreads, uint8_t *buf, const size_t *readlens); /* TODO */
+    DnaBuffer(size_t bufsize, size_t numreads, uint8_t *buf, const size_t *readlens);
 
     void push_back(char const *s, size_t len);
     size_t size() const { return sequences.size(); }

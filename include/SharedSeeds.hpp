@@ -23,11 +23,10 @@ public:
 
     const SeedPair* getseeds() const { return &seeds[0]; }
 
-    SharedSeeds& operator=(const SharedSeeds& rhs)
+    SharedSeeds& operator=(SharedSeeds rhs)
     {
-        SharedSeeds tmp(rhs);
-        std::swap(seeds, tmp.seeds);
-        numshared = tmp.numshared;
+        std::swap(seeds, rhs.seeds);
+        numshared = rhs.numshared;
         return *this;
     }
 

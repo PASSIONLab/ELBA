@@ -3,20 +3,20 @@
 
 #include "common.h"
 
-void LogAll(const std::string mylog, Grid commgrid);
-std::string ProcessorName(Grid commgrid);
+void LogAll(const std::string mylog, std::shared_ptr<CommGrid> commgrid);
+std::string ProcessorName(std::shared_ptr<CommGrid> commgrid);
 
 class Logger
 {
     std::unique_ptr<std::ostringstream> logstream, rootstream;
-    Grid commgrid;
+    std::shared_ptr<CommGrid> commgrid;
     int myrank, nprocs;
     MPI_Comm comm;
 
     std::string prefix();
 
 public:
-    Logger(Grid commgrid);
+    Logger(std::shared_ptr<CommGrid> commgrid);
     void Flush(char const *label);
     void Flush(std::ostringstream& ss);
     void Flush(std::ostringstream& ss, int rank);

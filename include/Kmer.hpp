@@ -10,7 +10,6 @@
 #include <cstring>
 #include "common.h"
 #include "compiletime.h"
-#include "HyperLogLog.hpp"
 #include "DnaSeq.hpp"
 
 template <int NLONGS>
@@ -31,7 +30,7 @@ public:
     Kmer(const void *mem);
     Kmer(const Kmer& o);
 
-    Kmer& operator=(const Kmer& o);
+    Kmer& operator=(Kmer o);
 
     std::string GetString() const;
 

@@ -109,10 +109,9 @@ void Kmer<NLONGS>::set_kmer(char const *s, bool const revcomp)
     }
 }
 template <int NLONGS>
-Kmer<NLONGS>& Kmer<NLONGS>::operator=(const Kmer& o)
+Kmer<NLONGS>& Kmer<NLONGS>::operator=(Kmer o)
 {
-    Kmer copy(o);
-    std::swap(longs, copy.longs);
+    std::swap(longs, o.longs);
     return *this;
 }
 

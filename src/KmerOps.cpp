@@ -15,7 +15,7 @@ static Bloom *bm = nullptr;
 static_assert(USE_BLOOM == 0);
 #endif
 
-KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, Grid commgrid)
+KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> commgrid)
 {
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
@@ -191,7 +191,7 @@ KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, Grid commgrid)
     return kmermap;
 }
 
-void GetKmerCountMapValues(const DnaBuffer& myreads, KmerCountMap& kmermap, Grid commgrid)
+void GetKmerCountMapValues(const DnaBuffer& myreads, KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid)
 {
     Logger logger(commgrid);
     int myrank = commgrid->GetRank();
@@ -322,4 +322,46 @@ int GetKmerOwner(const TKmer& kmer, int nprocs)
     size_t owner = range / std::numeric_limits<uint64_t>::max();
     assert(owner >= 0 && owner < static_cast<int>(nprocs));
     return static_cast<int>(owner);
+}
+
+std::unique_ptr<CT<PosInRead>::PSpParMat>
+create_kmer_matrix(const DnaBuffer& myreads, const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid)
+{
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+
+    uint64_t kmerid = kmermap.size();
+    uint64_t totkmers = kmerid;
+    uint64_t totreads = myreads.size();
+
+    MPI_Allreduce(&kmerid,      &totkmers, 1, MPI_UINT64_T, MPI_SUM, commgrid->GetWorld());
+    MPI_Allreduce(MPI_IN_PLACE, &totreads, 1, MPI_UINT64_T, MPI_SUM, commgrid->GetWorld());
+
+    MPI_Exscan(MPI_IN_PLACE, &kmerid, 1, MPI_UINT64_T, MPI_SUM, commgrid->GetWorld());
+    if (myrank == 0) kmerid = 0;
+
+    std::vector<uint64_t> local_rowids, local_colids;
+    std::vector<PosInRead> local_positions;
+
+    for (auto itr = kmermap.cbegin(); itr != kmermap.cend(); ++itr)
+    {
+        const READIDS& readids = std::get<0>(itr->second);
+        const POSITIONS& positions = std::get<1>(itr->second);
+        int cnt = std::get<2>(itr->second);
+
+        for (int j = 0; j < cnt; ++j)
+        {
+            local_colids.push_back(kmerid);
+            local_rowids.push_back(readids[j]);
+            local_positions.push_back(positions[j]);
+        }
+
+        kmerid++;
+    }
+
+    CT<uint64_t>::PDistVec drows(local_rowids, commgrid);
+    CT<uint64_t>::PDistVec dcols(local_colids, commgrid);
+    CT<PosInRead>::PDistVec dvals(local_positions, commgrid);
+
+    return std::make_unique<CT<PosInRead>::PSpParMat>(totreads, totkmers, drows, dcols, dvals, false);
 }

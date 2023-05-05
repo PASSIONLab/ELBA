@@ -71,7 +71,7 @@ void FastaIndex::getpartition(std::vector<MPI_Count_type>& sendcounts)
     sendcounts.back() = numreads - readid;
 }
 
-FastaIndex::FastaIndex(const std::string& fasta_fname, Grid commgrid) : commgrid(commgrid), fasta_fname(fasta_fname)
+FastaIndex::FastaIndex(const std::string& fasta_fname, std::shared_ptr<CommGrid> commgrid) : commgrid(commgrid), fasta_fname(fasta_fname)
 {
     int nprocs = commgrid->GetSize();
     int myrank = commgrid->GetRank();

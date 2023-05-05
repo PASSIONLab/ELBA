@@ -5,7 +5,7 @@
 
 DistributedFastaData::DistributedFastaData(std::shared_ptr<FastaIndex> index) : index(index)
 {
-    Grid commgrid = index->getcommgrid();
+    std::shared_ptr<CommGrid> commgrid = index->getcommgrid();
 
     assert(commgrid->GetGridRows() == commgrid->GetGridCols());
 
@@ -37,7 +37,7 @@ using FastaDataRequest = typename DistributedFastaData::FastaDataRequest;
 
 void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequests, size_t globalstartid, size_t count, unsigned short rc) const
 {
-    Grid commgrid = index->getcommgrid();
+    std::shared_ptr<CommGrid> commgrid = index->getcommgrid();
     int nprocs = commgrid->GetSize();
     int myrank = commgrid->GetRank();
     MPI_Comm comm = commgrid->GetWorld();
@@ -116,7 +116,7 @@ void DistributedFastaData::collect_sequences(std::shared_ptr<DnaBuffer> mydna)
 
 void DistributedFastaData::collect_dim_sequences(std::shared_ptr<DnaBuffer> mydna, DimExchangeInfo& diminfo)
 {
-    Grid commgrid = index->getcommgrid();
+    std::shared_ptr<CommGrid> commgrid = index->getcommgrid();
     int nprocs = commgrid->GetSize();
     int myrank = commgrid->GetRank();
     MPI_Comm comm = commgrid->GetWorld();

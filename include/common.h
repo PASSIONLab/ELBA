@@ -1,20 +1,12 @@
 #ifndef COMMON_H_
 #define COMMON_H_
 
-#include <vector>
-#include <array>
-#include <string>
-#include <tuple>
-#include <set>
-#include <unordered_map>
-#include <memory>
-#include <cstdint>
-#include <limits>
 #include <mpi.h>
+#include <limits>
+#include <cstdint>
 #include "CombBLAS/CombBLAS.h"
 
 using namespace combblas;
-using Grid = std::shared_ptr<CommGrid>;
 
 #if MPI_VERSION == 3
 #define MPI_HAS_LARGE_COUNTS 0

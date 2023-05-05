@@ -1,3 +1,7 @@
+#ifndef MPI_TIMER_H_
+#define MPI_TIMER_H_
+
+#include <iostream>
 #include <mpi.h>
 
 struct MPITimer
@@ -45,3 +49,5 @@ struct MPITimer
         log(label);
     }
 };
+
+#endif

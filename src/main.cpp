@@ -19,6 +19,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include <cassert>
 #include <unistd.h>
 #include <mpi.h>
+
 #include "common.h"
 #include "compiletime.h"
 #include "Logger.hpp"
@@ -33,6 +34,9 @@ derivative works, and perform publicly and display publicly, and to permit other
 int returncode;
 std::string fasta_fname;
 std::string output_prefix = "elba";
+
+std::string getmatfname(const std::string matname);
+std::string getpafname();
 
 /*
  * MPI communicator info.
@@ -51,27 +55,9 @@ int xdrop_cutoff = 15; /* x-drop cutoff score */
 
 constexpr int root = 0; /* root process rank */
 
-/*
- * Command line parser.
- */
 int parse_cli(int argc, char *argv[]);
-void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid);
-CT<PosInRead>::PSpParMat CreateKmerMatrix(const DnaBuffer&  myreads, const KmerCountMap& kmermap, Grid commgrid);
-void ParallelWritePAF(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname);
-
-std::string getmatfname(const std::string matname)
-{
-    std::ostringstream ss;
-    ss << output_prefix << "." << matname;
-    return ss.str();
-}
-
-std::string getpafname()
-{
-    std::ostringstream ss;
-    ss << output_prefix << ".paf";
-    return ss.str();
-}
+void print_kmer_histogram(const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
+void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname);
 
 int main(int argc, char **argv)
 {
@@ -81,7 +67,7 @@ int main(int argc, char **argv)
          * CombBLAS 2D processor grid uses MPI_COMM_WORLD
          * as its world communicator (comm).
          */
-        Grid commgrid;
+        std::shared_ptr<CommGrid> commgrid;
 
         comm = MPI_COMM_WORLD;
         commgrid.reset(new CommGrid(comm, 0, 0));
@@ -98,7 +84,7 @@ int main(int argc, char **argv)
 /************************ START ****************************/
 /***********************************************************/
 
-        MPITimer timer(comm), exchange_timer(comm);
+        MPITimer timer(comm);
 
         timer.start();
         std::shared_ptr<FastaIndex> index(new FastaIndex(fasta_fname, commgrid));
@@ -110,20 +96,23 @@ int main(int argc, char **argv)
 
         DistributedFastaData dfd(index);
 
-        exchange_timer.start();
         dfd.collect_sequences(mydna);
 
         KmerCountMap kmermap = GetKmerCountMapKeys(*mydna, commgrid);
 
         GetKmerCountMapValues(*mydna, kmermap, commgrid);
 
-        PrintKmerHistogram(kmermap, commgrid);
+        print_kmer_histogram(kmermap, commgrid);
 
-        auto A = CreateKmerMatrix(*mydna, kmermap, commgrid);
+        std::unique_ptr<CT<PosInRead>::PSpParMat> A, AT;
 
-        size_t numreads = A.getnrow();
-        size_t numkmers = A.getncol();
-        size_t numseeds = A.getnnz();
+        A = create_kmer_matrix(*mydna, kmermap, commgrid);
+        AT = std::make_unique<CT<PosInRead>::PSpParMat>(*A);
+        AT->Transpose();
+
+        size_t numreads = A->getnrow();
+        size_t numkmers = A->getncol();
+        size_t numseeds = A->getnnz();
 
         if (!myrank)
         {
@@ -132,14 +121,13 @@ int main(int argc, char **argv)
         MPI_Barrier(comm);
 
 
-        #if LOG_LEVEL == 2
-        A.ParallelWriteMM(getmatfname("A.mtx").c_str(), true);
+        #if LOG_LEVEL >= 2
+        A->ParallelWriteMM(getmatfname("A.mtx").c_str(), true);
         #endif
 
-        auto AT = A;
-        AT.Transpose();
 
-        CT<SharedSeeds>::PSpParMat B = Mult_AnXBn_DoubleBuff<SharedSeeds::Semiring, SharedSeeds, CT<SharedSeeds>::PSpDCCols>(A, AT);
+        CT<SharedSeeds>::PSpParMat B = Mult_AnXBn_DoubleBuff<SharedSeeds::Semiring, SharedSeeds, CT<SharedSeeds>::PSpDCCols>(*A, *AT);
+        A.reset(), AT.reset();
 
         size_t numsharedseeds_before, numsharedseeds_after;
 
@@ -147,7 +135,7 @@ int main(int argc, char **argv)
         B.Prune([](const SharedSeeds& nz) { return nz.getnumshared() <= 1; });
         numsharedseeds_after = B.getnnz();
 
-        #if LOG_LEVEL == 1
+        #if LOG_LEVEL >= 1
         if (!myrank)
         {
             std::cout << "Pruned " << (numsharedseeds_before - numsharedseeds_after) << " nonzeros (overlap seeds) with not enough support\n\n";
@@ -156,12 +144,11 @@ int main(int argc, char **argv)
         MPI_Barrier(comm);
         #endif
 
-        #if LOG_LEVEL == 2
+        #if LOG_LEVEL >= 2
         B.ParallelWriteMM(getmatfname("B.mtx").c_str(), true, SharedSeeds::IOHandler());
         #endif
 
         dfd.wait();
-        exchange_timer.stop_and_log("sequence exchange");
 
         std::vector<std::string> names = index->bcastnames();
 
@@ -181,18 +168,18 @@ int main(int argc, char **argv)
         R.Prune([](const Overlap& nz) { return !nz.passed; });
         size_t numoverlaps_after = R.getnnz();
 
-        #if LOG_LEVEL == 1
+        #if LOG_LEVEL >= 1
         if (!myrank)
         {
             std::cout << "Pruned " << (numoverlaps_before - numoverlaps_after) << " nonzeros (overlaps) with poor alignments\n\n";
         }
         #endif
 
-        #if LOG_LEVEL == 2
+        #if LOG_LEVEL >= 2
         R.ParallelWriteMM(getmatfname("R.mtx").c_str(), true, Overlap::IOHandler());
         #endif
 
-        ParallelWritePAF(R, dfd, getpafname().c_str());
+        parallel_write_paf(R, dfd, getpafname().c_str());
 
 /***********************************************************/
 /************************* END *****************************/
@@ -302,7 +289,7 @@ int parse_cli(int argc, char *argv[])
     return 0;
 }
 
-void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid)
+void print_kmer_histogram(const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid)
 {
     int maxcount = std::accumulate(kmermap.cbegin(), kmermap.cend(), 0, [](int cur, const auto& entry) { return std::max(cur, std::get<2>(entry.second)); });
 
@@ -338,7 +325,7 @@ void PrintKmerHistogram(const KmerCountMap& kmermap, Grid commgrid)
     MPI_Barrier(commgrid->GetWorld());
 }
 
-void ParallelWritePAF(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname)
+void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname)
 {
     auto index = dfd.getindex();
     auto commgrid = index->getcommgrid();
@@ -377,43 +364,16 @@ void ParallelWritePAF(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd
     MPI_File_close(&fh);
 }
 
-CT<PosInRead>::PSpParMat CreateKmerMatrix(const DnaBuffer& myreads, const KmerCountMap& kmermap, Grid commgrid)
+std::string getmatfname(const std::string matname)
 {
-    int myrank = commgrid->GetRank();
-    int nprocs = commgrid->GetSize();
+    std::ostringstream ss;
+    ss << output_prefix << "." << matname;
+    return ss.str();
+}
 
-    uint64_t kmerid = kmermap.size();
-    uint64_t totkmers = kmerid;
-    uint64_t totreads = myreads.size();
-
-    MPI_Allreduce(&kmerid,      &totkmers, 1, MPI_UINT64_T, MPI_SUM, commgrid->GetWorld());
-    MPI_Allreduce(MPI_IN_PLACE, &totreads, 1, MPI_UINT64_T, MPI_SUM, commgrid->GetWorld());
-
-    MPI_Exscan(MPI_IN_PLACE, &kmerid, 1, MPI_UINT64_T, MPI_SUM, commgrid->GetWorld());
-    if (myrank == 0) kmerid = 0;
-
-    std::vector<uint64_t> local_rowids, local_colids;
-    std::vector<PosInRead> local_positions;
-
-    for (auto itr = kmermap.cbegin(); itr != kmermap.cend(); ++itr)
-    {
-        const READIDS& readids = std::get<0>(itr->second);
-        const POSITIONS& positions = std::get<1>(itr->second);
-        int cnt = std::get<2>(itr->second);
-
-        for (int j = 0; j < cnt; ++j)
-        {
-            local_colids.push_back(kmerid);
-            local_rowids.push_back(readids[j]);
-            local_positions.push_back(positions[j]);
-        }
-
-        kmerid++;
-    }
-
-    CT<uint64_t>::PDistVec drows(local_rowids, commgrid);
-    CT<uint64_t>::PDistVec dcols(local_colids, commgrid);
-    CT<PosInRead>::PDistVec dvals(local_positions, commgrid);
-
-    return CT<PosInRead>::PSpParMat(totreads, totkmers, drows, dcols, dvals, false);
+std::string getpafname()
+{
+    std::ostringstream ss;
+    ss << output_prefix << ".paf";
+    return ss.str();
 }

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <numeric>
 
-Logger::Logger(Grid commgrid) : logstream(new std::ostringstream()), commgrid(commgrid)
+Logger::Logger(std::shared_ptr<CommGrid> commgrid) : logstream(new std::ostringstream()), commgrid(commgrid)
 {
     comm = commgrid->GetWorld();
     MPI_Comm_rank(comm, &myrank);
@@ -128,7 +128,7 @@ void Logger::Flush(char const *label)
     MPI_Barrier(comm);
 }
 
-void LogAll(const std::string mylog, Grid commgrid)
+void LogAll(const std::string mylog, std::shared_ptr<CommGrid> commgrid)
 {
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
@@ -167,7 +167,7 @@ void LogAll(const std::string mylog, Grid commgrid)
     MPI_Barrier(comm);
 }
 
-std::string ProcessorName(Grid commgrid)
+std::string ProcessorName(std::shared_ptr<CommGrid> commgrid)
 {
     static bool initialized = false;
     static std::string name;
