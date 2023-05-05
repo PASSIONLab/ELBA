@@ -47,8 +47,10 @@ get_kmer_count_map_keys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> comm
     ForeachKmer(myreads, estimator);
     mycardinality = hll.estimate();
 
+    #if LOG_LEVEL >= 2
     log() << std::setprecision(3) << std::fixed << mycardinality << " k-mers";
     log.Flush("[k-mer cardinality estimate]");
+    #endif
 
     /*
      * Estimate the number of distinct k-mers in the entire FASTA
@@ -59,8 +61,10 @@ get_kmer_count_map_keys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> comm
 
     avgcardinality = static_cast<size_t>(std::ceil(cardinality / nprocs));
 
+    #if LOG_LEVEL >= 2
     rootlog << "global 'column' k-mer cardinality (merging all " << nprocs << " procesors results) is " << std::setprecision(3) << std::fixed << cardinality << ", or an average of " << avgcardinality << " per processor" << std::endl;
     log.Flush(rootlog, 0);
+    #endif
 
     /*
      * Reserve memory for local hash table and Bloom filter using
@@ -184,9 +188,11 @@ get_kmer_count_map_keys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> comm
         total_totsend += (totsend / TKmer::NBYTES);
         total_totrecv += (totrecv / TKmer::NBYTES);
 
+        #if LOG_LEVEL >= 2
         log() << " has sent " << total_totsend << " k-mers parsed from " << batch_state.myreadid << " reads of " << numreads << " and received " << total_totrecv << " k-mers";
         rootlog << "Round " << batch_round++;
         log.Flush(rootlog);
+        #endif
 
     } while (!batch_state.Finished());
 
@@ -213,14 +219,23 @@ void get_kmer_count_map_values(const DnaBuffer& myreads, KmerCountMap& kmermap, 
 
     constexpr size_t seedbytes = TKmer::NBYTES + sizeof(ReadId) + sizeof(PosInRead);
 
+    #if LOG_LEVEL >= 2
     logger() << std::setprecision(4) << "sending 'row' k-mers to each processor in this amount (megabytes): {";
+    #endif
+
     for (int i = 0; i < nprocs; ++i)
     {
         sendcnt[i] = kmerseeds[i].size() * seedbytes;
+
+        #if LOG_LEVEL >= 2
         logger() << (static_cast<double>(sendcnt[i]) / (1024 * 1024)) << ",";
+        #endif
     }
+
+    #if LOG_LEVEL >= 2
     logger() << "}";
     logger.Flush("K-mer exchange sendcounts:");
+    #endif
 
     MPI_ALLTOALL(sendcnt.data(), 1, MPI_COUNT_TYPE, recvcnt.data(), 1, MPI_COUNT_TYPE, commgrid->GetWorld());
 
@@ -255,20 +270,25 @@ void get_kmer_count_map_values(const DnaBuffer& myreads, KmerCountMap& kmermap, 
     MPI_ALLTOALLV(sendbuf.data(), sendcnt.data(), sdispls.data(), MPI_BYTE, recvbuf.data(), recvcnt.data(), rdispls.data(), MPI_BYTE, commgrid->GetWorld());
 
     size_t numkmerseeds = totrecv / seedbytes;
+
+    #if LOG_LEVEL >= 2
     logger() << "received a total of " << numkmerseeds << " 'row' k-mers in second ALLTOALL exchange";
     logger.Flush("K-mers received:");
+    #endif
 
     uint8_t *addrs2read = recvbuf.data();
 
     for (size_t i = 0; i < numkmerseeds; ++i)
     {
         TKmer kmer(addrs2read);
-#if USE_BLOOM == 1
+
+        #if USE_BLOOM == 1
         if (!bm->Check(kmer.GetBytes(), TKmer::NBYTES))
             continue;
-#else
+
+        #else
         static_assert(USE_BLOOM == 0);
-#endif
+        #endif
 
         ReadId readid = *((ReadId*)(addrs2read + TKmer::NBYTES));
         PosInRead pos = *((PosInRead*)(addrs2read + TKmer::NBYTES + sizeof(ReadId)));
@@ -293,15 +313,20 @@ void get_kmer_count_map_values(const DnaBuffer& myreads, KmerCountMap& kmermap, 
         count++;
     }
 
+    #if LOG_LEVEL >= 2
     logger() << numkmerseeds;
-#if USE_BLOOM == 1
+
+    #if USE_BLOOM == 1
     logger() << " row k-mers filtered by Bloom filter, hash table, and upper k-mer bound threshold into " << kmermap.size() << " semi-reliable 'column' k-mers";
     delete bm;
-#else
+
+    #else
     static_assert(USE_BLOOM == 0);
     logger() << " row k-mers filtered by hash table and upper k-mer bound threshold into " << kmermap.size() << " semi-reliable 'column' k-mers";
-#endif
+    #endif
+
     logger.Flush("K-mer filtering:");
+    #endif
 
     auto itr = kmermap.begin();
     while (itr != kmermap.end())
@@ -309,12 +334,15 @@ void get_kmer_count_map_values(const DnaBuffer& myreads, KmerCountMap& kmermap, 
         if (std::get<2>(itr->second) < LOWER_KMER_FREQ) itr = kmermap.erase(itr);
         else itr++;
     }
+
+    #if LOG_LEVEL >= 2
     size_t numkmers = kmermap.size();
 
     MPI_Allreduce(MPI_IN_PLACE, &numkmers, 1, MPI_SIZE_T, MPI_SUM, commgrid->GetWorld());
 
     if (!myrank) std::cout << "A total of " << numkmers << " reliable 'column' k-mers found\n" << std::endl;
     MPI_Barrier(commgrid->GetWorld());
+    #endif
 }
 
 int GetKmerOwner(const TKmer& kmer, int nprocs)

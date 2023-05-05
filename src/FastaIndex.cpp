@@ -134,6 +134,7 @@ FastaIndex::FastaIndex(const std::string& fasta_fname, std::shared_ptr<CommGrid>
 
     MPI_Type_free(&faidx_dtype_t);
 
+    #if LOG_LEVEL >= 2
     Logger logger(commgrid);
     size_t mytotbases = std::accumulate(myrecords.begin(), myrecords.end(), static_cast<size_t>(0), [](size_t sum, const auto& record) { return sum + record.len; });
     size_t totbases;
@@ -141,6 +142,7 @@ FastaIndex::FastaIndex(const std::string& fasta_fname, std::shared_ptr<CommGrid>
     double percent_proportion = (static_cast<double>(mytotbases) / totbases) * 100.0;
     logger() << " is responsible for sequences " << Logger::readrangestr(readdispls[myrank], readcounts[myrank]) << " (" << mytotbases << " nucleotides, " << std::fixed << std::setprecision(3) << percent_proportion << "%)";
     logger.Flush("Fasta index construction:");
+    #endif
 }
 
 std::vector<size_t> FastaIndex::getmyreadlens() const
@@ -231,10 +233,12 @@ DnaBuffer FastaIndex::getmydna() const
     }
 
     elapsed += MPI_Wtime();
+    #if LOG_LEVEL >= 2
     double mbspersecond = (totbases / 1048576.0) / elapsed;
     Logger logger(commgrid);
     logger() << std::fixed << std::setprecision(2) << mbspersecond << " Mbs/second";
     logger.Flush("FASTA parsing rates (DnaBuffer):");
+    #endif
 
     return dnabuf;
 }
