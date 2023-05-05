@@ -196,7 +196,7 @@ void usage(char const *prg)
               << "         -A INT   matching score ["             <<  mat                        << "]\n"
               << "         -B INT   mismatch penalty ["           << -mis                        << "]\n"
               << "         -G INT   gap penalty ["                << -gap                        << "]\n"
-              << "         -o STR   output file name prefix"      <<  std::quoted(output_prefix) << "\n"
+              << "         -o STR   output file name prefix "     <<  std::quoted(output_prefix) << "\n"
               << "         -h       help message"
               << std::endl;
 }

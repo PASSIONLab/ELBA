@@ -2,7 +2,6 @@
 #define LBL_DAL_DISTRIBUTEDFASTADATA_H
 
 #include "FastaIndex.hpp"
-#include "Logger.hpp"
 #include "DnaSeq.hpp"
 
 class DistributedFastaData

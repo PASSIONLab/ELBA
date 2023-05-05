@@ -2,7 +2,8 @@ K?=31
 L?=15
 U?=35
 S?=2
-COMPILE_TIME_PARAMETERS=-DKMER_SIZE=$(K) -DLOWER_KMER_FREQ=$(L) -DUPPER_KMER_FREQ=$(U) -DMAX_SEEDS=$(S)
+LOG_LEVEL?=1
+COMPILE_TIME_PARAMETERS=-DKMER_SIZE=$(K) -DLOWER_KMER_FREQ=$(L) -DUPPER_KMER_FREQ=$(U) -DMAX_SEEDS=$(S) -DLOG_LEVEL=$(LOG_LEVEL)
 
 MPICH=/usr/local/Cellar/mpich/4.1.1
 MPICH_INC=-I$(MPICH)/include
@@ -42,6 +43,9 @@ OBJECTS=obj/Logger.o \
 
 all: elba
 
+install: elba
+	cp elba $(HOME)/bin
+
 test: elba
 	./runtests.sh
 
@@ -50,6 +54,7 @@ elba: obj/main.o $(OBJECTS)
 	@$(COMPILER) $(FLAGS) $(INCADD) -o $@ $^ $(MPICH_FLAGS) -lz
 
 obj/%.o: src/%.cpp
+	@mkdir -p $(@D)
 	@echo CXX $(COMPILE_TIME_PARAMETERS) -c -o $@ $<
 	@$(COMPILER) $(FLAGS) $(INCADD) -c -o $@ $<
 
