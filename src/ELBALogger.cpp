@@ -2,7 +2,7 @@
 #include <iostream>
 #include <sstream>
 
-void ELBALogger::log_kmer_matrix(const CT<PosInRead>::PSpParMat& A)
+void ELBALogger::log_kmer_matrix(CT<PosInRead>::PSpParMat& A)
 {
     #if LOG_LEVEL >= 1
     size_t numreads = A.getnrow();
@@ -19,7 +19,7 @@ void ELBALogger::log_kmer_matrix(const CT<PosInRead>::PSpParMat& A)
     #endif
 }
 
-void ELBALogger::log_seed_matrix(const CT<SharedSeeds>::PSpParMat& B)
+void ELBALogger::log_seed_matrix(CT<SharedSeeds>::PSpParMat& B)
 {
     #if LOG_LEVEL >= 1
     size_t numseeds = B.getnnz();
@@ -35,7 +35,7 @@ void ELBALogger::log_seed_matrix(const CT<SharedSeeds>::PSpParMat& B)
     #endif
 }
 
-void ELBALogger::log_overlap_matrix(const CT<Overlap>::PSpParMat& R)
+void ELBALogger::log_overlap_matrix(CT<Overlap>::PSpParMat& R)
 {
     #if LOG_LEVEL >= 2
     R.ParallelWriteMM(getmatfname("R.mtx").c_str(), true, Overlap::IOHandler());

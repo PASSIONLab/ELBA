@@ -89,7 +89,9 @@ int main(int argc, char **argv)
         std::unique_ptr<KmerCountMap> kmermap;
 
         ELBALogger elbalog(output_prefix, comm);
-        MPITimer timer(comm);
+        MPITimer timer(comm), walltimer(comm);
+
+        walltimer.start();
 
         timer.start();
         FastaIndex index(fasta_fname, commgrid);
@@ -133,6 +135,8 @@ int main(int argc, char **argv)
         parallel_write_paf(*R, dfd, getpafname().c_str());
 
         R.reset();
+
+        walltimer.stop_and_log("wallclock");
 
         /***********************************************************/
         /************************* END *****************************/

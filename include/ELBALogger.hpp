@@ -5,6 +5,7 @@
 #include "KmerOps.hpp"
 #include "SharedSeeds.hpp"
 #include "Overlap.hpp"
+#include "CombBLAS/CombBLAS.h"
 
 struct ELBALogger
 {
@@ -19,9 +20,9 @@ struct ELBALogger
         isroot = (myrank == 0);
     }
 
-    void log_kmer_matrix(const CT<PosInRead>::PSpParMat& A);
-    void log_seed_matrix(const CT<SharedSeeds>::PSpParMat& B);
-    void log_overlap_matrix(const CT<Overlap>::PSpParMat& R);
+    void log_kmer_matrix(CT<PosInRead>::PSpParMat& A);
+    void log_seed_matrix(CT<SharedSeeds>::PSpParMat& B);
+    void log_overlap_matrix(CT<Overlap>::PSpParMat& R);
 
     std::string getmatfname(const std::string matname);
 };
