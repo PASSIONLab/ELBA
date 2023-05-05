@@ -155,7 +155,7 @@ std::vector<size_t> FastaIndex::getmyreadlens() const
     return readlens;
 }
 
-std::shared_ptr<DnaBuffer> FastaIndex::getmydna() const
+DnaBuffer FastaIndex::getmydna() const
 {
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
@@ -166,7 +166,7 @@ std::shared_ptr<DnaBuffer> FastaIndex::getmydna() const
      */
     auto readlens = getmyreadlens();
     size_t bufsize = DnaBuffer::computebufsize(readlens);
-    auto dnabuf = std::make_shared<DnaBuffer>(bufsize);
+    DnaBuffer dnabuf(bufsize);
     size_t numreads = readlens.size();
 
     MPI_Offset startpos, endpos, filesize, readbufsize;
@@ -227,7 +227,7 @@ std::shared_ptr<DnaBuffer> FastaIndex::getmydna() const
         /*
          * Compress sequence into local sequence buffer.
          */
-        dnabuf->push_back(&tmpbuf[0], itr->len);
+        dnabuf.push_back(&tmpbuf[0], itr->len);
     }
 
     elapsed += MPI_Wtime();
@@ -295,7 +295,7 @@ std::vector<std::string> FastaIndex::bcastnames()
 
 #include <iomanip>
 
-void FastaIndex::logall(std::shared_ptr<DnaBuffer> buffer) const
+void FastaIndex::logall(const DnaBuffer& buffer) const
 {
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
@@ -303,30 +303,30 @@ void FastaIndex::logall(std::shared_ptr<DnaBuffer> buffer) const
 
     Logger logger(commgrid);
 
-    size_t numseqs = buffer->size();
-    size_t bufsize = buffer->getbufsize();
+    size_t numseqs = buffer.size();
+    size_t bufsize = buffer.getbufsize();
 
     logger() << "numseqs=" << numseqs << ", bufsize=" << bufsize << "\n";
 
     for (size_t i = 0; i < numseqs; ++i)
     {
-        const auto& dnaseq = (*buffer)[i];
+        const auto& dnaseq = buffer[i];
         logger() << "readid=" << i+getmyreaddispl() << ", size=" << dnaseq.size() << ", numbytes=" << dnaseq.numbytes() <<
-            ", bufsize_before=" << buffer->getrangebufsize(0, i) << ", bufsize_after=" << buffer->getrangebufsize(i, numseqs-1-i) << ", ascii=" << std::quoted(dnaseq.ascii()) << "\n";
+            ", bufsize_before=" << buffer.getrangebufsize(0, i) << ", bufsize_after=" << buffer.getrangebufsize(i, numseqs-1-i) << ", ascii=" << std::quoted(dnaseq.ascii()) << "\n";
     }
 
     logger.Flush("logall");
 }
 
-void FastaIndex::log(std::shared_ptr<DnaBuffer> buffer) const
+void FastaIndex::log(const DnaBuffer& buffer) const
 {
     Logger logger(commgrid);
-    assert(getmyreadcount() == buffer->size());
+    assert(getmyreadcount() == buffer.size());
     auto readlens = getmyreadlens();
     size_t numreads = getmyreadcount();
     size_t totbases = std::accumulate(readlens.begin(), readlens.end(), static_cast<size_t>(0), std::plus<size_t>{});
     double avglen = static_cast<double>(totbases) / numreads;
     size_t firstid = getmyreaddispl();
-    logger() << " stores " << Logger::readrangestr(firstid, numreads) << ". ~" << std::fixed << std::setprecision(2) << avglen << " nts/read. (" << static_cast<double>(buffer->getbufsize()) / (1024.0 * 1024.0) << " Mbs compressed) == (" << buffer->getbufsize() << " bytes)";
+    logger() << " stores " << Logger::readrangestr(firstid, numreads) << ". ~" << std::fixed << std::setprecision(2) << avglen << " nts/read. (" << static_cast<double>(buffer.getbufsize()) / (1024.0 * 1024.0) << " Mbs compressed) == (" << buffer.getbufsize() << " bytes)";
     logger.Flush("FASTA sequence storage (DnaBuffer):");
 }

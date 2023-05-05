@@ -27,9 +27,9 @@ public:
     const std::vector<MPI_Count_type> getreadcounts() const { return readcounts; }
     const std::vector<MPI_Displ_type> getreaddispls() const { return readdispls; }
 
-    std::shared_ptr<DnaBuffer> getmydna() const;
-    void log(std::shared_ptr<DnaBuffer> buffer) const;
-    void logall(std::shared_ptr<DnaBuffer> buffer) const;
+    DnaBuffer getmydna() const;
+    void log(const DnaBuffer& buffer) const;
+    void logall(const DnaBuffer& buffer) const;
 
     static Record get_faidx_record(const std::string& line, std::string& name);
 

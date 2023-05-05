@@ -37,7 +37,7 @@ public:
     size_t getnumrowreads() const { return rowinfo.numreads; }
     size_t getnumcolreads() const { return colinfo.numreads; }
 
-    void collect_sequences(std::shared_ptr<DnaBuffer> mydna);
+    void collect_sequences(const DnaBuffer& mydna);
     void wait();
 
     std::shared_ptr<DnaBuffer> getrowbuf() { return rowbuf; }
@@ -61,7 +61,7 @@ private:
     std::shared_ptr<DnaBuffer> rowbuf, colbuf;
     DimExchangeInfo rowinfo, colinfo;
 
-    void collect_dim_sequences(std::shared_ptr<DnaBuffer> mydna, DimExchangeInfo& diminfo);
+    void collect_dim_sequences(const DnaBuffer& mydna, DimExchangeInfo& diminfo);
     void getremoterequests(std::vector<FastaDataRequest>& allrequests, std::vector<FastaDataRequest>& myrequests) const;
     void getgridrequests(std::vector<FastaDataRequest>& myrequests, size_t globalstartid, size_t count, unsigned short rc) const;
 };

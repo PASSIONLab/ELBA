@@ -108,13 +108,13 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
     }
 }
 
-void DistributedFastaData::collect_sequences(std::shared_ptr<DnaBuffer> mydna)
+void DistributedFastaData::collect_sequences(const DnaBuffer& mydna)
 {
     collect_dim_sequences(mydna, rowinfo);
     collect_dim_sequences(mydna, colinfo);
 }
 
-void DistributedFastaData::collect_dim_sequences(std::shared_ptr<DnaBuffer> mydna, DimExchangeInfo& diminfo)
+void DistributedFastaData::collect_dim_sequences(const DnaBuffer& mydna, DimExchangeInfo& diminfo)
 {
     std::shared_ptr<CommGrid> commgrid = index.getcommgrid();
     int nprocs = commgrid->GetSize();
@@ -183,8 +183,8 @@ void DistributedFastaData::collect_dim_sequences(std::shared_ptr<DnaBuffer> mydn
         size_t localoffset = offset - index.getmyreaddispl();
         sendlens[i] = mysends[i].count;
         assert(index.getmyreaddispl() <= offset && offset + sendlens[i] <= index.getmyreaddispl() + index.getmyreadcount());
-        sendbufsizes[i] = mydna->getrangebufsize(localoffset, sendlens[i]);
-        sendbufs[i] = mydna->getbufoffset(localoffset);
+        sendbufsizes[i] = mydna.getrangebufsize(localoffset, sendlens[i]);
+        sendbufs[i] = mydna.getbufoffset(localoffset);
         size_t sendbuf[2] = {sendlens[i], sendbufsizes[i]};
         MPI_ISEND(sendbuf, 2, MPI_SIZE_T, mysends[i].requester, 99, comm, diminfo.sendreqs.data() + i);
     }
@@ -224,7 +224,7 @@ void DistributedFastaData::collect_dim_sequences(std::shared_ptr<DnaBuffer> mydn
     {
         size_t localoffset = mysends[i].offset - index.getmyreaddispl();
         const size_t *sendreadlens = myreadlens.data() + localoffset;
-        const uint8_t *sendbuf = mydna->getbufoffset(localoffset);
+        const uint8_t *sendbuf = mydna.getbufoffset(localoffset);
         MPI_ISEND(sendreadlens, static_cast<MPI_Count_type>(sendlens[i]), MPI_SIZE_T, mysends[i].requester, 100, comm, diminfo.sendreqs.data() + i);
         MPI_ISEND(sendbuf, static_cast<MPI_Count_type>(sendbufsizes[i]), MPI_UINT8_T, mysends[i].requester, 101, comm, diminfo.sendreqs.data() + mynumsends + i);
     }

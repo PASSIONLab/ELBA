@@ -91,22 +91,22 @@ int main(int argc, char **argv)
         timer.stop_and_log("indexing");
 
         timer.start();
-        std::shared_ptr<DnaBuffer> mydna = index.getmydna();
+        DnaBuffer mydna = index.getmydna();
         timer.stop_and_log("parsing and compressing");
 
         DistributedFastaData dfd(index);
 
         dfd.collect_sequences(mydna);
 
-        KmerCountMap kmermap = GetKmerCountMapKeys(*mydna, commgrid);
+        KmerCountMap kmermap = GetKmerCountMapKeys(mydna, commgrid);
 
-        GetKmerCountMapValues(*mydna, kmermap, commgrid);
+        GetKmerCountMapValues(mydna, kmermap, commgrid);
 
         print_kmer_histogram(kmermap, commgrid);
 
         std::unique_ptr<CT<PosInRead>::PSpParMat> A, AT;
 
-        A = create_kmer_matrix(*mydna, kmermap, commgrid);
+        A = create_kmer_matrix(mydna, kmermap, commgrid);
         AT = std::make_unique<CT<PosInRead>::PSpParMat>(*A);
         AT->Transpose();
 
