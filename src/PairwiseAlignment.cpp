@@ -4,8 +4,8 @@
 
 CT<Overlap>::PSpParMat PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, int dropoff)
 {
-    auto index = dfd.getindex();
-    auto commgrid = index->getcommgrid();
+    FastaIndex& index = dfd.getindex();
+    auto commgrid = index.getcommgrid();
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
     MPI_Comm comm = commgrid->GetWorld();
@@ -69,7 +69,7 @@ CT<Overlap>::PSpParMat PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSee
     CT<uint64_t>::PDistVec dcols(local_colids, commgrid);
     CT<Overlap>::PDistVec dvals(overlaps, commgrid);
 
-    uint64_t numreads = index->gettotrecords();
+    uint64_t numreads = index.gettotrecords();
 
     return CT<Overlap>::PSpParMat(numreads, numreads, drows, dcols, dvals, false);
 }

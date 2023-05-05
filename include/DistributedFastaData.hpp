@@ -28,9 +28,9 @@ public:
         }
     };
 
-    DistributedFastaData(std::shared_ptr<FastaIndex> index);
+    DistributedFastaData(FastaIndex& index);
 
-    std::shared_ptr<FastaIndex> getindex() { return index; }
+    FastaIndex& getindex() { return index; }
 
     size_t getrowstartid() const { return rowinfo.startid; }
     size_t getcolstartid() const { return colinfo.startid; }
@@ -55,7 +55,7 @@ public:
     };
 
 private:
-    std::shared_ptr<FastaIndex> index;
+    FastaIndex& index;
     bool isdiag;
 
     std::shared_ptr<DnaBuffer> rowbuf, colbuf;

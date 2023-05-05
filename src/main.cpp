@@ -80,18 +80,18 @@ int main(int argc, char **argv)
         if (parse_cli(argc, argv) != 0)
             goto err;
 
-/***********************************************************/
-/************************ START ****************************/
-/***********************************************************/
+        /***********************************************************/
+        /************************ START ****************************/
+        /***********************************************************/
 
         MPITimer timer(comm);
 
         timer.start();
-        std::shared_ptr<FastaIndex> index(new FastaIndex(fasta_fname, commgrid));
+        FastaIndex index(fasta_fname, commgrid);
         timer.stop_and_log("indexing");
 
         timer.start();
-        std::shared_ptr<DnaBuffer> mydna = index->getmydna();
+        std::shared_ptr<DnaBuffer> mydna = index.getmydna();
         timer.stop_and_log("parsing and compressing");
 
         DistributedFastaData dfd(index);
@@ -150,17 +150,7 @@ int main(int argc, char **argv)
 
         dfd.wait();
 
-        std::vector<std::string> names = index->bcastnames();
-
-        auto rowbuf = dfd.getrowbuf();
-        size_t n = rowbuf->size();
-        Logger rowbuflog(commgrid);
-        rowbuflog() << "\n";
-        for (size_t i = 0; i < n; ++i)
-        {
-            rowbuflog() << "TT\t" << myrank << "\t" << i << "\t" << i+dfd.getrowstartid() << "\t" << names[i+dfd.getrowstartid()] << "\t" << (*rowbuf)[i].size() << "\n";
-        }
-        rowbuflog.Flush("rowbuflog");
+        std::vector<std::string> names = index.bcastnames();
 
         CT<Overlap>::PSpParMat R = PairwiseAlignment(dfd, B, mat, mis, gap, xdrop_cutoff);
 
@@ -181,9 +171,9 @@ int main(int argc, char **argv)
 
         parallel_write_paf(R, dfd, getpafname().c_str());
 
-/***********************************************************/
-/************************* END *****************************/
-/***********************************************************/
+        /***********************************************************/
+        /************************* END *****************************/
+        /***********************************************************/
 
         goto done;
     }
@@ -328,12 +318,12 @@ void print_kmer_histogram(const KmerCountMap& kmermap, std::shared_ptr<CommGrid>
 void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname)
 {
     auto index = dfd.getindex();
-    auto commgrid = index->getcommgrid();
+    auto commgrid = index.getcommgrid();
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
     MPI_Comm comm = commgrid->GetWorld();
 
-    std::vector<std::string> names = index->bcastnames();
+    std::vector<std::string> names = index.bcastnames();
 
     auto dcsc = R.seqptr()->GetDCSC();
 

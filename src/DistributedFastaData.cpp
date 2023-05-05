@@ -3,9 +3,9 @@
 #include <limits>
 #include <iomanip>
 
-DistributedFastaData::DistributedFastaData(std::shared_ptr<FastaIndex> index) : index(index)
+DistributedFastaData::DistributedFastaData(FastaIndex& index) : index(index)
 {
-    std::shared_ptr<CommGrid> commgrid = index->getcommgrid();
+    std::shared_ptr<CommGrid> commgrid = index.getcommgrid();
 
     assert(commgrid->GetGridRows() == commgrid->GetGridCols());
 
@@ -17,7 +17,7 @@ DistributedFastaData::DistributedFastaData(std::shared_ptr<FastaIndex> index) : 
     int mycolid = commgrid->GetRankInProcRow();
     int procdim = commgrid->GetGridRows();
 
-    size_t numreads = index->gettotrecords();
+    size_t numreads = index.gettotrecords();
     size_t readsperprocdim = numreads / procdim;
 
     isdiag = (myrowid == mycolid);
@@ -37,14 +37,14 @@ using FastaDataRequest = typename DistributedFastaData::FastaDataRequest;
 
 void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequests, size_t globalstartid, size_t count, unsigned short rc) const
 {
-    std::shared_ptr<CommGrid> commgrid = index->getcommgrid();
+    std::shared_ptr<CommGrid> commgrid = index.getcommgrid();
     int nprocs = commgrid->GetSize();
     int myrank = commgrid->GetRank();
     MPI_Comm comm = commgrid->GetWorld();
 
     int requester = myrank; /* I'm the processor making a request */
-    size_t totreads = index->gettotrecords(); /* total reads in FASTA */
-    const auto& readdispls = index->getreaddispls(); /* linear uniform read distribution displacements (across all processors) */
+    size_t totreads = index.gettotrecords(); /* total reads in FASTA */
+    const auto& readdispls = index.getreaddispls(); /* linear uniform read distribution displacements (across all processors) */
 
     assert(readdispls[nprocs] == totreads);
 
@@ -116,7 +116,7 @@ void DistributedFastaData::collect_sequences(std::shared_ptr<DnaBuffer> mydna)
 
 void DistributedFastaData::collect_dim_sequences(std::shared_ptr<DnaBuffer> mydna, DimExchangeInfo& diminfo)
 {
-    std::shared_ptr<CommGrid> commgrid = index->getcommgrid();
+    std::shared_ptr<CommGrid> commgrid = index.getcommgrid();
     int nprocs = commgrid->GetSize();
     int myrank = commgrid->GetRank();
     MPI_Comm comm = commgrid->GetWorld();
@@ -180,9 +180,9 @@ void DistributedFastaData::collect_dim_sequences(std::shared_ptr<DnaBuffer> mydn
     {
         assert(mysends[i].owner == myrank);
         size_t offset = mysends[i].offset;
-        size_t localoffset = offset - index->getmyreaddispl();
+        size_t localoffset = offset - index.getmyreaddispl();
         sendlens[i] = mysends[i].count;
-        assert(index->getmyreaddispl() <= offset && offset + sendlens[i] <= index->getmyreaddispl() + index->getmyreadcount());
+        assert(index.getmyreaddispl() <= offset && offset + sendlens[i] <= index.getmyreaddispl() + index.getmyreadcount());
         sendbufsizes[i] = mydna->getrangebufsize(localoffset, sendlens[i]);
         sendbufs[i] = mydna->getbufoffset(localoffset);
         size_t sendbuf[2] = {sendlens[i], sendbufsizes[i]};
@@ -218,11 +218,11 @@ void DistributedFastaData::collect_dim_sequences(std::shared_ptr<DnaBuffer> mydn
         MPI_IRECV(diminfo.reqbuf.get() + reqbufdispls[i], bufsize, MPI_UINT8_T, myreqs[i].owner, 101, comm, diminfo.recvreqs.data() + mynumreqs + i);
     }
 
-    std::vector<size_t> myreadlens = index->getmyreadlens();
+    std::vector<size_t> myreadlens = index.getmyreadlens();
 
     for (size_t i = 0; i < mynumsends; ++i)
     {
-        size_t localoffset = mysends[i].offset - index->getmyreaddispl();
+        size_t localoffset = mysends[i].offset - index.getmyreaddispl();
         const size_t *sendreadlens = myreadlens.data() + localoffset;
         const uint8_t *sendbuf = mydna->getbufoffset(localoffset);
         MPI_ISEND(sendreadlens, static_cast<MPI_Count_type>(sendlens[i]), MPI_SIZE_T, mysends[i].requester, 100, comm, diminfo.sendreqs.data() + i);
@@ -250,7 +250,7 @@ std::string getgridfname(char const *fname_prefix, int rank, bool rc)
 
 void DistributedFastaData::write_grid_sequences(char const *fname_prefix) const
 {
-    auto commgrid = index->getcommgrid();
+    auto commgrid = index.getcommgrid();
     MPI_Comm comm = commgrid->GetWorld();
     MPI_Comm rowcomm = commgrid->GetRowWorld();
     MPI_Comm colcomm = commgrid->GetColWorld();
