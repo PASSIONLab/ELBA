@@ -126,7 +126,7 @@ int main(int argc, char **argv)
         }
         MPI_Barrier(comm);
 
-        A.ParallelWriteMM(getmatfname("A.mtx").c_str(), true);
+        //A.ParallelWriteMM(getmatfname("A.mtx").c_str(), true);
 
         auto AT = A;
         AT.Transpose();
@@ -145,12 +145,20 @@ int main(int argc, char **argv)
             std::cout << "Overlap matrix B has " << numreads << " rows (readids), " << numreads << " columns (readids), and " << numsharedseeds_after << " nonzeros (overlap seeds)\n" << std::endl;
         }
 
-        B.ParallelWriteMM(getmatfname("B.mtx").c_str(), true, SharedSeeds::IOHandler());
+        //B.ParallelWriteMM(getmatfname("B.mtx").c_str(), true, SharedSeeds::IOHandler());
 
         dfd.wait();
 
-
         CT<Overlap>::PSpParMat R = PairwiseAlignment(dfd, B, mat, mis, gap, xdrop_cutoff);
+
+        size_t numoverlaps_before = R.getnnz();
+        R.Prune([](const Overlap& nz) { return !nz.passed; });
+        size_t numoverlaps_after = R.getnnz();
+
+        if (!myrank)
+        {
+            std::cout << "Pruned " << (numoverlaps_before - numoverlaps_after) << " nonzeros (overlaps) with poor alignments\n\n";
+        }
 
         R.ParallelWriteMM(getmatfname("R.mtx").c_str(), true, Overlap::IOHandler());
 
