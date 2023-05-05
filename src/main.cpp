@@ -28,6 +28,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "KmerOps.hpp"
 #include "SharedSeeds.hpp"
 #include "PairwiseAlignment.hpp"
+#include "MPITimer.hpp"
 
 int returncode;
 std::string fasta_fname;
@@ -49,11 +50,6 @@ int gap = -1;          /* gap score */
 int xdrop_cutoff = 15; /* x-drop cutoff score */
 
 constexpr int root = 0; /* root process rank */
-
-/*
- * Timer variable(s).
- */
-double elapsed, mintime, maxtime, avgtime;
 
 /*
  * Command line parser.
@@ -98,20 +94,29 @@ int main(int argc, char **argv)
         if (parse_cli(argc, argv) != 0)
             goto err;
 
-        MPI_Barrier(comm);
-        elapsed = -MPI_Wtime();
-
 /***********************************************************/
 /************************ START ****************************/
 /***********************************************************/
 
+        MPITimer timer(comm), exchange_timer(comm);
+
+        timer.start();
         std::shared_ptr<FastaIndex> index(new FastaIndex(fasta_fname, commgrid));
+        timer.stop_and_log("indexing");
+
+        timer.start();
         std::shared_ptr<DnaBuffer> mydna = index->getmydna();
+        timer.stop_and_log("parsing and compressing");
+
         DistributedFastaData dfd(index);
+
+        exchange_timer.start();
         dfd.collect_sequences(mydna);
 
         KmerCountMap kmermap = GetKmerCountMapKeys(*mydna, commgrid);
+
         GetKmerCountMapValues(*mydna, kmermap, commgrid);
+
         PrintKmerHistogram(kmermap, commgrid);
 
         auto A = CreateKmerMatrix(*mydna, kmermap, commgrid);
@@ -126,7 +131,10 @@ int main(int argc, char **argv)
         }
         MPI_Barrier(comm);
 
-        //A.ParallelWriteMM(getmatfname("A.mtx").c_str(), true);
+
+        #if LOG_LEVEL == 2
+        A.ParallelWriteMM(getmatfname("A.mtx").c_str(), true);
+        #endif
 
         auto AT = A;
         AT.Transpose();
@@ -139,15 +147,21 @@ int main(int argc, char **argv)
         B.Prune([](const SharedSeeds& nz) { return nz.getnumshared() <= 1; });
         numsharedseeds_after = B.getnnz();
 
+        #if LOG_LEVEL == 1
         if (!myrank)
         {
             std::cout << "Pruned " << (numsharedseeds_before - numsharedseeds_after) << " nonzeros (overlap seeds) with not enough support\n\n";
             std::cout << "Overlap matrix B has " << numreads << " rows (readids), " << numreads << " columns (readids), and " << numsharedseeds_after << " nonzeros (overlap seeds)\n" << std::endl;
         }
+        MPI_Barrier(comm);
+        #endif
 
-        //B.ParallelWriteMM(getmatfname("B.mtx").c_str(), true, SharedSeeds::IOHandler());
+        #if LOG_LEVEL == 2
+        B.ParallelWriteMM(getmatfname("B.mtx").c_str(), true, SharedSeeds::IOHandler());
+        #endif
 
         dfd.wait();
+        exchange_timer.stop_and_log("sequence exchange");
 
         CT<Overlap>::PSpParMat R = PairwiseAlignment(dfd, B, mat, mis, gap, xdrop_cutoff);
 
@@ -155,31 +169,22 @@ int main(int argc, char **argv)
         R.Prune([](const Overlap& nz) { return !nz.passed; });
         size_t numoverlaps_after = R.getnnz();
 
+        #if LOG_LEVEL == 1
         if (!myrank)
         {
             std::cout << "Pruned " << (numoverlaps_before - numoverlaps_after) << " nonzeros (overlaps) with poor alignments\n\n";
         }
+        #endif
 
+        #if LOG_LEVEL == 2
         R.ParallelWriteMM(getmatfname("R.mtx").c_str(), true, Overlap::IOHandler());
+        #endif
 
         ParallelWritePAF(R, dfd, getpafname().c_str());
 
 /***********************************************************/
 /************************* END *****************************/
 /***********************************************************/
-
-        elapsed += MPI_Wtime();
-        MPI_Reduce(&elapsed, &maxtime, 1, MPI_DOUBLE, MPI_MAX, root, comm);
-        MPI_Reduce(&elapsed, &avgtime, 1, MPI_DOUBLE, MPI_SUM, root, comm);
-
-        if (myrank == root)
-        {
-            std::cout << "Total time (user secs): " << std::fixed << std::setprecision(3) << elapsed << "\n"
-                      << "Total work (proc secs): " << std::fixed << std::setprecision(3) << avgtime << "\n"
-                      << "Total cost (proc secs): " << std::fixed << std::setprecision(3) << (elapsed*nprocs) << std::endl;
-        }
-
-        MPI_Barrier(comm);
 
         goto done;
     }
