@@ -85,6 +85,8 @@ int main(int argc, char **argv)
         /***********************************************************/
 
         std::unique_ptr<CT<PosInRead>::PSpParMat> A, AT;
+        std::unique_ptr<CT<SharedSeeds>::PSpParMat> B;
+        std::unique_ptr<CT<Overlap>::PSpParMat> R;
         std::unique_ptr<KmerCountMap> kmermap;
 
         MPITimer timer(comm);
@@ -98,13 +100,10 @@ int main(int argc, char **argv)
         timer.stop_and_log("parsing and compressing");
 
         DistributedFastaData dfd(index);
-
         dfd.collect_sequences(mydna);
 
-        kmermap = GetKmerCountMapKeys(mydna, commgrid);
-
-        GetKmerCountMapValues(mydna, *kmermap, commgrid);
-
+        kmermap = get_kmer_count_map_keys(mydna, commgrid);
+        get_kmer_count_map_values(mydna, *kmermap, commgrid);
         print_kmer_histogram(*kmermap, commgrid);
 
         A = create_kmer_matrix(mydna, *kmermap, commgrid);
@@ -117,62 +116,39 @@ int main(int argc, char **argv)
         size_t numkmers = A->getncol();
         size_t numseeds = A->getnnz();
 
-        if (!myrank)
-        {
-           std::cout << "K-mer matrix A has " << numreads << " rows (readids), " << numkmers << " columns (k-mers), and " << numseeds << " nonzeros (k-mer seeds)\n" << std::endl;
-        }
+        if (!myrank) std::cout << "K-mer matrix A has " << numreads << " rows (readids), " << numkmers << " columns (k-mers), and " << numseeds << " nonzeros (k-mer seeds)\n" << std::endl;
         MPI_Barrier(comm);
-
 
         #if LOG_LEVEL >= 2
         A->ParallelWriteMM(getmatfname("A.mtx").c_str(), true);
         #endif
 
-
-        CT<SharedSeeds>::PSpParMat B = Mult_AnXBn_DoubleBuff<SharedSeeds::Semiring, SharedSeeds, CT<SharedSeeds>::PSpDCCols>(*A, *AT);
+        B = create_seed_matrix(*A, *AT);
         A.reset(), AT.reset();
 
-        size_t numsharedseeds_before, numsharedseeds_after;
-
-        numsharedseeds_before = B.getnnz();
-        B.Prune([](const SharedSeeds& nz) { return nz.getnumshared() <= 1; });
-        numsharedseeds_after = B.getnnz();
+        size_t numoverlaps = B->getnnz();
 
         #if LOG_LEVEL >= 1
-        if (!myrank)
-        {
-            std::cout << "Pruned " << (numsharedseeds_before - numsharedseeds_after) << " nonzeros (overlap seeds) with not enough support\n\n";
-            std::cout << "Overlap matrix B has " << numreads << " rows (readids), " << numreads << " columns (readids), and " << numsharedseeds_after << " nonzeros (overlap seeds)\n" << std::endl;
-        }
+        if (!myrank) std::cout << "Overlap matrix B has " << numreads << " rows (readids), " << numreads << " columns (readids), and " << numoverlaps << " nonzeros (overlap seeds)\n" << std::endl;
         MPI_Barrier(comm);
         #endif
 
         #if LOG_LEVEL >= 2
-        B.ParallelWriteMM(getmatfname("B.mtx").c_str(), true, SharedSeeds::IOHandler());
+        B->ParallelWriteMM(getmatfname("B.mtx").c_str(), true, SharedSeeds::IOHandler());
         #endif
 
         dfd.wait();
 
         std::vector<std::string> names = index.bcastnames();
 
-        CT<Overlap>::PSpParMat R = PairwiseAlignment(dfd, B, mat, mis, gap, xdrop_cutoff);
-
-        size_t numoverlaps_before = R.getnnz();
-        R.Prune([](const Overlap& nz) { return !nz.passed; });
-        size_t numoverlaps_after = R.getnnz();
-
-        #if LOG_LEVEL >= 1
-        if (!myrank)
-        {
-            std::cout << "Pruned " << (numoverlaps_before - numoverlaps_after) << " nonzeros (overlaps) with poor alignments\n\n";
-        }
-        #endif
+        R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
 
         #if LOG_LEVEL >= 2
-        R.ParallelWriteMM(getmatfname("R.mtx").c_str(), true, Overlap::IOHandler());
+        R->ParallelWriteMM(getmatfname("R.mtx").c_str(), true, Overlap::IOHandler());
         #endif
 
-        parallel_write_paf(R, dfd, getpafname().c_str());
+        parallel_write_paf(*R, dfd, getpafname().c_str());
+        R.reset();
 
         /***********************************************************/
         /************************* END *****************************/

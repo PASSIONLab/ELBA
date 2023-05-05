@@ -2,7 +2,8 @@
 #include "DnaSeq.hpp"
 #include "Logger.hpp"
 
-CT<Overlap>::PSpParMat PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, int dropoff)
+std::unique_ptr<CT<Overlap>::PSpParMat>
+PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, int dropoff)
 {
     FastaIndex& index = dfd.getindex();
     auto commgrid = index.getcommgrid();
@@ -71,5 +72,9 @@ CT<Overlap>::PSpParMat PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSee
 
     uint64_t numreads = index.gettotrecords();
 
-    return CT<Overlap>::PSpParMat(numreads, numreads, drows, dcols, dvals, false);
+    auto R =std::make_unique<CT<Overlap>::PSpParMat>(numreads, numreads, drows, dcols, dvals, false);
+
+    R->Prune([](const Overlap& nz) { return !nz.passed; });
+
+    return std::move(R);
 }

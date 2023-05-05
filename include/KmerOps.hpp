@@ -26,9 +26,9 @@ std::unique_ptr<CT<PosInRead>::PSpParMat>
 create_kmer_matrix(const DnaBuffer& myreads, const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
 
 std::unique_ptr<KmerCountMap>
-GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> commgrid);
+get_kmer_count_map_keys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> commgrid);
 
-void GetKmerCountMapValues(const DnaBuffer& myreads, KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
+void get_kmer_count_map_values(const DnaBuffer& myreads, KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
 int GetKmerOwner(const TKmer& kmer, int nprocs);
 
 struct BatchState

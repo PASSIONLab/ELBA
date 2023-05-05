@@ -16,7 +16,7 @@ static_assert(USE_BLOOM == 0);
 #endif
 
 std::unique_ptr<KmerCountMap>
-GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> commgrid)
+get_kmer_count_map_keys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> commgrid)
 {
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
@@ -193,7 +193,7 @@ GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> commgrid
     return std::unique_ptr<KmerCountMap>(kmermap);
 }
 
-void GetKmerCountMapValues(const DnaBuffer& myreads, KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid)
+void get_kmer_count_map_values(const DnaBuffer& myreads, KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid)
 {
     Logger logger(commgrid);
     int myrank = commgrid->GetRank();

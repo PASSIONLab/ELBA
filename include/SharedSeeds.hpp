@@ -118,4 +118,7 @@ private:
     int numshared;
 };
 
+std::unique_ptr<CT<SharedSeeds>::PSpParMat>
+create_seed_matrix(CT<PosInRead>::PSpParMat& A, CT<PosInRead>::PSpParMat& AT);
+
 #endif
