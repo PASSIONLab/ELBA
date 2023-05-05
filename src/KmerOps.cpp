@@ -15,12 +15,13 @@ static Bloom *bm = nullptr;
 static_assert(USE_BLOOM == 0);
 #endif
 
-KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> commgrid)
+std::unique_ptr<KmerCountMap>
+GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> commgrid)
 {
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
 
-    KmerCountMap kmermap;                                          /* Received k-mers will be stored in this local hash table */
+    KmerCountMap *kmermap;                                         /* Received k-mers will be stored in this local hash table */
     HyperLogLog hll;                                               /* HyperLogLog counter initialized with 12 bits as default */
     size_t numreads;                                               /* Number of locally stored reads */
     size_t avgcardinality;                                         /* Average estimate for number of distinct k-mers per procesor (via Hyperloglog)*/
@@ -35,6 +36,7 @@ KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommG
     Logger log(commgrid);
     std::ostringstream rootlog;
 
+    kmermap = new KmerCountMap;
     numreads = myreads.size();
 
     /*
@@ -64,7 +66,7 @@ KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommG
      * Reserve memory for local hash table and Bloom filter using
      * distinct k-mer count estimates.
      */
-    kmermap.reserve(avgcardinality);
+    kmermap->reserve(avgcardinality);
     bm = new Bloom(static_cast<int64_t>(std::ceil(cardinality)), 0.05);
 
     BatchState batch_state(myreads.size(), commgrid);
@@ -164,8 +166,8 @@ KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommG
                  * singleton k-mer. Insert it into local hash table partition
                  * if it hasn't already been.
                  */
-                if (kmermap.find(mer) == kmermap.end())
-                    kmermap.insert({mer, KmerCountEntry({}, {}, 0)});
+                if (kmermap->find(mer) == kmermap->end())
+                    kmermap->insert({mer, KmerCountEntry({}, {}, 0)});
             }
             else
             {
@@ -188,7 +190,7 @@ KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommG
 
     } while (!batch_state.Finished());
 
-    return kmermap;
+    return std::unique_ptr<KmerCountMap>(kmermap);
 }
 
 void GetKmerCountMapValues(const DnaBuffer& myreads, KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid)

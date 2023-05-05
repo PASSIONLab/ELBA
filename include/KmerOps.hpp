@@ -25,7 +25,9 @@ typedef std::unordered_map<TKmer, KmerCountEntry> KmerCountMap;
 std::unique_ptr<CT<PosInRead>::PSpParMat>
 create_kmer_matrix(const DnaBuffer& myreads, const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
 
-KmerCountMap GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> commgrid);
+std::unique_ptr<KmerCountMap>
+GetKmerCountMapKeys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> commgrid);
+
 void GetKmerCountMapValues(const DnaBuffer& myreads, KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
 int GetKmerOwner(const TKmer& kmer, int nprocs);
 

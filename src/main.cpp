@@ -84,6 +84,9 @@ int main(int argc, char **argv)
         /************************ START ****************************/
         /***********************************************************/
 
+        std::unique_ptr<CT<PosInRead>::PSpParMat> A, AT;
+        std::unique_ptr<KmerCountMap> kmermap;
+
         MPITimer timer(comm);
 
         timer.start();
@@ -98,15 +101,15 @@ int main(int argc, char **argv)
 
         dfd.collect_sequences(mydna);
 
-        KmerCountMap kmermap = GetKmerCountMapKeys(mydna, commgrid);
+        kmermap = GetKmerCountMapKeys(mydna, commgrid);
 
-        GetKmerCountMapValues(mydna, kmermap, commgrid);
+        GetKmerCountMapValues(mydna, *kmermap, commgrid);
 
-        print_kmer_histogram(kmermap, commgrid);
+        print_kmer_histogram(*kmermap, commgrid);
 
-        std::unique_ptr<CT<PosInRead>::PSpParMat> A, AT;
+        A = create_kmer_matrix(mydna, *kmermap, commgrid);
+        kmermap.reset();
 
-        A = create_kmer_matrix(mydna, kmermap, commgrid);
         AT = std::make_unique<CT<PosInRead>::PSpParMat>(*A);
         AT->Transpose();
 
