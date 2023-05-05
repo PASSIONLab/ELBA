@@ -28,9 +28,11 @@ DistributedFastaData::DistributedFastaData(FastaIndex& index) : index(index)
     rowinfo.numreads = (myrowid == procdim-1)? (numreads - myrowid*readsperprocdim) : readsperprocdim;
     colinfo.numreads = (mycolid == procdim-1)? (numreads - mycolid*readsperprocdim) : readsperprocdim;
 
+    #if LOG_LEVEL >= 2
     Logger logger(commgrid);
     logger() << "P(" << myrowid+1 << ", " << mycolid+1 << ") " << Logger::readrangestr(rowinfo.startid, rowinfo.numreads) << "; " << Logger::readrangestr(colinfo.startid, colinfo.numreads);
     logger.Flush("DistributedFastaData::DistributedFastaData");
+    #endif
 }
 
 using FastaDataRequest = typename DistributedFastaData::FastaDataRequest;
@@ -120,7 +122,6 @@ void DistributedFastaData::collect_dim_sequences(const DnaBuffer& mydna, DimExch
     int nprocs = commgrid->GetSize();
     int myrank = commgrid->GetRank();
     MPI_Comm comm = commgrid->GetWorld();
-    Logger logger(commgrid);
 
     std::vector<FastaDataRequest> myreqs, mysends, allreqs;
 

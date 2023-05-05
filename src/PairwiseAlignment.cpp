@@ -40,9 +40,11 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
 
     MPI_ALLREDUCE(&nalignments, &totalignments, 1, MPI_SIZE_T, MPI_SUM, comm);
 
+    #if LOG_LEVEL >= 2
     Logger logger(commgrid);
     logger() << "performing " << nalignments << "/" << totalignments << " alignments";
     logger.Flush("Alignment Counts:");
+    #endif
 
     std::vector<uint64_t> local_rowids, local_colids;
     std::vector<Overlap> overlaps;

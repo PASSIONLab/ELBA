@@ -248,6 +248,7 @@ int parse_cli(int argc, char *argv[])
 
 void print_kmer_histogram(const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid)
 {
+    #if LOG_LEVEL >= 2
     int maxcount = std::accumulate(kmermap.cbegin(), kmermap.cend(), 0, [](int cur, const auto& entry) { return std::max(cur, std::get<2>(entry.second)); });
 
     MPI_Allreduce(MPI_IN_PLACE, &maxcount, 1, MPI_INT, MPI_MAX, commgrid->GetWorld());
@@ -280,6 +281,7 @@ void print_kmer_histogram(const KmerCountMap& kmermap, std::shared_ptr<CommGrid>
     }
 
     MPI_Barrier(commgrid->GetWorld());
+    #endif
 }
 
 void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname)
