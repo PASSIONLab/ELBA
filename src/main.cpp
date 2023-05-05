@@ -30,13 +30,11 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "SharedSeeds.hpp"
 #include "PairwiseAlignment.hpp"
 #include "MPITimer.hpp"
+#include "ELBALogger.hpp"
 
 int returncode;
 std::string fasta_fname;
 std::string output_prefix = "elba";
-
-std::string getmatfname(const std::string matname);
-std::string getpafname();
 
 /*
  * MPI communicator info.
@@ -58,6 +56,7 @@ constexpr int root = 0; /* root process rank */
 int parse_cli(int argc, char *argv[]);
 void print_kmer_histogram(const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
 void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname);
+std::string getpafname();
 
 int main(int argc, char **argv)
 {
@@ -89,6 +88,7 @@ int main(int argc, char **argv)
         std::unique_ptr<CT<Overlap>::PSpParMat> R;
         std::unique_ptr<KmerCountMap> kmermap;
 
+        ELBALogger elbalog(output_prefix, comm);
         MPITimer timer(comm);
 
         timer.start();
@@ -100,54 +100,38 @@ int main(int argc, char **argv)
         timer.stop_and_log("parsing and compressing");
 
         DistributedFastaData dfd(index);
+
         dfd.collect_sequences(mydna);
 
         kmermap = get_kmer_count_map_keys(mydna, commgrid);
+
         get_kmer_count_map_values(mydna, *kmermap, commgrid);
+
         print_kmer_histogram(*kmermap, commgrid);
 
         A = create_kmer_matrix(mydna, *kmermap, commgrid);
         kmermap.reset();
 
         AT = std::make_unique<CT<PosInRead>::PSpParMat>(*A);
+
+        elbalog.log_kmer_matrix(*A);
+
         AT->Transpose();
-
-        size_t numreads = A->getnrow();
-        size_t numkmers = A->getncol();
-        size_t numseeds = A->getnnz();
-
-        if (!myrank) std::cout << "K-mer matrix A has " << numreads << " rows (readids), " << numkmers << " columns (k-mers), and " << numseeds << " nonzeros (k-mer seeds)\n" << std::endl;
-        MPI_Barrier(comm);
-
-        #if LOG_LEVEL >= 2
-        A->ParallelWriteMM(getmatfname("A.mtx").c_str(), true);
-        #endif
-
         B = create_seed_matrix(*A, *AT);
-        A.reset(), AT.reset();
 
-        size_t numoverlaps = B->getnnz();
+        A.reset();
+        AT.reset();
 
-        #if LOG_LEVEL >= 1
-        if (!myrank) std::cout << "Overlap matrix B has " << numreads << " rows (readids), " << numreads << " columns (readids), and " << numoverlaps << " nonzeros (overlap seeds)\n" << std::endl;
-        MPI_Barrier(comm);
-        #endif
-
-        #if LOG_LEVEL >= 2
-        B->ParallelWriteMM(getmatfname("B.mtx").c_str(), true, SharedSeeds::IOHandler());
-        #endif
+        elbalog.log_seed_matrix(*B);
 
         dfd.wait();
 
-        std::vector<std::string> names = index.bcastnames();
-
         R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
 
-        #if LOG_LEVEL >= 2
-        R->ParallelWriteMM(getmatfname("R.mtx").c_str(), true, Overlap::IOHandler());
-        #endif
+        elbalog.log_overlap_matrix(*R);
 
         parallel_write_paf(*R, dfd, getpafname().c_str());
+
         R.reset();
 
         /***********************************************************/
@@ -331,13 +315,6 @@ void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& d
     MPI_File_open(comm, pafname, MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
     MPI_File_write_ordered(fh, pafcontents.c_str(), count, MPI_CHAR, MPI_STATUS_IGNORE);
     MPI_File_close(&fh);
-}
-
-std::string getmatfname(const std::string matname)
-{
-    std::ostringstream ss;
-    ss << output_prefix << "." << matname;
-    return ss.str();
 }
 
 std::string getpafname()
