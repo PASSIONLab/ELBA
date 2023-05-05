@@ -163,6 +163,18 @@ int main(int argc, char **argv)
         dfd.wait();
         exchange_timer.stop_and_log("sequence exchange");
 
+        std::vector<std::string> names = index->bcastnames();
+
+        auto rowbuf = dfd.getrowbuf();
+        size_t n = rowbuf->size();
+        Logger rowbuflog(commgrid);
+        rowbuflog() << "\n";
+        for (size_t i = 0; i < n; ++i)
+        {
+            rowbuflog() << "TT\t" << myrank << "\t" << i << "\t" << i+dfd.getrowstartid() << "\t" << names[i+dfd.getrowstartid()] << "\t" << (*rowbuf)[i].size() << "\n";
+        }
+        rowbuflog.Flush("rowbuflog");
+
         CT<Overlap>::PSpParMat R = PairwiseAlignment(dfd, B, mat, mis, gap, xdrop_cutoff);
 
         size_t numoverlaps_before = R.getnnz();
