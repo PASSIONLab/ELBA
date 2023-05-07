@@ -139,15 +139,15 @@ int main(int argc, char **argv)
 
         dfd.wait();
 
-        timer.start();
-        R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
-        timer.stop_and_log("pairwise alignment");
+        //timer.start();
+        //R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
+        //timer.stop_and_log("pairwise alignment");
 
-        elbalog.log_overlap_matrix(*R);
+        //elbalog.log_overlap_matrix(*R);
 
-        parallel_write_paf(*R, dfd, getpafname().c_str());
+        //parallel_write_paf(*R, dfd, getpafname().c_str());
 
-        R.reset();
+        //R.reset();
 
         walltimer.stop_and_log("wallclock");
 
