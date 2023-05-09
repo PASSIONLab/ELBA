@@ -2,7 +2,7 @@ K?=31
 L?=15
 U?=35
 S?=2
-LOG?=1
+LOG?=2
 COMPILE_TIME_PARAMETERS=-DKMER_SIZE=$(K) -DLOWER_KMER_FREQ=$(L) -DUPPER_KMER_FREQ=$(U) -DMAX_SEEDS=$(S) -DLOG_LEVEL=$(LOG)
 
 MPICH=/usr/local/Cellar/mpich/4.1.1
@@ -83,7 +83,7 @@ obj/MPIType.o: $(COMBBLAS_SRC)/MPIType.cpp $(COMBBLAS_INC)/MPIType.h
 	@$(COMPILER) $(FLAGS) $(INCADD) -c -o $@ $<
 
 clean:
-	rm -rf *.o obj/*.o *.dSYM *.out *.mtx
+	rm -rf *.o obj/*.o *.dSYM *.out *.mtx $(HOME)/bin/elba elba
 
 gitclean: clean
 	git clean -f

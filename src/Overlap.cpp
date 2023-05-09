@@ -27,6 +27,8 @@ void Overlap::extend_overlap(const DnaSeq& seqQ, const DnaSeq& seqT, int mat, in
 
     if (kind != BAD_ALIGNMENT)
     {
+        passed = true;
+
         if (kind == FIRST_CONTAINED)
         {
             containedQ = true;
@@ -41,7 +43,6 @@ void Overlap::extend_overlap(const DnaSeq& seqQ, const DnaSeq& seqT, int mat, in
             directionT = rc? 0 : 2;
             suffix     = ((std::get<1>(len) - endTr) - (std::get<0>(len) - endQr));
             suffixT    = begQr - begTr;
-            passed     = true;
         }
         else
         {
@@ -49,7 +50,6 @@ void Overlap::extend_overlap(const DnaSeq& seqQ, const DnaSeq& seqT, int mat, in
             directionT = rc? 3 : 1;
             suffix     = begTr - begQr;
             suffixT    = (std::get<0>(len) - endQr) - (std::get<1>(len) - endTr);
-            passed     = true;
         }
     }
 }

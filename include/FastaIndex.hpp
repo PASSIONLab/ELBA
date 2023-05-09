@@ -29,7 +29,6 @@ public:
 
     DnaBuffer getmydna() const;
     void log(const DnaBuffer& buffer) const;
-    void logall(const DnaBuffer& buffer) const;
 
     static Record get_faidx_record(const std::string& line, std::string& name);
 
