@@ -107,10 +107,10 @@ template <typename KmerHandler>
 void ForeachKmer(const DnaBuffer& myreads, KmerHandler& handler)
 {
     size_t i;
+
     /*
      * Go through each local read.
      */
-    // for (auto readitr = myreads.begin(); readitr != myreads.end(); ++readitr, ++i)
     for (i = 0; i < myreads.size(); ++i)
     {
         /*

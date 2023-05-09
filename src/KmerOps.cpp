@@ -81,6 +81,8 @@ get_kmer_count_map_keys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> comm
 
     do
     {
+        ReadId curid = batch_state.myreadid;
+
         /*
          * Distribute k-mers parsed from local FASTA partition into
          * outgoing k-mer buckets (buckets are staging area for
@@ -185,11 +187,14 @@ get_kmer_count_map_keys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> comm
             }
         }
 
-        total_totsend += (totsend / TKmer::NBYTES);
-        total_totrecv += (totrecv / TKmer::NBYTES);
+        size_t justsent = (totsend / TKmer::NBYTES);
+        size_t justrecv = (totrecv / TKmer::NBYTES);
+
+        total_totsend += justsent;
+        total_totrecv += justrecv;
 
         #if LOG_LEVEL >= 2
-        log() << " has sent " << total_totsend << " k-mers parsed from " << batch_state.myreadid << " reads of " << numreads << " and received " << total_totrecv << " k-mers";
+        log() << " sent " << justsent << " k-mers parsed from " << (batch_state.myreadid - curid) << " reads and received " << justrecv << " k-mers";
         rootlog << "Round " << batch_round++;
         log.Flush(rootlog);
         #endif
