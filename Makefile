@@ -3,13 +3,21 @@ L?=15
 U?=35
 S?=2
 LOG?=2
+D?=0
 COMPILE_TIME_PARAMETERS=-DKMER_SIZE=$(K) -DLOWER_KMER_FREQ=$(L) -DUPPER_KMER_FREQ=$(U) -DMAX_SEEDS=$(S) -DLOG_LEVEL=$(LOG)
+OPT=
+
+ifeq ($(D), 1)
+OPT+=-g -O2 -fsanitize=address -fno-omit-frame-pointer
+else
+OPT+=-O3
+endif
 
 MPICH=/usr/local/Cellar/mpich/4.1.1
 MPICH_INC=-I$(MPICH)/include
 MPICH_LIB=-L$(MPICH)/lib
 MPICH_FLAGS=
-FLAGS=$(COMPILE_TIME_PARAMETERS) -fopenmp -O2 -Wno-maybe-uninitialized -Wno-deprecated -std=c++17 -I./include -I./src
+FLAGS=$(OPT) $(COMPILE_TIME_PARAMETERS) -fopenmp -Wno-maybe-uninitialized -Wno-deprecated -std=c++17 -I./include -I./src
 
 COMBBLAS=./CombBLAS
 COMBBLAS_INC=$(COMBBLAS)/include/CombBLAS
