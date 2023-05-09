@@ -177,5 +177,5 @@ lbl_dal
 elba
 .vscode
 CombBLAS
-data
+data*
 genfa.py
