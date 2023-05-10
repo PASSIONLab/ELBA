@@ -105,49 +105,85 @@ int main(int argc, char **argv)
 
         dfd.collect_sequences(mydna);
 
-        timer.start();
-        kmermap = get_kmer_count_map_keys(mydna, commgrid);
-        timer.stop_and_log("collecting distinct k-mers");
+        //timer.start();
+        //kmermap = get_kmer_count_map_keys(mydna, commgrid);
+        //timer.stop_and_log("collecting distinct k-mers");
 
-        timer.start();
-        get_kmer_count_map_values(mydna, *kmermap, commgrid);
-        timer.stop_and_log("counting recording k-mer seeds");
+        //timer.start();
+        //get_kmer_count_map_values(mydna, *kmermap, commgrid);
+        //timer.stop_and_log("counting recording k-mer seeds");
 
-        print_kmer_histogram(*kmermap, commgrid);
+        //print_kmer_histogram(*kmermap, commgrid);
 
-        timer.start();
-        A = create_kmer_matrix(mydna, *kmermap, commgrid);
-        timer.stop_and_log("creating k-mer matrix");
+        //timer.start();
+        //A = create_kmer_matrix(mydna, *kmermap, commgrid);
+        //timer.stop_and_log("creating k-mer matrix");
 
-        kmermap.reset();
+        //kmermap.reset();
 
-        timer.start();
-        AT = std::make_unique<CT<PosInRead>::PSpParMat>(*A);
-        AT->Transpose();
-        timer.stop_and_log("copying and transposing k-mer matrix");
+        //timer.start();
+        //AT = std::make_unique<CT<PosInRead>::PSpParMat>(*A);
+        //AT->Transpose();
+        //timer.stop_and_log("copying and transposing k-mer matrix");
 
-        elbalog.log_kmer_matrix(*A);
+        //elbalog.log_kmer_matrix(*A);
 
-        timer.start();
-        B = create_seed_matrix(*A, *AT);
-        timer.stop_and_log("creating seed matrix (spgemm)");
+        //timer.start();
+        //B = create_seed_matrix(*A, *AT);
+        //timer.stop_and_log("creating seed matrix (spgemm)");
 
-        A.reset();
-        AT.reset();
+        //A.reset();
+        //AT.reset();
 
-        elbalog.log_seed_matrix(*B);
+        //elbalog.log_seed_matrix(*B);
 
         dfd.wait();
 
-        timer.start();
-        R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
-        timer.stop_and_log("pairwise alignment");
+        std::vector<std::string> names = index.bcastnames();
 
-        elbalog.log_overlap_matrix(*R);
+        std::ostringstream procnamess;
+        procnamess << "P(" << commgrid->GetRankInProcCol() << ", " << commgrid->GetRankInProcRow() << ")";
+        std::string procname = procnamess.str();
 
-        parallel_write_paf(*R, dfd, getpafname().c_str());
+        auto rowbuf = dfd.getrowbuf();
+        auto colbuf = dfd.getcolbuf();
 
-        R.reset();
+        std::ostringstream rowss, colss;
+        rowss << "rowbuf.rank" << myrank << ".txt";
+        colss << "colbuf.rank" << myrank << ".txt";
+        std::string rowsfname = rowss.str();
+        std::string colsfname = colss.str();
+        size_t rowoffset = dfd.getrowstartid();
+        size_t coloffset = dfd.getcolstartid();
+
+        std::ofstream rowstream(rowsfname), colstream(colsfname);
+
+        for (size_t i = 0; i < rowbuf->size(); ++i)
+        {
+            size_t len = (*rowbuf)[i].size();
+            size_t globalid = rowoffset + i;
+            rowstream << names[globalid] << "\t" << len << "\t" << globalid << "\t" << procname << "\n";
+        }
+
+        for (size_t i = 0; i < colbuf->size(); ++i)
+        {
+            size_t len = (*colbuf)[i].size();
+            size_t globalid = coloffset + i;
+            colstream << names[globalid] << "\t" << len << "\t" << globalid << "\t" << procname << "\n";
+        }
+
+        rowstream.close();
+        colstream.close();
+        
+        //timer.start();
+        //R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
+        //timer.stop_and_log("pairwise alignment");
+
+        //elbalog.log_overlap_matrix(*R);
+
+        //parallel_write_paf(*R, dfd, getpafname().c_str());
+
+        //R.reset();
 
         walltimer.stop_and_log("wallclock");
 

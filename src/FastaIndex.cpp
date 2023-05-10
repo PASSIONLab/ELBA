@@ -261,10 +261,10 @@ std::vector<std::string> FastaIndex::bcastnames()
 
     MPI_BCAST(&numchars, 1, MPI_COUNT_TYPE, 0, comm);
 
-    flatbuf.reserve(numchars);
 
     if (myrank == 0)
     {
+        flatbuf.reserve(numchars);
         auto itr = rootnames.begin();
 
         for (size_t i = 0; i < static_cast<size_t>(numreads); ++i)
@@ -274,8 +274,14 @@ std::vector<std::string> FastaIndex::bcastnames()
             ++itr;
         }
     }
+    else
+    {
+        flatbuf.resize(numchars);
+    }
 
-    MPI_BCAST(namelens.data(), numreads, MPI_COUNT_TYPE, 0, comm);
+    assert(flatbuf.size() == numchars);
+
+    MPI_BCAST(namelens.data(), numreads, MPI_SIZE_T, 0, comm);
     MPI_BCAST(flatbuf.data(), numchars, MPI_CHAR, 0, comm);
 
     if (myrank == 0)
