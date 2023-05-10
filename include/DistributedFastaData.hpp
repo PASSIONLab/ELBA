@@ -23,7 +23,8 @@ public:
 
         friend std::ostream& operator<<(std::ostream& stream, const FastaDataRequest& req)
         {
-            stream << "{owner=" << req.owner << ";requester=" << req.requester << ";offset=" << req.offset << ";count=" << req.count << ";rc=" << req.rc << "}";
+            //stream << "{owner=" << req.owner << ";requester=" << req.requester << ";offset=" << req.offset << ";count=" << req.count << ";rc=" << req.rc << "}";
+            stream << "{" << req.owner+1 << "," << req.requester+1 << "," << req.offset << "," << req.count << "," << req.rc << "}";
             return stream;
         }
     };

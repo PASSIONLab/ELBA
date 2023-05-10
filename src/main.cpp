@@ -139,42 +139,6 @@ int main(int argc, char **argv)
 
         dfd.wait();
 
-        std::vector<std::string> names = index.bcastnames();
-
-        std::ostringstream procnamess;
-        procnamess << "P(" << commgrid->GetRankInProcCol() << ", " << commgrid->GetRankInProcRow() << ")";
-        std::string procname = procnamess.str();
-
-        auto rowbuf = dfd.getrowbuf();
-        auto colbuf = dfd.getcolbuf();
-
-        std::ostringstream rowss, colss;
-        rowss << "rowbuf.rank" << myrank << ".txt";
-        colss << "colbuf.rank" << myrank << ".txt";
-        std::string rowsfname = rowss.str();
-        std::string colsfname = colss.str();
-        size_t rowoffset = dfd.getrowstartid();
-        size_t coloffset = dfd.getcolstartid();
-
-        std::ofstream rowstream(rowsfname), colstream(colsfname);
-
-        for (size_t i = 0; i < rowbuf->size(); ++i)
-        {
-            size_t len = (*rowbuf)[i].size();
-            size_t globalid = rowoffset + i;
-            rowstream << names[globalid] << "\t" << len << "\t" << globalid << "\t" << procname << "\n";
-        }
-
-        for (size_t i = 0; i < colbuf->size(); ++i)
-        {
-            size_t len = (*colbuf)[i].size();
-            size_t globalid = coloffset + i;
-            colstream << names[globalid] << "\t" << len << "\t" << globalid << "\t" << procname << "\n";
-        }
-
-        rowstream.close();
-        colstream.close();
-        
         //timer.start();
         //R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
         //timer.stop_and_log("pairwise alignment");
