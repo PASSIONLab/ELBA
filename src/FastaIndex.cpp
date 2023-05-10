@@ -243,6 +243,22 @@ DnaBuffer FastaIndex::getmydna() const
     return dnabuf;
 }
 
+std::vector<size_t> FastaIndex::getallreadlens() const
+{
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    MPI_Comm comm = commgrid->GetWorld();
+    size_t numreads = gettotrecords();
+
+    std::vector<size_t> myreadlens = getmyreadlens();
+    std::vector<size_t> allreadlens(numreads);
+
+    MPI_ALLGATHERV(myreadlens.data(), readcounts[myrank], MPI_SIZE_T, allreadlens.data(), readcounts.data(), readdispls.data(), MPI_SIZE_T, comm);
+
+    return allreadlens;
+}
+
+
 std::vector<std::string> FastaIndex::bcastnames()
 {
     int myrank = commgrid->GetRank();

@@ -22,6 +22,7 @@ public:
     size_t getmyreaddispl() const { return getreaddispl(commgrid->GetRank()); }
 
     std::vector<size_t> getmyreadlens() const;
+    std::vector<size_t> getallreadlens() const;
 
     const std::vector<Record>& getmyrecords() const { return myrecords; }
     const std::vector<MPI_Count_type> getreadcounts() const { return readcounts; }
