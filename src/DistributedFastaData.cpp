@@ -187,7 +187,7 @@ void DistributedFastaData::collect_dim_sequences(const DnaBuffer& mydna, DimExch
 
     for (size_t i = 0; i < mynumreqs; ++i)
     {
-        MPI_IRECV(reqinfo.data() + (2*i), 2, MPI_SIZE_T, myreqs[i].owner, 99+myreqs[i].rc, comm, diminfo.recvreqs.data() + i);
+        MPI_IRECV(reqinfo.data() + (2*i), 2, MPI_SIZE_T, myreqs[i].owner, 100+myreqs[i].rc, comm, diminfo.recvreqs.data() + i);
     }
 
     std::vector<size_t> sendlens(mynumsends), sendbufsizes(mynumsends);
@@ -203,7 +203,7 @@ void DistributedFastaData::collect_dim_sequences(const DnaBuffer& mydna, DimExch
         sendbufsizes[i] = mydna.getrangebufsize(localoffset, sendlens[i]);
         sendbufs[i] = mydna.getbufoffset(localoffset);
         size_t sendbuf[2] = {sendlens[i], sendbufsizes[i]};
-        MPI_ISEND(sendbuf, 2, MPI_SIZE_T, mysends[i].requester, 99+mysends[i].rc, comm, diminfo.sendreqs.data() + i);
+        MPI_ISEND(sendbuf, 2, MPI_SIZE_T, mysends[i].requester, 100+mysends[i].rc, comm, diminfo.sendreqs.data() + i);
     }
 
     assert(2*mynumreqs <= std::numeric_limits<int>::max());
@@ -234,8 +234,8 @@ void DistributedFastaData::collect_dim_sequences(const DnaBuffer& mydna, DimExch
     {
         MPI_Count_type count = reqreadlendispls[i+1] - reqreadlendispls[i];
         MPI_Count_type bufsize = reqbufdispls[i+1] - reqbufdispls[i];
-        MPI_IRECV(diminfo.reqreadlens.get() + reqreadlendispls[i], count, MPI_SIZE_T, myreqs[i].owner, 100+myreqs[i].rc, comm, diminfo.recvreqs.data() + i);
-        MPI_IRECV(diminfo.reqbuf.get() + reqbufdispls[i], bufsize, MPI_UINT8_T, myreqs[i].owner, 101+myreqs[i].rc, comm, diminfo.recvreqs.data() + mynumreqs + i);
+        MPI_IRECV(diminfo.reqreadlens.get() + reqreadlendispls[i], count, MPI_SIZE_T, myreqs[i].owner, 200+myreqs[i].rc, comm, diminfo.recvreqs.data() + i);
+        MPI_IRECV(diminfo.reqbuf.get() + reqbufdispls[i], bufsize, MPI_UINT8_T, myreqs[i].owner, 300+myreqs[i].rc, comm, diminfo.recvreqs.data() + mynumreqs + i);
     }
 
     std::vector<size_t> myreadlens = index.getmyreadlens();
@@ -245,8 +245,8 @@ void DistributedFastaData::collect_dim_sequences(const DnaBuffer& mydna, DimExch
         size_t localoffset = mysends[i].offset - index.getmyreaddispl();
         const size_t *sendreadlens = myreadlens.data() + localoffset;
         const uint8_t *sendbuf = mydna.getbufoffset(localoffset);
-        MPI_ISEND(sendreadlens, static_cast<MPI_Count_type>(sendlens[i]), MPI_SIZE_T, mysends[i].requester, 100+mysends[i].rc, comm, diminfo.sendreqs.data() + i);
-        MPI_ISEND(sendbuf, static_cast<MPI_Count_type>(sendbufsizes[i]), MPI_UINT8_T, mysends[i].requester, 101+mysends[i].rc, comm, diminfo.sendreqs.data() + mynumsends + i);
+        MPI_ISEND(sendreadlens, static_cast<MPI_Count_type>(sendlens[i]), MPI_SIZE_T, mysends[i].requester, 200+mysends[i].rc, comm, diminfo.sendreqs.data() + i);
+        MPI_ISEND(sendbuf, static_cast<MPI_Count_type>(sendbufsizes[i]), MPI_UINT8_T, mysends[i].requester, 300+mysends[i].rc, comm, diminfo.sendreqs.data() + mynumsends + i);
     }
 }
 
