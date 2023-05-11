@@ -79,8 +79,6 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
      */
     assert(readdispls[owner] <= globalstartid);
 
-    logger() << "\n";
-
     /*
      * @globalstartid + @count is the smallest index that we don't want for this
      * particular call to getgridrequests(). Therefore, we loop through the
@@ -110,10 +108,7 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
          /* If the owner and requester are the same, adjust the rcflag. */
         //unsigned short rcflag = owner != requester? rc : rc + 2;
         myrequests.emplace_back(owner++, requester, reqstart, reqend - reqstart, rc);
-        logger() << myrequests.back() << "\n";
     }
-
-    logger.Flush("getgridrequests: ");
 }
 
 void DistributedFastaData::collect_sequences(const DnaBuffer& mydna)
@@ -175,15 +170,14 @@ void DistributedFastaData::collect_dim_sequences(const DnaBuffer& mydna, DimExch
     std::copy_if(allreqs.begin(), allreqs.end(), std::back_inserter(mysends), [&](const auto& req) { return req.owner == myrank; });
     mynumsends = mysends.size();
 
-    #if LOG_LEVEL >= 2
-    logger() << "\n";
-    for (auto itr = allreqs.begin(); itr != allreqs.end(); ++itr) logger() << *itr << "\n";
-    logger.Flush("all requests:");
-    #endif
+    //#if LOG_LEVEL >= 2
+    //logger() << "\n";
+    //for (auto itr = allreqs.begin(); itr != allreqs.end(); ++itr) logger() << *itr << "\n";
+    //logger.Flush("all requests:");
+    //#endif
 
     std::vector<size_t> reqinfo(2*mynumreqs); /* even indices are number of reads, odd indices are buffer sizes */
     diminfo.recvreqs.resize(2*mynumreqs);
-    diminfo.sendreqs.resize(2*mynumsends);
 
     for (size_t i = 0; i < mynumreqs; ++i)
     {
@@ -203,7 +197,7 @@ void DistributedFastaData::collect_dim_sequences(const DnaBuffer& mydna, DimExch
         sendbufsizes[i] = mydna.getrangebufsize(localoffset, sendlens[i]);
         sendbufs[i] = mydna.getbufoffset(localoffset);
         size_t sendbuf[2] = {sendlens[i], sendbufsizes[i]};
-        MPI_ISEND(sendbuf, 2, MPI_SIZE_T, mysends[i].requester, 100+mysends[i].rc, comm, diminfo.sendreqs.data() + i);
+        MPI_SEND(sendbuf, 2, MPI_SIZE_T, mysends[i].requester, 100+mysends[i].rc, comm);
     }
 
     assert(2*mynumreqs <= std::numeric_limits<int>::max());
@@ -212,7 +206,6 @@ void DistributedFastaData::collect_dim_sequences(const DnaBuffer& mydna, DimExch
     /*
      * Note that we don't use 2*mynum{sends,reqs} below for the count.
      */
-    MPI_Waitall(static_cast<int>(mynumsends), diminfo.sendreqs.data(), MPI_STATUSES_IGNORE);
     MPI_Waitall(static_cast<int>(mynumreqs), diminfo.recvreqs.data(), MPI_STATUSES_IGNORE);
 
     std::vector<size_t> reqreadlendispls(mynumreqs+1);
@@ -245,41 +238,39 @@ void DistributedFastaData::collect_dim_sequences(const DnaBuffer& mydna, DimExch
         size_t localoffset = mysends[i].offset - index.getmyreaddispl();
         const size_t *sendreadlens = myreadlens.data() + localoffset;
         const uint8_t *sendbuf = mydna.getbufoffset(localoffset);
-        MPI_ISEND(sendreadlens, static_cast<MPI_Count_type>(sendlens[i]), MPI_SIZE_T, mysends[i].requester, 200+mysends[i].rc, comm, diminfo.sendreqs.data() + i);
-        MPI_ISEND(sendbuf, static_cast<MPI_Count_type>(sendbufsizes[i]), MPI_UINT8_T, mysends[i].requester, 300+mysends[i].rc, comm, diminfo.sendreqs.data() + mynumsends + i);
+        MPI_SEND(sendreadlens, static_cast<MPI_Count_type>(sendlens[i]), MPI_SIZE_T, mysends[i].requester, 200+mysends[i].rc, comm);
+        MPI_SEND(sendbuf, static_cast<MPI_Count_type>(sendbufsizes[i]), MPI_UINT8_T, mysends[i].requester, 300+mysends[i].rc, comm);
     }
 }
 
 void DistributedFastaData::wait()
 {
-    MPI_Waitall(static_cast<int>(rowinfo.sendreqs.size()), rowinfo.sendreqs.data(), MPI_STATUSES_IGNORE);
-    MPI_Waitall(static_cast<int>(colinfo.sendreqs.size()), colinfo.sendreqs.data(), MPI_STATUSES_IGNORE);
     MPI_Waitall(static_cast<int>(rowinfo.recvreqs.size()), rowinfo.recvreqs.data(), MPI_STATUSES_IGNORE);
     MPI_Waitall(static_cast<int>(colinfo.recvreqs.size()), colinfo.recvreqs.data(), MPI_STATUSES_IGNORE);
 
-    std::vector<size_t> allreadlens = index.getallreadlens();
+    //std::vector<size_t> allreadlens = index.getallreadlens();
 
-    Logger logger(index.getcommgrid());
+    //Logger logger(index.getcommgrid());
 
-    logger() << "\n";
-    for (size_t i = 0; i < rowinfo.numreads; ++i)
-    {
-        if (rowinfo.reqreadlens[i] != allreadlens[i+rowinfo.startid])
-        {
-            logger() << "wrong value for requested global id " << i+rowinfo.startid << "; " << logger.readrangestr(rowinfo.startid, rowinfo.numreads) << "\n";
-        }
-    }
-    logger.Flush("rowinfo");
+    //logger() << "\n";
+    //for (size_t i = 0; i < rowinfo.numreads; ++i)
+    //{
+    //    if (rowinfo.reqreadlens[i] != allreadlens[i+rowinfo.startid])
+    //    {
+    //        logger() << "wrong value for requested global id " << i+rowinfo.startid << "; " << logger.readrangestr(rowinfo.startid, rowinfo.numreads) << "\n";
+    //    }
+    //}
+    //logger.Flush("rowinfo");
 
-    logger() << "\n";
-    for (size_t i = 0; i < colinfo.numreads; ++i)
-    {
-        if (colinfo.reqreadlens[i] != allreadlens[i+colinfo.startid])
-        {
-            logger() << "wrong value for requested global id " << i+colinfo.startid << "; " << logger.readrangestr(colinfo.startid, colinfo.numreads) << "\n";
-        }
-    }
-    logger.Flush("colinfo");
+    //logger() << "\n";
+    //for (size_t i = 0; i < colinfo.numreads; ++i)
+    //{
+    //    if (colinfo.reqreadlens[i] != allreadlens[i+colinfo.startid])
+    //    {
+    //        logger() << "wrong value for requested global id " << i+colinfo.startid << "; " << logger.readrangestr(colinfo.startid, colinfo.numreads) << "\n";
+    //    }
+    //}
+    //logger.Flush("colinfo");
 
     rowbuf.reset(new DnaBuffer(rowinfo.reqbufsize, rowinfo.reqnumreads, rowinfo.reqbuf.release(), rowinfo.reqreadlens.get()));
     colbuf.reset(new DnaBuffer(colinfo.reqbufsize, colinfo.reqnumreads, colinfo.reqbuf.release(), colinfo.reqreadlens.get()));
