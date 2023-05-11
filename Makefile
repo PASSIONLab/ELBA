@@ -48,6 +48,7 @@ OBJECTS=obj/Logger.o \
 		obj/Overlap.o \
 		obj/PairwiseAlignment.o \
 		obj/XDropAligner.o \
+		obj/PruneChimeras.o \
 		obj/CommGrid.o \
 		obj/MPIType.o
 
@@ -78,6 +79,7 @@ obj/SharedSeeds.o: src/SharedSeeds.cpp include/SharedSeeds.hpp
 obj/Overlap.o: src/Overlap.cpp include/Overlap.hpp
 obj/PairwiseAlignment.o: src/PairwiseAlignment.cpp include/PairwiseAlignment.hpp
 obj/XDropAligner.o: src/XDropAligner.cpp include/XDropAligner.hpp
+obj/PruneChimeras.o: src/PruneChimeras.cpp include/PruneChimeras.hpp
 obj/DnaSeq.o: src/DnaSeq.cpp include/DnaSeq.hpp
 obj/DnaBuffer.o: src/DnaBuffer.cpp include/DnaBuffer.hpp
 obj/HashFuncs.o: src/HashFuncs.cpp include/HashFuncs.hpp

@@ -29,6 +29,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "KmerOps.hpp"
 #include "SharedSeeds.hpp"
 #include "PairwiseAlignment.hpp"
+#include "PruneChimeras.hpp"
 #include "MPITimer.hpp"
 #include "ELBALogger.hpp"
 
@@ -143,6 +144,8 @@ int main(int argc, char **argv)
         timer.stop_and_log("pairwise alignment");
 
         elbalog.log_overlap_matrix(*R);
+
+        std::vector<PileupVector> pileup = GetReadPileup(dfd, *R);
 
         parallel_write_paf(*R, dfd, getpafname().c_str());
 
