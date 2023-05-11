@@ -102,52 +102,51 @@ int main(int argc, char **argv)
         timer.stop_and_log("parsing and compressing");
 
         DistributedFastaData dfd(index);
-
         dfd.collect_sequences(mydna);
 
-        //timer.start();
-        //kmermap = get_kmer_count_map_keys(mydna, commgrid);
-        //timer.stop_and_log("collecting distinct k-mers");
+        timer.start();
+        kmermap = get_kmer_count_map_keys(mydna, commgrid);
+        timer.stop_and_log("collecting distinct k-mers");
 
-        //timer.start();
-        //get_kmer_count_map_values(mydna, *kmermap, commgrid);
-        //timer.stop_and_log("counting recording k-mer seeds");
+        timer.start();
+        get_kmer_count_map_values(mydna, *kmermap, commgrid);
+        timer.stop_and_log("counting recording k-mer seeds");
 
-        //print_kmer_histogram(*kmermap, commgrid);
+        print_kmer_histogram(*kmermap, commgrid);
 
-        //timer.start();
-        //A = create_kmer_matrix(mydna, *kmermap, commgrid);
-        //timer.stop_and_log("creating k-mer matrix");
+        timer.start();
+        A = create_kmer_matrix(mydna, *kmermap, commgrid);
+        timer.stop_and_log("creating k-mer matrix");
 
-        //kmermap.reset();
+        kmermap.reset();
 
-        //timer.start();
-        //AT = std::make_unique<CT<PosInRead>::PSpParMat>(*A);
-        //AT->Transpose();
-        //timer.stop_and_log("copying and transposing k-mer matrix");
+        timer.start();
+        AT = std::make_unique<CT<PosInRead>::PSpParMat>(*A);
+        AT->Transpose();
+        timer.stop_and_log("copying and transposing k-mer matrix");
 
-        //elbalog.log_kmer_matrix(*A);
+        elbalog.log_kmer_matrix(*A);
 
-        //timer.start();
-        //B = create_seed_matrix(*A, *AT);
-        //timer.stop_and_log("creating seed matrix (spgemm)");
+        timer.start();
+        B = create_seed_matrix(*A, *AT);
+        timer.stop_and_log("creating seed matrix (spgemm)");
 
-        //A.reset();
-        //AT.reset();
+        A.reset();
+        AT.reset();
 
-        //elbalog.log_seed_matrix(*B);
+        elbalog.log_seed_matrix(*B);
 
         dfd.wait();
 
-        //timer.start();
-        //R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
-        //timer.stop_and_log("pairwise alignment");
+        timer.start();
+        R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
+        timer.stop_and_log("pairwise alignment");
 
-        //elbalog.log_overlap_matrix(*R);
+        elbalog.log_overlap_matrix(*R);
 
-        //parallel_write_paf(*R, dfd, getpafname().c_str());
+        parallel_write_paf(*R, dfd, getpafname().c_str());
 
-        //R.reset();
+        R.reset();
 
         walltimer.stop_and_log("wallclock");
 
