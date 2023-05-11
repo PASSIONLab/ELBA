@@ -17,7 +17,7 @@ MPICH=/usr/local/Cellar/mpich/4.1.1
 MPICH_INC=-I$(MPICH)/include
 MPICH_LIB=-L$(MPICH)/lib
 MPICH_FLAGS=
-FLAGS=$(OPT) $(COMPILE_TIME_PARAMETERS) -fopenmp -Wno-maybe-uninitialized -Wno-deprecated -std=c++17 -I./include -I./src
+FLAGS=$(OPT) $(COMPILE_TIME_PARAMETERS) -fopenmp -Wno-maybe-uninitialized -Wno-deprecated -Wno-stringop-overflow -std=c++17 -I./include -I./src
 
 COMBBLAS=./CombBLAS
 COMBBLAS_INC=$(COMBBLAS)/include/CombBLAS

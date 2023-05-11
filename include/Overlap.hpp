@@ -17,6 +17,14 @@ struct Overlap
         direction(-1), directionT(-1),
         rc(false), passed(false), containedQ(false), containedT(false) { SetPathInf(); }
 
+    Overlap(const Overlap& rhs) :
+        beg(rhs.beg), end(rhs.end), len(rhs.len),
+        seed(rhs.seed),
+        score(rhs.score),
+        suffix(rhs.suffix), suffixT(rhs.suffixT),
+        direction(rhs.direction), directionT(rhs.directionT),
+        rc(rhs.rc), passed(rhs.passed), containedQ(rhs.containedQ), containedT(rhs.containedT) { std::copy(rhs.suffix_paths, rhs.suffix_paths + 4, suffix_paths); }
+
     Overlap() : Overlap({}, {}) {}
 
     void extend_overlap(const DnaSeq& seqQ, const DnaSeq& seqT, int mat, int mis, int gap, int dropoff);
@@ -38,6 +46,35 @@ struct Overlap
         os << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << rcflag << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score;
         return os;
     }
+
+    struct Transpose : std::unary_function<Overlap, Overlap>
+    {
+        Overlap operator()(const Overlap& o) const
+        {
+            Overlap oT(o);
+            PosInRead tmp;
+
+            std::get<0>(oT.beg) = std::get<1>(o.beg);
+            std::get<1>(oT.beg) = std::get<0>(o.beg);
+
+            std::get<0>(oT.end) = std::get<1>(o.end);
+            std::get<1>(oT.end) = std::get<0>(o.end);
+
+            std::get<0>(oT.len) = std::get<1>(o.len);
+            std::get<1>(oT.len) = std::get<0>(o.len);
+
+            oT.suffix = o.suffixT;
+            oT.suffixT = o.suffix;
+
+            oT.direction = o.directionT;
+            oT.directionT = o.direction;
+
+            oT.containedQ = o.containedT;
+            oT.containedT = o.containedQ;
+
+            return oT;
+        }
+    };
 
     struct IOHandler
     {

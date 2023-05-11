@@ -179,9 +179,9 @@ std::vector<PileupVector> GetReadPileup(DistributedFastaData& dfd, CT<Overlap>::
 
     std::vector<int> lens;
     std::vector<int> packed;
-    int size = PackPileupVectors(local_pileups, packed, lens);
+    MPI_Count_type size = PackPileupVectors(local_pileups, packed, lens);
 
-    MPI_Allreduce(MPI_IN_PLACE, packed.data(), size, MPI_INT, MPI_SUM, commgrid->GetColWorld());
+    MPI_ALLREDUCE(MPI_IN_PLACE, packed.data(), size, MPI_INT, MPI_SUM, commgrid->GetColWorld());
 
     UnpackPileupVectors(packed, lens, local_pileups);
 

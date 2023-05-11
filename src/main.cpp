@@ -12,6 +12,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 */
 
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <fstream>
 #include <iomanip>
@@ -86,7 +87,7 @@ int main(int argc, char **argv)
 
         std::unique_ptr<CT<PosInRead>::PSpParMat> A, AT;
         std::unique_ptr<CT<SharedSeeds>::PSpParMat> B;
-        std::unique_ptr<CT<Overlap>::PSpParMat> R;
+        std::unique_ptr<CT<Overlap>::PSpParMat> R, P, PT;
         std::unique_ptr<KmerCountMap> kmermap;
 
         ELBALogger elbalog(output_prefix, comm);
@@ -145,7 +146,33 @@ int main(int argc, char **argv)
 
         elbalog.log_overlap_matrix(*R);
 
-        std::vector<PileupVector> pileup = GetReadPileup(dfd, *R);
+        P = std::make_unique<CT<Overlap>::PSpParMat>(*R);
+        PT = std::make_unique<CT<Overlap>::PSpParMat>(*P);
+        PT->Transpose();
+        PT->Apply(Overlap::Transpose());
+
+        P->operator+=(*PT);
+
+        auto names = index.bcastnames();
+        std::vector<PileupVector> pileup = GetReadPileup(dfd, *P);
+
+        MPI_Barrier(comm);
+
+        for (int p = 0; p < nprocs; ++p)
+        {
+            if (p == myrank)
+            {
+                std::cout << std::quoted(names[dfd.getcolstartid()]) << " ";
+                std::copy(pileup[0].pileup.begin(), pileup[0].pileup.end(), std::ostream_iterator<int>(std::cout, " "));
+                std::cout << "\n";
+            }
+            MPI_Barrier(comm);
+        }
+
+
+
+
+
 
         parallel_write_paf(*R, dfd, getpafname().c_str());
 
