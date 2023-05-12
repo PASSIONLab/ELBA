@@ -146,26 +146,6 @@ int main(int argc, char **argv)
 
         elbalog.log_overlap_matrix(*R);
 
-        P = std::make_unique<CT<Overlap>::PSpParMat>(*R);
-        PT = std::make_unique<CT<Overlap>::PSpParMat>(*P);
-        PT->Transpose();
-        PT->Apply(Overlap::Transpose());
-
-        P->operator+=(*PT);
-
-        auto names = index.bcastnames();
-        std::vector<PileupVector> pileup = GetReadPileup(dfd, *P);
-
-        Logger pileuplogger(commgrid);
-        pileuplogger() << "\n";
-        for (size_t i = 0; i < pileup.size(); ++i)
-        {
-            auto name = names[i + dfd.getcolstartid()];
-            auto trim = pileup[i].GetTrimmedInterval(2);
-            pileuplogger() << std::quoted(name) << "\t" << std::get<0>(trim) << "\t" << std::get<1>(trim) << "\n";
-        }
-        pileuplogger.Flush("pileup logger:");
-
         parallel_write_paf(*R, dfd, getpafname().c_str());
 
         R.reset();

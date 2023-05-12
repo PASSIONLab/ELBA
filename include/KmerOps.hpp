@@ -8,7 +8,7 @@
 #include "HyperLogLog.hpp"
 
 #ifndef MAX_ALLTOALL_MEM
-#define MAX_ALLTOALL_MEM (128 * 1024 * 1024)
+#define MAX_ALLTOALL_MEM (128ULL * 1024ULL * 1024ULL * 1024ULL)
 #endif
 
 // typedef uint16_t PosInRead;
