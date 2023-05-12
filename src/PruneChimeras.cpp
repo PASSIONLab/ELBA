@@ -27,6 +27,36 @@ void PileupVector::AddInterval(int begin, int end)
     for (int i = begin; i < end; ++i) pileup[i]++;
 }
 
+std::tuple<int, int> PileupVector::GetTrimmedInterval(int threshold)
+{
+    int len = Length();
+    int beststart, bestend;
+    int start = -1, end = -1, maxlen = 0;
+
+    for (int i = 0; i < len; ++i)
+    {
+        if (pileup[i] >= threshold)
+        {
+            start = start == -1? i : start;
+            end = i;
+
+            if (end - start + 1 > maxlen)
+            {
+                beststart = start;
+                bestend = end;
+                maxlen = end - start + 1;
+            }
+        }
+        else
+        {
+            start = -1;
+            end = -1;
+        }
+    }
+
+    return {start, end};
+}
+
 int PackPileupVectors(const std::vector<PileupVector>& pvs, std::vector<int>& packed, std::vector<int>& lens)
 {
     int pv_size = pvs.size();
@@ -63,77 +93,6 @@ void UnpackPileupVectors(const std::vector<int>& packed, const std::vector<int>&
         offset += lens[i];
     }
 }
-
-// void add_gaps(int begin, int end, int length, std::vector<std::tuple<int, int>>& middle, std::vector<std::tuple<int, int>>& extremity)
-// {
-    // if (begin != end)
-    // {
-        // if (!begin || end == length) extremity.push_back({begin, end});
-        // else middle.push_back({begin, end});
-    // }
-// }
-
-// FullyDistVec<int64_t, int64_t> GetChimeras(const std::shared_ptr<CommGrid>& commgrid, std::shared_ptr<DistributedFastaData> dfd, const std::vector<PileupVector>& pileups, int coverage_min)
-// {
-    // std::vector<int64_t> chimeras;
-    // chimeras.reserve((pileups.size() / 10) + 1);
-
-    // if (commgrid->GetRankInProcCol() == 0)
-    // {
-        // uint64_t col_seq_start_idx = dfd->col_seq_start_idx;
-
-        // int myrank;
-        // MPI_Comm_rank(commgrid->GetWorld(), &myrank);
-
-        // for (int i = 0; i < pileups.size(); ++i)
-        // {
-            // const PileupVector& pv = pileups[i];
-
-            // std::vector<std::tuple<int, int>> middle, extremity;
-
-            // bool in_gap = true;
-            // int begin = 0, end = 0;
-
-            // for (int j = 0; j < pv.Length(); ++j)
-            // {
-                // if (pv.pileup[j] <= coverage_min && !in_gap)
-                // {
-                    // end = 0, begin = j;
-                    // in_gap = true;
-                // }
-
-                // if (pv.pileup[j] > coverage_min && in_gap)
-                // {
-                    // end = j;
-                    // in_gap = false;
-                    // add_gaps(begin, end, pv.Length(), middle, extremity);
-                // }
-            // }
-
-            // if (in_gap)
-            // {
-                // end = pv.Length();
-                // add_gaps(begin, end, pv.Length(), middle, extremity);
-            // }
-
-            // if (middle.size() > 0)
-            // {
-                // chimeras.push_back(i+col_seq_start_idx);
-                // std::cout << "Chimeric\t" << (i+col_seq_start_idx+1) << "\t";
-
-                // for (int idx = 0; idx < middle.size(); ++idx)
-                // {
-                    // int g1 = std::get<0>(middle[idx]);
-                    // int g2 = std::get<1>(middle[idx]);
-                    // std::cout << myabsdiff<int, int, int>(g1, g2) << "," << g1 << "," << g2 << ";";
-                // }
-                // std::cout << std::endl;
-            // }
-        // }
-    // }
-
-    // return FullyDistVec<int64_t, int64_t>(chimeras, commgrid);
-// }
 
 std::vector<PileupVector> GetReadPileup(DistributedFastaData& dfd, CT<Overlap>::PSpParMat& Rmat)
 {
@@ -187,3 +146,5 @@ std::vector<PileupVector> GetReadPileup(DistributedFastaData& dfd, CT<Overlap>::
 
     return local_pileups;
 }
+
+

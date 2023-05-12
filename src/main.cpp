@@ -156,23 +156,15 @@ int main(int argc, char **argv)
         auto names = index.bcastnames();
         std::vector<PileupVector> pileup = GetReadPileup(dfd, *P);
 
-        MPI_Barrier(comm);
-
-        for (int p = 0; p < nprocs; ++p)
+        Logger pileuplogger(commgrid);
+        pileuplogger() << "\n";
+        for (size_t i = 0; i < pileup.size(); ++i)
         {
-            if (p == myrank)
-            {
-                std::cout << std::quoted(names[dfd.getcolstartid()]) << " ";
-                std::copy(pileup[0].pileup.begin(), pileup[0].pileup.end(), std::ostream_iterator<int>(std::cout, " "));
-                std::cout << "\n";
-            }
-            MPI_Barrier(comm);
+            auto name = names[i + dfd.getcolstartid()];
+            auto trim = pileup[i].GetTrimmedInterval(1);
+            pileuplogger() << std::quoted(name) << "\t" << std::get<0>(trim) << "\t" << std::get<1>(trim) << "\n";
         }
-
-
-
-
-
+        pileuplogger.Flush("pileup logger:");
 
         parallel_write_paf(*R, dfd, getpafname().c_str());
 
