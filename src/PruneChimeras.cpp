@@ -31,20 +31,31 @@ std::tuple<int, int> PileupVector::GetTrimmedInterval(int threshold)
 {
     int len = Length();
     int beststart, bestend;
-    int start = -1, end = -1, maxlen = 0;
+    double bestavg = 0;
+    int curbases = 0;
+    int start = -1, end = -1, maxlen = 2500;
 
     for (int i = 0; i < len; ++i)
     {
         if (pileup[i] >= threshold)
         {
-            start = start == -1? i : start;
-            end = i;
+            if (start == -1)
+            {
+                curbases = 0;
+                start = i;
+            }
 
-            if (end - start + 1 > maxlen)
+            end = i;
+            curbases += pileup[i];
+            int span = end - start + 1;
+            double curavg = static_cast<double>(curbases) / static_cast<double>(span);
+
+            if (span > maxlen && curavg > bestavg)
             {
                 beststart = start;
                 bestend = end;
-                maxlen = end - start + 1;
+                maxlen = span;
+                bestavg = curavg;
             }
         }
         else

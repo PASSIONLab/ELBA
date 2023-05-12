@@ -161,7 +161,7 @@ int main(int argc, char **argv)
         for (size_t i = 0; i < pileup.size(); ++i)
         {
             auto name = names[i + dfd.getcolstartid()];
-            auto trim = pileup[i].GetTrimmedInterval(1);
+            auto trim = pileup[i].GetTrimmedInterval(2);
             pileuplogger() << std::quoted(name) << "\t" << std::get<0>(trim) << "\t" << std::get<1>(trim) << "\n";
         }
         pileuplogger.Flush("pileup logger:");
