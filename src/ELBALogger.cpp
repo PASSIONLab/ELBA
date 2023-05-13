@@ -11,7 +11,7 @@ void ELBALogger::log_kmer_matrix(CT<PosInRead>::PSpParMat& A)
 
     if (isroot) std::cout << "K-mer matrix A has " << numreads << " rows (readids), " << numkmers << " columns (k-mers), and " << numseeds << " nonzeros (k-mer seeds)\n" << std::endl;
 
-    #if LOG_LEVEL >= 2
+    #if LOG_LEVEL >= 3 /* 3 because this file is usually very large */
     A.ParallelWriteMM(getmatfname("A.mtx").c_str(), true);
     #endif
 
