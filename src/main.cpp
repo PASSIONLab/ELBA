@@ -87,7 +87,7 @@ int main(int argc, char **argv)
 
         std::unique_ptr<CT<PosInRead>::PSpParMat> A, AT;
         std::unique_ptr<CT<SharedSeeds>::PSpParMat> B;
-        std::unique_ptr<CT<Overlap>::PSpParMat> R, P, PT;
+        std::unique_ptr<CT<Overlap>::PSpParMat> R;
         std::unique_ptr<KmerCountMap> kmermap;
 
         ELBALogger elbalog(output_prefix, comm);
@@ -149,7 +149,6 @@ int main(int argc, char **argv)
         parallel_write_paf(*R, dfd, getpafname().c_str());
 
         R.reset();
-
         walltimer.stop_and_log("wallclock");
 
         /***********************************************************/

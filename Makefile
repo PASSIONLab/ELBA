@@ -13,7 +13,7 @@ else
 OPT+=-O3
 endif
 
-MPICH=/usr/local/Cellar/mpich/4.1.1
+MPICH=/usr/local/opt/mpich/
 MPICH_INC=-I$(MPICH)/include
 MPICH_LIB=-L$(MPICH)/lib
 MPICH_FLAGS=
@@ -29,7 +29,7 @@ UNAME_S:=$(shell uname -s)
 ifeq ($(UNAME_S),Linux)
 COMPILER=CC
 else ifeq ($(UNAME_S),Darwin)
-COMPILER=g++-12
+COMPILER=g++-13
 FLAGS+=$(MPICH_INC)
 MPICH_FLAGS+=$(MPICH_LIB) -L/usr/local/opt/libevent/lib -lmpi
 endif
