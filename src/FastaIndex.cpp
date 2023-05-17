@@ -96,7 +96,7 @@ FastaIndex::FastaIndex(const std::string& fasta_fname, std::shared_ptr<CommGrid>
         filestream.close();
 
         /*
-         * Compute load-balanced read partitioning.
+         * Compute load-balanced read partitioning on the root processor.
          */
         getpartition(readcounts);
     }
@@ -111,24 +111,33 @@ FastaIndex::FastaIndex(const std::string& fasta_fname, std::shared_ptr<CommGrid>
      */
     readdispls.resize(nprocs);
     std::exclusive_scan(readcounts.begin(), readcounts.end(), readdispls.begin(), static_cast<MPI_Displ_type>(0));
+
+    /*
+     * It is useful for the displacements to store the total number
+     * of reads in the last position.
+     */
     readdispls.push_back(readdispls.back() + readcounts.back());
-    assert(readdispls[nprocs] - readdispls[nprocs-1] == readcounts.back());
 
     /*
      * To prevent confusion for the reader: the broadcasting of readcounts
-     * to every processor and the the parallel "re"-computation of readdispls
+     * to every processor and the parallel "re"-computation of readdispls
      * on each processor is not necessary for performing the scatter operation
      * below, however we still do it because every processor will need to know
      * those things later.
      */
     myrecords.resize(readcounts[myrank]);
 
+    /*
+     * Each record is represented with three numbers (read length,
+     * FASTA position, FASTA line width), so we create an MPI datatype
+     * to communicate each record as a single unit.
+     */
     MPI_Datatype faidx_dtype_t;
     MPI_Type_contiguous(3, MPI_SIZE_T, &faidx_dtype_t);
     MPI_Type_commit(&faidx_dtype_t);
 
     /*
-     * Scatter the read counts according to the load-balanced read partitioning.
+     * Scatter the records according to the load-balanced read partitioning.
      */
     MPI_SCATTERV(rootrecords.data(), readcounts.data(), readdispls.data(), faidx_dtype_t, myrecords.data(), readcounts[myrank], faidx_dtype_t, 0, comm);
 
