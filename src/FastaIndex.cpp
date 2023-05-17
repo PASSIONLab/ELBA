@@ -175,12 +175,15 @@ DnaBuffer FastaIndex::getmydna() const
     /*
      * Allocate local sequence buffer.
      */
-    auto readlens = getmyreadlens();
-    size_t bufsize = DnaBuffer::computebufsize(readlens);
-    DnaBuffer dnabuf(bufsize);
-    size_t numreads = readlens.size();
+    auto readlens = getmyreadlens(); /* vector of local read lengths */
+    size_t bufsize = DnaBuffer::computebufsize(readlens); /* minimum number of bytes needed to 2-bit encode all the local reads */
+    DnaBuffer dnabuf(bufsize); /* initialize dnabuf by allocating @bufsize bytes */
+    size_t numreads = readlens.size(); /* number of local reads */
 
-    MPI_Offset startpos, endpos, filesize, readbufsize;
+    MPI_Offset startpos; /* the FASTA position that starts my local chunk of reads */
+    MPI_Offset endpos; /* the FASTA position that ends my local chunk of reads (exclusive) */
+    MPI_Offset filesize; /* the total size of the FASTA */
+    MPI_Offset readbufsize; /* endpos - startpos */
     MPI_File fh;
 
     /*
@@ -204,6 +207,10 @@ DnaBuffer FastaIndex::getmydna() const
     readbufsize = endpos - startpos;
     std::unique_ptr<char[]> readbuf(new char[readbufsize]);
 
+    /*
+     * Every processor that calls @getmydna reads in its assigned chunk of data
+     * into its temporary local storage buffer (meant for raw contents of file).
+     */
     MPI_FILE_READ_AT_ALL(fh, startpos, &readbuf[0], readbufsize, MPI_CHAR, MPI_STATUS_IGNORE);
     MPI_File_close(&fh);
 
@@ -211,7 +218,7 @@ DnaBuffer FastaIndex::getmydna() const
     size_t maxlen = *std::max_element(readlens.begin(), readlens.end());
 
     /*
-     * ASCII sequences are first read into this char buffer
+     * ASCII sequences are first read into this temporary char buffer
      * before they are compressed into the sequence buffer.
      */
     std::unique_ptr<char[]> tmpbuf(new char[maxlen]);
@@ -219,6 +226,9 @@ DnaBuffer FastaIndex::getmydna() const
     MPI_Barrier(comm);
     double elapsed = -MPI_Wtime();
 
+    /*
+     * Go through each local FASTA record.
+     */
     for (auto itr = myrecords.cbegin(); itr != myrecords.cend(); ++itr)
     {
         size_t locpos = 0;
@@ -226,6 +236,9 @@ DnaBuffer FastaIndex::getmydna() const
         ptrdiff_t remain = itr->len;
         char *writeptr = &tmpbuf[0];
 
+        /*
+         * Read ASCII FASTA sequence into the temoprary buffer.
+         */
         while (remain > 0)
         {
             size_t cnt = std::min(itr->bases, static_cast<size_t>(remain));
@@ -236,12 +249,14 @@ DnaBuffer FastaIndex::getmydna() const
         }
 
         /*
-         * Compress sequence into local sequence buffer.
+         * DnaBuffer automatically 2-bit encodes the ASCII sequence
+         * and pushes it onto its local stack of sequences.
          */
         dnabuf.push_back(&tmpbuf[0], itr->len);
     }
 
     elapsed += MPI_Wtime();
+
     #if LOG_LEVEL >= 2
     double mbspersecond = (totbases / 1048576.0) / elapsed;
     Logger logger(commgrid);
