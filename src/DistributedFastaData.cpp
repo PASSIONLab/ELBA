@@ -170,12 +170,6 @@ void DistributedFastaData::collect_dim_sequences(const DnaBuffer& mydna, DimExch
     std::copy_if(allreqs.begin(), allreqs.end(), std::back_inserter(mysends), [&](const auto& req) { return req.owner == myrank; });
     mynumsends = mysends.size();
 
-    //#if LOG_LEVEL >= 2
-    //logger() << "\n";
-    //for (auto itr = allreqs.begin(); itr != allreqs.end(); ++itr) logger() << *itr << "\n";
-    //logger.Flush("all requests:");
-    //#endif
-
     std::vector<size_t> reqinfo(2*mynumreqs); /* even indices are number of reads, odd indices are buffer sizes */
     diminfo.recvreqs.resize(2*mynumreqs);
 
@@ -247,30 +241,6 @@ void DistributedFastaData::wait()
 {
     MPI_Waitall(static_cast<int>(rowinfo.recvreqs.size()), rowinfo.recvreqs.data(), MPI_STATUSES_IGNORE);
     MPI_Waitall(static_cast<int>(colinfo.recvreqs.size()), colinfo.recvreqs.data(), MPI_STATUSES_IGNORE);
-
-    //std::vector<size_t> allreadlens = index.getallreadlens();
-
-    //Logger logger(index.getcommgrid());
-
-    //logger() << "\n";
-    //for (size_t i = 0; i < rowinfo.numreads; ++i)
-    //{
-    //    if (rowinfo.reqreadlens[i] != allreadlens[i+rowinfo.startid])
-    //    {
-    //        logger() << "wrong value for requested global id " << i+rowinfo.startid << "; " << logger.readrangestr(rowinfo.startid, rowinfo.numreads) << "\n";
-    //    }
-    //}
-    //logger.Flush("rowinfo");
-
-    //logger() << "\n";
-    //for (size_t i = 0; i < colinfo.numreads; ++i)
-    //{
-    //    if (colinfo.reqreadlens[i] != allreadlens[i+colinfo.startid])
-    //    {
-    //        logger() << "wrong value for requested global id " << i+colinfo.startid << "; " << logger.readrangestr(colinfo.startid, colinfo.numreads) << "\n";
-    //    }
-    //}
-    //logger.Flush("colinfo");
 
     rowbuf.reset(new DnaBuffer(rowinfo.reqbufsize, rowinfo.reqnumreads, rowinfo.reqbuf.release(), rowinfo.reqreadlens.get()));
     colbuf.reset(new DnaBuffer(colinfo.reqbufsize, colinfo.reqnumreads, colinfo.reqbuf.release(), colinfo.reqreadlens.get()));
