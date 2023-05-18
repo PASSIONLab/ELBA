@@ -215,17 +215,51 @@ int main(int argc, char **argv)
 
         print_kmer_histogram(*kmermap, commgrid);
 
+        /*
+         * Now that all the reliable k-mers and their locations have been computed and stored
+         * in the distributed hash table @kmermap, it is time to construct the distributed k-mer sparse
+         * matrix @A. The purpose of @A is to facilitate read overlap detection via an SpGEMM
+         * operation using a custom semiring. More on that will be discussed later. For now,
+         * this is what @A is:
+         *
+         *    Let M = number of reads in FASTA;
+         *    Let N = number of distinct k-mers (keys) currently stored in distributed k-mer hash table;
+         *    Let L = total number of k-mer instances (values) currently stored in the distributed k-mer hash table;
+         *
+         *    Then @A is an M-by-N distributed sparse matrix with L nonzeros, where a nonzero at
+         *    @A(i,j) represents an instance of a k-mer (with global id j) found in
+         *    read sequence i (global id). The global k-mer ids are computed using a prefix
+         *    scan of the stored k-mer keys in the distributed hash table. The actual
+         *    value stored by the nonzero is the POSITION of k-mer j within read i.
+         *
+         * A few quick observations on what this means:
+         *
+         *    The number of nonzeros in the row @A(i,:) is the number of distinct reliable k-mers
+         *    found within the sequence with global id i.
+         *
+         *    The number of nonzeros in the column @A(:,j) is the number of different sequences
+         *    that contain the reliable k-mer with id j as a subsequence.
+         *
+         * Other similar observations about the nature of @A can be made, but hopefully it
+         * is clear by now what @A is.
+         */
         timer.start();
         A = create_kmer_matrix(mydna, *kmermap, commgrid);
         timer.stop_and_log("creating k-mer matrix");
 
+        /*
+         * Once @A has been constructed, we have no more use for the distributed k-mer hash table
+         * so we release all its memory.
+         */
         kmermap.reset();
 
+        /*
+         * The SpGEMM overlap detection phase requires both @A and its transpose @AT.
+         */
         timer.start();
         AT = std::make_unique<CT<PosInRead>::PSpParMat>(*A);
         AT->Transpose();
         timer.stop_and_log("copying and transposing k-mer matrix");
-
         elbalog.log_kmer_matrix(*A);
 
         timer.start();
