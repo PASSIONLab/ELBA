@@ -60,7 +60,7 @@ void FastaIndex::getpartition(std::vector<MPI_Count_type>& sendcounts)
         }
 
         size_t readssofar = readid - startid;
-        assert(readssofar >= 1);
+        assert(readssofar >= 1); /* TODO: come up with a recovery strategy here */
 
         sendcounts[i] = readssofar;
     }
@@ -269,15 +269,26 @@ DnaBuffer FastaIndex::getmydna() const
 
 std::vector<std::string> FastaIndex::bcastnames()
 {
+    /*
+     * In order to print out PAF files, we need the names for each
+     * read sequence. It's easiest to just broadcast all the
+     * read names to every process (although it's not the most efficient).
+     */
+
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
     MPI_Comm comm = commgrid->GetWorld();
 
-    MPI_Count_type numchars;
-    MPI_Count_type numreads = gettotrecords();
-    std::vector<char> flatbuf;
-    std::vector<size_t> namelens(numreads);
+    MPI_Count_type numchars; /* total number of characters needed for every read name */
+    MPI_Count_type numreads = gettotrecords(); /* total number of reads (and hence names) */
+    std::vector<char> flatbuf; /* this will store a flattened buffer of all the characters linearly ordered from all the names */
+    std::vector<size_t> namelens(numreads); /* vector of read name lengths for unflattening the flatbuf */
 
+    /*
+     * At the start, the root process stores all the read names and the other
+     * processes don't know any of the names. So the root process computes the
+     * the total number of characters needed and then broadcasts them.
+     */
     if (myrank == 0)
     {
         numchars = std::accumulate(rootnames.begin(), rootnames.end(), static_cast<MPI_Count_type>(0), [](MPI_Count_type sum, const std::string& s) { return sum + s.size(); });
@@ -285,7 +296,11 @@ std::vector<std::string> FastaIndex::bcastnames()
 
     MPI_BCAST(&numchars, 1, MPI_COUNT_TYPE, 0, comm);
 
-
+    /*
+     * The root process goes through each name in the rootnames vector
+     * and appends them onto the flat buffer. For example, if
+     * rootnames = {'read1', read2', 'read3'}, then flatbuf = "read1read2read3".
+     */
     if (myrank == 0)
     {
         flatbuf.reserve(numchars);
@@ -293,26 +308,41 @@ std::vector<std::string> FastaIndex::bcastnames()
 
         for (size_t i = 0; i < static_cast<size_t>(numreads); ++i)
         {
-            flatbuf.insert(flatbuf.end(), itr->begin(), itr->end());
-            namelens[i] = itr->size();
+            flatbuf.insert(flatbuf.end(), itr->begin(), itr->end()); /* appends name on the end of flatbuf */
+            namelens[i] = itr->size(); /* record the length of the name */
             ++itr;
         }
     }
     else
     {
+        /*
+         * Non-root processes use the broadcasted flatbuf length to allocate
+         * the memory needed to store its copy of flatbuf.
+         */
         flatbuf.resize(numchars);
     }
 
     assert(flatbuf.size() == numchars);
 
+    /*
+     * Broadcast the name lengths and the flat buffer.
+     */
     MPI_BCAST(namelens.data(), numreads, MPI_SIZE_T, 0, comm);
     MPI_BCAST(flatbuf.data(), numchars, MPI_CHAR, 0, comm);
 
+    /*
+     * Root process can return immediately because its
+     * vector of names has already been computed.
+     */
     if (myrank == 0)
     {
         return rootnames;
     }
 
+    /*
+     * Non-root processes have to unpack flatbuf using the
+     * name lengths before returning.
+     */
     std::vector<std::string> recvnames;
     recvnames.reserve(numreads);
 
