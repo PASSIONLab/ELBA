@@ -31,7 +31,7 @@ DistributedFastaData::DistributedFastaData(FastaIndex& index) : index(index)
     #if LOG_LEVEL >= 2
     Logger logger(commgrid);
     logger() << "P(" << myrowid+1 << ", " << mycolid+1 << ") " << Logger::readrangestr(rowinfo.startid, rowinfo.numreads) << "; " << Logger::readrangestr(colinfo.startid, colinfo.numreads);
-    logger.Flush("DistributedFastaData::DistributedFastaData");
+    logger.Flush("2D processor grid sequence distribution");
     #endif
 }
 

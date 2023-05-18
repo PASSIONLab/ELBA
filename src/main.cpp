@@ -96,8 +96,9 @@ int main(int argc, char **argv)
         walltimer.start();
 
         /*
-         * FastaIndex @index is the main structure responsible for guiding
-         * the the
+         * FastaIndex @index is the structure responsible for reading
+         * the .fai index file and telling each process which read sequences
+         * it is responsible for parsing, compressing and storing.
          */
         timer.start();
         FastaIndex index(fasta_fname, commgrid);
@@ -105,11 +106,35 @@ int main(int argc, char **argv)
         timer.stop_and_log(ss.str().c_str());
         ss.clear(); ss.str("");
 
+        /*
+         * DnaBuffer @mydna stores the compressed read sequences assigned
+         * to it by the .fai index file, as determined by @index.
+         */
         timer.start();
         DnaBuffer mydna = index.getmydna();
-        timer.stop_and_log("parsing and compressing");
+        ss << "reading and 2-bit encoding " << std::quoted(index.get_fasta_fname()) << " sequences in parallel";
+        timer.stop_and_log(ss.str().c_str());
+        ss.clear(); ss.str("");
 
+        /*
+         * DistributedFastaData @dfd is the structure responsible for telling
+         * each process which read sequences it will need according to the
+         * 2D processor grid. The constructor determines this from the FastaIndex
+         * @index.
+         */
         DistributedFastaData dfd(index);
+
+        /*
+         * Initiate non-blocking send and receive calls. The end goal
+         * is that every processor has the reads it requires according
+         * the original construction above. These are stored as DnaBuffer
+         * objects owned by @dfd.
+         *
+         * Because this is non-blocking, we have to call dfd.wait() to
+         * make sure every processor has finished its sends and receives.
+         * We do this after the k-mer counting step, because that step
+         * only needs access to the sequences stored in mydna.
+         */
         dfd.collect_sequences(mydna);
 
         timer.start();
