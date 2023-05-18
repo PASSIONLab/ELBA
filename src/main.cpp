@@ -90,14 +90,20 @@ int main(int argc, char **argv)
         std::unique_ptr<CT<Overlap>::PSpParMat> R;
         std::unique_ptr<KmerCountMap> kmermap;
 
+        std::ostringstream ss;
         ELBALogger elbalog(output_prefix, comm);
         MPITimer timer(comm), walltimer(comm);
-
         walltimer.start();
 
+        /*
+         * FastaIndex @index is the main structure responsible for guiding
+         * the the
+         */
         timer.start();
         FastaIndex index(fasta_fname, commgrid);
-        timer.stop_and_log("indexing");
+        ss << "reading " << std::quoted(index.get_faidx_fname()) << " and scattering to all MPI tasks";
+        timer.stop_and_log(ss.str().c_str());
+        ss.clear(); ss.str("");
 
         timer.start();
         DnaBuffer mydna = index.getmydna();
