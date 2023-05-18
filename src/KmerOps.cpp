@@ -32,24 +32,23 @@ get_kmer_count_map_keys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> comm
     std::vector<MPI_Displ_type> sdispls(nprocs), rdispls(nprocs);  /* My processor's ALLTOALL send and receive displacements */
     std::vector<uint8_t> sendbuf, recvbuf;                         /* My processor's ALLTOALL send and receive buffers of k-mers (packed) */
     size_t totsend, totrecv;                                       /* My processor's total number of send and receive bytes */
-    size_t numkmerseeds;                                           /* Total number of k-mer seeds received by my processor after unpacked recweive buffer */
-    Logger log(commgrid);
+    size_t numkmerseeds;                                           /* Total number of k-mer seeds received by my processor after unpacked receive buffer */
+    Logger logger(commgrid);
     std::ostringstream rootlog;
 
     kmermap = new KmerCountMap;
     numreads = myreads.size();
 
     /*
-     * Estimate the number of distinct k-mers in my local FASTA
-     * partition.
+     * Estimate the number of distinct k-mers in my local FASTA partition.
      */
     KmerEstimateHandler estimator(hll);
     ForeachKmer(myreads, estimator);
     mycardinality = hll.estimate();
 
     #if LOG_LEVEL >= 2
-    log() << std::setprecision(3) << std::fixed << mycardinality << " k-mers";
-    log.Flush("[k-mer cardinality estimate]");
+    logger() << std::setprecision(3) << std::fixed << mycardinality << " k-mers";
+    logger.Flush("K-mer cardinality estimate");
     #endif
 
     /*
@@ -63,7 +62,7 @@ get_kmer_count_map_keys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> comm
 
     #if LOG_LEVEL >= 2
     rootlog << "global 'column' k-mer cardinality (merging all " << nprocs << " procesors results) is " << std::setprecision(3) << std::fixed << cardinality << ", or an average of " << avgcardinality << " per processor" << std::endl;
-    log.Flush(rootlog, 0);
+    logger.Flush(rootlog, 0);
     #endif
 
     /*
@@ -194,9 +193,9 @@ get_kmer_count_map_keys(const DnaBuffer& myreads, std::shared_ptr<CommGrid> comm
         total_totrecv += justrecv;
 
         #if LOG_LEVEL >= 2
-        log() << " sent " << justsent << " k-mers parsed from " << (batch_state.myreadid - curid) << " reads and received " << justrecv << " k-mers";
+        logger() << " sent " << justsent << " k-mers parsed from " << (batch_state.myreadid - curid) << " reads and received " << justrecv << " k-mers";
         rootlog << "Round " << batch_round++;
-        log.Flush(rootlog);
+        logger.Flush(rootlog);
         #endif
 
     } while (!batch_state.Finished());

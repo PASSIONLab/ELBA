@@ -137,10 +137,78 @@ int main(int argc, char **argv)
          */
         dfd.collect_sequences(mydna);
 
+        /*
+         * The next steps can be understood by first describing what @kmermap
+         * is. @kmermap is an unordered_map (basically an associative container)
+         * mapping k-mers to "k-mer count entries". Formally, a "k-mer count entry"
+         * is a triple (READIDS, POSITIONS, count) where READIDS is an array of global
+         * read IDs, POSITIONS is an array of read positions, and count is the number
+         * of distinct times that k-mer has been found in the FASTA sequences (globally).
+         *
+         * It should be noted that READIDS and POSITIONS are arrays with a fixed size,
+         * determined by the compile-time parameter UPPER_KMER_FREQ. This is because
+         * we only want to store k-mers that appear <= UPPER_KMER_FREQ different times
+         * in the input.
+         *
+         * @kmermap is a "distributed" hash table in the sense that each processor
+         * has its own local instance which is individually responsible for a different
+         * partition of k-mers. That is to say: given a k-mer @s, there is exactly
+         * one processor that is responsible for storing @s and its associated
+         * k-mer count entry. This processor is determined by hashing @s.
+         *
+         * So what does get_kmer_count_map_keys() do exactly? Basically it does
+         * 4 things:
+         *
+         *    1. Globally estimates the number of distinct k-mers in the dataset using
+         *       the HyperLogLog data structure. This estimate is used to allocate
+         *       memory on each process for its local partition of the distributed hash table.
+         *
+         *    2. Each process in parallel computes all the k-mers (not required to be distinct)
+         *       that exist in its local FASTA partition (@mydna, which was obtained by index.getmydna()).
+         *
+         *    3. All processors collectively send their locally found k-mers to their proper
+         *       destinations. In parallel, each processor receives incoming k-mers assigned to
+         *       it, and filters out likely singletons using a Bloom filter approach. Only
+         *       distinct k-mers are kept.
+         *
+         *    4. The received distinct k-mers are used to initialize @kmermap with empty "kmer count
+         *       entries." Those entries are filled out in the second pass implemented in
+         *       @get_kmer_count_map_values().
+         *
+         */
         timer.start();
         kmermap = get_kmer_count_map_keys(mydna, commgrid);
         timer.stop_and_log("collecting distinct k-mers");
 
+        /*
+         * Now that every process has its local partition of the distributed k-mer hash table
+         * initialized with all the keys (k-mers) it needs, we do a second pass over every k-mer
+         * and send them to their destinations, this time including information about which read ID
+         * the k-mer was parsed from, and the position of the k-mer within that read. Using the
+         * Bloom filter, we can quickly query received k-mers and discard those k-mers which we know
+         * aren't keys in the local @kmermap.
+         *
+         * For each received k-mer that passes through the Bloom filter (is accepted), its
+         * corresponding triple (READIDS, POSITIONS, count) is updated. This way, the local
+         * process is able to quickly find all the reads (via their global IDs) that contain a particular
+         * k-mer, and quickly find the position within that read where the k-mer is located. The
+         * count parameter merely states how many times that k-mer has been found in the dataset,
+         * and is therefore equivalent to the number of used entries of READIDS and POSITIONS.
+         *
+         * Suppose that a k-mer @s appears more that UPPER_KMER_FREQ times in the input. Then
+         * it is guaranteed that, eventually, the processor responsible for storing @s will
+         * receive an instance of @s (plus a global read id and position where @s came from) that
+         * will put it over the capacity of POSITIONS and READIDS. We therefore always check
+         * if a received k-mer will push us over this threshold, and if it does, we DELETE the
+         * k-mer key of @s on the owner processor. That way, any other instances of @s from
+         * other reads are discarded because we only record entries for k-mers that exist in
+         * the hash table.
+         *
+         * Finally, once the collective exchange is finished, we delete all k-mer keys of
+         * k-mers that appeared less than LOWER_KMER_FREQ times. The result is a distributed
+         * hash table mapping reliable k-mers (k-mers that appear within the defined frequency bounds)
+         * to their corresponding k-mer count entries.
+         */
         timer.start();
         get_kmer_count_map_values(mydna, *kmermap, commgrid);
         timer.stop_and_log("counting recording k-mer seeds");
