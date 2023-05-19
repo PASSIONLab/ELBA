@@ -5,8 +5,6 @@
 #include <iostream>
 #include <algorithm>
 
-using SeedPair = std::tuple<PosInRead, PosInRead>;
-
 class SharedSeeds
 {
 public:
@@ -21,7 +19,7 @@ public:
     int getnumstored() const { return std::min(MAX_SEEDS, numshared); }
     int getnumshared() const { return numshared; }
 
-    const SeedPair* getseeds() const { return &seeds[0]; }
+    const std::tuple<PosInRead, PosInRead>* getseeds() const { return &seeds[0]; }
 
     SharedSeeds& operator=(SharedSeeds rhs)
     {
@@ -40,38 +38,6 @@ public:
         numshared += rhs.numshared;
 
         return *this;
-
-    }
-
-    friend std::ostream& operator<<(std::ostream& os, const SharedSeeds& o)
-    {
-        int seedstoprint = std::min(static_cast<int>(o.getnumstored()), 2);
-
-        for (int i = 0; i < seedstoprint; ++i)
-        {
-            os << std::get<0>(o.seeds[i]) << "\t" << std::get<1>(o.seeds[i]) << "\t";
-        }
-
-        os << o.getnumshared();
-
-        return os;
-    }
-
-    friend std::ostream& oldoperator(std::ostream& os, const SharedSeeds& o)
-    {
-        if (o.getnumstored() == 0)
-        {
-            os << "stored: {}";
-        }
-        else
-        {
-            os << "stored: {";
-            int i;
-            for (i = 0; i < o.getnumstored()-1; ++i)
-                os << "(" << std::get<0>(o.seeds[i]) << ", " << std::get<1>(o.seeds[i]) << "), ";
-            os << "(" << std::get<0>(o.seeds[i]) << ", " << std::get<1>(o.seeds[i]) << ")} :: numshared: " << o.getnumshared();
-        }
-        return os;
     }
 
     struct Semiring
@@ -112,9 +78,26 @@ public:
         }
     };
 
+    friend std::ostream& operator<<(std::ostream& os, const SharedSeeds& o)
+    {
+        int seedstoprint = std::min(static_cast<int>(o.getnumstored()), 2);
+
+        for (int i = 0; i < seedstoprint; ++i)
+        {
+            os << std::get<0>(o.seeds[i]) << "\t" << std::get<1>(o.seeds[i]) << "\t";
+        }
+
+        os << o.getnumshared();
+
+        return os;
+    }
 
 private:
-    SeedPair seeds[MAX_SEEDS];
+    /*
+     * @seeds is an array of size MAX_SEEDS (fixed at compile-time) whose
+     * elements (of type std::tuple<PosInRead, PosInRead>) are ordered tuples of read positions.
+     */
+    std::tuple<PosInRead, PosInRead> seeds[MAX_SEEDS];
     int numshared;
 };
 

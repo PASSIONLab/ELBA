@@ -59,7 +59,7 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
         const DnaSeq& seqQ = (*rowbuf)[localrow];
         const DnaSeq& seqT = (*colbuf)[localcol];
 
-        SeedPair len(static_cast<PosInRead>(seqQ.size()), static_cast<PosInRead>(seqT.size()));
+        std::tuple<PosInRead, PosInRead> len(static_cast<PosInRead>(seqQ.size()), static_cast<PosInRead>(seqT.size()));
 
         overlaps.emplace_back(len, std::get<2>(alignseeds[i])->getseeds()[0]);
         overlaps.back().extend_overlap(seqQ, seqT, mat, mis, gap, dropoff);

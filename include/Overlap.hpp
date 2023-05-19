@@ -9,7 +9,7 @@
 
 struct Overlap
 {
-    Overlap(SeedPair len, SeedPair seed) :
+    Overlap(std::tuple<PosInRead, PosInRead> len, std::tuple<PosInRead, PosInRead> seed) :
         beg{}, end{}, len(len),
         seed(seed),
         score(0),
@@ -30,8 +30,8 @@ struct Overlap
     void extend_overlap(const DnaSeq& seqQ, const DnaSeq& seqT, int mat, int mis, int gap, int dropoff);
     void classify();
 
-    SeedPair beg, end, len;
-    SeedPair seed;
+    std::tuple<PosInRead, PosInRead> beg, end, len;
+    std::tuple<PosInRead, PosInRead> seed;
     int score;
     int suffix, suffixT;
     int8_t direction, directionT;

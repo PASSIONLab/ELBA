@@ -262,6 +262,9 @@ int main(int argc, char **argv)
         timer.stop_and_log("copying and transposing k-mer matrix");
         elbalog.log_kmer_matrix(*A);
 
+        /*
+         *
+         */
         timer.start();
         B = create_seed_matrix(*A, *AT);
         timer.stop_and_log("creating seed matrix (spgemm)");
