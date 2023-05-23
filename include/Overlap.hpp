@@ -9,23 +9,9 @@
 
 struct Overlap
 {
-    Overlap(std::tuple<PosInRead, PosInRead> len, std::tuple<PosInRead, PosInRead> seed) :
-        beg{}, end{}, len(len),
-        seed(seed),
-        score(0),
-        suffix(0), suffixT(0),
-        direction(-1), directionT(-1),
-        rc(false), passed(false), containedQ(false), containedT(false) { SetPathInf(); }
-
-    Overlap(const Overlap& rhs) :
-        beg(rhs.beg), end(rhs.end), len(rhs.len),
-        seed(rhs.seed),
-        score(rhs.score),
-        suffix(rhs.suffix), suffixT(rhs.suffixT),
-        direction(rhs.direction), directionT(rhs.directionT),
-        rc(rhs.rc), passed(rhs.passed), containedQ(rhs.containedQ), containedT(rhs.containedT) { std::copy(rhs.suffix_paths, rhs.suffix_paths + 4, suffix_paths); }
-
     Overlap() : Overlap({}, {}) {}
+    Overlap(std::tuple<PosInRead, PosInRead> len, std::tuple<PosInRead, PosInRead> seed);
+    Overlap(const Overlap& rhs);
 
     void extend_overlap(const DnaSeq& seqQ, const DnaSeq& seqT, int mat, int mis, int gap, int dropoff);
     void classify();
@@ -39,13 +25,6 @@ struct Overlap
     bool rc, passed, containedQ, containedT;
 
     void SetPathInf() { std::fill_n(suffix_paths, 4, std::numeric_limits<int>::max()); }
-
-    friend std::ostream& operator<<(std::ostream& os, const Overlap& o)
-    {
-        char rcflag = o.rc? '-' : '+';
-        os << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << rcflag << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score;
-        return os;
-    }
 
     struct Transpose : std::unary_function<Overlap, Overlap>
     {
@@ -85,6 +64,13 @@ struct Overlap
     Overlap& operator+=(const Overlap& lhs) { return *this; }
     friend Overlap operator+(const Overlap& lhs, const Overlap& rhs) { return lhs; }
     friend bool operator<(const Overlap& lhs, const Overlap& rhs) { return true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const Overlap& o)
+    {
+        char rcflag = o.rc? '-' : '+';
+        os << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << rcflag << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score;
+        return os;
+    }
 };
 
 #endif
