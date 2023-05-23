@@ -13,14 +13,17 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
     auto rowbuf = dfd.getrowbuf();
     auto colbuf = dfd.getcolbuf();
 
-    size_t localnnzs = Bmat.seqptr()->getnnz();
-    std::vector<CT<SharedSeeds>::ref_tuples> alignseeds;
+    size_t localnnzs = Bmat.seqptr()->getnnz(); /* number of k-mer seeds stored by my processor */
+    std::vector<CT<SharedSeeds>::ref_tuples> alignseeds; /* the local k-mer seeds that we run alignments on are stored here as a vector of tuples */
     alignseeds.reserve(localnnzs);
     auto dcsc = Bmat.seqptr()->GetDCSC();
 
     uint64_t rowoffset = dfd.getrowstartid();
     uint64_t coloffset = dfd.getcolstartid();
 
+    /*
+     * Go through each local k-mer seed.
+     */
     for (uint64_t i = 0; i < dcsc->nzc; ++i)
         for (uint64_t j = dcsc->cp[i]; j < dcsc->cp[i+1]; ++j)
         {
@@ -29,6 +32,22 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
             uint64_t globalrow = localrow + rowoffset;
             uint64_t globalcol = localcol + coloffset;
 
+            /*
+             * We don't want to align the same pair of reads twice. Because B is symmetric,
+             * we need to come up with a way of avoiding duplicate alignments while also
+             * maintaining load balance (i.e. we don't want to just align nonzeros in
+             * the global upper triangle because then almost half the processors won't have
+             * anything to do).
+             *
+             * We do this as follows: if the nonzero is in the upper triangle of the the
+             * local submatrix (but not on the local diagonal) then we want to align it.
+             * If the the nonzero is on the local diagonal, but is in the upper triangle
+             * of the global matrix, then we want to align it. This works because the local
+             * upper triangles in the global lower triangle correspond one-to-one to the
+             * local lower triangles in the global upper triangle. We let the the global
+             * upper triangle handle the edge case of the diagonals.
+             */
+
             if ((localrow < localcol) || (localrow <= localcol && globalrow < globalcol))
             {
                 alignseeds.emplace_back(localrow, localcol, &(dcsc->numx[j]));
@@ -36,16 +55,18 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
         }
 
     size_t nalignments = alignseeds.size();
-    size_t totalignments;
-
-    MPI_ALLREDUCE(&nalignments, &totalignments, 1, MPI_SIZE_T, MPI_SUM, comm);
 
     #if LOG_LEVEL >= 2
+    size_t totalignments;
+    MPI_ALLREDUCE(&nalignments, &totalignments, 1, MPI_SIZE_T, MPI_SUM, comm);
     Logger logger(commgrid);
     logger() << "performing " << nalignments << "/" << totalignments << " alignments";
     logger.Flush("Alignment Counts:");
     #endif
 
+    /*
+     * Construct the overlap graph matrix by running alignments.
+     */
     std::vector<uint64_t> local_rowids, local_colids;
     std::vector<Overlap> overlaps;
 
@@ -59,7 +80,10 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
         const DnaSeq& seqQ = (*rowbuf)[localrow];
         const DnaSeq& seqT = (*colbuf)[localcol];
 
-        std::tuple<PosInRead, PosInRead> len(static_cast<PosInRead>(seqQ.size()), static_cast<PosInRead>(seqT.size()));
+        PosInRead lenQ = seqQ.size();
+        PosInRead lenT = seqT.size();
+
+        std::tuple<PosInRead, PosInRead> len(lenQ, lenT);
 
         overlaps.emplace_back(len, std::get<2>(alignseeds[i])->getseeds()[0]);
         overlaps.back().extend_overlap(seqQ, seqT, mat, mis, gap, dropoff);
