@@ -5,15 +5,20 @@
 #include <iostream>
 #include <algorithm>
 
-class SharedSeeds
+struct SharedSeeds
 {
-public:
     SharedSeeds() : numshared(0) {}
     SharedSeeds(const SharedSeeds& rhs) : seeds(rhs.seeds), numshared(rhs.numshared) {}
     SharedSeeds(PosInRead begQ, PosInRead begT) : numshared(1)
     {
         std::get<0>(seeds[0]) = begQ;
         std::get<1>(seeds[0]) = begT;
+    }
+
+    SharedSeeds(const std::tuple<PosInRead, PosInRead>& seed1, const std::tuple<PosInRead, PosInRead>& seed2, int numshared) : numshared(numshared)
+    {
+        seeds[0] = seed1;
+        seeds[1] = seed2;
     }
 
     int getnumstored() const { return std::min(2, numshared); }
@@ -28,18 +33,6 @@ public:
         return *this;
     }
 
-    SharedSeeds& operator+=(const SharedSeeds& rhs)
-    {
-        if (numshared < 2)
-        {
-            seeds[numshared] = rhs.seeds[0];
-        }
-
-        numshared += rhs.numshared;
-
-        return *this;
-    }
-
     struct Semiring
     {
         static SharedSeeds id() { return SharedSeeds(); }
@@ -47,9 +40,9 @@ public:
 
         static SharedSeeds add(const SharedSeeds& lhs, const SharedSeeds& rhs)
         {
-            SharedSeeds result(lhs);
-            result += rhs;
-            return result;
+            assert(lhs.numshared >= 1 && rhs.numshared >= 1);
+
+            return SharedSeeds(lhs.seeds[0], rhs.seeds[0], lhs.numshared + rhs.numshared);
         }
 
         static SharedSeeds multiply(const PosInRead& lhs, const PosInRead& rhs)
@@ -94,7 +87,6 @@ public:
         return os;
     }
 
-private:
     /*
      * @seeds is an array of size 2 whose elements (of type std::tuple<PosInRead, PosInRead>)
      * are ordered tuples of read positions.
