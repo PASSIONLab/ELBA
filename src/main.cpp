@@ -365,7 +365,6 @@ int parse_cli(int argc, char *argv[])
         std::cout << "-DKMER_SIZE="            << KMER_SIZE            << "\n"
                   << "-DLOWER_KMER_FREQ="      << LOWER_KMER_FREQ      << "\n"
                   << "-DUPPER_KMER_FREQ="      << UPPER_KMER_FREQ      << "\n"
-                  << "-DMAX_SEEDS="            << MAX_SEEDS            << "\n"
                   << "-DMPI_HAS_LARGE_COUNTS=" << MPI_HAS_LARGE_COUNTS << "\n"
         #ifdef USE_BLOOM
                   << "-DUSE_BLOOM\n"

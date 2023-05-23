@@ -16,7 +16,7 @@ public:
         std::get<1>(seeds[0]) = begT;
     }
 
-    int getnumstored() const { return std::min(MAX_SEEDS, numshared); }
+    int getnumstored() const { return std::min(2, numshared); }
     int getnumshared() const { return numshared; }
 
     const std::tuple<PosInRead, PosInRead>* getseeds() const { return &seeds[0]; }
@@ -30,7 +30,7 @@ public:
 
     SharedSeeds& operator+=(const SharedSeeds& rhs)
     {
-        if (numshared < MAX_SEEDS)
+        if (numshared < 2)
         {
             seeds[numshared] = rhs.seeds[0];
         }
@@ -54,7 +54,8 @@ public:
 
         static SharedSeeds multiply(const PosInRead& lhs, const PosInRead& rhs)
         {
-            return SharedSeeds(lhs, rhs);
+            SharedSeeds result(lhs, rhs);
+            return result;
         }
 
         static void axpy(PosInRead a, const PosInRead& x, SharedSeeds& y)
@@ -82,22 +83,23 @@ public:
     {
         int seedstoprint = std::min(static_cast<int>(o.getnumstored()), 2);
 
+        os << "{";
         for (int i = 0; i < seedstoprint; ++i)
         {
-            os << std::get<0>(o.seeds[i]) << "\t" << std::get<1>(o.seeds[i]) << "\t";
+            os << "(" << std::get<0>(o.seeds[i]) << "," << std::get<1>(o.seeds[i]) << "),";
         }
 
-        os << o.getnumshared();
+        os << o.getnumshared() << "}";
 
         return os;
     }
 
 private:
     /*
-     * @seeds is an array of size MAX_SEEDS (fixed at compile-time) whose
-     * elements (of type std::tuple<PosInRead, PosInRead>) are ordered tuples of read positions.
+     * @seeds is an array of size 2 whose elements (of type std::tuple<PosInRead, PosInRead>)
+     * are ordered tuples of read positions.
      */
-    std::tuple<PosInRead, PosInRead> seeds[MAX_SEEDS];
+    std::tuple<PosInRead, PosInRead> seeds[2];
     int numshared;
 };
 
