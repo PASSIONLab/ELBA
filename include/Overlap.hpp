@@ -26,6 +26,16 @@ struct Overlap
 
     void SetPathInf() { std::fill_n(suffix_paths, 4, std::numeric_limits<int>::max()); }
 
+    bool arrows(int& t, int& h) const
+    {
+        if (direction == -1) return false;
+
+        t = (direction >> 1) & 1;
+        h = direction & 1;
+
+        return true;
+    }
+
     struct Transpose : std::unary_function<Overlap, Overlap>
     {
         Overlap operator()(const Overlap& o) const

@@ -30,6 +30,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "KmerOps.hpp"
 #include "SharedSeeds.hpp"
 #include "PairwiseAlignment.hpp"
+#include "TransitiveReduction.hpp"
 #include "PruneChimeras.hpp"
 #include "MPITimer.hpp"
 #include "ELBALogger.hpp"
@@ -87,7 +88,7 @@ int main(int argc, char **argv)
 
         std::unique_ptr<CT<PosInRead>::PSpParMat> A, AT;
         std::unique_ptr<CT<SharedSeeds>::PSpParMat> B;
-        std::unique_ptr<CT<Overlap>::PSpParMat> R;
+        std::unique_ptr<CT<Overlap>::PSpParMat> R, S;
         std::unique_ptr<KmerCountMap> kmermap;
 
         std::ostringstream ss;
@@ -263,7 +264,7 @@ int main(int argc, char **argv)
         elbalog.log_kmer_matrix(*A);
 
         /*
-         *
+         * TODO: comment this.
          */
         timer.start();
         B = create_seed_matrix(*A, *AT);
@@ -276,6 +277,9 @@ int main(int argc, char **argv)
 
         dfd.wait();
 
+        /*
+         * TODO: comment this.
+         */
         timer.start();
         R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
         timer.stop_and_log("pairwise alignment");
@@ -284,7 +288,11 @@ int main(int argc, char **argv)
 
         parallel_write_paf(*R, dfd, getpafname().c_str());
 
+        timer.start();
+        S = TransitiveReduction(*R);
+        timer.stop_and_log("transitive reduction");
         R.reset();
+
         walltimer.stop_and_log("wallclock");
 
         /***********************************************************/
