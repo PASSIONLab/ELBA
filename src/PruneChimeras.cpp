@@ -136,13 +136,12 @@ std::vector<PileupVector> GetReadPileup(DistributedFastaData& dfd, CT<Overlap>::
     /* iterate over every local column */
     for (auto colit = spSeq.begcol(); colit != spSeq.endcol(); ++colit)
     {
-        int colid = colit.colid();
+        int64_t colid = colit.colid();
 
         /* iterate over every row that has an overlap with current column */
         for (auto nzit = spSeq.begnz(colit); nzit != spSeq.endnz(colit); ++nzit)
         {
             const Overlap& o = nzit.value();
-            uint64_t rowid = nzit.rowid();
             local_pileups[colid].AddInterval(std::get<1>(o.beg), std::get<1>(o.end));
         }
     }

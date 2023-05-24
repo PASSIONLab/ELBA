@@ -59,7 +59,7 @@ constexpr int root = 0; /* root process rank */
 int parse_cli(int argc, char *argv[]);
 void print_kmer_histogram(const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
 void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname);
-CT<uint64_t>::PDistVec find_contained_reads(const CT<Overlap>::PSpParMat& R);
+CT<int64_t>::PDistVec find_contained_reads(const CT<Overlap>::PSpParMat& R);
 std::string get_overlap_paf_name();
 std::string get_string_paf_name();
 
@@ -467,13 +467,13 @@ void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& d
 
     std::ostringstream ss;
 
-    for (uint64_t i = 0; i < dcsc->nzc; ++i)
-        for (uint64_t j = dcsc->cp[i]; j < dcsc->cp[i+1]; ++j)
+    for (int64_t i = 0; i < dcsc->nzc; ++i)
+        for (int64_t j = dcsc->cp[i]; j < dcsc->cp[i+1]; ++j)
         {
-            uint64_t localrow = dcsc->ir[j];
-            uint64_t localcol = dcsc->jc[i];
-            uint64_t globalrow = localrow + dfd.getrowstartid();
-            uint64_t globalcol = localcol + dfd.getcolstartid();
+            int64_t localrow = dcsc->ir[j];
+            int64_t localcol = dcsc->jc[i];
+            int64_t globalrow = localrow + dfd.getrowstartid();
+            int64_t globalcol = localcol + dfd.getcolstartid();
 
             const Overlap& o = dcsc->numx[j];
 
@@ -492,7 +492,7 @@ void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& d
     MPI_File_close(&fh);
 }
 
-CT<uint64_t>::PDistVec find_contained_reads(const CT<Overlap>::PSpParMat& R)
+CT<int64_t>::PDistVec find_contained_reads(const CT<Overlap>::PSpParMat& R)
 {
     CT<int>::PSpParMat containedQmat = const_cast<CT<Overlap>::PSpParMat&>(R).Prune([](const Overlap& o) { return !o.containedQ; }, false);
     CT<int>::PSpParMat containedTmat = const_cast<CT<Overlap>::PSpParMat&>(R).Prune([](const Overlap& o) { return !o.containedT; }, false);

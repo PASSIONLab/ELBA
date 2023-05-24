@@ -60,13 +60,13 @@ struct SharedSeeds
     struct IOHandler
     {
         template <typename c, typename t>
-        void save(std::basic_ostream<c,t>& os, const SharedSeeds& o, uint64_t row, uint64_t col) { os << o; }
+        void save(std::basic_ostream<c,t>& os, const SharedSeeds& o, int64_t row, int64_t col) { os << o; }
     };
 
     struct IOHandlerBrief
     {
         template <typename c, typename t>
-        void save(std::basic_ostream<c,t>& os, const SharedSeeds& o, uint64_t row, uint64_t col)
+        void save(std::basic_ostream<c,t>& os, const SharedSeeds& o, int64_t row, int64_t col)
         {
             os << o.getnumstored() << "\t" << o.getnumshared();
         }

@@ -18,19 +18,19 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
     alignseeds.reserve(localnnzs);
     auto dcsc = Bmat.seqptr()->GetDCSC();
 
-    uint64_t rowoffset = dfd.getrowstartid();
-    uint64_t coloffset = dfd.getcolstartid();
+    int64_t rowoffset = dfd.getrowstartid();
+    int64_t coloffset = dfd.getcolstartid();
 
     /*
      * Go through each local k-mer seed.
      */
-    for (uint64_t i = 0; i < dcsc->nzc; ++i)
-        for (uint64_t j = dcsc->cp[i]; j < dcsc->cp[i+1]; ++j)
+    for (int64_t i = 0; i < dcsc->nzc; ++i)
+        for (int64_t j = dcsc->cp[i]; j < dcsc->cp[i+1]; ++j)
         {
-            uint64_t localrow = dcsc->ir[j];
-            uint64_t localcol = dcsc->jc[i];
-            uint64_t globalrow = localrow + rowoffset;
-            uint64_t globalcol = localcol + coloffset;
+            int64_t localrow = dcsc->ir[j];
+            int64_t localcol = dcsc->jc[i];
+            int64_t globalrow = localrow + rowoffset;
+            int64_t globalcol = localcol + coloffset;
 
             /*
              * We don't want to align the same pair of reads twice. Because B is symmetric,
@@ -67,15 +67,15 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
     /*
      * Construct the overlap graph matrix by running alignments.
      */
-    std::vector<uint64_t> local_rowids, local_colids;
+    std::vector<int64_t> local_rowids, local_colids;
     std::vector<Overlap> overlaps;
 
     overlaps.reserve(nalignments);
 
     for (size_t i = 0; i < nalignments; ++i)
     {
-        uint64_t localrow = std::get<0>(alignseeds[i]);
-        uint64_t localcol = std::get<1>(alignseeds[i]);
+        int64_t localrow = std::get<0>(alignseeds[i]);
+        int64_t localcol = std::get<1>(alignseeds[i]);
 
         const DnaSeq& seqQ = (*rowbuf)[localrow];
         const DnaSeq& seqT = (*colbuf)[localcol];
@@ -93,11 +93,11 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
         local_colids.push_back(localcol + coloffset);
     }
 
-    CT<uint64_t>::PDistVec drows(local_rowids, commgrid);
-    CT<uint64_t>::PDistVec dcols(local_colids, commgrid);
+    CT<int64_t>::PDistVec drows(local_rowids, commgrid);
+    CT<int64_t>::PDistVec dcols(local_colids, commgrid);
     CT<Overlap>::PDistVec dvals(overlaps, commgrid);
 
-    uint64_t numreads = index.gettotrecords();
+    int64_t numreads = index.gettotrecords();
 
     auto R = std::make_unique<CT<Overlap>::PSpParMat>(numreads, numreads, drows, dcols, dvals, false);
 

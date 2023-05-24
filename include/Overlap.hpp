@@ -69,7 +69,7 @@ struct Overlap
     struct IOHandler
     {
         template <typename c, typename t>
-        void save(std::basic_ostream<c,t>& os, const Overlap& o, uint64_t row, uint64_t col) { os << o; }
+        void save(std::basic_ostream<c,t>& os, const Overlap& o, int64_t row, int64_t col) { os << o; }
     };
 
     Overlap& operator+=(const Overlap& lhs) { return *this; }

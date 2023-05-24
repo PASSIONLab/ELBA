@@ -364,17 +364,17 @@ create_kmer_matrix(const DnaBuffer& myreads, const KmerCountMap& kmermap, std::s
     int myrank = commgrid->GetRank();
     int nprocs = commgrid->GetSize();
 
-    uint64_t kmerid = kmermap.size();
-    uint64_t totkmers = kmerid;
-    uint64_t totreads = myreads.size();
+    int64_t kmerid = kmermap.size();
+    int64_t totkmers = kmerid;
+    int64_t totreads = myreads.size();
 
-    MPI_Allreduce(&kmerid,      &totkmers, 1, MPI_UINT64_T, MPI_SUM, commgrid->GetWorld());
-    MPI_Allreduce(MPI_IN_PLACE, &totreads, 1, MPI_UINT64_T, MPI_SUM, commgrid->GetWorld());
+    MPI_Allreduce(&kmerid,      &totkmers, 1, MPI_INT64_T, MPI_SUM, commgrid->GetWorld());
+    MPI_Allreduce(MPI_IN_PLACE, &totreads, 1, MPI_INT64_T, MPI_SUM, commgrid->GetWorld());
 
-    MPI_Exscan(MPI_IN_PLACE, &kmerid, 1, MPI_UINT64_T, MPI_SUM, commgrid->GetWorld());
+    MPI_Exscan(MPI_IN_PLACE, &kmerid, 1, MPI_INT64_T, MPI_SUM, commgrid->GetWorld());
     if (myrank == 0) kmerid = 0;
 
-    std::vector<uint64_t> local_rowids, local_colids;
+    std::vector<int64_t> local_rowids, local_colids;
     std::vector<PosInRead> local_positions;
 
     for (auto itr = kmermap.cbegin(); itr != kmermap.cend(); ++itr)
@@ -393,8 +393,8 @@ create_kmer_matrix(const DnaBuffer& myreads, const KmerCountMap& kmermap, std::s
         kmerid++;
     }
 
-    CT<uint64_t>::PDistVec drows(local_rowids, commgrid);
-    CT<uint64_t>::PDistVec dcols(local_colids, commgrid);
+    CT<int64_t>::PDistVec drows(local_rowids, commgrid);
+    CT<int64_t>::PDistVec dcols(local_colids, commgrid);
     CT<PosInRead>::PDistVec dvals(local_positions, commgrid);
 
     return std::make_unique<CT<PosInRead>::PSpParMat>(totreads, totkmers, drows, dcols, dvals, false);

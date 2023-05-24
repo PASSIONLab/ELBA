@@ -20,10 +20,10 @@ std::unique_ptr<CT<Overlap>::PSpParMat> TransitiveReduction(CT<Overlap>::PSpParM
 
     CT<Overlap>::PSpParMat P = R; /* P is a copy of R now but it is going to be the "power" matrix to be updated over and over */
 
-    uint64_t nrow = R.getnrow();
-    uint64_t ncol = R.getncol();
+    int64_t nrow = R.getnrow();
+    int64_t ncol = R.getncol();
 
-    CT<uint64_t>::PDistVec initvec(commgrid, nrow, static_cast<uint64_t>(0));
+    CT<int64_t>::PDistVec initvec(commgrid, nrow, static_cast<int64_t>(0));
     CT<int>::PSpParMat T(nrow, ncol, initvec, initvec, static_cast<int>(0), false);
 
     /*
@@ -32,9 +32,9 @@ std::unique_ptr<CT<Overlap>::PSpParMat> TransitiveReduction(CT<Overlap>::PSpParM
     CT<Overlap>::PSpParMat F = R;
     F.Apply(PlusFuzzSRing());
 
-    uint64_t cur, prev;
-    uint64_t count = 0;
-    uint64_t countidle = 0;
+    int64_t cur, prev;
+    int64_t count = 0;
+    int64_t countidle = 0;
 
     bool isLogicalNot = false;
     bool bId = false;
