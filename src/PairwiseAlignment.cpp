@@ -85,6 +85,7 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
 
         std::tuple<PosInRead, PosInRead> len(lenQ, lenT);
 
+        /* TODO: change the below two lines */
         overlaps.emplace_back(len, std::get<2>(alignseeds[i])->getseeds()[0]);
         overlaps.back().extend_overlap(seqQ, seqT, mat, mis, gap, dropoff);
 
@@ -98,7 +99,7 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
 
     uint64_t numreads = index.gettotrecords();
 
-    auto R =std::make_unique<CT<Overlap>::PSpParMat>(numreads, numreads, drows, dcols, dvals, false);
+    auto R = std::make_unique<CT<Overlap>::PSpParMat>(numreads, numreads, drows, dcols, dvals, false);
 
     R->Prune([](const Overlap& nz) { return !nz.passed; });
 

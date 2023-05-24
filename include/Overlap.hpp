@@ -41,7 +41,6 @@ struct Overlap
         Overlap operator()(const Overlap& o) const
         {
             Overlap oT(o);
-            PosInRead tmp;
 
             std::get<0>(oT.beg) = std::get<1>(o.beg);
             std::get<1>(oT.beg) = std::get<0>(o.beg);

@@ -278,7 +278,12 @@ int main(int argc, char **argv)
         dfd.wait();
 
         /*
-         * TODO: comment this.
+         * In order to obtain reliable overlaps, we need to do some alignments.
+         * The @B matrix provides the seeds (common k-mers) from which we
+         * anchor and extend our alignments using the X-drop algorithm.
+         * In an embarassingly parallel manner, we run seed-and-extend
+         * alignments on each nonzero (actually only half since @B is symmetric)
+         * and then prune the alignments that appear spurious.
          */
         timer.start();
         R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
