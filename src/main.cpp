@@ -289,6 +289,21 @@ int main(int argc, char **argv)
         R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
         timer.stop_and_log("pairwise alignment");
 
+        CT<int>::PSpParMat containedQmat = R->Prune([](const Overlap& o) { return !o.containedQ; }, false);
+        CT<int>::PSpParMat containedTmat = R->Prune([](const Overlap& o) { return !o.containedT; }, false);
+
+        CT<int>::PDistVec containedQvec = containedQmat.Reduce(Row, std::logical_or<int>(), 0);
+        CT<int>::PDistVec containedTvec = containedTmat.Reduce(Column, std::logical_or<int>(), 0);
+
+        CT<int>::PDistVec contained = containedQvec;
+        contained.EWiseOut(containedTvec, std::logical_or<int>(), contained);
+
+        contained.DebugPrint();
+        CT<uint64_t>::PDistVec toerase = contained.FindInds([](const int& v) { return v > 0; });
+        toerase.DebugPrint();
+
+        R->PruneFull(toerase, toerase);
+
         elbalog.log_overlap_matrix(*R);
 
         parallel_write_paf(*R, dfd, getpafname().c_str());
@@ -297,6 +312,8 @@ int main(int argc, char **argv)
         S = TransitiveReduction(*R);
         timer.stop_and_log("transitive reduction");
         R.reset();
+
+        parallel_write_paf(*S, dfd, "string.paf");
 
         walltimer.stop_and_log("wallclock");
 

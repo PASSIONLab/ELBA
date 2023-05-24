@@ -204,6 +204,13 @@ std::unique_ptr<CT<Overlap>::PSpParMat> TransitiveReduction(CT<Overlap>::PSpParM
 
     }  while (cur != prev);
 
+    isLogicalNot = true; /* GGGG: I want the ones to be removed to be set to false, so I use the logical negation */
+    bId = true; /* GGGG: this is critical, if this would be false, everything that would survive the EWIseApply would have dir == -1 as well and it's wrong
+                    A non-transitive edge should keep its original direction! */
+    R = EWiseApply<Overlap, CT<Overlap>::PSpDCCols>(R, T, TransitiveRemoval(), isLogicalNot, 1);
+
+    R.Prune(InvalidSRing(), true);
+
     return std::make_unique<CT<Overlap>::PSpParMat>(R);
 }
 

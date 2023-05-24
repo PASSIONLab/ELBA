@@ -13,6 +13,8 @@ struct Overlap
     Overlap(std::tuple<PosInRead, PosInRead> len, std::tuple<PosInRead, PosInRead> seed);
     Overlap(const Overlap& rhs);
 
+    operator int() const { return 1; } /* for creating integer matrix with same nonzero pattern */
+
     void extend_overlap(const DnaSeq& seqQ, const DnaSeq& seqT, int mat, int mis, int gap, int dropoff);
     void classify();
 
@@ -77,7 +79,7 @@ struct Overlap
     friend std::ostream& operator<<(std::ostream& os, const Overlap& o)
     {
         char rcflag = o.rc? '-' : '+';
-        os << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << rcflag << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score;
+        os << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << rcflag << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score << "\t" << static_cast<int>(o.containedQ) << "\t" << static_cast<int>(o.containedT);
         return os;
     }
 };
