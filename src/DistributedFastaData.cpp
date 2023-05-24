@@ -54,29 +54,7 @@ void DistributedFastaData::getgridrequests(std::vector<FastaDataRequest>& myrequ
     /* assert that we are requesting more than zero reads, and that the range of reads exists within the FASTA */
     assert(count >= 1 && 0 <= globalstartid && globalstartid + count <= totreads);
 
-    /*
-     * We want to find the first processor rank that owns the read with id @globalstartid.
-     * For each rank i in [0..nprocs-1], readdispls[i] is the number of reads owned across
-     * processors [0..i), or the same: the global id of the first read owned by processor i.
-     * readdispls[nprocs] is defined as the total number of reads in the FASTA.
-     *
-     * std:upper_bound(readdispls.cbegin(), readdispls.cend(), globalstartid) returns an
-     * iterator pointing to the first element in the range [0..nprocs] such that
-     * @globalstartid < element. This iterator is therefore pointing to the entry of
-     * the first processor rank holding a read id greater than @globalstartid. It follows
-     * that the processor rank just before it owns the read @globalstartid.
-     */
-    auto iditr = std::upper_bound(readdispls.cbegin(), readdispls.cend(), static_cast<MPI_Displ_type>(globalstartid));
-    iditr--;
-
-    int owner = iditr - readdispls.cbegin();
-
-    /*
-     * assert that the processor rank we think owns @globalstartid owns reads with
-     * the same or lower id. If so, then we can be certain that we have found
-     * the right starting rank because we already found from the std::upper_bound
-     * computation that *(iditr+1) > @globalstartid.
-     */
+    int owner = index.getreadowner(globalstartid);
     assert(readdispls[owner] <= globalstartid);
 
     /*

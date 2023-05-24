@@ -22,6 +22,28 @@ Record FastaIndex::get_faidx_record(const std::string& line, std::string& name)
     return record;
 }
 
+int FastaIndex::getreadowner(size_t i) const
+{
+    /*
+     * We want to find the first processor rank that owns the read with id @i.
+     * For each rank i in [0..nprocs-1], readdispls[i] is the number of reads owned across
+     * processors [0..i), or the same: the global id of the first read owned by processor i.
+     * readdispls[nprocs] is defined as the total number of reads in the FASTA.
+     *
+     * std:upper_bound(readdispls.cbegin(), readdispls.cend(), i) returns an
+     * iterator pointing to the first element in the range [0..nprocs] such that
+     * @i < element. This iterator is therefore pointing to the entry of the first
+     * processor rank holding a read id greater than @i. It follows that the
+     * processor rank just before it owns the read @i.
+     */
+
+    auto iditr = std::upper_bound(readdispls.cbegin(), readdispls.cend(), static_cast<MPI_Displ_type>(i));
+
+    iditr--;
+
+    return static_cast<int>(iditr - readdispls.cbegin());
+}
+
 void FastaIndex::getpartition(std::vector<MPI_Count_type>& sendcounts)
 {
     int myrank = commgrid->GetRank();

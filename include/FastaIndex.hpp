@@ -20,6 +20,7 @@ public:
     size_t getreaddispl(size_t i) const { return static_cast<size_t>(readdispls[i]); }
     size_t getmyreadcount() const { return getreadcount(commgrid->GetRank()); }
     size_t getmyreaddispl() const { return getreaddispl(commgrid->GetRank()); }
+    int getreadowner(size_t i) const;
 
     std::vector<size_t> getmyreadlens() const;
 
