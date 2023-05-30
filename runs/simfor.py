@@ -11,17 +11,19 @@ def create_data(genome_length, sequencing_depth, avg_read_length, sd_read_length
 
     num_reads = int((genome_length * sequencing_depth) / avg_read_length)
 
+    rstrands = np.random.randint(0, 2, num_reads)
     rlengths = np.random.normal(avg_read_length, sd_read_length, num_reads).astype(int)
     rpositions = np.random.randint(0, genome_length - avg_read_length, num_reads)
 
-    rtuples = [] # (read id, genome position, read length)
+    rtuples = [] # (read id, genome position, read length, read strand)
 
     for i in range(num_reads):
         rlen = rlengths[i]
         rpos = rpositions[i]
+        rstrand = rstrands[i]
         if rpos + rlen > genome_length:
             rlen = genome_length - rpos
-        rtuples.append((i, rpos, rlen))
+        rtuples.append((i, rpos, rlen, rstrand))
 
     genome = "".join("ACGT"[c] for c in np.random.randint(0, 4, genome_length))
 
@@ -35,9 +37,9 @@ def get_overlaps(read_tuples):
     overlaps = []
 
     for Q in range(num_reads):
-        idQ, posQ, lenQ = ordered_read_tuples[Q]
+        idQ, posQ, lenQ, strandQ = ordered_read_tuples[Q]
         for T in range(Q+1, num_reads):
-            idT, posT, lenT = ordered_read_tuples[T]
+            idT, posT, lenT, strandT = ordered_read_tuples[T]
             if posQ + lenQ <= posT:
                 break
 
@@ -46,24 +48,38 @@ def get_overlaps(read_tuples):
             endQ = min(lenQ, posT + lenT - posQ)
             endT = min(posQ + lenQ - posT, lenT)
 
-            overlaps.append((idQ, lenQ, begQ, endQ, idT, lenT, begT, endT))
-            overlaps.append((idT, lenT, begT, endT, idQ, lenQ, begQ, endQ))
+            rc = 0
+
+            if strandQ == 0 and strandT == 1:
+                tmp = begT
+                begT = lenT - endT
+                endT = lenT - tmp
+                rc = 1
+            elif strandQ == 1 and strandT == 0:
+                tmp = begQ
+                begQ = lenQ - endQ
+                endQ = lenQ - tmp
+                rc = 1
+
+            overlaps.append((idQ, lenQ, begQ, endQ, rc, idT, lenT, begT, endT))
+            overlaps.append((idT, lenT, begT, endT, rc, idQ, lenQ, begQ, endQ))
 
     return overlaps
 
 def write_overlaps(overlaps, num_reads):
     with open("overlaps.txt", "w") as f:
-        for overlap in sorted(overlaps, key=lambda x: num_reads*x[0] + x[3]):
-            idQ, lenQ, begQ, endQ, idT, lenT, begT, endT = overlap
-            f.write("{}\t{}\t{}\t{}\t+\t{}\t{}\t{}\t{}\n".format(idQ+1, lenQ, begQ, endQ, idT+1, lenT, begT, endT))
+        for overlap in sorted(overlaps):
+            idQ, lenQ, begQ, endQ, rc, idT, lenT, begT, endT = overlap
+            f.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(idQ+1, lenQ, begQ, endQ, "+-"[int(rc)], idT+1, lenT, begT, endT))
 
 def write_data(genome, read_tuples):
     with open("ref.fa", "w") as f:
         f.write(">ref\n{}\n".format(genome))
     with open("reads.fa", "w") as f:
-        for rid, rpos, rlen in read_tuples:
+        for rid, rpos, rlen, rstrand in read_tuples:
             s = genome[rpos:rpos+rlen]
-            f.write(">{}\tpos={}\tlen={}\n{}\n".format(rid+1, rpos, rlen, s))
+            if rstrand == 1: s = s.translate(comp_tab)[::-1]
+            f.write(">{}\tpos={}\tlen={}\tstrand={}\n{}\n".format(rid+1, rpos, rlen, rstrand, s))
 
 def main():
 
