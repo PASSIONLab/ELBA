@@ -81,6 +81,15 @@ def write_data(genome, read_tuples):
             if rstrand == 1: s = s.translate(comp_tab)[::-1]
             f.write(">{}\tpos={}\tlen={}\tstrand={}\n{}\n".format(rid+1, rpos, rlen, rstrand, s))
 
+def find_contained_reads(overlaps):
+    contained = set()
+    for idQ, lenQ, begQ, endQ, rc, idT, lenT, begT, endT in overlaps:
+        if begQ == 0 and endQ == lenQ:
+            contained.add(idQ)
+        elif begT == 0 and endT == lenT:
+            contained.add(idT)
+    return contained
+
 def main():
 
     genome_length = 100000
@@ -93,5 +102,10 @@ def main():
     num_reads = len(read_tuples)
     write_overlaps(overlaps, num_reads)
     write_data(genome, read_tuples)
+
+    contained = find_contained_reads(overlaps)
+    with open("contained.txt", "w") as f:
+        for rid in sorted(contained):
+            f.write("{}\n".format(rid+1))
 
 main()
