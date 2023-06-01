@@ -48,29 +48,51 @@ def get_overlaps(read_tuples):
             endQ = min(lenQ, posT + lenT - posQ)
             endT = min(posQ + lenQ - posT, lenT)
 
-            rc = 0
+            rc = int(strandQ != strandT)
 
-            if strandQ == 0 and strandT == 1:
-                tmp = begT
-                begT = lenT - endT
-                endT = lenT - tmp
-                rc = 1
-            elif strandQ == 1 and strandT == 0:
+            if begQ <= begT and lenQ - endQ <= lenT - endT:
+                direction = -1
+                directionT = -1
+                suffix = 0
+                suffixT = 0
+            elif begQ >= begT and lenQ - endQ >= lenT - endT:
+                direction = -1
+                directionT = -1
+                suffix = 0
+                suffixT = 0
+            elif begQ > begT:
+                direction = 0 if rc else 1
+                directionT = 0 if rc else 2
+                suffix = (lenT - endT) - (lenQ - endQ)
+                suffixT = begQ - begT
+            else:
+                direction = 3 if rc else 2
+                directionT = 3 if rc else 1
+                suffix = begT - begQ
+                suffixT = (lenQ - endQ) - (lenT - endT)
+
+            if strandQ == 1:
                 tmp = begQ
                 begQ = lenQ - endQ
                 endQ = lenQ - tmp
-                rc = 1
 
-            overlaps.append((idQ, lenQ, begQ, endQ, rc, idT, lenT, begT, endT))
-            overlaps.append((idT, lenT, begT, endT, rc, idQ, lenQ, begQ, endQ))
+            if strandT == 1:
+                tmp = begT
+                begT = lenT - endT
+                endT = lenT - tmp
+
+            if idQ < idT:
+                overlaps.append((idQ, lenQ, begQ, endQ, rc, idT, lenT, begT, endT, direction, suffix))
+            else:
+                overlaps.append((idT, lenT, begT, endT, rc, idQ, lenQ, begQ, endQ, directionT, suffixT))
 
     return overlaps
 
 def write_overlaps(overlaps, num_reads):
     with open("overlaps.txt", "w") as f:
-        for overlap in sorted(overlaps):
-            idQ, lenQ, begQ, endQ, rc, idT, lenT, begT, endT = overlap
-            f.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(idQ+1, lenQ, begQ, endQ, "+-"[int(rc)], idT+1, lenT, begT, endT))
+        for overlap in sorted(overlaps, key=lambda x: (x[0], x[5])):
+            idQ, lenQ, begQ, endQ, rc, idT, lenT, begT, endT, d, s = overlap
+            f.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(idQ+1, idT+1, lenQ, begQ, endQ, "+-"[int(rc)], lenT, begT, endT, d, s))
 
 def write_data(genome, read_tuples):
     with open("ref.fa", "w") as f:
@@ -83,7 +105,7 @@ def write_data(genome, read_tuples):
 
 def find_contained_reads(overlaps):
     contained = set()
-    for idQ, lenQ, begQ, endQ, rc, idT, lenT, begT, endT in overlaps:
+    for idQ, lenQ, begQ, endQ, rc, idT, lenT, begT, endT, _, _ in overlaps:
         if begQ == 0 and endQ == lenQ:
             contained.add(idQ)
         elif begT == 0 and endT == lenT:
@@ -91,6 +113,8 @@ def find_contained_reads(overlaps):
     return contained
 
 def main():
+
+    np.random.seed(313)
 
     genome_length = 100000
     sequencing_depth = 26
