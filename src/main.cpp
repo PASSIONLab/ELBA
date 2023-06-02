@@ -31,6 +31,7 @@ derivative works, and perform publicly and display publicly, and to permit other
 #include "SharedSeeds.hpp"
 #include "PairwiseAlignment.hpp"
 #include "TransitiveReduction.hpp"
+#include "ContigGeneration.hpp"
 #include "PruneChimeras.hpp"
 #include "MPITimer.hpp"
 #include "ELBALogger.hpp"
@@ -303,6 +304,9 @@ int main(int argc, char **argv)
         R.reset();
 
         parallel_write_paf(*S, dfd, get_string_paf_name().c_str());
+        S->ParallelWriteMM("S.mtx", true, Overlap::IOHandler());
+
+        std::vector<std::string> contigs = GenerateContigs(*S, mydna, dfd);
 
         walltimer.stop_and_log("wallclock");
 

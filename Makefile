@@ -48,6 +48,7 @@ OBJECTS=obj/Logger.o \
 		obj/PairwiseAlignment.o \
 		obj/XDropAligner.o \
 		obj/TransitiveReduction.o \
+		obj/ContigGeneration.o \
 		obj/PruneChimeras.o \
 		obj/CommGrid.o \
 		obj/MPIType.o
@@ -80,6 +81,7 @@ obj/Overlap.o: src/Overlap.cpp include/Overlap.hpp
 obj/PairwiseAlignment.o: src/PairwiseAlignment.cpp include/PairwiseAlignment.hpp
 obj/XDropAligner.o: src/XDropAligner.cpp include/XDropAligner.hpp
 obj/TransitiveReduction.o: src/TransitiveReduction.cpp include/TransitiveReduction.hpp
+obj/ContigGeneration.o: src/ContigGeneration.cpp include/ContigGeneration.hpp
 obj/PruneChimeras.o: src/PruneChimeras.cpp include/PruneChimeras.hpp
 obj/DnaSeq.o: src/DnaSeq.cpp include/DnaSeq.hpp
 obj/DnaBuffer.o: src/DnaBuffer.cpp include/DnaBuffer.hpp

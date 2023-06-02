@@ -79,7 +79,7 @@ struct Overlap
     friend std::ostream& operator<<(std::ostream& os, const Overlap& o)
     {
         char rcflag = o.rc? '-' : '+';
-        os << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << rcflag << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score << "\t" << static_cast<int>(o.containedQ) << "\t" << static_cast<int>(o.containedT);
+        os << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << rcflag << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score << "\t" << static_cast<int>(o.direction) << "\t" << static_cast<int>(o.suffix);
         return os;
     }
 };
