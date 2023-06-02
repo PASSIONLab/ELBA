@@ -14,6 +14,7 @@ struct Overlap
     Overlap(const Overlap& rhs);
 
     operator int() const { return 1; } /* for creating integer matrix with same nonzero pattern */
+    operator int64_t() const { return static_cast<int64_t>(1); } /* ditto */
 
     void extend_overlap(const DnaSeq& seqQ, const DnaSeq& seqT, int mat, int mis, int gap, int dropoff);
     void classify();

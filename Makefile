@@ -51,7 +51,8 @@ OBJECTS=obj/Logger.o \
 		obj/ContigGeneration.o \
 		obj/PruneChimeras.o \
 		obj/CommGrid.o \
-		obj/MPIType.o
+		obj/MPIType.o \
+		obj/MPIOp.o
 
 all: elba
 
@@ -81,7 +82,7 @@ obj/Overlap.o: src/Overlap.cpp include/Overlap.hpp
 obj/PairwiseAlignment.o: src/PairwiseAlignment.cpp include/PairwiseAlignment.hpp
 obj/XDropAligner.o: src/XDropAligner.cpp include/XDropAligner.hpp
 obj/TransitiveReduction.o: src/TransitiveReduction.cpp include/TransitiveReduction.hpp
-obj/ContigGeneration.o: src/ContigGeneration.cpp include/ContigGeneration.hpp
+obj/ContigGeneration.o: src/ContigGeneration.cpp include/ContigGeneration.hpp include/CC.hpp
 obj/PruneChimeras.o: src/PruneChimeras.cpp include/PruneChimeras.hpp
 obj/DnaSeq.o: src/DnaSeq.cpp include/DnaSeq.hpp
 obj/DnaBuffer.o: src/DnaBuffer.cpp include/DnaBuffer.hpp
@@ -92,6 +93,10 @@ obj/CommGrid.o: $(COMBBLAS_SRC)/CommGrid.cpp $(COMBBLAS_INC)/CommGrid.h
 	@$(COMPILER) $(FLAGS) $(INCADD) -c -o $@ $<
 
 obj/MPIType.o: $(COMBBLAS_SRC)/MPIType.cpp $(COMBBLAS_INC)/MPIType.h
+	@echo CXX -c -o $@ $<
+	@$(COMPILER) $(FLAGS) $(INCADD) -c -o $@ $<
+
+obj/MPIOp.o: $(COMBBLAS_SRC)/MPIOp.cpp $(COMBBLAS_INC)/MPIOp.h
 	@echo CXX -c -o $@ $<
 	@$(COMPILER) $(FLAGS) $(INCADD) -c -o $@ $<
 
