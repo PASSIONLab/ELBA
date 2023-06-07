@@ -85,6 +85,41 @@ CT<int64_t>::PDistVec GetContigSizes(const CT<int64_t>::PDistVec& assignments, i
     return CT<int64_t>::PDistVec(fill_vec_components, commgrid);
 }
 
+std::vector<std::tuple<int64_t, int64_t>> GetAllContigSizesSorted(CT<int64_t>::PDistVec& contigsizes, int64_t& num_used_contigs, DistributedFastaData& dfd)
+{
+    auto commgrid = contigsizes.getcommgrid();
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    MPI_Comm comm = commgrid->GetWorld();
+
+    std::vector<std::tuple<int64_t, int64_t>> sendbuf;
+    std::vector<int64_t> locsizes = contigsizes.GetLocVec();
+    int64_t lengthuntil = contigsizes.LengthUntil();
+
+    for (int64_t i = 0; i < locsizes.size(); ++i)
+        if (locsizes[i] >= 2)
+            sendbuf.emplace_back(i + lengthuntil, locsizes[i]);
+
+    std::vector<int> recvcounts(nprocs);
+    std::vector<int> displs(nprocs);
+
+    recvcounts[myrank] = sendbuf.size();
+
+    MPI_Allgather(MPI_IN_PLACE, 0, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
+
+    std::exclusive_scan(recvcounts.begin(), recvcounts.end(), displs.begin(), static_cast<int64_t>(0));
+
+    num_used_contigs = recvcounts.back() + displs.back();
+
+    std::vector<std::tuple<int64_t, int64_t>> result(num_used_contigs);
+
+    MPI_Allgatherv(sendbuf.data(), recvcounts[myrank], MPIType<std::tuple<int64_t, int64_t>>(), result.data(), recvcounts.data(), displs.data(), MPIType<std::tuple<int64_t, int64_t>>(), comm);
+
+    std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return std::get<1>(a) > std::get<1>(b); });
+
+    return result;
+}
+
 std::vector<std::string> GenerateContigs(CT<Overlap>::PSpParMat& S, const DnaBuffer& mydna, DistributedFastaData& dfd)
 {
     std::vector<std::string> contigs;
@@ -96,14 +131,26 @@ std::vector<std::string> GenerateContigs(CT<Overlap>::PSpParMat& S, const DnaBuf
     CT<int64_t>::PDistVec assignments(S.getcommgrid());
     int64_t numcontigs = GetRead2Contigs(S, assignments);
 
-    assignments.DebugPrint();
-
     /*
      * Compute contig sizes.
      */
     CT<int64_t>::PDistVec contigsizes = GetContigSizes(assignments, numcontigs, dfd);
 
-    contigsizes.DebugPrint();
+    int64_t num_used_contigs;
+
+    std::vector<std::tuple<int64_t, int64_t>> AllContigSizesSorted = GetAllContigSizesSorted(contigsizes, num_used_contigs, dfd);
+
+    if (S.getcommgrid()->GetRank() == 0)
+    {
+        for (auto& item : AllContigSizesSorted)
+        {
+            std::cout << std::get<0>(item) << "\t" << std::get<1>(item) << "\n";
+        }
+
+        std::cout << std::endl;
+    }
+
+    MPI_Barrier(S.getcommgrid()->GetWorld());
 
     return contigs;
 }
