@@ -101,7 +101,7 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
 
     auto R = std::make_unique<CT<Overlap>::PSpParMat>(numreads, numreads, drows, dcols, dvals, false);
 
-    // R->Prune([](const Overlap& nz) { return !nz.passed; });
+    R->Prune([](const Overlap& nz) { return !nz.passed; });
 
     return std::move(R);
 }
