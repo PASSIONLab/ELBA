@@ -31,8 +31,6 @@ int64_t GetRead2Contigs(CT<Overlap>::PSpParMat& S, CT<int64_t>::PDistVec& assign
     CT<int64_t>::PDistVec degrees(A.getcommgrid());
     D.Reduce(degrees, Row, std::plus<int64_t>(), static_cast<int64_t>(0));
 
-    degrees.DebugPrint();
-
     /*
      * Find the indices of the degrees vector that have entries greater than 2.
      * Those correspond to the branching vertices.
@@ -129,6 +127,96 @@ std::vector<std::tuple<int64_t, int64_t>> GetContigSizes(const CT<int64_t>::PDis
     return result;
 }
 
+std::vector<int64_t> ImposeMyReadDistribution(CT<int64_t>::PDistVec& assignments, DistributedFastaData& dfd)
+{
+    auto index = dfd.getindex();
+    auto commgrid = index.getcommgrid();
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    MPI_Comm comm = commgrid->GetWorld();
+
+    int64_t orig_offset = assignments.LengthUntil();
+    int64_t orig_size = assignments.LocArrSize();
+
+    std::vector<int64_t> orig_vector = assignments.GetLocVec();
+
+    std::vector<int> sendcounts(nprocs, 0);
+    std::vector<int> recvcounts(nprocs);
+
+    for (int64_t i = 0; i < orig_size; ++i)
+    {
+        int owner = index.getreadowner(i);
+        ++sendcounts[owner];
+    }
+
+    MPI_Alltoall(sendcounts.data(), 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
+
+    std::vector<int> sdispls(nprocs);
+    std::vector<int> rdispls(nprocs);
+
+    std::exclusive_scan(sendcounts.begin(), sendcounts.end(), sdispls.begin(), 0);
+    std::exclusive_scan(recvcounts.begin(), recvcounts.end(), rdispls.begin(), 0);
+
+    int64_t totrecv = recvcounts.back() + rdispls.back();
+
+    std::vector<int64_t> new_vector(totrecv);
+
+    MPI_Alltoallv(orig_vector.data(), sendcounts.data(), sdispls.data(), MPI_INT64_T, new_vector.data(), recvcounts.data(), rdispls.data(), MPI_INT64_T, comm);
+
+    return new_vector;
+}
+
+std::vector<int64_t> GetLocalProcAssignments(CT<int64_t>::PDistVec& assignments, std::vector<std::tuple<int64_t, int64_t>>& contigsizes, DistributedFastaData& dfd)
+{
+    auto index = dfd.getindex();
+    auto commgrid = index.getcommgrid();
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    MPI_Comm comm = commgrid->GetWorld();
+
+    int64_t num_used_contigs = contigsizes.size();
+    std::vector<int64_t> small_proc_assignments(num_used_contigs);
+    std::vector<int64_t> small_large_map(num_used_contigs);
+
+    if (myrank == 0)
+    {
+        std::vector<int64_t> sums(nprocs, 0);
+        std::vector<std::vector<int64_t>> partitions(nprocs);
+
+        for (int64_t i = 0; i < num_used_contigs; ++i)
+        {
+            int where = std::distance(sums.begin(), std::min_element(sums.begin(), sums.end()));
+            sums[where] += std::get<1>(contigsizes[i]);
+            small_large_map[i] = std::get<0>(contigsizes[i]);
+            partitions[where].push_back(i);
+        }
+
+        for (int i = 0; i < nprocs; ++i)
+            for (auto itr = partitions[i].begin(); itr != partitions[i].end(); ++itr)
+                small_proc_assignments[*itr] = i;
+    }
+
+    MPI_Bcast(small_proc_assignments.data(), static_cast<int>(num_used_contigs), MPI_INT64_T, 0, comm);
+    MPI_Bcast(small_large_map.data(), static_cast<int>(num_used_contigs), MPI_INT64_T, 0, comm);
+
+    std::unordered_map<int64_t, int64_t> large_small_map;
+
+    for (auto itr = small_large_map.begin(); itr != small_large_map.end(); ++itr)
+        large_small_map[*itr] = (itr - small_large_map.begin());
+
+    int64_t lengthuntil = index.getmyreaddispl();
+    int64_t nlocreads = index.getmyreadcount();
+
+    std::vector<int64_t> local_assignments = ImposeMyReadDistribution(assignments, dfd);
+    std::vector<int64_t> local_proc_assignments(nlocreads, -1);
+
+    for (auto itr = local_assignments.begin(); itr != local_assignments.end(); ++itr)
+        if (large_small_map.find(*itr) != large_small_map.end())
+            local_proc_assignments[itr - local_assignments.begin()] = small_proc_assignments[large_small_map[*itr]];
+
+    return local_proc_assignments;
+}
+
 std::vector<std::string> GenerateContigs(CT<Overlap>::PSpParMat& S, const DnaBuffer& mydna, DistributedFastaData& dfd)
 {
     std::vector<std::string> contigs;
@@ -144,6 +232,16 @@ std::vector<std::string> GenerateContigs(CT<Overlap>::PSpParMat& S, const DnaBuf
      * Compute contig sizes.
      */
     auto contigsizes = GetContigSizes(assignments, numcontigs, dfd);
+
+    std::vector<int64_t> local_proc_assignments = GetLocalProcAssignments(assignments, contigsizes, dfd);
+
+    Logger logger(dfd.getindex().getcommgrid());
+
+    for (auto itr = local_proc_assignments.begin(); itr != local_proc_assignments.end(); ++itr)
+    {
+        logger() << *itr << ", ";
+    }
+    logger.Flush("local_proc_assignments");
 
     return contigs;
 }
