@@ -1,10 +1,23 @@
 #!/usr/bin/env python
 
+import sys
+import getopt
 from igraph import *
 
 base_for = "ACGT"
 base_rev = "TGCA"
 comp_tab = str.maketrans(base_for, base_rev)
+
+neighborhood = 3
+output_prefix = "elba"
+
+def usage():
+    global neighborhood, output_prefix
+    sys.stderr.write("Usage: {} [options] <elba.string.paf> <elba.overlap.paf> <reads.fa>\n".format(sys.argv[0]))
+    sys.stderr.write("Options: -l INT   branch/bridge neighborhood value [{}]\n".format(neighborhood))
+    sys.stderr.write("         -o STR   output file prefix [{}]\n".format(output_prefix))
+    sys.stderr.write("         -h       help message\n")
+    return -1
 
 def revcomp(s): return s.translate(comp_tab)[::-1]
 
@@ -195,71 +208,104 @@ def bridge_neighborhood_chains(G, bridge, l):
 
     return chains
 
-readseqs, readnames, namemap = read_fasta("full/reads.fa")
-readlens = [len(s) for s in readseqs]
-overlaps, attrs = read_paf("full/elba.string.paf", readlens, namemap)
-S = create_overlap_graph(readlens, readnames, overlaps, attrs)
+def main(argc, argv):
+    global neighborhood, output_prefix
 
-overlaps, attrs = read_paf("full/elba.overlap.paf", readlens, namemap)
-R = create_overlap_graph(readlens, readnames, overlaps, attrs)
+    try: opts, args = getopt.gnu_getopt(argv[1:], "l:o:h")
+    except getopt.GetoptError as err:
+        sys.stderr.write("error: {}\n".format(err))
+        return usage()
 
-while True:
-
-    # step one: remove tips
-    tips = identify_tips(S)
-    tips.delete()
-
-    # step two: identify bridges
-    bridges = identify_bridges(S)
-
-    # step 3: identify edges between bridges and delete them
-    double_bridges = S.es.select(_within=bridges)
-
-    if len(double_bridges) == 0:
-        break
-    else: double_bridges.delete()
-
-while True:
-
-    S.vs["bridge"] = 0
-    bridges = identify_bridges(S)
-    S.vs[bridges]["bridge"] = 1
-    S.es["added"] = 0
-    S.es["remove"] = 0
-    for bridge in bridges:
-        bridge_chains = bridge_neighborhood_chains(S, bridge, 2)
-        if bridge_chains is None: continue
-        #  f.write("bridge={}\tchains={}\n".format(bridge, [c[0] for c in bridge_chains]))
-        counts = []
-        for i in range(3):
-            for j in range(i+1, 4):
-                num = len(R.es.select(_between=(bridge_chains[i], bridge_chains[j])))//2
-                counts.append(num)
-                #  if num > 0:
-                    #  S.add_edge(bridge_chains[i][0], bridge_chains[j][0], added=1)
-                    #  S.add_edge(bridge_chains[j][0], bridge_chains[i][0], added=1)
-                #  f.write("count({}, {}) = {}\n".format(i, j, num))
-        if counts[0] > 0 and counts[5] > 0 and sum(counts[1:5]) == 0:
-            toremove = S.es.select(_from=bridge)
-            for e in toremove: e["remove"] = 1
-            toremove = S.es.select(_to=bridge)
-            for e in toremove: e["remove"] = 1
-
-    es = S.es.select(remove_eq=1)
-    if len(es) == 0: break
-    es.delete()
-
-    tips = identify_tips(S)
-    tips.delete()
-
-S.write_gml("S.gml")
+    for o, a in opts:
+        if o == "-l": neighborhood = int(a)
+        elif o == "-o": output_prefix = a
+        elif o == "-h": return usage()
 
 
-chains = generate_contig_chains(S)
-contigs = [assemble_chain(chain, readseqs) for chain in chains]
+    if len(args) != 3:
+        return usage()
 
-with open("contigs.fa", "w") as f:
-    for i, contig in enumerate(contigs):
-        f.write(">contig{}\n{}\n".format(i+1, contig))
+    string_paf_fname = args[0]
+    overlap_paf_fname = args[1]
+    fasta_fname = args[2]
+
+    readseqs, readnames, namemap = read_fasta(fasta_fname)
+    readlens = [len(s) for s in readseqs]
+
+    overlaps, attrs = read_paf(string_paf_fname, readlens, namemap)
+    S = create_overlap_graph(readlens, readnames, overlaps, attrs)
+
+    overlaps, attrs = read_paf(overlap_paf_fname, readlens, namemap)
+    R = create_overlap_graph(readlens, readnames, overlaps, attrs)
+
+    itr = 1
+
+    while True:
+
+        # step one: remove tips
+        tips = identify_tips(S)
+        tips_found = len(tips)
+        tips.delete()
+        sys.stderr.write("Iteration {}: Found and removed {} tips\n".format(itr, tips_found//2))
+
+        # step two: identify bridges
+        bridges = identify_bridges(S)
+        sys.stderr.write("Iteration {}: Found {} bridges\n".format(itr, len(bridges)))
+
+        # step 3: identify edges between bridges and delete them
+        double_bridges = S.es.select(_within=bridges)
 
 
+        if len(double_bridges) == 0:
+            break
+        else:
+            sys.stderr.write("Iteration {}: Found and removed {} double bridges\n".format(itr, len(double_bridges)))
+            double_bridges.delete()
+
+        itr += 1
+
+    while True:
+
+        S.vs["bridge"] = 0
+        bridges = identify_bridges(S)
+        S.vs[bridges]["bridge"] = 1
+        S.es["added"] = 0
+        S.es["remove"] = 0
+        for bridge in bridges:
+            bridge_chains = bridge_neighborhood_chains(S, bridge, 2)
+            if bridge_chains is None: continue
+            #  f.write("bridge={}\tchains={}\n".format(bridge, [c[0] for c in bridge_chains]))
+            counts = []
+            for i in range(3):
+                for j in range(i+1, 4):
+                    num = len(R.es.select(_between=(bridge_chains[i], bridge_chains[j])))//2
+                    counts.append(num)
+                    #  if num > 0:
+                        #  S.add_edge(bridge_chains[i][0], bridge_chains[j][0], added=1)
+                        #  S.add_edge(bridge_chains[j][0], bridge_chains[i][0], added=1)
+                    #  f.write("count({}, {}) = {}\n".format(i, j, num))
+            if counts[0] > 0 and counts[5] > 0 and sum(counts[1:5]) == 0:
+                toremove = S.es.select(_from=bridge)
+                for e in toremove: e["remove"] = 1
+                toremove = S.es.select(_to=bridge)
+                for e in toremove: e["remove"] = 1
+
+        es = S.es.select(remove_eq=1)
+        if len(es) == 0: break
+        es.delete()
+
+        tips = identify_tips(S)
+        tips.delete()
+
+
+    chains = generate_contig_chains(S)
+    contigs = [assemble_chain(chain, readseqs) for chain in chains]
+
+    with open("contigs.fa", "w") as f:
+        for i, contig in enumerate(contigs):
+            f.write(">contig{}\n{}\n".format(i+1, contig))
+
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main(len(sys.argv), sys.argv))
