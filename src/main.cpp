@@ -306,7 +306,7 @@ int main(int argc, char **argv)
         parallel_write_paf(*S, dfd, get_string_paf_name().c_str());
         S->ParallelWriteMM("S.mtx", true, Overlap::IOHandler());
 
-        std::vector<std::string> contigs = GenerateContigs(*S, mydna, dfd);
+        // std::vector<std::string> contigs = GenerateContigs(*S, mydna, dfd);
 
         walltimer.stop_and_log("wallclock");
 
