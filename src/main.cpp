@@ -276,7 +276,7 @@ int main(int argc, char **argv)
         A.reset();
         AT.reset();
 
-        elbalog.log_seed_matrix(*B);
+        //elbalog.log_seed_matrix(*B);
 
         dfd.wait();
 
@@ -292,7 +292,7 @@ int main(int argc, char **argv)
         R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
         timer.stop_and_log("pairwise alignment");
 
-        elbalog.log_overlap_matrix(*R);
+        //elbalog.log_overlap_matrix(*R);
         parallel_write_paf(*R, dfd, get_overlap_paf_name().c_str());
 
         timer.start();
@@ -304,7 +304,7 @@ int main(int argc, char **argv)
         R.reset();
 
         parallel_write_paf(*S, dfd, get_string_paf_name().c_str());
-        S->ParallelWriteMM("S.mtx", true, Overlap::IOHandler());
+        //S->ParallelWriteMM("S.mtx", true, Overlap::IOHandler());
 
         // std::vector<std::string> contigs = GenerateContigs(*S, mydna, dfd);
 
