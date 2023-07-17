@@ -100,6 +100,7 @@ if __name__ == "__main__":
         sys.stderr.write("usage: {} <elba.paf> <reads.fa> <elba.gml>\n".format(sys.argv[0]))
         sys.stderr.flush()
         sys.exit(-1)
+
     elba_paf_fname = sys.argv[1]
     reads_fname = sys.argv[2]
     elba_gml_fname = sys.argv[3]
