@@ -77,10 +77,15 @@ def assemble_chain(chain, readseqs):
 
 def write_contigs(S, fname, readseqs):
     chains = generate_contig_chains(S.copy())
-    contigs = [assemble_chain(chain, readseqs) for chain in chains]
+    H = S.copy()
+    H.vs["contigid"] = 0
     with open(fname, "w") as f:
-        for i, contig in enumerate(contigs):
-            f.write(">contig{}\n{}\n".format(i+1, contig))
+        for i, chain in enumerate(chains):
+            contig = assemble_chain(chain, readseqs)
+            vertices = [item[0] for item in chain]
+            H.vs[vertices]["contigid"] = i+1
+            f.write(">contig{}\t{}-{}\n{}\n".format(i+1, vertices[0], vertices[-1], contig))
+    H.write_gml("H.gml")
 
 def main(elba_gml_fname, reads_fname, elba_contigs_fname):
 
