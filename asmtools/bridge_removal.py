@@ -30,7 +30,7 @@ def branch_walks(G, branch):
     assert b.indegree() >= 3
     walks = {}
     for h in b.successors():
-        walks[h.index] = len(branch_walk(G, branch, h.index))
+        walks[h.index] = branch_walk(G, branch, h.index)
     return walks
 
 def get_bridges(G):
@@ -55,10 +55,10 @@ def get_lonely_bridges(G, l):
         u_walk = branch_walks(G, u.index)
         v_walk = branch_walks(G, v.index)
         ucnt, vcnt = 0, 0
-        for _, cnt in u_walk.items():
-            if cnt >= l: ucnt += 1
-        for _, cnt in v_walk.items():
-            if cnt >= l: vcnt += 1
+        for _, w in u_walk.items():
+            if len(w) >= l: ucnt += 1
+        for _, w in v_walk.items():
+            if len(w) >= l: vcnt += 1
         if ucnt == 2 and vcnt == 2:
             lonely_bridges.append(bridge)
     return lonely_bridges

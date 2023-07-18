@@ -26,6 +26,15 @@ def bubble_walk(G, branch, head):
     chain.append(h.index)
     return chain
 
+def label_short_linear_walks(G, maxlen):
+    G.vs["short_walk"] = 0
+    for b in G.vs.select(_indegree_ge=3):
+        for h in b.successors():
+            walk = bubble_walk(G, b.index, h.index)
+            if len(walk) >= 3 and len(walk) <= maxlen:
+                G.vs[walk[1:-1]]["short_walk"] = len(walk)
+    return G
+
 def bubble_walks(G, branch):
     b = G.vs[branch]
     assert b.indegree() >= 3
