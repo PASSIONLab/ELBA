@@ -61,6 +61,7 @@ int parse_cli(int argc, char *argv[]);
 void print_kmer_histogram(const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
 void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname);
 CT<int64_t>::PDistVec find_contained_reads(const CT<Overlap>::PSpParMat& R);
+CT<int64_t>::PDistVec find_bad_reads(const CT<Overlap>::PSpParMat& R, double cutoff);
 std::string get_overlap_paf_name();
 std::string get_string_paf_name();
 
@@ -295,6 +296,10 @@ int main(int argc, char **argv)
         //elbalog.log_overlap_matrix(*R);
         parallel_write_paf(*R, dfd, get_overlap_paf_name().c_str());
 
+        auto bad_reads = find_bad_reads(*R, 0.65);
+        R->Prune([](const Overlap& nz) { return !nz.passed; });
+        R->PruneFull(bad_reads, bad_reads);
+
         timer.start();
         auto contained = find_contained_reads(*R);
         R->PruneFull(contained, contained);
@@ -484,7 +489,7 @@ void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& d
             int maplen = std::max(std::get<0>(o.end) - std::get<0>(o.beg), std::get<1>(o.end) - std::get<1>(o.end));
 
             ss << names[globalrow] << "\t" << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << "+-"[static_cast<int>(o.rc)] << "\t"
-               << names[globalcol] << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score << "\t" << maplen << "\t255\n";
+               << names[globalcol] << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score << "\t" << maplen << "\t255\t" << static_cast<int>(o.passed) << "\n";
         }
 
     std::string pafcontents = ss.str();
@@ -494,6 +499,26 @@ void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& d
     MPI_File_open(comm, pafname, MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
     MPI_File_write_ordered(fh, pafcontents.c_str(), count, MPI_CHAR, MPI_STATUS_IGNORE);
     MPI_File_close(&fh);
+}
+
+CT<int64_t>::PDistVec find_bad_reads(const CT<Overlap>::PSpParMat& R, double cutoff)
+{
+    CT<int>::PSpParMat badnzs = const_cast<CT<Overlap>::PSpParMat&>(R).Prune([](const Overlap& o) { return !o.passed; }, false);
+    CT<int>::PSpParMat A = R;
+
+    CT<int>::PDistVec degrees = A.Reduce(Row, std::plus<int>(), 0);
+    CT<int>::PDistVec degrees2 = A.Reduce(Column, std::plus<int>(), 0);
+
+    CT<int>::PDistVec badnzs_vec = badnzs.Reduce(Row, std::plus<int>(), 0);
+    CT<int>::PDistVec badnzs_vec2 = badnzs.Reduce(Column, std::plus<int>(), 0);
+
+    degrees.EWiseApply(degrees2, std::plus<int>());
+    badnzs_vec.EWiseApply(badnzs_vec2, std::plus<int>());
+
+    CT<double>::PDistVec vec = badnzs_vec;
+    vec.EWiseApply(degrees, [](double a, int b) { return (a+1) / (static_cast<double>(b)+1); });
+
+    return vec.FindInds([&](double v) { return v <= cutoff; });
 }
 
 CT<int64_t>::PDistVec find_contained_reads(const CT<Overlap>::PSpParMat& R)
