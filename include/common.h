@@ -54,6 +54,7 @@ static_assert(std::numeric_limits<size_t>::max() == std::numeric_limits<unsigned
 template <class NT>
 struct CT
 {
+    typedef SpCCols<int64_t, NT> PSpCCols;
     typedef SpDCCols<int64_t, NT> PSpDCCols;
     typedef SpParMat<int64_t, NT, PSpDCCols> PSpParMat;
     typedef FullyDistVec<int64_t, NT> PDistVec;

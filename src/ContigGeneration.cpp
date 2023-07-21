@@ -254,25 +254,24 @@ std::vector<std::string> GenerateContigs(CT<Overlap>::PSpParMat& S, const DnaBuf
     CT<int64_t>::PDistVec assignments(commgrid);
     int64_t numcontigs = GetRead2Contigs(S, assignments);
 
-    assignments.DebugPrint();
-
     /*
      * Compute contig sizes.
      */
     auto contigsizes = GetContigSizes(assignments, numcontigs, dfd);
 
-    Logger logger(commgrid);
-    for (auto itr = contigsizes.begin(); itr != contigsizes.end(); ++itr)
-    {
-        logger() << "(" << std::get<0>(*itr) << ", " << std::get<1>(*itr) << "), ";
-    }
-    logger.Flush("contigsizes");
-
+    /*
+     * Compute local read ID to processor assignments.
+     */
     std::vector<int64_t> local_proc_assignments = GetLocalProcAssignments(assignments, contigsizes, dfd);
 
     CT<int64_t>::PDistVec proc_assignments(local_proc_assignments, commgrid);
 
-    proc_assignments.DebugPrint();
+    std::vector<int64_t> local_contig_read_ids;
+
+    CT<Overlap>::PSpDCCols contig_chains_derived = S.InducedSubgraphs2Procs(proc_assignments, local_contig_read_ids);
+
+    CT<Overlap>::PSpCCols contig_chains(contig_chains_derived);
+    contig_chains.Transpose();
 
     return contigs;
 }
