@@ -1,6 +1,7 @@
 #include "ContigGeneration.hpp"
 #include "CC.hpp"
 #include "Logger.hpp"
+#include <unordered_set>
 
 /*
  * @func GetRead2Contigs     determines which reads belong to which contigs.
@@ -199,29 +200,10 @@ std::vector<int64_t> GetLocalProcAssignments(CT<int64_t>::PDistVec& assignments,
     MPI_Bcast(small_proc_assignments.data(), static_cast<int>(num_used_contigs), MPI_INT64_T, 0, comm);
     MPI_Bcast(small_large_map.data(), static_cast<int>(num_used_contigs), MPI_INT64_T, 0, comm);
 
-    Logger logger(commgrid);
-    for (auto itr = small_proc_assignments.begin(); itr != small_proc_assignments.end(); ++itr)
-    {
-        logger() << *itr << " ";
-    }
-    logger.Flush("small_proc_assignments");
-
-    for (auto itr = small_large_map.begin(); itr != small_large_map.end(); ++itr)
-    {
-        logger() << *itr << " ";
-    }
-    logger.Flush("small_large_map");
-
     std::unordered_map<int64_t, int64_t> large_small_map;
 
     for (auto itr = small_large_map.begin(); itr != small_large_map.end(); ++itr)
         large_small_map[*itr] = (itr - small_large_map.begin());
-
-    for (auto itr = large_small_map.begin(); itr != large_small_map.end(); ++itr)
-    {
-        logger() << itr->first << ":" << itr->second << ", ";
-    }
-    logger.Flush("large_small_map");
 
     int64_t lengthuntil = index.getmyreaddispl();
     int64_t nlocreads = index.getmyreadcount();
@@ -230,21 +212,133 @@ std::vector<int64_t> GetLocalProcAssignments(CT<int64_t>::PDistVec& assignments,
     std::vector<int64_t> local_proc_assignments(nlocreads, -1);
 
     for (auto itr = local_assignments.begin(); itr != local_assignments.end(); ++itr)
-    {
-        logger() << *itr << " ";
-    }
-    logger.Flush("local_assignments");
-
-    for (auto itr = local_assignments.begin(); itr != local_assignments.end(); ++itr)
         if (large_small_map.find(*itr) != large_small_map.end())
             local_proc_assignments[itr - local_assignments.begin()] = small_proc_assignments[large_small_map[*itr]];
 
     return local_proc_assignments;
 }
 
+std::unordered_map<int64_t, std::string> GetInducedReadSequences(const std::vector<int64_t> local_proc_assignments, const DnaBuffer& mydna, DistributedFastaData& dfd)
+{
+    auto index = dfd.getindex();
+    auto commgrid = index.getcommgrid();
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    MPI_Comm comm = commgrid->GetWorld();
+
+    int64_t myreaddispl = index.getmyreaddispl();
+
+    std::vector<MPI_Count_type> item_sendcnts(nprocs, 0);
+    std::vector<MPI_Count_type> item_recvcnts(nprocs);
+    std::vector<MPI_Displ_type> item_sdispls(nprocs);
+    std::vector<MPI_Displ_type> item_rdispls(nprocs);
+
+    std::vector<MPI_Count_type> char_sendcnts(nprocs, 0);
+    std::vector<MPI_Count_type> char_recvcnts(nprocs);
+    std::vector<MPI_Displ_type> char_sdispls(nprocs);
+    std::vector<MPI_Displ_type> char_rdispls(nprocs);
+
+    std::vector<int64_t> globalid_sendbuf;
+    std::vector<int64_t> globalid_recvbuf;
+    std::vector<std::vector<int64_t>> globalid_buckets(nprocs);
+    int64_t item_totsend, item_totrecv;
+
+    std::vector<int64_t> readlen_sendbuf;
+    std::vector<int64_t> readlen_recvbuf;
+
+    std::vector<char> char_sendbuf;
+    std::vector<char> char_recvbuf;
+    int64_t char_totsend, char_totrecv;
+
+    item_totsend = char_totsend = 0;
+
+    for (int64_t i = 0; i < local_proc_assignments.size(); ++i)
+    {
+        int dest = local_proc_assignments[i];
+
+        if (dest >= 0)
+        {
+            item_totsend++;
+            item_sendcnts[dest]++;
+
+            char_totsend += mydna[i].size();
+            char_sendcnts[dest] += mydna[i].size();
+
+            globalid_buckets[dest].push_back(i + myreaddispl);
+        }
+    }
+
+    MPI_ALLTOALL(char_sendcnts.data(), 1, MPI_INT64_T, char_recvcnts.data(), 1, MPI_INT64_T, comm);
+
+    std::exclusive_scan(char_sendcnts.begin(), char_sendcnts.end(), char_sdispls.begin(), static_cast<MPI_Displ_type>(0));
+    std::exclusive_scan(char_recvcnts.begin(), char_recvcnts.end(), char_rdispls.begin(), static_cast<MPI_Displ_type>(0));
+
+    assert(char_totsend == char_sendcnts.back() + char_sdispls.back());
+    char_totrecv = char_recvcnts.back() + char_rdispls.back();
+
+    char_sendbuf.reserve(char_totsend);
+    char_recvbuf.resize(char_totrecv);
+
+    MPI_ALLTOALL(item_sendcnts.data(), 1, MPI_COUNT_TYPE, item_recvcnts.data(), 1, MPI_COUNT_TYPE, comm);
+
+    std::exclusive_scan(item_sendcnts.begin(), item_sendcnts.end(), item_sdispls.begin(), static_cast<MPI_Displ_type>(0));
+    std::exclusive_scan(item_recvcnts.begin(), item_recvcnts.end(), item_rdispls.begin(), static_cast<MPI_Displ_type>(0));
+
+    assert(item_totsend == item_sendcnts.back() + item_sdispls.back());
+    item_totrecv = item_recvcnts.back() + item_rdispls.back();
+
+    readlen_sendbuf.reserve(item_totsend);
+    readlen_recvbuf.resize(item_totrecv);
+
+    globalid_sendbuf.reserve(item_totsend);
+    globalid_recvbuf.resize(item_totrecv);
+
+    for (auto itr = globalid_buckets.begin(); itr != globalid_buckets.end(); ++itr)
+    {
+        globalid_sendbuf.insert(globalid_sendbuf.end(), itr->begin(), itr->end());
+
+        for (size_t i = 0; i < itr->size(); ++i)
+        {
+            int64_t localid = (*itr)[i] - myreaddispl;
+            auto seq = mydna[localid].ascii();
+
+            char_sendbuf.insert(char_sendbuf.end(), seq.begin(), seq.end());
+            readlen_sendbuf.push_back(seq.size());
+        }
+    }
+
+    MPI_ALLTOALLV(globalid_sendbuf.data(), item_sendcnts.data(), item_sdispls.data(), MPI_INT64_T,
+                  globalid_recvbuf.data(), item_recvcnts.data(), item_rdispls.data(), MPI_INT64_T, comm);
+
+    MPI_ALLTOALLV(readlen_sendbuf.data(), item_sendcnts.data(), item_sdispls.data(), MPI_INT64_T,
+                  readlen_recvbuf.data(), item_recvcnts.data(), item_rdispls.data(), MPI_INT64_T, comm);
+
+    MPI_ALLTOALLV(char_sendbuf.data(), char_sendcnts.data(), char_sdispls.data(), MPI_CHAR,
+                  char_recvbuf.data(), char_recvcnts.data(), char_rdispls.data(), MPI_CHAR, comm);
+
+    std::unordered_map<int64_t, std::string> read_lookup_table;
+
+    auto itr = char_recvbuf.begin();
+
+    for (int64_t i = 0; i < item_totrecv; ++i)
+    {
+        int64_t globalid = globalid_recvbuf[i];
+        size_t readlen = readlen_recvbuf[i];
+        std::string seq(itr, itr + readlen);
+        read_lookup_table[globalid] = seq;
+        itr += readlen;
+    }
+
+    return read_lookup_table;
+}
+
 std::vector<std::string> GenerateContigs(CT<Overlap>::PSpParMat& S, const DnaBuffer& mydna, DistributedFastaData& dfd)
 {
-    auto commgrid = S.getcommgrid();
+    auto index = dfd.getindex();
+    auto commgrid = index.getcommgrid();
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    MPI_Comm comm = commgrid->GetWorld();
     std::vector<std::string> contigs;
 
     /*
@@ -266,12 +360,108 @@ std::vector<std::string> GenerateContigs(CT<Overlap>::PSpParMat& S, const DnaBuf
 
     CT<int64_t>::PDistVec proc_assignments(local_proc_assignments, commgrid);
 
-    std::vector<int64_t> local_contig_read_ids;
-
+    std::vector<int64_t> local_contig_read_ids; /* mapping of local graph indices (`contig_chains`) to original global read indices. */
     CT<Overlap>::PSpDCCols contig_chains_derived = S.InducedSubgraphs2Procs(proc_assignments, local_contig_read_ids);
-
     CT<Overlap>::PSpCCols contig_chains(contig_chains_derived);
     contig_chains.Transpose();
+
+    auto read_lookup_table = GetInducedReadSequences(local_proc_assignments, mydna, dfd);
+
+    int64_t myreaddispl = index.getmyreaddispl();
+    int64_t numreads = contig_chains.getnrow();
+
+    Logger logger(commgrid);
+
+    assert(numreads == contig_chains.getncol());
+    assert(numreads == read_lookup_table.size());
+    assert(numreads == local_contig_read_ids.size());
+
+    auto csc = contig_chains.GetCSC();
+
+    assert(csc != NULL);
+    assert(numreads >= 2);
+
+    std::vector<bool> visited(numreads, false);
+    std::unordered_set<int64_t> used_roots;
+
+    int64_t contig_id = 0;
+
+    for (int64_t v = 0; v < csc->n; ++v)
+    {
+        if (csc->jc[v+1] - csc->jc[v] != 1 || used_roots.find(v) != used_roots.end())
+            continue;
+
+        std::vector<std::tuple<int64_t, int64_t, bool>> chain;
+        int lastdir;
+
+        int64_t cur = v;
+        int64_t next, end;
+
+        while (true)
+        {
+            visited[cur] = true;
+            next = csc->jc[cur];
+            end = csc->jc[cur + 1];
+
+            while (next < end && visited[csc->ir[next]])
+                ++next;
+
+            if (next >= end)
+                break;
+
+            Overlap& o = csc->num[next];
+            int strand = (o.direction >> 1) & 1;
+            chain.emplace_back(local_contig_read_ids[cur], o.suffixT, static_cast<bool>(strand));
+            lastdir = o.direction;
+
+            cur = csc->ir[next];
+        }
+
+        used_roots.insert(cur);
+    }
+
+    // for (int64_t v = 0; v < csc->n; ++v)
+    // {
+        // if (csc->jc[v+1] - csc->jc[v] != 1 || used_roots.find(v) != used_roots.end())
+            // continue;
+
+        // std::vector<std::tuple<int64_t, int64_t, bool>> chain;
+        // int lastdir;
+
+        // Overlap o;
+        // int64_t cur = v;
+        // int64_t next, end;
+
+        // while (true)
+        // {
+            // visited[cur] = true;
+            // next = csc->jc[cur];
+            // end = csc->jc[cur+1];
+
+            // while (next < end && visited[csc->ir[next]])
+                // ++next;
+
+            // if (next >= end)
+                // break;
+
+            // o = csc->num[next];
+
+            // int strand = (o.direction >> 1) & 1;
+            // chain.emplace_back(local_contig_read_ids[cur], o.suffixT, static_cast<bool>(strand));
+            // lastdir = o.direction;
+
+            // cur = csc->jc[next];
+        // }
+
+        // int64_t id = local_contig_read_ids[cur];
+        // int64_t readlen = read_lookup_table[id].size();
+        // chain.emplace_back(id, readlen, static_cast<bool>(1 - (lastdir & 1)));
+
+        // used_roots.insert(cur);
+
+        // contig_id++;
+    // }
+
 
     return contigs;
 }
