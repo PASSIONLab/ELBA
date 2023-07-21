@@ -13,6 +13,36 @@ def read_graph_gml(gml_fname):
     G.es["prefix"] = [int(e["prefix"]) for e in G.es]
     return G
 
+S = read_graph_gml("S.gml")
+R = read_graph_gml("R.gml")
+
+stars = []
+for u in S.vs.select(_indegree_eq=3):
+    isstar = True
+    for v in u.successors():
+        if v.indegree() != 2:
+            isstar = False
+    if isstar:
+        stars.append(u.index)
+
+S.vs["star"] = 0
+S.vs[stars]["star"] = 1
+
+star_edges = []
+
+for u in S.vs.select(star=1):
+    neighs = [a.index for a in u.successors()]
+    for e in R.es.select(_within=neighs):
+        star_edges.append(e.tuple)
+
+S.es["star_edge"] = 0
+S.add_edges(star_edges)
+S.es.select(star_edge=None)["star_edge"] = 1
+
+S.write_gml("example.gml")
+
+
+
 def get_contig_labelled_graph(S):
     G = S.copy()
     G.vs["contig"] = -1
@@ -37,7 +67,7 @@ S = read_graph_gml("S.gml")
 S = get_contig_labelled_graph(S)
 
 R = read_graph_gml("R.gml")
-edges = R.es.select(_within=G.vs.select(contigroot=1).indices)
+edges = R.es.select(_within=S.vs.select(contigroot=1).indices)
 
 S.es["new"] = 0
 S.add_edges([e.tuple for e in edges])

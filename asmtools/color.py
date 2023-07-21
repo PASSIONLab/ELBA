@@ -49,3 +49,31 @@ remove_edge(S, 1073, 737)
 
 S.write_gml("G.gml")
 
+
+#  S = read_graph_gml("S.gml")
+#  R = read_graph_gml("R.gml")
+
+#  S.es["new"] = -1
+#  for v in S.vs.select(_indegree_ge=3):
+    #  N = [u.index for u in v.successors()]
+    #  for e in R.es.select(_within=N):
+        #  S.add_edge(e.source, e.target)
+    #  S.es.select(new=None)["new"] = v.index
+#  S.write_gml("Z.gml")
+
+#  nodes = [115, 118, 1020, 1227, 1256, 1509, 1556, 1590, 1730, 1779, 1835, 1626, 1835, 1739, 118]
+#  nodes = [1227, 1730, 1509, 1556]
+#  edges = R.es.select(_within=nodes)
+
+#  S.es["new"] = 0
+
+#  for e in edges:
+    #  S.add_edge(e.source, e.target)
+
+#  S.es.select(new=None)["new"] = 1
+#  S.write_gml("Z.gml")
+
+S = read_graph_gml("S.gml")
+R = read_graph_gml("R.gml")
+
+doubles = [int(line.rstrip())-1 for line in open("larger/doubles.txt")]

@@ -101,7 +101,7 @@ def main(argc, argv):
         return usage()
 
     for o, a in opts:
-        if o == "-l": neighborhood = int(a)
+        if o == "-o": output_preix = a
         elif o == "-h": return usage()
 
     if len(args) != 2:

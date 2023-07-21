@@ -44,9 +44,9 @@ def get_bridges(G):
                 bridges.add(u.index)
     return bridges
 
-def get_lonely_bridges(G, l):
+def get_isolated_bridges(G, l):
     bridges = get_bridges(G)
-    lonely_bridges = []
+    isolated_bridges = []
     for bridge in bridges:
         b = G.vs[bridge]
         if b.indegree() != 2:
@@ -60,8 +60,8 @@ def get_lonely_bridges(G, l):
         for _, w in v_walk.items():
             if len(w) >= l: vcnt += 1
         if ucnt == 2 and vcnt == 2:
-            lonely_bridges.append(bridge)
-    return lonely_bridges
+            isolated_bridges.append(bridge)
+    return isolated_bridges
 
 def remove_edge(S, u, v):
     es = S.get_eids([(u, v), (v, u)])
@@ -70,7 +70,7 @@ def remove_edge(S, u, v):
 def main(input_gml, output_gml, walklen):
 
     G = read_graph_gml(input_gml)
-    bridges = get_lonely_bridges(G, walklen)
+    bridges = get_isolated_bridges(G, walklen)
 
     for bridge in bridges:
         b = G.vs[bridge]

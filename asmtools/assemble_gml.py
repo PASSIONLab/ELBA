@@ -67,6 +67,24 @@ def generate_contig_chains(S):
         contig_chains.append(chain)
     return contig_chains
 
+def get_mapped_regions(e, readseqs):
+    qid, tid = e.tuple
+    qs, ts = readseqs[qid], readseqs[tid]
+    qstrand = int((e["direction"]>>1)&1)
+    tstrand = 1 - int(e["direction"]&1)
+    if qstrand == 1: qs = revcomp(qs)
+    if tstrand == 1: ts = revcomp(ts)
+    qregion = qs[e["prefix"]:]
+    tregion = ts[:len(ts)-e["suffix"]]
+    return qregion, tregion
+
+def similarity(s1, s2, k):
+    s1kmers = set(hash(s1[i:i+k]) for i in range(len(s1)-k+1))
+    s2kmers = set(hash(s2[i:i+k]) for i in range(len(s2)-k+1))
+    shared = len(s1kmers.intersection(s2kmers))
+    total = len(s1kmers.union(s2kmers))
+    return shared / total
+
 def assemble_chain(chain, readseqs):
     parts = []
     for readid, pre, strand in chain:
