@@ -567,7 +567,7 @@ namespace combblas {
         double total = MPI_Wtime() - ts;
         outs << "others: " << total  - (bcast + all2ll1 + all2ll2 + all2ll3) << " ";
         outs<< endl;
-        SpParHelper::Print(outs.str());
+        //SpParHelper::Print(outs.str());
 #endif
 
         return indexed;
@@ -889,7 +889,7 @@ namespace combblas {
         double total = MPI_Wtime() - ts;
         outs << "others: " << total  - (reduce + all2ll1 + all2ll2 + all2ll3) << " ";
         outs<< endl;
-        SpParHelper::Print(outs.str());
+        //SpParHelper::Print(outs.str());
 #endif
         return indexed;
 
@@ -1021,7 +1021,7 @@ namespace combblas {
         double total = MPI_Wtime() - ts;
         outs << "others: " << total  - (reduce + all2ll1 + all2ll2) << " ";
         outs<< endl;
-        SpParHelper::Print(outs.str());
+        //SpParHelper::Print(outs.str());
 #endif
         return indexed;
 
@@ -1233,7 +1233,7 @@ namespace combblas {
         outs.clear();
         outs << " Conditional Hooking Time: SpMV: " << tspmv << " Other: "<< tall-tspmv;
         outs<< endl;
-        SpParHelper::Print(outs.str());
+        //SpParHelper::Print(outs.str());
 #endif
         return finalhooks;
     }
@@ -1309,7 +1309,7 @@ namespace combblas {
         outs.clear();
         outs << " Unconditional Hooking Time " << spmv << " : " << tspmv << " Other: "<< tall-tspmv;
         outs<< endl;
-        SpParHelper::Print(outs.str());
+        //SpParHelper::Print(outs.str());
 #endif
 
         return finalHooks;
@@ -1489,7 +1489,7 @@ namespace combblas {
                 outs.clear();
                 outs << "Iteration: " << iteration << " converged: " << nrows << " stars: 0" << " nonstars: 0" ;
                 outs<< endl;
-                SpParHelper::Print(outs.str());
+                //SpParHelper::Print(outs.str());
                 break;
             }
 
@@ -1526,7 +1526,7 @@ namespace combblas {
             //outs << " Time:  t_cond_hook: " << t_cond_hook << " t_starcheck1: " << t_starcheck1 << " t_uncond_hook: " << t_uncond_hook << " t_starcheck2: " << t_starcheck2 << " t_shortcut: " << t_shortcut << " t_starcheck: " << t_starcheck;
 #endif
             outs<< endl;
-            SpParHelper::Print(outs.str());
+            //SpParHelper::Print(outs.str());
 
             iteration++;
 

@@ -268,7 +268,7 @@ std::unordered_map<int64_t, std::string> GetInducedReadSequences(const std::vect
         }
     }
 
-    MPI_ALLTOALL(char_sendcnts.data(), 1, MPI_INT64_T, char_recvcnts.data(), 1, MPI_INT64_T, comm);
+    MPI_ALLTOALL(char_sendcnts.data(), 1, MPI_COUNT_TYPE, char_recvcnts.data(), 1, MPI_COUNT_TYPE, comm);
 
     std::exclusive_scan(char_sendcnts.begin(), char_sendcnts.end(), char_sdispls.begin(), static_cast<MPI_Displ_type>(0));
     std::exclusive_scan(char_recvcnts.begin(), char_recvcnts.end(), char_rdispls.begin(), static_cast<MPI_Displ_type>(0));
@@ -332,6 +332,18 @@ std::unordered_map<int64_t, std::string> GetInducedReadSequences(const std::vect
     return read_lookup_table;
 }
 
+char comp(char c)
+{
+    switch (c)
+    {
+        case 'A': return 'T';
+        case 'C': return 'G';
+        case 'G': return 'C';
+        case 'T': return 'A';
+    }
+    return '\0';
+}
+
 std::vector<std::string> GenerateContigs(CT<Overlap>::PSpParMat& S, const DnaBuffer& mydna, DistributedFastaData& dfd)
 {
     auto index = dfd.getindex();
@@ -378,7 +390,8 @@ std::vector<std::string> GenerateContigs(CT<Overlap>::PSpParMat& S, const DnaBuf
 
     auto csc = contig_chains.GetCSC();
 
-    assert(csc != NULL);
+    if (!csc) return contigs;
+
     assert(numreads >= 2);
 
     std::vector<bool> visited(numreads, false);
@@ -417,51 +430,32 @@ std::vector<std::string> GenerateContigs(CT<Overlap>::PSpParMat& S, const DnaBuf
             cur = csc->ir[next];
         }
 
+        int64_t readlen = read_lookup_table[local_contig_read_ids[cur]].size();
+        chain.emplace_back(local_contig_read_ids[cur], readlen, static_cast<bool>(1 - (lastdir & 1)));
+
+        std::string contig = "";
+
+        for (auto itr = chain.begin(); itr != chain.end(); ++itr)
+        {
+            int64_t readid = std::get<0>(*itr);
+            int64_t prefix = std::get<1>(*itr);
+            bool strand = std::get<2>(*itr);
+
+            auto s = read_lookup_table[readid];
+
+            if (strand)
+            {
+                std::transform(s.cbegin(), s.cend(), s.begin(), comp);
+                std::reverse(s.begin(), s.end());
+            }
+
+            contig += std::string(s.begin(), s.begin() + prefix);
+        }
+
+        contigs.push_back(contig);
+
         used_roots.insert(cur);
     }
-
-    // for (int64_t v = 0; v < csc->n; ++v)
-    // {
-        // if (csc->jc[v+1] - csc->jc[v] != 1 || used_roots.find(v) != used_roots.end())
-            // continue;
-
-        // std::vector<std::tuple<int64_t, int64_t, bool>> chain;
-        // int lastdir;
-
-        // Overlap o;
-        // int64_t cur = v;
-        // int64_t next, end;
-
-        // while (true)
-        // {
-            // visited[cur] = true;
-            // next = csc->jc[cur];
-            // end = csc->jc[cur+1];
-
-            // while (next < end && visited[csc->ir[next]])
-                // ++next;
-
-            // if (next >= end)
-                // break;
-
-            // o = csc->num[next];
-
-            // int strand = (o.direction >> 1) & 1;
-            // chain.emplace_back(local_contig_read_ids[cur], o.suffixT, static_cast<bool>(strand));
-            // lastdir = o.direction;
-
-            // cur = csc->jc[next];
-        // }
-
-        // int64_t id = local_contig_read_ids[cur];
-        // int64_t readlen = read_lookup_table[id].size();
-        // chain.emplace_back(id, readlen, static_cast<bool>(1 - (lastdir & 1)));
-
-        // used_roots.insert(cur);
-
-        // contig_id++;
-    // }
-
 
     return contigs;
 }

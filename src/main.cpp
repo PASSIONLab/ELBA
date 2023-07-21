@@ -293,10 +293,9 @@ int main(int argc, char **argv)
         R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
         timer.stop_and_log("pairwise alignment");
 
-        //elbalog.log_overlap_matrix(*R);
         parallel_write_paf(*R, dfd, get_overlap_paf_name().c_str());
 
-        auto bad_reads = find_bad_reads(*R, 0.45);
+        auto bad_reads = find_bad_reads(*R, 0.65);
         R->Prune([](const Overlap& nz) { return !nz.passed; });
         R->PruneFull(bad_reads, bad_reads);
 
@@ -309,9 +308,30 @@ int main(int argc, char **argv)
         R.reset();
 
         parallel_write_paf(*S, dfd, get_string_paf_name().c_str());
-        //S->ParallelWriteMM("S.mtx", true, Overlap::IOHandler());
 
         std::vector<std::string> contigs = GenerateContigs(*S, mydna, dfd);
+
+        int64_t numcontigs = contigs.size();
+        int64_t contigs_offset = 0;
+        MPI_Exscan(&numcontigs, &contigs_offset, 1, MPI_INT64_T, MPI_SUM, comm);
+
+        std::stringstream contig_filecontents;
+
+        for (size_t i = 0 ; i < contigs.size(); ++i)
+        {
+            contig_filecontents << ">contig" << i+contigs_offset << "\n" << contigs[i] << "\n";
+        }
+
+        MPI_File cfh;
+        MPI_File_open(comm, "elba.contigs.fa", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &cfh);
+
+        std::string cfs = contig_filecontents.str();
+        char const *strout = cfs.c_str();
+
+        MPI_Offset count = cfs.size();
+        MPI_File_write_ordered(cfh, strout, count, MPI_CHAR, MPI_STATUS_IGNORE);
+        MPI_File_close(&cfh);
+
 
         walltimer.stop_and_log("wallclock");
 
