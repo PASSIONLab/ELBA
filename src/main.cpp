@@ -296,7 +296,7 @@ int main(int argc, char **argv)
         //elbalog.log_overlap_matrix(*R);
         parallel_write_paf(*R, dfd, get_overlap_paf_name().c_str());
 
-        auto bad_reads = find_bad_reads(*R, 0.65);
+        auto bad_reads = find_bad_reads(*R, 0.45);
         R->Prune([](const Overlap& nz) { return !nz.passed; });
         R->PruneFull(bad_reads, bad_reads);
 
@@ -311,7 +311,7 @@ int main(int argc, char **argv)
         parallel_write_paf(*S, dfd, get_string_paf_name().c_str());
         //S->ParallelWriteMM("S.mtx", true, Overlap::IOHandler());
 
-        // std::vector<std::string> contigs = GenerateContigs(*S, mydna, dfd);
+        std::vector<std::string> contigs = GenerateContigs(*S, mydna, dfd);
 
         walltimer.stop_and_log("wallclock");
 

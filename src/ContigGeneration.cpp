@@ -145,7 +145,7 @@ std::vector<int64_t> ImposeMyReadDistribution(CT<int64_t>::PDistVec& assignments
 
     for (int64_t i = 0; i < orig_size; ++i)
     {
-        int owner = index.getreadowner(i);
+        int owner = index.getreadowner(i+orig_offset);
         ++sendcounts[owner];
     }
 
@@ -199,16 +199,41 @@ std::vector<int64_t> GetLocalProcAssignments(CT<int64_t>::PDistVec& assignments,
     MPI_Bcast(small_proc_assignments.data(), static_cast<int>(num_used_contigs), MPI_INT64_T, 0, comm);
     MPI_Bcast(small_large_map.data(), static_cast<int>(num_used_contigs), MPI_INT64_T, 0, comm);
 
+    Logger logger(commgrid);
+    for (auto itr = small_proc_assignments.begin(); itr != small_proc_assignments.end(); ++itr)
+    {
+        logger() << *itr << " ";
+    }
+    logger.Flush("small_proc_assignments");
+
+    for (auto itr = small_large_map.begin(); itr != small_large_map.end(); ++itr)
+    {
+        logger() << *itr << " ";
+    }
+    logger.Flush("small_large_map");
+
     std::unordered_map<int64_t, int64_t> large_small_map;
 
     for (auto itr = small_large_map.begin(); itr != small_large_map.end(); ++itr)
         large_small_map[*itr] = (itr - small_large_map.begin());
+
+    for (auto itr = large_small_map.begin(); itr != large_small_map.end(); ++itr)
+    {
+        logger() << itr->first << ":" << itr->second << ", ";
+    }
+    logger.Flush("large_small_map");
 
     int64_t lengthuntil = index.getmyreaddispl();
     int64_t nlocreads = index.getmyreadcount();
 
     std::vector<int64_t> local_assignments = ImposeMyReadDistribution(assignments, dfd);
     std::vector<int64_t> local_proc_assignments(nlocreads, -1);
+
+    for (auto itr = local_assignments.begin(); itr != local_assignments.end(); ++itr)
+    {
+        logger() << *itr << " ";
+    }
+    logger.Flush("local_assignments");
 
     for (auto itr = local_assignments.begin(); itr != local_assignments.end(); ++itr)
         if (large_small_map.find(*itr) != large_small_map.end())
@@ -219,29 +244,35 @@ std::vector<int64_t> GetLocalProcAssignments(CT<int64_t>::PDistVec& assignments,
 
 std::vector<std::string> GenerateContigs(CT<Overlap>::PSpParMat& S, const DnaBuffer& mydna, DistributedFastaData& dfd)
 {
+    auto commgrid = S.getcommgrid();
     std::vector<std::string> contigs;
 
     /*
      * Compute a mapping of read IDs to contig IDs. The function @GetRead2Contigs
      * is responsible for computing the contig sets from the string graph.
      */
-    CT<int64_t>::PDistVec assignments(S.getcommgrid());
+    CT<int64_t>::PDistVec assignments(commgrid);
     int64_t numcontigs = GetRead2Contigs(S, assignments);
+
+    assignments.DebugPrint();
 
     /*
      * Compute contig sizes.
      */
     auto contigsizes = GetContigSizes(assignments, numcontigs, dfd);
 
+    Logger logger(commgrid);
+    for (auto itr = contigsizes.begin(); itr != contigsizes.end(); ++itr)
+    {
+        logger() << "(" << std::get<0>(*itr) << ", " << std::get<1>(*itr) << "), ";
+    }
+    logger.Flush("contigsizes");
+
     std::vector<int64_t> local_proc_assignments = GetLocalProcAssignments(assignments, contigsizes, dfd);
 
-    Logger logger(dfd.getindex().getcommgrid());
+    CT<int64_t>::PDistVec proc_assignments(local_proc_assignments, commgrid);
 
-    for (auto itr = local_proc_assignments.begin(); itr != local_proc_assignments.end(); ++itr)
-    {
-        logger() << *itr << ", ";
-    }
-    logger.Flush("local_proc_assignments");
+    proc_assignments.DebugPrint();
 
     return contigs;
 }
