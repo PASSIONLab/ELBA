@@ -64,7 +64,7 @@ int _extend_seed_one_direction(const DnaSeq& seqQ, const DnaSeq& seqT, bool extl
     int min_err_score = int_min / len;
     gap = std::max(gap, min_err_score);
     mis = std::max(mis, min_err_score);
-    int undef = int_min - gap;
+    int undef = int_min - gap - mis;
 
     std::vector<int> ad1, ad2, ad3, tmp;
 

@@ -322,8 +322,11 @@ int main(int argc, char **argv)
             contig_filecontents << ">contig" << i+contigs_offset << "\n" << contigs[i] << "\n";
         }
 
+        std::string contigs_fname = output_prefix;
+        contigs_fname += ".contigs.fa";
+
         MPI_File cfh;
-        MPI_File_open(comm, "elba.contigs.fa", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &cfh);
+        MPI_File_open(comm, contigs_fname.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &cfh);
 
         std::string cfs = contig_filecontents.str();
         char const *strout = cfs.c_str();
