@@ -55,6 +55,11 @@ int mis = -1;          /* mismatch score */
 int gap = -1;          /* gap score */
 int xdrop_cutoff = 15; /* x-drop cutoff score */
 
+/*
+ * Bad read alignment threshold cutoff.
+ */
+double bad_read_cutoff = 0.65;
+
 constexpr int root = 0; /* root process rank */
 
 int parse_cli(int argc, char *argv[]);
@@ -297,7 +302,7 @@ int main(int argc, char **argv)
 
         parallel_write_paf(*R, dfd, get_overlap_paf_name().c_str());
 
-        auto bad_reads = find_bad_reads(*R, 0.65);
+        auto bad_reads = find_bad_reads(*R, bad_read_cutoff);
         R->Prune([](const Overlap& nz) { return !nz.passed; });
         R->PruneFull(bad_reads, bad_reads);
 
@@ -339,6 +344,7 @@ void usage(char const *prg)
               << "         -A INT   matching score ["             <<  mat                        << "]\n"
               << "         -B INT   mismatch penalty ["           << -mis                        << "]\n"
               << "         -G INT   gap penalty ["                << -gap                        << "]\n"
+              << "         -c FLOAT bad read alignment cutoff ["  <<  bad_read_cutoff            << "]\n"
               << "         -o STR   output file name prefix "     <<  std::quoted(output_prefix) << "\n"
               << "         -h       help message"
               << std::endl;
@@ -353,18 +359,20 @@ int parse_cli(int argc, char *argv[])
     {
         int c;
 
-        while ((c = getopt(argc, argv, "x:A:B:G:o:h")) >= 0)
+        while ((c = getopt(argc, argv, "x:c:A:B:G:o:h")) >= 0)
         {
             if      (c == 'A') params[0] =  atoi(optarg);
             else if (c == 'B') params[1] = -atoi(optarg);
             else if (c == 'G') params[2] = -atoi(optarg);
             else if (c == 'x') params[3] =  atoi(optarg);
+            else if (c == 'c') bad_read_cutoff = atof(optarg);
             else if (c == 'o') output_prefix = std::string(optarg);
             else if (c == 'h') show_help = 1;
         }
     }
 
     MPI_BCAST(params, 4, MPI_INT, root, comm);
+    MPI_BCAST(&bad_read_cutoff, 1, MPI_DOUBLE, root, comm);
 
     mat          = params[0];
     mis          = params[1];
@@ -403,12 +411,13 @@ int parse_cli(int argc, char *argv[])
                   << "-DUSE_BLOOM\n"
         #endif
                   << "\n"
-                  << "int mat = "              << mat                        << ";\n"
-                  << "int mis = "              << mis                        << ";\n"
-                  << "int gap = "              << gap                        << ";\n"
-                  << "int xdrop_cutoff = "     << xdrop_cutoff               << ";\n"
-                  << "String fname = "         << std::quoted(fasta_fname)   << ";\n"
-                  << "String output_prefix = " << std::quoted(output_prefix) << ";\n\n"
+                  << "int mat = "                << mat                        << ";\n"
+                  << "int mis = "                << mis                        << ";\n"
+                  << "int gap = "                << gap                        << ";\n"
+                  << "int xdrop_cutoff = "       << xdrop_cutoff               << ";\n"
+                  << "double bad_read_cutoff = " << bad_read_cutoff            << ";\n"
+                  << "String fname = "           << std::quoted(fasta_fname)   << ";\n"
+                  << "String output_prefix = "   << std::quoted(output_prefix) << ";\n\n"
                   << "MPI processes = " << nprocs << "\n"
                   << "rows/columns in 2D processor grid = " << static_cast<int>(std::sqrt(nprocs)) << "\n"
                   << std::endl;
