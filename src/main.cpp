@@ -60,10 +60,12 @@ constexpr int root = 0; /* root process rank */
 int parse_cli(int argc, char *argv[]);
 void print_kmer_histogram(const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
 void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname);
+void parallel_write_contigs(const std::vector<std::string>& contigs, MPI_Comm comm);
 CT<int64_t>::PDistVec find_contained_reads(const CT<Overlap>::PSpParMat& R);
 CT<int64_t>::PDistVec find_bad_reads(const CT<Overlap>::PSpParMat& R, double cutoff);
 std::string get_overlap_paf_name();
 std::string get_string_paf_name();
+std::string get_contigs_fasta_name();
 
 int main(int argc, char **argv)
 {
@@ -309,32 +311,12 @@ int main(int argc, char **argv)
 
         parallel_write_paf(*S, dfd, get_string_paf_name().c_str());
 
+        timer.start();
         std::vector<std::string> contigs = GenerateContigs(*S, mydna, dfd);
+        ss << "traversing and generating " << contigs.size() << " contigs";
+        timer.stop_and_log(ss.str().c_str());
 
-        int64_t numcontigs = contigs.size();
-        int64_t contigs_offset = 0;
-        MPI_Exscan(&numcontigs, &contigs_offset, 1, MPI_INT64_T, MPI_SUM, comm);
-
-        std::stringstream contig_filecontents;
-
-        for (size_t i = 0 ; i < contigs.size(); ++i)
-        {
-            contig_filecontents << ">contig" << i+contigs_offset << "\n" << contigs[i] << "\n";
-        }
-
-        std::string contigs_fname = output_prefix;
-        contigs_fname += ".contigs.fa";
-
-        MPI_File cfh;
-        MPI_File_open(comm, contigs_fname.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &cfh);
-
-        std::string cfs = contig_filecontents.str();
-        char const *strout = cfs.c_str();
-
-        MPI_Offset count = cfs.size();
-        MPI_File_write_ordered(cfh, strout, count, MPI_CHAR, MPI_STATUS_IGNORE);
-        MPI_File_close(&cfh);
-
+        parallel_write_contigs(contigs, comm);
 
         walltimer.stop_and_log("wallclock");
 
@@ -485,6 +467,33 @@ void print_kmer_histogram(const KmerCountMap& kmermap, std::shared_ptr<CommGrid>
     #endif
 }
 
+void parallel_write_contigs(const std::vector<std::string>& contigs, MPI_Comm comm)
+{
+    int64_t numcontigs = contigs.size();
+    int64_t contigs_offset = 0;
+
+    MPI_Exscan(&numcontigs, &contigs_offset, 1, MPI_INT64_T, MPI_SUM, comm);
+
+    std::stringstream contig_filecontents;
+
+    for (size_t i = 0 ; i < contigs.size(); ++i)
+    {
+        contig_filecontents << ">contig" << i+contigs_offset << "\n" << contigs[i] << "\n";
+    }
+
+    std::string contigs_fname = get_contigs_fasta_name();
+
+    MPI_File cfh;
+    MPI_File_open(comm, contigs_fname.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &cfh);
+
+    std::string cfs = contig_filecontents.str();
+    char const *strout = cfs.c_str();
+
+    MPI_Offset count = cfs.size();
+    MPI_File_write_ordered(cfh, strout, count, MPI_CHAR, MPI_STATUS_IGNORE);
+    MPI_File_close(&cfh);
+}
+
 void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname)
 {
     auto index = dfd.getindex();
@@ -566,5 +575,12 @@ std::string get_overlap_paf_name()
 {
     std::ostringstream ss;
     ss << output_prefix << ".overlap.paf";
+    return ss.str();
+}
+
+std::string get_contigs_fasta_name()
+{
+    std::ostringstream ss;
+    ss << output_prefix << ".contigs.fa";
     return ss.str();
 }
