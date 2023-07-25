@@ -318,8 +318,16 @@ int main(int argc, char **argv)
 
         timer.start();
         std::vector<std::string> contigs = GenerateContigs(*S, mydna, dfd);
-        ss << "traversing and generating " << contigs.size() << " contigs";
-        timer.stop_and_log(ss.str().c_str());
+        timer.stop();
+
+        int64_t my_num_contigs = contigs.size();
+        int64_t num_contigs;
+
+        MPI_REDUCE(&my_num_contigs, &num_contigs, 1, MPI_INT64_T, MPI_SUM, root, comm);
+
+        ss << "traversing and generating " << num_contigs << " contigs";
+        timer.log(ss.str().c_str());
+        ss.clear(); ss.str("");
 
         parallel_write_contigs(contigs, comm);
 
