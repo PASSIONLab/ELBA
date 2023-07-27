@@ -15,6 +15,8 @@
 
 ## Dependencies
     
+0. STILL NEED TO EDIT THIS, WILL BE INCONSISTENT WITH ACTUAL REPO FOR A BIT.
+
 1. CombBLAS.
   * Download or clone CombBLAS from `https://github.com/PASSIONLab/CombBLAS.git`.
   * Export the path to this directory as an environment variable `COMBBLAS_HOME`.

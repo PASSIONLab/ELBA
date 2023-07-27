@@ -174,4 +174,8 @@ cmake_install.cmake
 *.dSYM/
 comb_blas
 lbl_dal
-Makefile
+elba
+.vscode
+CombBLAS
+data*
+genfa.py

@@ -1,0 +1,51 @@
+To use ELBA on perlmutter, follow these steps:
+
+    * Download prerequisites:
+
+        $> git clone https://github.com/PASSIONLab/ELBA . && cd ELBA
+        $> git clone https://github.com/PASSIONLab/CombBLAS .
+
+    * Load compiler:
+
+        $> module load PrgEnv-gnu
+
+    * In order to compile ELBA, you have to provide the k-mer size, lower, and upper frequency
+      bounds as inputs. For example, if the k-mer size was 31, the lower frequency bound 15,
+      and upper frequency bound 35, you would do the following:
+
+        $> make K=31 L=15 U=35 -j8
+
+    * The executable is named "elba" and is found in the ELBA directory.
+
+    * To run ELBA on a FASTA dataset named "reads.fa", first index the file with
+      the command:
+
+        $> samtools faidx reads.fa
+
+      ELBA will crash if the input FASTA is not indexed.
+
+    * ELBA must be run with a square number of processors. Suppose we want to run ELBA
+      with 64 MPI tasks on a single perlmutter node. The slurm command would then be
+
+        $> srun -N 1 -n 64 -c 2 --cpu_bind=cores ./elba reads.fa
+
+    * Each perlmutter node has 128 cores to which we can bind each MPI tasks. Here are
+      some further examples of valid slurm commands for ELBA:
+
+        # 4 MPI tasks
+        $> srun -N 1 -n 4 -c 64 --cpu_bind=cores ./elba reads.fa
+
+        # 1024 MPI tasks
+        $> srun -N 8 -n 1024 -c 2 --cpu_bind=cores ./elba reads.fa
+
+       etc.
+
+    * ELBA can also take further input parameters as follows:
+
+        Usage: elba [options] <reads.fa>
+        Options: -x INT   x-drop alignment threshold [15]
+                 -A INT   matching score [1]
+                 -B INT   mismatch penalty [1]
+                 -G INT   gap penalty [1]
+                 -o STR   output file name prefix "elba"
+                 -h       help message

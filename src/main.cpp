@@ -12,747 +12,592 @@ derivative works, and perform publicly and display publicly, and to permit other
 */
 
 #include <iostream>
-#include <cmath>
-#include "../include/Constants.hpp"
-#include "../include/ParallelOps.hpp"
-#include "../include/ParallelFastaReader.hpp"
-#include "../include/Alphabet.hpp"
-#include "../include/DistributedPairwiseRunner.hpp"
-#include "../include/cxxopts.hpp"
-#include "../include/pw/SeedExtendXdrop.hpp"
-#include "../include/pw/OverlapFinder.hpp"
-#include "../include/pw/FullAligner.hpp"
-#include "../include/kmer/KmerOps.hpp"
-#include "../include/kmer/KmerIntersectSR.hpp"
-#include "../include/Utils.hpp"
-#include "../include/ContigGeneration.hpp"
-#include "../include/ReadOverlap.hpp"
-#include "../include/TransitiveReduction.hpp"
-
-#include "seqan/score/score_matrix_data.h"
-
-#include <map>
+#include <iterator>
+#include <sstream>
 #include <fstream>
+#include <iomanip>
+#include <cstdint>
+#include <cassert>
+#include <unistd.h>
+#include <mpi.h>
 
-#define TWOSEED
-//#define TRIL
-//#define TRIU
-//#define ELBA_DEBUG
+#include "common.h"
+#include "compiletime.h"
+#include "Logger.hpp"
+#include "FastaIndex.hpp"
+#include "DistributedFastaData.hpp"
+#include "Kmer.hpp"
+#include "KmerOps.hpp"
+#include "SharedSeeds.hpp"
+#include "PairwiseAlignment.hpp"
+#include "TransitiveReduction.hpp"
+#include "ContigGeneration.hpp"
+#include "PruneChimeras.hpp"
+#include "MPITimer.hpp"
+#include "ELBALogger.hpp"
 
-/*! Namespace declarations */
-using namespace combblas;
+int returncode;
+std::string fasta_fname;
+std::string output_prefix = "elba";
 
-/*! Type definitions */
-typedef elba::KmerIntersect<PosInRead, elba::CommonKmers> KmerIntersectSR_t;
+/*
+ * MPI communicator info.
+ */
+MPI_Comm comm;
+int myrank;
+int nprocs;
 
-/*! Function signatures */
-int parse_args(int argc, char **argv);
+/*
+ * X-Drop alignment parameters.
+ */
+int mat = 1;           /* match score */
+int mis = -1;          /* mismatch score */
+int gap = -1;          /* gap score */
+int xdrop_cutoff = 15; /* x-drop cutoff score */
 
-void pretty_print_config(std::string &append_to);
+/*
+ * Bad read alignment threshold cutoff.
+ */
+double bad_read_cutoff = 0.65;
 
-auto TriLSR = [] (const std::tuple<int64_t, int64_t, int>& t)
-{
-        return static_cast<bool>(std::get<0>(t) <= std::get<1>(t));
-};
+constexpr int root = 0; /* root process rank */
 
-auto TriUSR = [] (const std::tuple<int64_t, int64_t, int>& t)
-{
-        return static_cast<bool>(std::get<0>(t) >= std::get<1>(t));
-};
-
-std::string get_padding(ushort count, std::string prefix);
-
-/*! Global variables */
-std::shared_ptr<ParallelOps> parops;
-std::string input_file;
-uint64_t input_overlap;
-uint64_t seq_count;
-int xdrop;
-int match;
-int  mismatch_sc;
-int gap_open;
-int gap_ext;
-ushort klength;
-ushort kstride;
-
-/*! Parameters related to outputting k-mer overlaps */
-bool write_overlaps = false;
-std::string overlap_file;
-bool add_substitue_kmers = false;
-int subk_count = 0;
-
-/*! Parameters related to outputting alignment info */
-std::string myoutput;
-int afreq;
-
-/*! Don't perform alignments if this flag is set */
-bool noAlign = false;
-
-/*! Perform full alignment */
-bool fullAlign = false;
-
-/*! Perform xdrop alignment */
-bool xdropAlign = false;
-
-/*! File path to output global sequence index to original global sequence
- * index mapping */
-std::string idx_map_file;
-
-/*! Alphabet to use. */
-Alphabet::type alph_t;
-
-bool is_print_rank = false;
-std::string print_str;
-
-/*! Maximum number of common k-mers to keep */
-int seed_count = 2;
-
-/*! Logging information */
-std::string job_name = "elba";
-std::string proc_log_file;
-std::ofstream proc_log_stream;
-int log_freq;
-
-/*! Common k-mer threshold */
-int ckthr = 1;
-
-/*! Score threshold */
-bool aln_score_thr = false; // GGGG: Currently not used
-
-std::shared_ptr<DistributedFastaData>
-ParallelFastaParser(const char*                         input_file,
-                    const char*                         idx_map_file,
-                    const std::shared_ptr<ParallelOps>& parops,
-                    const std::shared_ptr<TimePod>&     tp,
-                    TraceUtils&                         tu);
-
-void
-GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd,
-                         PSpMat<PosInRead>::MPI_DCCols*&       Amat,
-                         PSpMat<PosInRead>::MPI_DCCols*&       ATmat,
-                         const std::shared_ptr<ParallelOps>&   parops,
-                         const std::shared_ptr<TimePod>&       tp,
-                         TraceUtils&                           tu);
-
-void
-OverlapDetection(std::shared_ptr<DistributedFastaData>      dfd,
-                 PSpMat<elba::CommonKmers>::MPI_DCCols*& Bmat,
-                 PSpMat<PosInRead>::MPI_DCCols*             Amat,
-                 PSpMat<PosInRead>::MPI_DCCols*             ATmat,
-                 const std::shared_ptr<TimePod>&            tp,
-                 TraceUtils&                                tu);
-
-void
-PairwiseAlignment(std::shared_ptr<DistributedFastaData>     dfd,
-                  PSpMat<elba::CommonKmers>::MPI_DCCols* Bmat,
-                  PSpMat<ReadOverlap>::MPI_DCCols*&         Rmat,
-                  const std::shared_ptr<ParallelOps>&       parops,
-                  const std::shared_ptr<TimePod>&           tp,
-                  TraceUtils&                               tu);
+int parse_cli(int argc, char *argv[]);
+void print_kmer_histogram(const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid);
+void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname);
+void parallel_write_contigs(const std::vector<std::string>& contigs, MPI_Comm comm);
+CT<int64_t>::PDistVec find_contained_reads(const CT<Overlap>::PSpParMat& R);
+CT<int64_t>::PDistVec find_bad_reads(const CT<Overlap>::PSpParMat& R, double cutoff);
+std::string get_overlap_paf_name();
+std::string get_string_paf_name();
+std::string get_contigs_fasta_name();
 
 int main(int argc, char **argv)
 {
-  parops = ParallelOps::init(&argc, &argv);
-  int ret = parse_args(argc, argv);
-
-  if (ret < 0)
-  {
-    parops->teardown_parallelism();
-    return ret;
-  }
-
-  /*! bcast job id */
-  // Sender
-  int job_name_length = job_name.length();
-
-  if(parops->world_proc_rank == 0)
-  {
-    MPI_Bcast(&job_name[0], job_name_length, MPI_CHAR, 0, MPI_COMM_WORLD);
-  }
-  else
-  {
-    char* buf = new char[job_name_length+1];
-    buf[job_name_length] = 0;
-
-    MPI_Bcast(buf, job_name_length, MPI_CHAR, 0, MPI_COMM_WORLD);
-    std::string s(buf);
-    job_name = s;
-    delete [] buf;
-  }
-
-    int nthreads = 1;
-#ifdef THREADED
-#pragma omp parallel
+    MPI_Init(&argc, &argv);
     {
-        nthreads = omp_get_num_threads();
+        /*
+         * CombBLAS 2D processor grid uses MPI_COMM_WORLD
+         * as its world communicator (comm).
+         */
+        std::shared_ptr<CommGrid> commgrid;
+
+        comm = MPI_COMM_WORLD;
+        commgrid.reset(new CommGrid(comm, 0, 0));
+        myrank = commgrid->GetRank();
+        nprocs = commgrid->GetSize();
+
+        /*
+         * Parse command-line from root process and broadcast.
+         */
+        if (parse_cli(argc, argv) != 0)
+            goto err;
+
+        /***********************************************************/
+        /************************ START ****************************/
+        /***********************************************************/
+
+        std::unique_ptr<CT<PosInRead>::PSpParMat> A, AT;
+        std::unique_ptr<CT<SharedSeeds>::PSpParMat> B;
+        std::unique_ptr<CT<Overlap>::PSpParMat> R, S;
+        std::unique_ptr<KmerCountMap> kmermap;
+
+        std::ostringstream ss;
+        ELBALogger elbalog(output_prefix, comm);
+        MPITimer timer(comm), walltimer(comm);
+        walltimer.start();
+
+        /*
+         * FastaIndex @index is the structure responsible for reading
+         * the .fai index file and telling each process which read sequences
+         * it is responsible for parsing, compressing and storing.
+         */
+        timer.start();
+        FastaIndex index(fasta_fname, commgrid);
+        ss << "reading " << std::quoted(index.get_faidx_fname()) << " and scattering to all MPI tasks";
+        timer.stop_and_log(ss.str().c_str());
+        ss.clear(); ss.str("");
+
+        /*
+         * DnaBuffer @mydna stores the compressed read sequences assigned
+         * to it by the .fai index file, as determined by @index.
+         */
+        timer.start();
+        DnaBuffer mydna = index.getmydna();
+        ss << "reading and 2-bit encoding " << std::quoted(index.get_fasta_fname()) << " sequences in parallel";
+        timer.stop_and_log(ss.str().c_str());
+        ss.clear(); ss.str("");
+
+        /*
+         * DistributedFastaData @dfd is the structure responsible for telling
+         * each process which read sequences it will need according to the
+         * 2D processor grid. The constructor determines this from the FastaIndex
+         * @index.
+         */
+        DistributedFastaData dfd(index);
+
+        /*
+         * Initiate non-blocking send and receive calls. The end goal
+         * is that every processor has the reads it requires according
+         * the original construction above. These are stored as DnaBuffer
+         * objects owned by @dfd.
+         *
+         * Because this is non-blocking, we have to call dfd.wait() to
+         * make sure every processor has finished its sends and receives.
+         * We do this after the k-mer counting step, because that step
+         * only needs access to the sequences stored in mydna.
+         */
+        dfd.collect_sequences(mydna);
+
+        /*
+         * The next steps can be understood by first describing what @kmermap
+         * is. @kmermap is an unordered_map (basically an associative container)
+         * mapping k-mers to "k-mer count entries". Formally, a "k-mer count entry"
+         * is a triple (READIDS, POSITIONS, count) where READIDS is an array of global
+         * read IDs, POSITIONS is an array of read positions, and count is the number
+         * of distinct times that k-mer has been found in the FASTA sequences (globally).
+         *
+         * It should be noted that READIDS and POSITIONS are arrays with a fixed size,
+         * determined by the compile-time parameter UPPER_KMER_FREQ. This is because
+         * we only want to store k-mers that appear <= UPPER_KMER_FREQ different times
+         * in the input.
+         *
+         * @kmermap is a "distributed" hash table in the sense that each processor
+         * has its own local instance which is individually responsible for a different
+         * partition of k-mers. That is to say: given a k-mer @s, there is exactly
+         * one processor that is responsible for storing @s and its associated
+         * k-mer count entry. This processor is determined by hashing @s.
+         *
+         * So what does get_kmer_count_map_keys() do exactly? Basically it does
+         * 4 things:
+         *
+         *    1. Globally estimates the number of distinct k-mers in the dataset using
+         *       the HyperLogLog data structure. This estimate is used to allocate
+         *       memory on each process for its local partition of the distributed hash table.
+         *
+         *    2. Each process in parallel computes all the k-mers (not required to be distinct)
+         *       that exist in its local FASTA partition (@mydna, which was obtained by index.getmydna()).
+         *
+         *    3. All processors collectively send their locally found k-mers to their proper
+         *       destinations. In parallel, each processor receives incoming k-mers assigned to
+         *       it, and filters out likely singletons using a Bloom filter approach. Only
+         *       distinct k-mers are kept.
+         *
+         *    4. The received distinct k-mers are used to initialize @kmermap with empty "kmer count
+         *       entries." Those entries are filled out in the second pass implemented in
+         *       @get_kmer_count_map_values().
+         *
+         */
+        timer.start();
+        kmermap = get_kmer_count_map_keys(mydna, commgrid);
+        timer.stop_and_log("collecting distinct k-mers");
+
+        /*
+         * Now that every process has its local partition of the distributed k-mer hash table
+         * initialized with all the keys (k-mers) it needs, we do a second pass over every k-mer
+         * and send them to their destinations, this time including information about which read ID
+         * the k-mer was parsed from, and the position of the k-mer within that read. Using the
+         * Bloom filter, we can quickly query received k-mers and discard those k-mers which we know
+         * aren't keys in the local @kmermap.
+         *
+         * For each received k-mer that passes through the Bloom filter (is accepted), its
+         * corresponding triple (READIDS, POSITIONS, count) is updated. This way, the local
+         * process is able to quickly find all the reads (via their global IDs) that contain a particular
+         * k-mer, and quickly find the position within that read where the k-mer is located. The
+         * count parameter merely states how many times that k-mer has been found in the dataset,
+         * and is therefore equivalent to the number of used entries of READIDS and POSITIONS.
+         *
+         * Suppose that a k-mer @s appears more that UPPER_KMER_FREQ times in the input. Then
+         * it is guaranteed that, eventually, the processor responsible for storing @s will
+         * receive an instance of @s (plus a global read id and position where @s came from) that
+         * will put it over the capacity of POSITIONS and READIDS. We therefore always check
+         * if a received k-mer will push us over this threshold, and if it does, we DELETE the
+         * k-mer key of @s on the owner processor. That way, any other instances of @s from
+         * other reads are discarded because we only record entries for k-mers that exist in
+         * the hash table.
+         *
+         * Finally, once the collective exchange is finished, we delete all k-mer keys of
+         * k-mers that appeared less than LOWER_KMER_FREQ times. The result is a distributed
+         * hash table mapping reliable k-mers (k-mers that appear within the defined frequency bounds)
+         * to their corresponding k-mer count entries.
+         */
+        timer.start();
+        get_kmer_count_map_values(mydna, *kmermap, commgrid);
+        timer.stop_and_log("counting recording k-mer seeds");
+
+        print_kmer_histogram(*kmermap, commgrid);
+
+        /*
+         * Now that all the reliable k-mers and their locations have been computed and stored
+         * in the distributed hash table @kmermap, it is time to construct the distributed k-mer sparse
+         * matrix @A. The purpose of @A is to facilitate read overlap detection via an SpGEMM
+         * operation using a custom semiring. More on that will be discussed later. For now,
+         * this is what @A is:
+         *
+         *    Let M = number of reads in FASTA;
+         *    Let N = number of distinct k-mers (keys) currently stored in distributed k-mer hash table;
+         *    Let L = total number of k-mer instances (values) currently stored in the distributed k-mer hash table;
+         *
+         *    Then @A is an M-by-N distributed sparse matrix with L nonzeros, where a nonzero at
+         *    @A(i,j) represents an instance of a k-mer (with global id j) found in
+         *    read sequence i (global id). The global k-mer ids are computed using a prefix
+         *    scan of the stored k-mer keys in the distributed hash table. The actual
+         *    value stored by the nonzero is the POSITION of k-mer j within read i.
+         *
+         * A few quick observations on what this means:
+         *
+         *    The number of nonzeros in the row @A(i,:) is the number of distinct reliable k-mers
+         *    found within the sequence with global id i.
+         *
+         *    The number of nonzeros in the column @A(:,j) is the number of different sequences
+         *    that contain the reliable k-mer with id j as a subsequence.
+         *
+         * Other similar observations about the nature of @A can be made, but hopefully it
+         * is clear by now what @A is.
+         */
+        timer.start();
+        A = create_kmer_matrix(mydna, *kmermap, commgrid);
+        timer.stop_and_log("creating k-mer matrix");
+
+        /*
+         * Once @A has been constructed, we have no more use for the distributed k-mer hash table
+         * so we release all its memory.
+         */
+        kmermap.reset();
+
+        /*
+         * The SpGEMM overlap detection phase requires both @A and its transpose @AT.
+         */
+        timer.start();
+        AT = std::make_unique<CT<PosInRead>::PSpParMat>(*A);
+        AT->Transpose();
+        timer.stop_and_log("copying and transposing k-mer matrix");
+        elbalog.log_kmer_matrix(*A);
+
+        /*
+         * TODO: comment this.
+         */
+        timer.start();
+        B = create_seed_matrix(*A, *AT);
+        timer.stop_and_log("creating seed matrix (spgemm)");
+
+        A.reset();
+        AT.reset();
+
+        //elbalog.log_seed_matrix(*B);
+
+        dfd.wait();
+
+        /*
+         * In order to obtain reliable overlaps, we need to do some alignments.
+         * The @B matrix provides the seeds (common k-mers) from which we
+         * anchor and extend our alignments using the X-drop algorithm.
+         * In an embarassingly parallel manner, we run seed-and-extend
+         * alignments on each nonzero (actually only half since @B is symmetric)
+         * and then prune the alignments that appear spurious.
+         */
+        timer.start();
+        R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
+        timer.stop_and_log("pairwise alignment");
+
+        parallel_write_paf(*R, dfd, get_overlap_paf_name().c_str());
+
+        auto bad_reads = find_bad_reads(*R, bad_read_cutoff);
+        R->Prune([](const Overlap& nz) { return !nz.passed; });
+        R->PruneFull(bad_reads, bad_reads);
+
+        timer.start();
+        auto contained = find_contained_reads(*R);
+        R->PruneFull(contained, contained);
+
+        S = TransitiveReduction(*R);
+        timer.stop_and_log("contained read removal and transitive reduction");
+        R.reset();
+
+        parallel_write_paf(*S, dfd, get_string_paf_name().c_str());
+
+        timer.start();
+        std::vector<std::string> contigs = GenerateContigs(*S, mydna, dfd);
+        timer.stop();
+
+        int64_t my_num_contigs = contigs.size();
+        int64_t num_contigs;
+
+        MPI_REDUCE(&my_num_contigs, &num_contigs, 1, MPI_INT64_T, MPI_SUM, root, comm);
+
+        ss << "traversing and generating " << num_contigs << " contigs";
+        timer.log(ss.str().c_str());
+        ss.clear(); ss.str("");
+
+        parallel_write_contigs(contigs, comm);
+
+        walltimer.stop_and_log("wallclock");
+
+        /***********************************************************/
+        /************************* END *****************************/
+        /***********************************************************/
+
+        goto done;
     }
-#endif
 
-    int nprocs, myrank;
-    MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
-    MPI_Comm_rank(MPI_COMM_WORLD,&myrank);
-
-    if(myrank == 0)
-    {
-        std::cout << "Process Grid (p x p x t): " << sqrt(nprocs) << " x " << sqrt(nprocs) << " x " << nthreads << std::endl;
-    }
-
-  proc_log_file = job_name + "_rank_" + std::to_string(parops->world_proc_rank) + "_log.txt";
-  proc_log_stream.open(proc_log_file);
-
-  is_print_rank = (parops->world_proc_rank == 0);
-  std::shared_ptr<TimePod> tp = std::make_shared<TimePod>();
-  TraceUtils tu(is_print_rank);
-
-  /*! Print start time information */
-  tp->times["StartMain"] = std::chrono::system_clock::now();
-  std::time_t start_prog_time = std::chrono::system_clock::to_time_t(
-  tp->times["StartMain"]);
-
-  print_str = "\nINFO: Program started on ";
-  print_str.append(std::ctime(&start_prog_time));
-  print_str.append("\nINFO: Job ID ").append(job_name).append("\n");
-  pretty_print_config(print_str);
-  tu.print_str(print_str);
-
-  //////////////////////////////////////////////////////////////////////////////////////
-  // VARIALBES                                                                        //
-  //////////////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<DistributedFastaData> dfd;
-
-  PSpMat<PosInRead>::MPI_DCCols *Amat, *ATmat;
-  PSpMat<elba::CommonKmers>::MPI_DCCols *Bmat;
-  PSpMat<ReadOverlap>::MPI_DCCols *Rmat;
-
-  //////////////////////////////////////////////////////////////////////////////////////
-  // PIPELINE                                                                         //
-  //////////////////////////////////////////////////////////////////////////////////////
-
-  /* allocates dfd  (shared ptr) */
-  dfd = ParallelFastaParser(input_file.c_str(), idx_map_file.c_str(), parops, tp, tu);
-
-  /* allocates Amat
-   * allocates ATmat */
-  GenerateKmerByReadMatrix(dfd, Amat, ATmat, parops, tp, tu);
-
-  /* allocates Bmat
-   * deletes Amat
-   * deletes ATmat */
-  OverlapDetection(dfd, Bmat, Amat, ATmat, tp, tu);
-
-  /* allocates Rmat
-   * deletes Bmat */
-  PairwiseAlignment(dfd, Bmat, Rmat, parops, tp, tu);
-
-  //////////////////////////////////////////////////////////////////////////////////////
-  // TRANSITIVE REDUCTION                                                             //
-  //////////////////////////////////////////////////////////////////////////////////////
-
-  tp->times["StartMain:TransitiveReduction()"] = std::chrono::system_clock::now();
-
-  bool transitive_reduction = true; // use in development only
-  if (transitive_reduction)
-  {
-    TransitiveReduction(*Rmat, tu);
-  }
-
-  Rmat->Apply(Tupleize());
-
-  tp->times["EndMain:TransitiveReduction()"] = std::chrono::system_clock::now();
-
-  if(is_print_rank)
-  {
-    std::cout << "Transitive Reduction is done and okay!" << std::endl;
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////////////
-  //// CONTIG EXTRACTION                                                                //
-  ////////////////////////////////////////////////////////////////////////////////////////
-
-  tp->times["StartMain:ExtractContig()"] = std::chrono::system_clock::now();
-
-  std::vector<std::string> myContigSet;
-  bool contigging = true;
-
-  if(contigging)
-  {
-    myContigSet = CreateContig(*Rmat, dfd, myoutput, tp, tu);
-  }
-
-  tp->times["EndMain:ExtractContig()"] = std::chrono::system_clock::now();
-
-  delete Rmat;
-
-  tp->times["StartMain:WriteContigs()"] = std::chrono::system_clock::now();
-
-  int64_t number_of_contigs = myContigSet.size();
-  int64_t contigs_offset = 0;
-  MPI_Exscan(&number_of_contigs, &contigs_offset, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
-
-  std::stringstream contig_filecontents;
-
-  for (int i = 0; i < myContigSet.size(); ++i)
-    contig_filecontents << ">contig" << i+contigs_offset << "\tmyrank=" << myrank << "\tmyoffset=" << i << "\n" << myContigSet[i] << "\n";
-
-  MPI_File cfh;
-  MPI_File_open(MPI_COMM_WORLD, "elba.contigs.fa", MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &cfh);
-
-  std::string cfs = contig_filecontents.str();
-  const char *strout = cfs.c_str();
-
-  MPI_Offset count = strlen(strout);
-  MPI_File_write_ordered(cfh, strout, count, MPI_CHAR, MPI_STATUS_IGNORE);
-  MPI_File_close(&cfh);
-
-  MPI_Barrier(MPI_COMM_WORLD);
-  tp->times["EndMain:WriteContigs()"] = std::chrono::system_clock::now();
-
-  // //////////////////////////////////////////////////////////////////////////////////////
-  // // SCAFFOLDING                                                                      //
-  // //////////////////////////////////////////////////////////////////////////////////////
-
-  // tp->times["StartMain:ScaffoldContig()"] = std::chrono::system_clock::now();
-
-  // bool scaffolding = false;
-  // if(!contigging) scaffolding = false;
-
-  // if(scaffolding)
-  // {
-  //   // GetAssembly(myContigSet, tu);
-  // }
-
-  //////////////////////////////////////////////////////////////////////////////////////
-  // END OF PROGRAM                                                                   //
-  //////////////////////////////////////////////////////////////////////////////////////
-
-  tp->times["EndMain"] = std::chrono::system_clock::now();
-
-  std::time_t end_prog_time = std::chrono::system_clock::to_time_t(tp->times["EndMain"]);
-
-  print_str = "INFO: Program ended on ";
-  print_str.append(std::ctime(&end_prog_time));
-  tu.print_str(print_str);
-  tu.print_str(tp->to_string());
-
-  proc_log_stream.close();
-
-  MPI_Barrier(MPI_COMM_WORLD);
-  parops->teardown_parallelism();
-
-  return 0;
+err: returncode = -1;
+done: MPI_Finalize();
+      return returncode;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////
-// INPUT COMMAND LINE PARSER                                                        //
-//////////////////////////////////////////////////////////////////////////////////////
-
-int parse_args(int argc, char **argv)
+void usage(char const *prg)
 {
-  cxxopts::Options options("diBELLA",
-                           "Distributed Long Read to Long Read Alignment");
+    std::cerr << "Usage: " << prg << " [options] <reads.fa>\n"
+              << "Options: -x INT   x-drop alignment threshold [" <<  xdrop_cutoff               << "]\n"
+              << "         -A INT   matching score ["             <<  mat                        << "]\n"
+              << "         -B INT   mismatch penalty ["           << -mis                        << "]\n"
+              << "         -G INT   gap penalty ["                << -gap                        << "]\n"
+              << "         -c FLOAT bad read alignment cutoff ["  <<  bad_read_cutoff            << "]\n"
+              << "         -o STR   output file name prefix "     <<  std::quoted(output_prefix) << "\n"
+              << "         -h       help message"
+              << std::endl;
+}
 
-  options.add_options()
-    (CMD_OPTION_INPUT, CMD_OPTION_DESCRIPTION_INPUT,
-     cxxopts::value<std::string>())
-    (CMD_OPTION_INPUT_SEQ_COUNT, CMD_OPTION_DESCRIPTION_INPUT_SEQ_COUNT,
-     cxxopts::value<int>())
-    (CMD_OPTION_INPUT_OVERLAP, CMD_OPTION_DESCRIPTION_INPUT_OVERLAP,
-     cxxopts::value<uint64_t>())
-    (CMD_OPTION_SEED_COUNT, CMD_OPTION_DESCRIPTION_SEED_COUNT,
-     cxxopts::value<int>())
-    (CMD_OPTION_MATCH, CMD_OPTION_DESCRIPTION_MATCH,
-    cxxopts::value<int>())
-    (CMD_OPTION_MISMATCH, CMD_OPTION_DESCRIPTION_MISMATCH,
-    cxxopts::value<int>())
-    (CMD_OPTION_GAP_OPEN, CMD_OPTION_DESCRIPTION_GAP_OPEN,
-     cxxopts::value<int>())
-    (CMD_OPTION_GAP_EXT, CMD_OPTION_DESCRIPTION_GAP_EXT,
-     cxxopts::value<int>())
-    (CMD_OPTION_KMER_LENGTH, CMD_OPTION_DESCRIPTION_KMER_LENGTH,
-     cxxopts::value<int>())
-    (CMD_OPTION_KMER_STRIDE, CMD_OPTION_DESCRIPTION_KMER_STRID,
-     cxxopts::value<int>())
-    (CMD_OPTION_OVERLAP_FILE, CMD_OPTION_DESCRIPTION_OVERLAP_FILE,
-     cxxopts::value<std::string>())
-    (CMD_OPTION_ALIGN_FILE, CMD_OPTION_DESCRIPTION_ALIGN_FILE,
-     cxxopts::value<std::string>())
-    (CMD_OPTION_NO_ALIGN, CMD_OPTION_DESCRIPTION_NO_ALIGN)
-    (CMD_OPTION_FULL_ALIGN, CMD_OPTION_DESCRIPTION_FULL_ALIGN)
-    (CMD_OPTION_XDROP_ALIGN, CMD_OPTION_DESCRIPTION_XDROP_ALIGN,
-     cxxopts::value<int>())
-    (CMD_OPTION_IDX_MAP, CMD_OPTION_DESCRIPTION_IDX_MAP,
-     cxxopts::value<std::string>())
-    (CMD_OPTION_ALPH, CMD_OPTION_DESCRIPTION_ALPH,
-     cxxopts::value<std::string>())
-    (CMD_OPTION_JOB_NAME_PREFIX, CMD_OPTION_DESCRIPTION_JOB_NAME_PREFIX,
-     cxxopts::value<std::string>())
-    (CMD_OPTION_SUBS, CMD_OPTION_DESCRIPTION_SUBS,
-     cxxopts::value<int>())
-    (CMD_OPTION_LOG_FREQ, CMD_OPTION_DESCRIPTION_LOG_FREQ,
-     cxxopts::value<int>())
-    (CMD_OPTION_AF_FREQ, CMD_OPTION_DESCRIPTION_AF_FREQ,
-     cxxopts::value<int>());
+int parse_cli(int argc, char *argv[])
+{
+    int params[4] = {mat, mis, gap, xdrop_cutoff};
+    int show_help = 0, fasta_provided = 1;
 
-  auto result = options.parse(argc, argv);
+    if (myrank == root)
+    {
+        int c;
 
-  bool is_world_rank0 = parops->world_proc_rank == 0;
-  if (result.count(CMD_OPTION_INPUT)) {
-    input_file = result[CMD_OPTION_INPUT].as<std::string>();
-  } else {
-    if (is_world_rank0) {
-      std::cout << "ERROR: Input file not specified" << std::endl;
-    }
-    return -1;
-  }
-
-    if (result.count(CMD_OPTION_IDX_MAP)) {
-        idx_map_file = result[CMD_OPTION_IDX_MAP].as<std::string>();
-    } else {
-        if (is_world_rank0) {
-            std::cout << "ERROR: Index map file not specified" << std::endl;
+        while ((c = getopt(argc, argv, "x:c:A:B:G:o:h")) >= 0)
+        {
+            if      (c == 'A') params[0] =  atoi(optarg);
+            else if (c == 'B') params[1] = -atoi(optarg);
+            else if (c == 'G') params[2] = -atoi(optarg);
+            else if (c == 'x') params[3] =  atoi(optarg);
+            else if (c == 'c') bad_read_cutoff = atof(optarg);
+            else if (c == 'o') output_prefix = std::string(optarg);
+            else if (c == 'h') show_help = 1;
         }
-        return -1;
     }
 
-  // TODO - fix option parsing
-  if (result.count(CMD_OPTION_INPUT_SEQ_COUNT)) {
-    seq_count = result[CMD_OPTION_INPUT_SEQ_COUNT].as<int>();
-  } else {
-    if (is_world_rank0) {
-      std::cout << "ERROR: Input sequence count not specified" << std::endl;
-    }
-    return -1;
-  }
+    MPI_BCAST(params, 4, MPI_INT, root, comm);
+    MPI_BCAST(&bad_read_cutoff, 1, MPI_DOUBLE, root, comm);
 
-  if (result.count(CMD_OPTION_INPUT_OVERLAP)) {
-    input_overlap = result[CMD_OPTION_INPUT_OVERLAP].as<uint64_t>();
-  } else {
-    input_overlap = 10000;
-  }
+    mat          = params[0];
+    mis          = params[1];
+    gap          = params[2];
+    xdrop_cutoff = params[3];
 
-  if (result.count(CMD_OPTION_SEED_COUNT)) {
-    seed_count = result[CMD_OPTION_SEED_COUNT].as<int>();
-  } else {
-    seed_count = 2;
-  }
+    if (myrank == root && show_help)
+        usage(argv[0]);
 
-  if (result.count(CMD_OPTION_MATCH)) {
-    match = result[CMD_OPTION_MATCH].as<int>();
-  } else {
-    match = 1;
-  }
+    MPI_BCAST(&show_help, 1, MPI_INT, root, comm);
+    if (show_help) return -1;
 
-  if (result.count(CMD_OPTION_MISMATCH)) {
-     mismatch_sc = result[CMD_OPTION_MISMATCH].as<int>();
-  } else {
-     mismatch_sc = -1;
-  }
-
-  if (result.count(CMD_OPTION_GAP_OPEN)) {
-    gap_open = result[CMD_OPTION_GAP_OPEN].as<int>();
-  } else {
-    gap_open = 0;
-  }
-
-  if (result.count(CMD_OPTION_GAP_EXT)) {
-    gap_ext = result[CMD_OPTION_GAP_EXT].as<int>();
-  } else {
-    gap_ext = -1;
-  }
-
-  if (result.count(CMD_OPTION_KMER_LENGTH)) {
-    klength = result[CMD_OPTION_KMER_LENGTH].as<int>();
-  } else {
-    if (is_world_rank0) {
-      std::cout << "ERROR: Kmer length not specified" << std::endl;
-    }
-    return -1;
-  }
-
-  if (result.count(CMD_OPTION_KMER_STRIDE)) {
-    kstride = result[CMD_OPTION_KMER_STRIDE].as<int>();
-  } else {
-    if (is_world_rank0) {
-      kstride = 1;
-    }
-  }
-
-  if (result.count(CMD_OPTION_OVERLAP_FILE)) {
-    write_overlaps = true;
-    overlap_file = result[CMD_OPTION_OVERLAP_FILE].as<std::string>();
-  }
-
-  if (result.count(CMD_OPTION_ALIGN_FILE)) {
-    myoutput = result[CMD_OPTION_ALIGN_FILE].as<std::string>();
-  }
-
-  if (result.count(CMD_OPTION_NO_ALIGN)) {
-    /* GGGG: You need to call the outer function anyway to calculate overhangs but the xdrop
-    case value doesn't matter, because the actual pw alignment function is not executed */
-    xdropAlign = true;
-    noAlign    = true;
-  }
-
-  if (result.count(CMD_OPTION_FULL_ALIGN)) {
-    fullAlign = true;
-    noAlign  = false;
-  }
-
-  if (result.count(CMD_OPTION_XDROP_ALIGN)) {
-    xdropAlign = true;
-    noAlign   = false;
-    xdrop = result[CMD_OPTION_XDROP_ALIGN].as<int>();
-  }
-
-  if (result.count(CMD_OPTION_ALPH)) {
-    std::string tmp = result[CMD_OPTION_ALPH].as<std::string>();
-    if (tmp == "dna"){
-      alph_t = Alphabet::DNA;
-    } else {
-      if (is_world_rank0) {
-        std::cout << "ERROR: Unsupported alphabet type " << tmp << std::endl;
-      }
-    }
-  } else {
-    alph_t = Alphabet::DNA;
-  }
-
-  if (result.count(CMD_OPTION_LOG_FREQ)) {
-    log_freq = result[CMD_OPTION_LOG_FREQ].as<int>();
-  }
-
-  if (result.count(CMD_OPTION_AF_FREQ)) {
-    afreq = result[CMD_OPTION_AF_FREQ].as<int>();
-  }
-
-  return 0;
-}
-
-auto bool_to_str = [](bool b){
-  return b ? "True" : "False";
-};
-
-/*! GGGG: add input match/ mismatch_sc */
-void pretty_print_config(std::string &append_to) {
-  std::vector<std::string> params = {
-    "Input file (-i)",
-    "Original sequence count (-c)",
-    "Kmer length (k)",
-    "Kmer stride (s)",
-    "Overlap in bytes (-O)",
-    "Max seed count (--sc)",
-    "Base match score (--ma)",
-    "Base mismatch score (--mi)",
-    "Gap open penalty (-g)",
-    "Gap extension penalty (-e)",
-    "Overlap file (--of)",
-    "Alignment file (--af)",
-    "Alignment write frequency (--afreq)",
-    "No align (--na)",
-    "Full align (--fa)",
-    "Xdrop align (--xa)",
-    "Index map (--idxmap)",
-    "Alphabet (--alph)"
-  };
-
-  std::vector<std::string> vals = {
-    input_file,
-    std::to_string(seq_count),
-    std::to_string(klength),
-    std::to_string(kstride),
-    std::to_string(input_overlap),
-    std::to_string(seed_count),
-    std::to_string(match),
-    std::to_string(mismatch_sc),
-    std::to_string(gap_open),
-    std::to_string(gap_ext),
-    !overlap_file.empty() ? overlap_file  : "None",
-    !myoutput.empty()     ? myoutput    : "None",
-    !myoutput.empty()     ? std::to_string(afreq) : "None",
-    bool_to_str(noAlign),
-    bool_to_str(fullAlign),
-    bool_to_str(xdropAlign)  + (xdropAlign  ? " | xdrop: " + std::to_string(xdrop) : ""),
-    !idx_map_file.empty() ? idx_map_file : "None",
-    std::to_string(alph_t)
-  };
-
-  ushort max_length = 0;
-  for (const auto &param : params)
-  {
-    if (param.size() > max_length)
+    if (myrank == root && optind >= argc)
     {
-      max_length = static_cast<ushort>(param.size());
+        std::cerr << "error: missing FASTA file\n";
+        usage(argv[0]);
+        fasta_provided = 0;
     }
-  }
 
-  std::string prefix = "  ";
-  append_to.append("Parameters:\n");
+    MPI_BCAST(&fasta_provided, 1, MPI_INT, root, comm);
+    if (!fasta_provided) return -1;
 
-  for (ushort i = 0; i < params.size(); ++i)
-  {
-    std::string param = params[i];
-    append_to.append(prefix).append(param).append(": ")
-      .append(get_padding(
-        static_cast<ushort>(max_length - param.size()), ""))
-      .append(vals[i]).append("\n");
-  }
-}
+    int fnamelen, onamelen;
 
-std::string get_padding(ushort count, std::string prefix) {
-  std::string pad = std::move(prefix);
-  for (ushort i = 0; i < count; ++i) {
-    pad += " ";
-  }
-  return pad;
-}
-
-std::shared_ptr<DistributedFastaData>
-ParallelFastaParser(const char *input_file, const char *idx_map_file, const std::shared_ptr<ParallelOps>& parops, const std::shared_ptr<TimePod>& tp, TraceUtils& tu)
-{
-    tp->times["StartMain:newDFD()"] = std::chrono::system_clock::now();
-
-    std::shared_ptr<DistributedFastaData> dfd = std::make_shared<DistributedFastaData>(
-        input_file, idx_map_file, input_overlap, klength, parops, tp, tu);
-    
-    tp->times["EndMain:newDFD()"] = std::chrono::system_clock::now();
-    
-    if (dfd->global_count() != seq_count)
+    if (myrank == root)
     {
-        uint64_t final_seq_count = dfd->global_count();
-        print_str = "\nINFO: Modified sequence count\n";
-        print_str.append("  Final sequence count: ")
-                 .append(std::to_string(final_seq_count))
-                 .append(" (")
-                 .append(std::to_string((((seq_count - final_seq_count) * 100.0) / seq_count)))
-                 .append("% removed)");
-        
-        seq_count = dfd->global_count();
-        print_str += "\n";
-        tu.print_str(print_str);
+        fasta_fname = argv[optind];
+        fnamelen = fasta_fname.size();
+        onamelen = output_prefix.size();
+
+        std::cout << "-DKMER_SIZE="            << KMER_SIZE            << "\n"
+                  << "-DLOWER_KMER_FREQ="      << LOWER_KMER_FREQ      << "\n"
+                  << "-DUPPER_KMER_FREQ="      << UPPER_KMER_FREQ      << "\n"
+                  << "-DMPI_HAS_LARGE_COUNTS=" << MPI_HAS_LARGE_COUNTS << "\n"
+        #ifdef USE_BLOOM
+                  << "-DUSE_BLOOM\n"
+        #endif
+                  << "\n"
+                  << "int mat = "                << mat                        << ";\n"
+                  << "int mis = "                << mis                        << ";\n"
+                  << "int gap = "                << gap                        << ";\n"
+                  << "int xdrop_cutoff = "       << xdrop_cutoff               << ";\n"
+                  << "double bad_read_cutoff = " << bad_read_cutoff            << ";\n"
+                  << "String fname = "           << std::quoted(fasta_fname)   << ";\n"
+                  << "String output_prefix = "   << std::quoted(output_prefix) << ";\n\n"
+                  << "MPI processes = " << nprocs << "\n"
+                  << "rows/columns in 2D processor grid = " << static_cast<int>(std::sqrt(nprocs)) << "\n"
+                  << std::endl;
     }
-    return dfd;  
-}
 
-void GenerateKmerByReadMatrix(std::shared_ptr<DistributedFastaData> dfd, PSpMat<PosInRead>::MPI_DCCols*& Amat, PSpMat<PosInRead>::MPI_DCCols*& ATmat, const std::shared_ptr<ParallelOps>& parops, const std::shared_ptr<TimePod>& tp, TraceUtils& tu)
-{
-    Alphabet alph(alph_t);
+    MPI_BCAST(&fnamelen, 1, MPI_INT, root, comm);
+    MPI_BCAST(&onamelen, 1, MPI_INT, root, comm);
 
-    tp->times["StartMain:GenerateA()"] = std::chrono::system_clock::now();
-
-    Amat = new PSpMat<PosInRead>::MPI_DCCols(elba::KmerOps::GenerateA(seq_count, dfd, klength, kstride, alph, parops, tp));
-
-    tu.print_str("Matrix A: ");
-    tu.print_str("\nLoad imbalance: " + std::to_string(Amat->LoadImbalance()) + "\n");
-
-    tp->times["EndMain:GenerateA()"] = std::chrono::system_clock::now();
-
-    Amat->PrintInfo();
-
-    ATmat = new PSpMat<PosInRead>::MPI_DCCols(*Amat);
-    tp->times["StartMain:At()"] = tp->times["EndMain:GenerateA()"];
-    ATmat->Transpose();
-    tu.print_str("Matrix At: ");
-    ATmat->PrintInfo();
-    tp->times["EndMain:At()"] = std::chrono::system_clock::now();
-}
-
-void OverlapDetection(std::shared_ptr<DistributedFastaData> dfd,
-                      PSpMat<elba::CommonKmers>::MPI_DCCols*& Bmat,
-                      PSpMat<PosInRead>::MPI_DCCols* Amat,
-                      PSpMat<PosInRead>::MPI_DCCols* ATmat,
-                      const std::shared_ptr<TimePod>& tp, TraceUtils& tu)
-{
-    tp->times["StartMain:AAt()"] = std::chrono::system_clock::now();
-
-    // @GGGG-TODO: check vector version (new one stack error)
-    Bmat = new PSpMat<elba::CommonKmers>::MPI_DCCols(Mult_AnXBn_DoubleBuff<KmerIntersectSR_t, elba::CommonKmers, PSpMat<elba::CommonKmers>::DCCols>(*Amat, *ATmat));
-
-    delete Amat;
-    delete ATmat;
-
-    tp->times["EndMain:AAt()"] = std::chrono::system_clock::now();
-
-    // @GGGG-TODO: remove proc_log_stream
-    tu.print_str(
-        "Matrix AAt: Overlaps after k-mer finding (nnz(C) - diagonal): "
-        + std::to_string(Bmat->getnnz() - seq_count)
-        + "\nLoad imbalance: " + std::to_string(Bmat->LoadImbalance()) + "\n");
-
-    tu.print_str("Matrix B, i.e AAt: ");
-    Bmat->PrintInfo();
-
-    /*! Wait until sequence exchange is complete */
-    tp->times["StartMain:DfdWait()"] = std::chrono::system_clock::now();
-    if (!dfd->is_ready())
+    if (myrank != root)
     {
-      dfd->wait();
+        fasta_fname.assign(fnamelen, '\0');
+        output_prefix.assign(onamelen, '\0');
     }
-    tp->times["EndMain:DfdWait()"] = std::chrono::system_clock::now();
+
+    MPI_BCAST(fasta_fname.data(), fnamelen, MPI_CHAR, root, comm);
+    MPI_BCAST(output_prefix.data(), onamelen, MPI_CHAR, root, comm);
+
+    return 0;
 }
 
-void PairwiseAlignment(std::shared_ptr<DistributedFastaData> dfd, PSpMat<elba::CommonKmers>::MPI_DCCols* Bmat, PSpMat<ReadOverlap>::MPI_DCCols*& Rmat, const std::shared_ptr<ParallelOps>& parops, const std::shared_ptr<TimePod>& tp, TraceUtils& tu)
+void print_kmer_histogram(const KmerCountMap& kmermap, std::shared_ptr<CommGrid> commgrid)
 {
-  uint64_t n_rows, n_cols;
-  n_rows = n_cols = dfd->global_count();
-  int gr_rows = parops->grid->GetGridRows();
-  int gr_cols = parops->grid->GetGridCols();
+    #if LOG_LEVEL >= 2
+    int maxcount = std::accumulate(kmermap.cbegin(), kmermap.cend(), 0, [](int cur, const auto& entry) { return std::max(cur, std::get<2>(entry.second)); });
 
-  int gr_col_idx = parops->grid->GetRankInProcRow();
-  int gr_row_idx = parops->grid->GetRankInProcCol();
+    MPI_Allreduce(MPI_IN_PLACE, &maxcount, 1, MPI_INT, MPI_MAX, commgrid->GetWorld());
 
-  uint64_t avg_rows_in_grid = n_rows / gr_rows;
-  uint64_t avg_cols_in_grid = n_cols / gr_cols;
-  uint64_t row_offset = gr_row_idx * avg_rows_in_grid;  // first row in this process
-  uint64_t col_offset = gr_col_idx * avg_cols_in_grid;	// first col in this process
+    std::vector<int> histo(maxcount+1, 0);
 
-  DistributedPairwiseRunner dpr(dfd, Bmat->seqptr(), Bmat, afreq, row_offset, col_offset, parops);
+    for (auto itr = kmermap.cbegin(); itr != kmermap.cend(); ++itr)
+    {
+        int cnt = std::get<2>(itr->second);
+        assert(cnt >= 1);
+        histo[cnt]++;
+    }
 
-  double mytime = MPI_Wtime();
-  tp->times["StartMain:DprAlign()"] = std::chrono::system_clock::now();
-  ScoringScheme scoring_scheme(match, mismatch_sc, gap_ext);
+    MPI_Allreduce(MPI_IN_PLACE, histo.data(), maxcount+1, MPI_INT, MPI_SUM, commgrid->GetWorld());
 
-  PairwiseFunction* pf = nullptr;
-  uint64_t local_alignments = 1;
+    int myrank = commgrid->GetRank();
 
-  // Output intermediate matrix post-alignment
-  //std::string candidatem = myoutput;
-  //candidatem += ".candidatematrix.mm";
-  //Bmat->ParallelWriteMM(candidatem, true, elba::CkOutputMMHandler());
+    if (!myrank)
+    {
+        std::cout << "#count\tnumkmers" << std::endl;
 
-  if(xdropAlign)
-  {
-    pf = new SeedExtendXdrop (scoring_scheme, klength, xdrop, seed_count);
-    dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
-	  local_alignments = static_cast<SeedExtendXdrop*>(pf)->nalignments;
-  }
-  else if(fullAlign)
-  {
-    pf = new FullAligner(scoring_scheme);
-    dpr.run_batch(pf, proc_log_stream, log_freq, ckthr, aln_score_thr, tu, noAlign, klength, seq_count);
-	  local_alignments = static_cast<FullAligner*>(pf)->nalignments;
-  }
+        for (int i = 1; i < histo.size(); ++i)
+        {
+            if (histo[i] > 0)
+            {
+                std::cout << i << "\t" << histo[i] << std::endl;
+            }
+        }
+        std::cout << std::endl;
+    }
 
-  tp->times["EndMain:DprAlign()"] = std::chrono::system_clock::now();
-  delete pf;
+    MPI_Barrier(commgrid->GetWorld());
+    #endif
+}
 
-  uint64_t total_alignments = 0;
-  MPI_Reduce(&local_alignments, &total_alignments, 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+void parallel_write_contigs(const std::vector<std::string>& contigs, MPI_Comm comm)
+{
+    int64_t numcontigs = contigs.size();
+    int64_t contigs_offset = 0;
 
-  // total_alignments should be zero if "noAlign" is true
-  if(is_print_rank)
-  {
-    std::cout << "Final alignment (L+U-D) count: " << 2 * total_alignments << std::endl;
-  }
+    MPI_Exscan(&numcontigs, &contigs_offset, 1, MPI_INT64_T, MPI_SUM, comm);
 
-  // Output intermediate matrix post-alignment
-  //std::string postalignment = myoutput;
-  //postalignment += ".resultmatrix.mm";
-  //Bmat->ParallelWriteMM(postalignment, true, elba::CkOutputHandler());
+    std::stringstream contig_filecontents;
 
-  Rmat = new PSpMat<ReadOverlap>::MPI_DCCols(*Bmat);
+    for (size_t i = 0 ; i < contigs.size(); ++i)
+    {
+        contig_filecontents << ">contig" << i+contigs_offset << "\n" << contigs[i] << "\n";
+    }
 
-  //Rmat->ParallelWriteMM("alignment.mtx", true, ReadOverlapGraphHandler());
+    std::string contigs_fname = get_contigs_fasta_name();
 
-  delete Bmat;
+    MPI_File cfh;
+    MPI_File_open(comm, contigs_fname.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &cfh);
+
+    std::string cfs = contig_filecontents.str();
+    char const *strout = cfs.c_str();
+
+    MPI_Offset count = cfs.size();
+    MPI_File_write_ordered(cfh, strout, count, MPI_CHAR, MPI_STATUS_IGNORE);
+    MPI_File_close(&cfh);
+}
+
+void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& dfd, char const *pafname)
+{
+    auto index = dfd.getindex();
+    auto commgrid = index.getcommgrid();
+    int myrank = commgrid->GetRank();
+    int nprocs = commgrid->GetSize();
+    MPI_Comm comm = commgrid->GetWorld();
+
+    std::vector<std::string> names = index.bcastnames();
+
+    auto dcsc = R.seqptr()->GetDCSC();
+
+    std::ostringstream ss;
+
+    for (int64_t i = 0; i < dcsc->nzc; ++i)
+        for (int64_t j = dcsc->cp[i]; j < dcsc->cp[i+1]; ++j)
+        {
+            int64_t localrow = dcsc->ir[j];
+            int64_t localcol = dcsc->jc[i];
+            int64_t globalrow = localrow + dfd.getrowstartid();
+            int64_t globalcol = localcol + dfd.getcolstartid();
+
+            const Overlap& o = dcsc->numx[j];
+
+            int maplen = std::max(std::get<0>(o.end) - std::get<0>(o.beg), std::get<1>(o.end) - std::get<1>(o.end));
+
+            ss << names[globalrow] << "\t" << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << "+-"[static_cast<int>(o.rc)] << "\t"
+               << names[globalcol] << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score << "\t" << maplen << "\t255\t" << static_cast<int>(o.passed) << "\n";
+        }
+
+    std::string pafcontents = ss.str();
+
+    MPI_Count count = pafcontents.size();
+    MPI_File fh;
+    MPI_File_open(comm, pafname, MPI_MODE_CREATE|MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+    MPI_File_write_ordered(fh, pafcontents.c_str(), count, MPI_CHAR, MPI_STATUS_IGNORE);
+    MPI_File_close(&fh);
+}
+
+CT<int64_t>::PDistVec find_bad_reads(const CT<Overlap>::PSpParMat& R, double cutoff)
+{
+    CT<int>::PSpParMat badnzs = const_cast<CT<Overlap>::PSpParMat&>(R).Prune([](const Overlap& o) { return !o.passed; }, false);
+    CT<int>::PSpParMat A = R;
+
+    CT<int>::PDistVec degrees = A.Reduce(Row, std::plus<int>(), 0);
+    CT<int>::PDistVec degrees2 = A.Reduce(Column, std::plus<int>(), 0);
+
+    CT<int>::PDistVec badnzs_vec = badnzs.Reduce(Row, std::plus<int>(), 0);
+    CT<int>::PDistVec badnzs_vec2 = badnzs.Reduce(Column, std::plus<int>(), 0);
+
+    degrees.EWiseApply(degrees2, std::plus<int>());
+    badnzs_vec.EWiseApply(badnzs_vec2, std::plus<int>());
+
+    CT<double>::PDistVec vec = badnzs_vec;
+    vec.EWiseApply(degrees, [](double a, int b) { return (a+1) / (static_cast<double>(b)+1); });
+
+    return vec.FindInds([&](double v) { return v <= cutoff; });
+}
+
+CT<int64_t>::PDistVec find_contained_reads(const CT<Overlap>::PSpParMat& R)
+{
+    CT<int>::PSpParMat containedQmat = const_cast<CT<Overlap>::PSpParMat&>(R).Prune([](const Overlap& o) { return !o.containedQ; }, false);
+    CT<int>::PSpParMat containedTmat = const_cast<CT<Overlap>::PSpParMat&>(R).Prune([](const Overlap& o) { return !o.containedT; }, false);
+    CT<int>::PDistVec containedQvec = containedQmat.Reduce(Row, std::logical_or<int>(), 0);
+    CT<int>::PDistVec containedTvec = containedTmat.Reduce(Column, std::logical_or<int>(), 0);
+    CT<int>::PDistVec contained = containedQvec;
+    contained.EWiseOut(containedTvec, std::logical_or<int>(), contained);
+    return contained.FindInds([](const int& v) { return v > 0; });
+}
+
+std::string get_string_paf_name()
+{
+    std::ostringstream ss;
+    ss << output_prefix << ".string.paf";
+    return ss.str();
+}
+
+std::string get_overlap_paf_name()
+{
+    std::ostringstream ss;
+    ss << output_prefix << ".overlap.paf";
+    return ss.str();
+}
+
+std::string get_contigs_fasta_name()
+{
+    std::ostringstream ss;
+    ss << output_prefix << ".contigs.fa";
+    return ss.str();
 }
