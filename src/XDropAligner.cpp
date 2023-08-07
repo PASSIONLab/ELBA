@@ -15,23 +15,23 @@ void classify_alignment(const XSeed& ai, int lenQ, int lenT, OverlapClass& kind)
     int begTr = ai.rc? lenT - ai.endT : ai.begT;
     int endTr = ai.rc? lenT - ai.begT : ai.endT;
 
-    int maplen = ((ai.endT - ai.begT) + (ai.endQ - ai.begQ)) / 2;
+    int maplen = std::max(ai.endT - ai.begT, ai.endQ - ai.begQ);
     int overhang = std::min(ai.begQ, begTr) + std::min(lenQ - ai.endQ, lenT - endTr);
     int overlap = maplen + overhang;
 
     float my_thr = (1.0 - DELTACHERNOFF) * (0.99 * overlap);
 
-    if (ai.begQ <= begTr && lenQ - ai.endQ <= lenT - endTr)
+    if (ai.score < my_thr || overlap < 1000)
+    {
+        kind = BAD_ALIGNMENT;
+    }
+    else if (ai.begQ <= begTr && lenQ - ai.endQ <= lenT - endTr)
     {
         kind = FIRST_CONTAINED;
     }
     else if (ai.begQ >= begTr && lenQ - ai.endQ >= lenT - endTr)
     {
         kind = SECOND_CONTAINED;
-    }
-    else if (ai.score < my_thr || overlap < 500)
-    {
-        kind = BAD_ALIGNMENT;
     }
     else if (ai.begQ > begTr)
     {
