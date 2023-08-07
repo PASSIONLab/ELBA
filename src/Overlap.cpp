@@ -17,7 +17,7 @@ Overlap::Overlap(const Overlap& rhs) :
     direction(rhs.direction), directionT(rhs.directionT),
     rc(rhs.rc), passed(rhs.passed), containedQ(rhs.containedQ), containedT(rhs.containedT) { std::copy(rhs.suffix_paths, rhs.suffix_paths + 4, suffix_paths); }
 
-void Overlap::extend_overlap(const DnaSeq& seqQ, const DnaSeq& seqT, int mat, int mis, int gap, int dropoff)
+void Overlap::extend_overlap(const DnaSeq& seqQ, const DnaSeq& seqT, int mat, int mis, int gap, float target_identity, int dropoff)
 {
     assert(seqQ.size() == std::get<0>(len) && seqT.size() == std::get<1>(len));
 
@@ -26,7 +26,7 @@ void Overlap::extend_overlap(const DnaSeq& seqQ, const DnaSeq& seqT, int mat, in
     xdrop_aligner(seqQ, seqT, std::get<0>(seed), std::get<1>(seed), mat, mis, gap, dropoff, result);
 
     OverlapClass kind;
-    classify_alignment(result, seqQ.size(), seqT.size(), kind);
+    classify_alignment(result, seqQ.size(), seqT.size(), target_identity, kind);
 
     rc = result.rc;
     score = result.score;

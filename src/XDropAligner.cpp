@@ -4,7 +4,7 @@
 #include <vector>
 #include <algorithm>
 
-void classify_alignment(const XSeed& ai, int lenQ, int lenT, OverlapClass& kind)
+void classify_alignment(const XSeed& ai, int lenQ, int lenT, float target_identity, OverlapClass& kind)
 {
     if (ai.score <= 0)
     {
@@ -19,7 +19,7 @@ void classify_alignment(const XSeed& ai, int lenQ, int lenT, OverlapClass& kind)
     int overhang = std::min(ai.begQ, begTr) + std::min(lenQ - ai.endQ, lenT - endTr);
     int overlap = maplen + overhang;
 
-    float my_thr = (1.0 - DELTACHERNOFF) * (0.99 * overlap);
+    float my_thr = (1.0 - DELTACHERNOFF) * (target_identity * overlap);
 
     if (ai.score < my_thr || overlap < 1000)
     {

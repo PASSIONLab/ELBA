@@ -68,6 +68,7 @@ void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& d
 void parallel_write_contigs(const std::vector<std::string>& contigs, MPI_Comm comm);
 CT<int64_t>::PDistVec find_contained_reads(const CT<Overlap>::PSpParMat& R);
 CT<int64_t>::PDistVec find_bad_reads(const CT<Overlap>::PSpParMat& R, double cutoff);
+float get_target_identity();
 std::string get_overlap_paf_name();
 std::string get_string_paf_name();
 std::string get_contigs_fasta_name();
@@ -288,6 +289,8 @@ int main(int argc, char **argv)
 
         dfd.wait();
 
+        float target_identity = get_target_identity();
+
         /*
          * In order to obtain reliable overlaps, we need to do some alignments.
          * The @B matrix provides the seeds (common k-mers) from which we
@@ -297,14 +300,14 @@ int main(int argc, char **argv)
          * and then prune the alignments that appear spurious.
          */
         timer.start();
-        R = PairwiseAlignment(dfd, *B, mat, mis, gap, xdrop_cutoff);
+        R = PairwiseAlignment(dfd, *B, mat, mis, gap, target_identity, xdrop_cutoff);
         timer.stop_and_log("pairwise alignment");
-
-        parallel_write_paf(*R, dfd, get_overlap_paf_name().c_str());
 
         auto bad_reads = find_bad_reads(*R, bad_read_cutoff);
         R->Prune([](const Overlap& nz) { return !nz.passed; });
         R->PruneFull(bad_reads, bad_reads);
+
+        parallel_write_paf(*R, dfd, get_overlap_paf_name().c_str());
 
         timer.start();
         auto contained = find_contained_reads(*R);
@@ -600,4 +603,35 @@ std::string get_contigs_fasta_name()
     std::ostringstream ss;
     ss << output_prefix << ".contigs.fa";
     return ss.str();
+}
+
+float get_target_identity()
+{
+    float alpha = (float)mat;
+    float beta = (float)mis;
+
+    float lambda, newlambda;
+    int iter;
+    float fx, dfx;
+
+    lambda = 0.1;
+    for (iter = 0; iter < 100; ++iter)
+    {
+        if (0.25*0.25*(12*exp(lambda*beta) + 4*exp(lambda*alpha)) > 1.) break;
+        lambda *= 2.;
+    }
+    assert(iter != 100);
+
+    for (iter = 0; iter < 100; ++iter)
+    {
+        fx = 0.25*0.25*(12*exp(lambda*beta) + 4*exp(lambda*alpha)) - 1.;
+        if (fabs(fx) < 1e-6) break;
+        dfx = (0.25*0.25) * (12*beta*exp(lambda*beta) + 4*alpha*exp(lambda*alpha));
+        newlambda = lambda - (fx / dfx);
+        if (newlambda <= 0) newlambda = 0.000001; /* this shouldn't happen */
+        lambda = newlambda;
+    }
+    assert(iter != 100);
+
+    return 0.25 * exp(lambda * alpha);
 }
