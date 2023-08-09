@@ -38,6 +38,8 @@ def get_experiments(params_fname):
             assert fasta_path.is_file()
             assert ref_path.is_file()
             outdir_path.mkdir(exist_ok=False)
+            parampath = outdir_path.joinpath("parameters.tsv")
+            with open(str(parampath), "w") as f: f.write("L\tU\tk\tA\tB\tx\tc\n{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(L, U, k, A, B, x, c))
             if not L in experiments: experiments[L] = {}
             if not U in experiments[L]: experiments[L][U] = {}
             if not k in experiments[L][U]: experiments[L][U][k] = []
@@ -61,7 +63,9 @@ def create_slurm_script(experiment, exe_path):
         cmdlist = ["srun", "-n", "121", "-N", "1", "-c", "2", "--cpu_bind=cores", str(exe_path2)]
         cmdlist += ["-A", str(A), "-B", str(B), "-G", str(B), "-x", str(x), "-c", str(c), str(fasta_path)]
         f.write("{} &\nwait\n\n".format(" ".join(cmdlist)))
-        f.write("quast.py -r {} {}\n".format(str(ref_path), str(outdir_path.joinpath("elba.contigs.fa"))))
+        f.write("quast.py -r {} {} &\nwait\n\n".format(str(ref_path), str(outdir_path.joinpath("elba.contigs.fa"))))
+        t1, t2, output = [str(outdir_path.joinpath(fname)) for fname in ["parameters.tsv", "quast_results/latest/transposed_report.tsv", "stats.tsv"]] 
+        f.write("combine.py {} {} {}\n".format(t1, t2, output))
 
 def compile_elba(L, U, k):
     elba_path = Path("/pscratch/sd/g/gabeh98/August2023/ELBA").resolve()
