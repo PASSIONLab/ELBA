@@ -4,7 +4,7 @@
 #include <vector>
 #include <algorithm>
 
-void classify_alignment(const XSeed& ai, int lenQ, int lenT, float target_identity, OverlapClass& kind)
+void classify_alignment(const XSeed& ai, int lenQ, int lenT, int min_overlap_len, double target_identity, OverlapClass& kind)
 {
     if (ai.score <= 0)
     {
@@ -21,7 +21,7 @@ void classify_alignment(const XSeed& ai, int lenQ, int lenT, float target_identi
 
     float my_thr = (1.0 - DELTACHERNOFF) * (target_identity * overlap);
 
-    if (ai.score < my_thr || overlap < 1000)
+    if (ai.score < my_thr || overlap < min_overlap_len)
     {
         kind = BAD_ALIGNMENT;
     }

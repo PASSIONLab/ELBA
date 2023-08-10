@@ -3,7 +3,7 @@
 #include "Logger.hpp"
 
 std::unique_ptr<CT<Overlap>::PSpParMat>
-PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, float target_identity, int dropoff)
+PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, int min_overlap_len, double target_identity, int dropoff)
 {
     FastaIndex& index = dfd.getindex();
     auto commgrid = index.getcommgrid();
@@ -87,7 +87,7 @@ PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, i
 
         /* TODO: change the below two lines */
         overlaps.emplace_back(len, std::get<2>(alignseeds[i])->getseeds()[0]);
-        overlaps.back().extend_overlap(seqQ, seqT, mat, mis, gap, target_identity, dropoff);
+        overlaps.back().extend_overlap(seqQ, seqT, mat, mis, gap, min_overlap_len, target_identity, dropoff);
 
         local_rowids.push_back(localrow + rowoffset);
         local_colids.push_back(localcol + coloffset);

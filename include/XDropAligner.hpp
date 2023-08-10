@@ -26,6 +26,6 @@ struct XSeed
 };
 
 int xdrop_aligner(const DnaSeq& seqQ, const DnaSeq& seqT, int begQ, int begT, int mat, int mis, int gap, int dropoff, XSeed& result);
-void classify_alignment(const XSeed& ai, int lenQ, int lenT, float target_identity, OverlapClass& kind);
+void classify_alignment(const XSeed& ai, int lenQ, int lenT, int min_overlap_len, double target_identity, OverlapClass& kind);
 
 #endif

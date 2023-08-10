@@ -7,6 +7,6 @@
 #include "Overlap.hpp"
 
 std::unique_ptr<CT<Overlap>::PSpParMat>
-PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, float target_identity, int dropoff);
+PairwiseAlignment(DistributedFastaData& dfd, CT<SharedSeeds>::PSpParMat& Bmat, int mat, int mis, int gap, int min_overlap_len, double target_identity, int dropoff);
 
 #endif

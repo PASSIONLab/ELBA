@@ -60,6 +60,13 @@ int xdrop_cutoff = 15; /* x-drop cutoff score */
  */
 double bad_read_cutoff = 0.65;
 
+/*
+ * Target identity.
+ */
+double target_identity = 0.99;
+int min_overlap_len = 1000;
+
+
 constexpr int root = 0; /* root process rank */
 
 int parse_cli(int argc, char *argv[]);
@@ -289,8 +296,6 @@ int main(int argc, char **argv)
 
         dfd.wait();
 
-        float target_identity = get_target_identity();
-
         /*
          * In order to obtain reliable overlaps, we need to do some alignments.
          * The @B matrix provides the seeds (common k-mers) from which we
@@ -300,7 +305,7 @@ int main(int argc, char **argv)
          * and then prune the alignments that appear spurious.
          */
         timer.start();
-        R = PairwiseAlignment(dfd, *B, mat, mis, gap, target_identity, xdrop_cutoff);
+        R = PairwiseAlignment(dfd, *B, mat, mis, gap, min_overlap_len, target_identity, xdrop_cutoff);
         timer.stop_and_log("pairwise alignment");
 
         auto bad_reads = find_bad_reads(*R, bad_read_cutoff);
@@ -361,6 +366,8 @@ void usage(char const *prg)
               << "         -B INT   mismatch penalty ["           << -mis                        << "]\n"
               << "         -G INT   gap penalty ["                << -gap                        << "]\n"
               << "         -c FLOAT bad read alignment cutoff ["  <<  bad_read_cutoff            << "]\n"
+              << "         -f FLOAT target identity ["            <<  target_identity            << "]\n"
+              << "         -s INT   min overlap length ["         <<  min_overlap_len            << "]\n"
               << "         -o STR   output file name prefix "     <<  std::quoted(output_prefix) << "\n"
               << "         -h       help message"
               << std::endl;
@@ -368,32 +375,35 @@ void usage(char const *prg)
 
 int parse_cli(int argc, char *argv[])
 {
-    int params[4] = {mat, mis, gap, xdrop_cutoff};
+    int params[5] = {mat, mis, gap, xdrop_cutoff, min_overlap_len};
     int show_help = 0, fasta_provided = 1;
 
     if (myrank == root)
     {
         int c;
 
-        while ((c = getopt(argc, argv, "x:c:A:B:G:o:h")) >= 0)
+        while ((c = getopt(argc, argv, "x:c:s:A:B:G:f:o:h")) >= 0)
         {
             if      (c == 'A') params[0] =  atoi(optarg);
             else if (c == 'B') params[1] = -atoi(optarg);
             else if (c == 'G') params[2] = -atoi(optarg);
             else if (c == 'x') params[3] =  atoi(optarg);
+            else if (c == 's') params[4] =  atoi(optarg);
             else if (c == 'c') bad_read_cutoff = atof(optarg);
+            else if (c == 'f') target_identity = atof(optarg);
             else if (c == 'o') output_prefix = std::string(optarg);
             else if (c == 'h') show_help = 1;
         }
     }
 
-    MPI_BCAST(params, 4, MPI_INT, root, comm);
+    MPI_BCAST(params, 5, MPI_INT, root, comm);
     MPI_BCAST(&bad_read_cutoff, 1, MPI_DOUBLE, root, comm);
 
-    mat          = params[0];
-    mis          = params[1];
-    gap          = params[2];
-    xdrop_cutoff = params[3];
+    mat             = params[0];
+    mis             = params[1];
+    gap             = params[2];
+    xdrop_cutoff    = params[3];
+    min_overlap_len = params[4];
 
     if (myrank == root && show_help)
         usage(argv[0]);
@@ -431,7 +441,9 @@ int parse_cli(int argc, char *argv[])
                   << "int mis = "                << mis                        << ";\n"
                   << "int gap = "                << gap                        << ";\n"
                   << "int xdrop_cutoff = "       << xdrop_cutoff               << ";\n"
+                  << "int min_overlap_len = "    << min_overlap_len            << ";\n"
                   << "double bad_read_cutoff = " << bad_read_cutoff            << ";\n"
+                  << "double target_identity = " << target_identity            << ";\n"
                   << "String fname = "           << std::quoted(fasta_fname)   << ";\n"
                   << "String output_prefix = "   << std::quoted(output_prefix) << ";\n\n"
                   << "MPI processes = " << nprocs << "\n"
