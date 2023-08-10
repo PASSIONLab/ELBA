@@ -304,14 +304,19 @@ int main(int argc, char **argv)
         timer.stop_and_log("pairwise alignment");
 
         auto bad_reads = find_bad_reads(*R, bad_read_cutoff);
+        bad_reads.ParallelWrite("bad_reads.txt", false);
+        parallel_write_paf(*R, dfd, "A.paf");
         R->Prune([](const Overlap& nz) { return !nz.passed; });
+        parallel_write_paf(*R, dfd, "B.paf");
         R->PruneFull(bad_reads, bad_reads);
 
         parallel_write_paf(*R, dfd, get_overlap_paf_name().c_str());
 
         timer.start();
         auto contained = find_contained_reads(*R);
+        contained.ParallelWrite("contained_reads.txt", false);
         R->PruneFull(contained, contained);
+        parallel_write_paf(*R, dfd, "C.paf");
 
         S = TransitiveReduction(*R);
         timer.stop_and_log("contained read removal and transitive reduction");
@@ -498,7 +503,7 @@ void parallel_write_contigs(const std::vector<std::string>& contigs, MPI_Comm co
 
     for (size_t i = 0 ; i < contigs.size(); ++i)
     {
-        contig_filecontents << ">contig" << i+contigs_offset << "\n" << contigs[i] << "\n";
+        contig_filecontents << ">contig" << i+1+contigs_offset << "\n" << contigs[i] << "\n";
     }
 
     std::string contigs_fname = get_contigs_fasta_name();
