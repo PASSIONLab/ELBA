@@ -1,0 +1,7 @@
+L,U,k,A,B,f,s,x,c,reads_fname,ref_fname,outdir
+10,35,51,1,1,0.75,1000,25,0.65,reads.fa,ref.fa,out1
+10,55,51,1,1,0.75,1000,25,0.65,reads.fa,ref.fa,out2
+10,35,51,1,2,0.95,1000,25,0.65,reads.fa,ref.fa,out3
+10,55,51,1,2,0.95,1000,25,0.65,reads.fa,ref.fa,out4
+10,35,51,1,4,0.99,1000,25,0.65,reads.fa,ref.fa,out5
+10,55,51,1,4,0.99,1000,25,0.65,reads.fa,ref.fa,out6

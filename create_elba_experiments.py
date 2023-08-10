@@ -31,7 +31,7 @@ def get_experiments(params_fname):
         header = next(f).rstrip()
         assert header == "L,U,k,A,B,f,s,x,c,reads_fname,ref_fname,outdir"
         for line in f.readlines():
-            L,U,k,A,B,f,s,x,c,fasta_fname,ref_fname,outdir = (t(tok) for t,tok in zip((int,int,int,int,int,float,int,int,float,str,str,str), line.rstrip().split(",")))
+            L,U,k,A,B,fr,s,x,c,fasta_fname,ref_fname,outdir = (t(tok) for t,tok in zip((int,int,int,int,int,float,int,int,float,str,str,str), line.rstrip().split(",")))
             fasta_path = Path(fasta_fname).resolve()
             ref_path = Path(ref_fname).resolve()
             outdir_path = Path(outdir).resolve()
@@ -41,14 +41,14 @@ def get_experiments(params_fname):
             if not L in experiments: experiments[L] = {}
             if not U in experiments[L]: experiments[L][U] = {}
             if not k in experiments[L][U]: experiments[L][U][k] = []
-            experiments[L][U][k].append((A, B, f, s, x, c, fasta_path, ref_path, outdir_path))
+            experiments[L][U][k].append((A, B, fr, s, x, c, fasta_path, ref_path, outdir_path))
     return experiments
 
 def create_slurm_script(experiment, exe_path):
     exe_path2 = experiment[-1].joinpath("elba").resolve()
     assert not exe_path2.exists()
     shutil.copyfile(str(exe_path), str(exe_path2))
-    A, B, f, s, x, c, fasta_path, ref_path, outdir_path = experiment
+    A, B, fr, s, x, c, fasta_path, ref_path, outdir_path = experiment
     script_path = outdir_path.joinpath("slurm.sh")
     assert not script_path.exists()
     with open(str(script_path), "w") as f:
@@ -59,7 +59,7 @@ def create_slurm_script(experiment, exe_path):
         f.write("#SBATCH -N 1\n\n")
         f.write("chmod +x {}\n".format(str(exe_path2)))
         cmdlist = ["srun", "-n", "121", "-N", "1", "-c", "2", "--cpu_bind=cores", str(exe_path2)]
-        cmdlist += ["-A", str(A), "-B", str(B), "-G", str(B), "-x", str(x), "-f", str(f), "-s", str(s), "-c", str(c), str(fasta_path)]
+        cmdlist += ["-A", str(A), "-B", str(B), "-G", str(B), "-x", str(x), "-f", str(fr), "-s", str(s), "-c", str(c), str(fasta_path)]
         f.write("{}\n".format(" ".join(cmdlist)))
 
 def compile_elba(L, U, k):
