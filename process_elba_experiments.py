@@ -325,7 +325,7 @@ def main(argc, argv):
     with open(Path.cwd().joinpath("elba.asm.stats.csv"), "w") as f:
         f.write(",".join(header) + "\n")
         for values in valuelist:
-            f.write(",".join(values))
+            f.write(",".join(values) + "\n")
 
 if __name__ == "__main__":
     sys.exit(main(len(sys.argv), sys.argv))
