@@ -103,10 +103,11 @@ def generate_contig_chains(S):
         if q <= 1: continue
         vertices = G.vs.select(contig_component)
         roots = vertices.select(_indegree_eq=1)
+        if len(roots) != 2: continue
         assert len(roots) == 2
         s, t = roots
         topsort = G.bfs(s)[0]
-        assert topsort[0] == s.index and topsort[-1] == t.index
+        if topsort[0] != s.index or topsort[-1] != t.index: continue
         chain = []
         last_dir = None
         for i in range(q-1):
