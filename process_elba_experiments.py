@@ -304,10 +304,12 @@ def process_exp(exp, seqs, names):
         S.vs[readid]["contigid"] = contigid+1
 
     S.write_gml(str(spath))
+    return header, values
 
 def main(argc, argv):
     experiments = get_experiments(argv[1])
     vseqs, vnames = {}, {}
+    valuelist = []
     for L in experiments:
         for U in experiments[L]:
             for k in experiments[L][U]:
@@ -318,7 +320,12 @@ def main(argc, argv):
                         vseqs[fasta_path.name] = seqs
                         vnames[fasta_path.name] = names
                     explist = [L, U, k] + list(exp)
-                    process_exp(explist, vseqs[fasta_path.name], vnames[fasta_path.name])
+                    header, values = process_exp(explist, vseqs[fasta_path.name], vnames[fasta_path.name])
+                    valuelist.append(values)
+    with open(Path.cwd().joinpath("elba.asm.stats.csv"), "w") as f:
+        f.write(",".join(header) + "\n")
+        for values in valuelist:
+            f.write(",".join(values))
 
 if __name__ == "__main__":
     sys.exit(main(len(sys.argv), sys.argv))
