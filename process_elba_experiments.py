@@ -321,6 +321,8 @@ def main(argc, argv):
                         vnames[fasta_path.name] = names
                     explist = [L, U, k] + list(exp)
                     header, values = process_exp(explist, vseqs[fasta_path.name], vnames[fasta_path.name])
+                    header += ["fasta"]
+                    values += [fasta_path.name]
                     valuelist.append(values)
     with open(Path.cwd().joinpath("elba.asm.stats.csv"), "w") as f:
         f.write(",".join(header) + "\n")
