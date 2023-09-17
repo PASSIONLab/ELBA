@@ -10,6 +10,7 @@
 elba.contigs.fa
 elba.overlap.paf
 elba.string.paf
+elba.B.mtx
 
 # Build results
 
