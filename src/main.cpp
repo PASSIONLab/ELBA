@@ -524,22 +524,22 @@ void parallel_write_paf(const CT<Overlap>::PSpParMat& R, DistributedFastaData& d
     auto dcsc = R.seqptr()->GetDCSC();
 
     std::ostringstream ss;
+    if (dcsc != NULL)
+        for (int64_t i = 0; i < dcsc->nzc; ++i)
+            for (int64_t j = dcsc->cp[i]; j < dcsc->cp[i+1]; ++j)
+            {
+                int64_t localrow = dcsc->ir[j];
+                int64_t localcol = dcsc->jc[i];
+                int64_t globalrow = localrow + dfd.getrowstartid();
+                int64_t globalcol = localcol + dfd.getcolstartid();
 
-    for (int64_t i = 0; i < dcsc->nzc; ++i)
-        for (int64_t j = dcsc->cp[i]; j < dcsc->cp[i+1]; ++j)
-        {
-            int64_t localrow = dcsc->ir[j];
-            int64_t localcol = dcsc->jc[i];
-            int64_t globalrow = localrow + dfd.getrowstartid();
-            int64_t globalcol = localcol + dfd.getcolstartid();
+                const Overlap& o = dcsc->numx[j];
 
-            const Overlap& o = dcsc->numx[j];
+                int maplen = std::max(std::get<0>(o.end) - std::get<0>(o.beg), std::get<1>(o.end) - std::get<1>(o.end));
 
-            int maplen = std::max(std::get<0>(o.end) - std::get<0>(o.beg), std::get<1>(o.end) - std::get<1>(o.end));
-
-            ss << names[globalrow] << "\t" << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << "+-"[static_cast<int>(o.rc)] << "\t"
-               << names[globalcol] << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score << "\t" << maplen << "\t255\t" << static_cast<int>(o.passed) << "\n";
-        }
+                ss << names[globalrow] << "\t" << std::get<0>(o.len) << "\t" << std::get<0>(o.beg) << "\t" << std::get<0>(o.end) << "\t" << "+-"[static_cast<int>(o.rc)] << "\t"
+                << names[globalcol] << "\t" << std::get<1>(o.len) << "\t" << std::get<1>(o.beg) << "\t" << std::get<1>(o.end) << "\t" << o.score << "\t" << maplen << "\t255\t" << static_cast<int>(o.passed) << "\n";
+            }
 
     std::string pafcontents = ss.str();
 
