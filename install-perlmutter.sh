@@ -1,12 +1,19 @@
 #!/bin/bash
 
 #source corigpu-env.sh
+<<<<<<< HEAD
 #read lower upper delta
 
 export COMBBLAS_HOME=$PWD
 export BLOOM_HOME=$PWD/src/libbloom/
 export SEQAN_HOME=$PWD/seqan
 export LOGAN_HOME=$PWD/LoganGPU
+=======
+export COMBBLAS_HOME=$PWD
+export BLOOM_HOME=$PWD/src/libbloom/  # k-mer counting phase
+export SEQAN_HOME=$PWD/seqan    # cpu based aligner
+export LOGAN_HOME=$PWD/LoganGPU # gpu based aligner
+>>>>>>> 1c6470b440ff44f9efe27b8fefe163064ba4445e
 
 echo ""
 echo "Enviroment variables set and modules loaded."

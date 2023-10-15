@@ -13,7 +13,6 @@
 export OMP_NUM_THREADS=64
 export OMP_PLACES=threads
 export OMP_PROC_BIND=true
-
 export CURDIR=$PWD
 
 #applications may performance better with --gpu-bind=none instead of --gpu-bind=single:1 
