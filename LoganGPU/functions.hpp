@@ -429,6 +429,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 			int numAlignments,
 			int ngpus,
 			int n_threads
+	//		duration<double> gpuruntime
 			)
 {
 	
@@ -634,7 +635,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		//OK
 	}
 	
-	auto start_c = NOW;
+	//auto start_c = NOW;
 	
 	//  main kernel execution
 #pragma omp parallel for num_threads(ngpus)
@@ -649,6 +650,11 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		extendSeedLGappedXDropOneDirectionGlobal <<<dim, n_threads, n_threads*sizeof(short), stream_l[i]>>> (seed_d_l[i], prefQ_d[i], prefT_d[i], EXTEND_LEFTL, XDrop, scoreLeft_d[i], offsetLeftQ_d[i], offsetLeftT_d[i], ant_len_left[i], ant_l[i], n_threads);
 		extendSeedLGappedXDropOneDirectionGlobal <<<dim, n_threads, n_threads*sizeof(short), stream_r[i]>>> (seed_d_r[i], suffQ_d[i], suffT_d[i], EXTEND_RIGHTL, XDrop, scoreRight_d[i], offsetRightQ_d[i], offsetRightT_d[i], ant_len_right[i], ant_r[i], n_threads);
 	}
+
+        //auto end_c = NOW;
+        //duration<double> compute = end_c-start_c;
+        //std::cout << " - GPU-only runtime: " << compute.count() << " s" << std::endl;
+	//gpuruntime += compute.count();
 
 #pragma omp parallel for num_threads(ngpus)
 	for(int i = 0; i < ngpus; i++)
@@ -673,7 +679,7 @@ void extendSeedL(std::vector<LSeed> &seeds,
 		cudaDeviceSynchronize();
 	}
 
-	auto end_c = NOW;
+	// auto end_c = NOW;
 	// duration<double> compute = end_c-start_c;
 	// std::cout << " - GPU-only runtime: " << compute.count() << " s" << std::endl;
 

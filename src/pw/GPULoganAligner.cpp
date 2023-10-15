@@ -177,19 +177,18 @@ GPULoganAligner::apply_batch
 	std::vector<string> seqVs;
 
 	std::vector<SeedInterface> seeds;
-	std::vector<LoganResult> xscores;
+        std::vector<LoganResult> xscores;
 
 	// bool *strands = new bool[npairs];
-	// int  *xscores = new int[npairs];
-	// TSeed  *seeds = new TSeed[npairs];
-
+	
 	/* GGGG: seed_count is hardcoded here (2) */
 	for(int count = 0; count < seed_count; ++count)
 	{
 		auto start_time = std::chrono::system_clock::now();
+
+		// std::cout << "Count " << count << " out of " << seed_count << std::endl;
 	
 		// @GGGG: keep the order for the post alignment evaluation (measure slowdown)
-		// #pragma omp parallel for 
 		for (uint64_t i = 0; i < npairs; ++i) // I acculate sequences for GPU batch alignment
 		{
 			// init result
@@ -237,7 +236,7 @@ GPULoganAligner::apply_batch
 				SeedInterface seed(LocalSeedHOffset, LocalSeedVOffset, seed_length); //LocalSeedHOffset + seed_length, LocalSeedVOffset + seed_length);
 
 				// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
-				seeds.push_back(seed); // segfault origin might be around here 
+				seeds.push_back(seed);
 				seqVs.push_back(seqV);
 				seqHs.push_back(twinseqH);
 
@@ -249,7 +248,7 @@ GPULoganAligner::apply_batch
 				SeedInterface seed(LocalSeedHOffset, LocalSeedVOffset, seed_length); //LocalSeedHOffset + , LocalSeedVOffset + seed_length);
 
 				// GGGG: here only accumulate stuff for the GPUs, don't perform alignment
-				seeds.push_back(seed); // segfault origin might be around here (?)
+				seeds.push_back(seed);
 				seqVs.push_back(seqV);
 				seqHs.push_back(seqH);
 
@@ -270,7 +269,7 @@ GPULoganAligner::apply_batch
 //				std::cout << " - 1st k-mer comparison started on ";
 //			else
 //				std::cout << " - 2nd k-mer comparison started on ";
-
+//			runlogan++;	
 			RunLoganAlign(seqHs, seqVs, seeds, xscores, xdrop, seed_length);
 		}
 		
@@ -288,10 +287,10 @@ GPULoganAligner::apply_batch
 				ai[i].xscore = xscores[i].score; 
 				ai[i].rc     = xscores[i].rc;
 
-                ai[i].begSeedH = xscores[i].begSeedH; 	
-                ai[i].endSeedH = xscores[i].endSeedH; 
-                ai[i].begSeedV = xscores[i].begSeedV; 
-                ai[i].endSeedV = xscores[i].endSeedV; 
+        	        	ai[i].begSeedH = xscores[i].begSeedH; 	
+                		ai[i].endSeedH = xscores[i].endSeedH; 
+              			ai[i].begSeedV = xscores[i].begSeedV; 
+                		ai[i].endSeedV = xscores[i].endSeedV; 
 
 				ai[i].seq_h_length = seqan::length(seqsh[i]);
 				ai[i].seq_v_length = seqan::length(seqsv[i]);
@@ -302,38 +301,36 @@ GPULoganAligner::apply_batch
 
 				// GGGG: global idx over here to use in the FullDistVect for removing contained vertices/seqs
 				ai[i].seq_h_g_idx = col_offset + std::get<1>(mattuples[lids[i]]);
-    			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
+    				ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
 		}
-		// else
-		// {
-		// 	// @GGGG: keep the order for the post alignment evaluation (measure slowdown)
-		// 	// #pragma omp parallel for 
-		// 	for (uint64_t i = 0; i < npairs; ++i)
-		// 	{
-		// 		if (xscores[i].score > ai[i].xscore)
-		// 		{
-		// 			std::cout << "Does this happen?" << std::endl;
-					
-		// 			ai[i].xscore = xscores[i].score;
-		// 			ai[i].rc     = xscores[i].rc;
+		else
+		{
+		 	// @GGGG: keep the order for the post alignment evaluation (measure slowdown)
+		
+		 	for (uint64_t i = 0; i < npairs; ++i)
+		 	{
+		 		if (xscores[i].score > ai[i].xscore)
+		 		{
+		 			ai[i].xscore = xscores[i].score;
+		 			ai[i].rc     = xscores[i].rc;
 
-        //             ai[i].begSeedH = xscores[i].begSeedH; 
-        //             ai[i].endSeedH = xscores[i].endSeedH; 
-        //             ai[i].begSeedV = xscores[i].begSeedV; 
-        //             ai[i].endSeedV = xscores[i].endSeedV; 
+                     			ai[i].begSeedH = xscores[i].begSeedH; 
+                     			ai[i].endSeedH = xscores[i].endSeedH; 
+                     			ai[i].begSeedV = xscores[i].begSeedV; 
+                     			ai[i].endSeedV = xscores[i].endSeedV; 
 
-		// 			// @GGGG: this is a bit redundant since we can extract it from seed
-		// 			ai[i].seq_h_seed_length = ai[i].endSeedH - ai[i].begSeedH;
-		// 			ai[i].seq_v_seed_length = ai[i].endSeedV - ai[i].begSeedV;
-		// 		}
-		// 	}
-		// }
+		 			// @GGGG: this is a bit redundant since we can extract it from seed
+		 			ai[i].seq_h_seed_length = ai[i].endSeedH - ai[i].begSeedH;
+		 			ai[i].seq_v_seed_length = ai[i].endSeedV - ai[i].begSeedV;
+		 		}
+		 	}
+		}
 
 		end_time = std::chrono::system_clock::now();
     		add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());
 	}
-
+	
 	auto start_time = std::chrono::system_clock::now();
 	std::vector<std::vector<int64_t>> ContainedSeqPerThread(numThreads);
 

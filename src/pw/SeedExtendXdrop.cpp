@@ -145,6 +145,9 @@ SeedExtendXdrop::apply_batch
 	bool *strands = new bool[npairs];
 	int  *xscores = new int[npairs];
 	TSeed  *seeds = new TSeed[npairs];
+		
+//	int runseqan = 0;
+
 
 	/* GGGG: seed_count is hardcoded here (2) */
 	for(int count = 0; count < seed_count; ++count)
@@ -156,8 +159,8 @@ SeedExtendXdrop::apply_batch
 		resize(seqsh_ex, npairs, seqan::Exact{});
 		resize(seqsv_ex, npairs, seqan::Exact{});
 
-	// extend the current seed and form a new gaps object
-	#pragma omp parallel for
+		// extend the current seed and form a new gaps object
+		#pragma omp parallel for
 		for (uint64_t i = 0; i < npairs; ++i)
 		{
 			elba::CommonKmers *cks = std::get<2>(mattuples[lids[i]]);
@@ -204,6 +207,7 @@ SeedExtendXdrop::apply_batch
 				{
 					/* Perform match extension */
 					start_time = std::chrono::system_clock::now();
+	//				runseqan++;
 					xscores[i] = extendSeed(seed, twinRead, seqsv[i], seqan::EXTEND_BOTH, scoring_scheme,
 							xdrop, (int)k,
 							seqan::GappedXDrop());
@@ -223,6 +227,7 @@ SeedExtendXdrop::apply_batch
 				if(!noAlign)
 				{
 					start_time = std::chrono::system_clock::now();
+	//				runseqan++;
 					xscores[i] = extendSeed(seed, seqsh[i], seqsv[i], seqan::EXTEND_BOTH, scoring_scheme,
 							xdrop, (int)k,
 							seqan::GappedXDrop());
@@ -244,9 +249,11 @@ SeedExtendXdrop::apply_batch
 		}
 
 		auto end_time = std::chrono::system_clock::now();
-    	add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
+    		add_time("XA:ExtendSeed", (ms_t(end_time - start_time)).count());
 
 		start_time = std::chrono::system_clock::now();
+
+//		std::cout << "runseqan " << runseqan << std::endl;
 
 		// Compute stats
 		if (count == 0)	// GGGG: save the results from the first alignment (k-mer 1)
@@ -270,22 +277,22 @@ SeedExtendXdrop::apply_batch
     			ai[i].seq_v_g_idx = row_offset + std::get<0>(mattuples[lids[i]]);
 			}
 		}
-		// else // GGGG: if the results from the second seed if better, then substitute it in ai
-		// {
-		// #pragma omp parallel for
-		// 	for (uint64_t i = 0; i < npairs; ++i)
-		// 	{
-		// 		if (xscores[i] > ai[i].xscore) // GGGG: if new seed is better, then save the new one
-		// 		//  GGGG: but are we sure the score standalons is the right metric?
-		// 		{
-		// 			ai[i].xscore = xscores[i];
-		// 			ai[i].rc     = strands[i];
-		// 			ai[i].seed   =   seeds[i];
-		// 			ai[i].seq_h_seed_length = seedlens[i].first;
-		// 			ai[i].seq_v_seed_length = seedlens[i].second;
-		// 		}
-		// 	}
-		// }
+		else // GGGG: if the results from the second seed if better, then substitute it in ai
+		{
+		#pragma omp parallel for
+	 	for (uint64_t i = 0; i < npairs; ++i)
+		 	{
+				if (xscores[i] > ai[i].xscore) // GGGG: if new seed is better, then save the new one
+		 		//  GGGG: but are we sure the score standalons is the right metric?
+		 		{
+		 			ai[i].xscore = xscores[i];
+		 			ai[i].rc     = strands[i];
+		 			ai[i].seed   =   seeds[i];
+		 			ai[i].seq_h_seed_length = seedlens[i].first;
+	 			ai[i].seq_v_seed_length = seedlens[i].second;
+		 		}
+		 	}
+		 }
 
 		end_time = std::chrono::system_clock::now();
     	add_time("XA:ComputeStats", (ms_t(end_time - start_time)).count());

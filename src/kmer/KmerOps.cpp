@@ -45,9 +45,9 @@ extern "C" {
 /* If this flag set, it writes readname to disk through independent I/O */
 #define READNAME
 
-// #ifndef VERBOSE
-// #define VERBOSE
-// #endif
+#ifndef VERBOSE
+#define VERBOSE
+#endif
 
 KmerCountsType *kmercounts = NULL;
 
