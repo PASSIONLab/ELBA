@@ -16,7 +16,10 @@ export OMP_PROC_BIND=true
 export CURDIR=$PWD
 
 #applications may performance better with --gpu-bind=none instead of --gpu-bind=single:1 
-#srun -n 1 -c 128 --cpu_bind=cores -G 1 --gpu-bind=none ${CURDIR}/build_release/./elba -i ${CURDIR}/ecoli_hifi_29x.fasta -k 31 --idxmap ecoli-idxmap -c 8605 --alph dna --af ecoli-cpu -s 1 -O 100000 --afreq 100000 --ca 15
+srun -n 1 -c 128 --cpu_bind=cores -G 1 --gpu-bind=none ${CURDIR}/build_release/./elba -i ${CURDIR}/ecoli_hifi_29x.fasta -k 31 --idxmap ecoli-idxmap -c 8605 --alph dna --af ecoli-cpu -s 1 -O 100000 --afreq 100000 --ca 15
+
+srun -n 1 -c 128 --cpu_bind=cores -G 1 --gpu-bind=none ${CURDIR}/build_release/./elba -i ${CURDIR}/ecoli_hifi_29x.fasta -k 31 --idxmap ecoli-idxmap -c 8605 --alph dna --af ecoli-cpu -s 1 -O 100000 --afreq 100000 --ca 15
+
 srun -n 1 -c 128 --cpu_bind=cores -G 4 --gpu-bind=none ${CURDIR}/build_release/./elba -i ${CURDIR}/ecoli_hifi_29x.fasta -k 31 --idxmap ecoli-idxmap -c 8605 --alph dna --af ecoli-gpu-none -s 1 -O 100000 --afreq 100000 --ga 15
 
 srun -n 1 -c 128 --cpu_bind=cores -G 3 --gpu-bind=none ${CURDIR}/build_release/./elba -i ${CURDIR}/ecoli_hifi_29x.fasta -k 31 --idxmap ecoli-idxmap -c 8605 --alph dna --af ecoli-gpu-none -s 1 -O 100000 --afreq 100000 --ga 15
