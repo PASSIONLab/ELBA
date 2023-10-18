@@ -24,6 +24,15 @@ To use ELBA on perlmutter, follow these steps:
 
       ELBA will crash if the input FASTA is not indexed.
 
+        * Because samtools is difficult to install on some systems, you can alternatively use the faidx.cpp file to
+          compile a standalone fasta indexer. To compile on perlmutter, do the following:
+
+            $> CC faidx.cpp -o faidx
+
+        * Then to index the file "reads.fa", run
+
+            $> ./faidx reads.fa
+
     * ELBA must be run with a square number of processors. Suppose we want to run ELBA
       with 64 MPI tasks on a single perlmutter node. The slurm command would then be
 
