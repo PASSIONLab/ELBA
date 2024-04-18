@@ -79,23 +79,13 @@ A tiny example `ecsample-sub1.fa` can be found in this repository.
 ## Ready to run
 The parameters and options of ELBA are as follows:
 - ```-i <string>```: Input FASTA file.
-- ```-c <integer>```: Number of sequences in the FASTA file.
-- ```--sc <integer>```: Seed count. ```[default: 2]```
-- ```-k <integer>```: K-mer length.
-- ```-s <integer>```: K-mers stride. ```[default: 1]```
-- ```--ma <integer>```: Base match score (positive). ```[default: 1]```
-- ```--mi <integer>```: Base mismatch score (negative). ```[default: -1]```
-- ```-g <integer>```: Gap open penalty (negative). ```[default: 0]```
-- ```-e <integer>```: Gap extension penalty (negative). ```[default: -1]```
-- ```-O <integer>```: Number of bytes to overlap when reading the input file in parallel. ```[default: 10000]```
-- ```--afreq <integer>```: Alignment write frequency.
-- ```--na```: Do not perform alignment.
-- ```--fa```: Full Smith-Waterman alignment.
-- ```--xa <integer>```: X-drop alignment with the indicated drop value.
-- ```--of <string>```: Overlap file.
-- ```--af <string>```: Output file to write alignment information. 
-- ```--idxmap <string>```: Output file for input sequences to ids used in ELBA.
-- ```--alph <dna|protein>```: Alphabet.
+- ```-x <integer>```: x-drop alignment threshold.
+- ``` -A <integer>```: matching score.
+- ```-B <integer>```: mismatch penalty.
+- ```G <integer>```:  gap penalty.
+- ```c <float> ```: bad read alignment cutoff.
+- ```o string```L output file name prefix "elba."
+- ```h```: help message.
 
 ## Run test program
 You can run the test dataset ```ecsample-sub1.fa``` as follows on one node (it's too small to run on multiple nodes), this command runs ELBA using x-drop alignment and ```x = 5```:

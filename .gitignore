@@ -179,3 +179,7 @@ elba
 CombBLAS
 data*
 genfa.py
+elba.contigs.fa
+elba.overlap.paf
+elba.string.paf
+faidx
