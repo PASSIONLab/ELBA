@@ -12,11 +12,14 @@ class PileupVector
 {
 public:
     std::vector<int> pileup;
+    int num_intervals = 0;
 
     PileupVector(int read_length);
     PileupVector(const std::vector<int>& v, int offset, int size);
 
     int Length() const;
+    int NumIntervals() const;
+    int TallestPoint();
 
     void AddInterval(int begin, int end);
 

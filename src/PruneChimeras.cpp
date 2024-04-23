@@ -21,11 +21,19 @@ PileupVector::PileupVector(const std::vector<int>& v, int offset, int size) : pi
 
 int PileupVector::Length() const { return pileup.size(); }
 
+int PileupVector::NumIntervals() const { return num_intervals; }
+
+int PileupVector::TallestPoint() {
+	return *std::max_element(pileup.begin(), pileup.end());
+}
+
 void PileupVector::AddInterval(int begin, int end)
 {
+    num_intervals++;
     assert((begin >= 0 && end <= Length()));
     for (int i = begin; i < end; ++i) pileup[i]++;
 }
+
 
 std::tuple<int, int> PileupVector::GetTrimmedInterval(int threshold)
 {
@@ -34,7 +42,7 @@ std::tuple<int, int> PileupVector::GetTrimmedInterval(int threshold)
     double bestavg = 0;
     int curbases = 0;
     int start = -1, end = -1, maxlen = 2500;
-
+	int gaps = 0;
     for (int i = 0; i < len; ++i)
     {
         if (pileup[i] >= threshold)
@@ -58,10 +66,11 @@ std::tuple<int, int> PileupVector::GetTrimmedInterval(int threshold)
                 bestavg = curavg;
             }
         }
-        else
+        else if (start != -1 && gaps++ >= 1)
         {
-            start = -1;
-            end = -1;
+		return {-1, -1};
+            //start = -1;
+            //end = -1;
         }
     }
 

@@ -305,6 +305,21 @@ int main(int argc, char **argv)
         auto bad_reads = find_bad_reads(*R, bad_read_cutoff);
         R->Prune([](const Overlap& nz) { return !nz.passed; });
         R->PruneFull(bad_reads, bad_reads);
+	
+	auto chimeras = GetReadPileup(dfd, *R);
+	std::vector<int> c2; 
+	for (int i = 0; i < chimeras.size(); i++){
+		auto k = chimeras[i];
+		auto inter = k.GetTrimmedInterval(0);
+		std::cout << myrank << ", " << std::get<0>(inter) << ", " << std::get<1>(inter) << ", " << k.TallestPoint() << std::endl;
+		if (std::get<0>(inter) == -1){
+			c2.push_back(i);
+		}
+	}
+	CT<int>::PDistVec chimeraVec(c2, commgrid);
+	R->PruneFull(chimeraVec,chimeraVec);
+	//exit(0);
+
 
         timer.start();
         auto contained = find_contained_reads(*R);
