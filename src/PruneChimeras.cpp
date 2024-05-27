@@ -1,4 +1,5 @@
 #include "PruneChimeras.hpp"
+#include "MPITimer.hpp"
 #include <cassert>
 #include <iostream>
 #include <sstream>
@@ -35,42 +36,25 @@ void PileupVector::AddInterval(int begin, int end)
 }
 
 
-std::tuple<int, int> PileupVector::GetTrimmedInterval(int threshold)
+std::tuple<int, int> PileupVector::GetTrimmedInterval(int pileupThreshold)
 {
     int len = Length();
-    int beststart, bestend;
-    double bestavg = 0;
-    int curbases = 0;
-    int start = -1, end = -1, maxlen = 2500;
-	int gaps = 0;
+    int start = -1, end = -1;
+    int gaps = 0;
     for (int i = 0; i < len; ++i)
     {
-        if (pileup[i] >= threshold)
+        if (pileup[i] >= pileupThreshold)
         {
             if (start == -1)
             {
-                curbases = 0;
                 start = i;
             }
 
             end = i;
-            curbases += pileup[i];
-            int span = end - start + 1;
-            double curavg = static_cast<double>(curbases) / static_cast<double>(span);
-
-            if (span > maxlen && curavg > bestavg)
-            {
-                beststart = start;
-                bestend = end;
-                maxlen = span;
-                bestavg = curavg;
-            }
         }
         else if (start != -1 && gaps++ >= 1)
         {
-		return {-1, -1};
-            //start = -1;
-            //end = -1;
+	    return {-1, -1};
         }
     }
 
@@ -114,7 +98,7 @@ void UnpackPileupVectors(const std::vector<int>& packed, const std::vector<int>&
     }
 }
 
-std::vector<PileupVector> GetReadPileup(DistributedFastaData& dfd, CT<Overlap>::PSpParMat& Rmat)
+CT<int64_t>::PDistVec GetChimericReads(DistributedFastaData& dfd, CT<Overlap>::PSpParMat& Rmat)
 {
     auto index = dfd.getindex();
     auto commgrid = index.getcommgrid();
@@ -123,7 +107,8 @@ std::vector<PileupVector> GetReadPileup(DistributedFastaData& dfd, CT<Overlap>::
 
     auto spSeq = Rmat.seq();
     auto colbuf = dfd.getcolbuf();
-
+	MPITimer timer(MPI_COMM_WORLD);
+	timer.start();
     /* Want to calculate pileup vectors for each read. Do this by first
      * computing the pileup vectors for reads in the column range of the local
      * processor, by going through each local column and computing the pileup
@@ -154,16 +139,28 @@ std::vector<PileupVector> GetReadPileup(DistributedFastaData& dfd, CT<Overlap>::
             local_pileups[colid].AddInterval(std::get<1>(o.beg), std::get<1>(o.end));
         }
     }
-
+	timer.stop_and_log("intervals");
+	timer.start();
     std::vector<int> lens;
     std::vector<int> packed;
     MPI_Count_type size = PackPileupVectors(local_pileups, packed, lens);
-
+	
     MPI_ALLREDUCE(MPI_IN_PLACE, packed.data(), size, MPI_INT, MPI_SUM, commgrid->GetColWorld());
-
+	timer.stop_and_log("chimera allreduce");
     UnpackPileupVectors(packed, lens, local_pileups);
+	
 
-    return local_pileups;
+    std::vector<int64_t> erase;
+    int startInd = (local_pileups.size() / commgrid->GetGridRows()) * commgrid->GetRankInProcCol();
+    int endInd = (commgrid->GetRankInProcCol() == commgrid->GetGridRows() - 1) ? (local_pileups.size()) : startInd + (local_pileups.size() / commgrid->GetGridRows());
+    for (int i = startInd; i < endInd; i++){
+	auto inter = local_pileups[i].GetTrimmedInterval(1);
+	if (std::get<0>(inter) == -1){
+		erase.push_back(static_cast<int64_t>(i + dfd.getcolstartid()));
+		std::cout << commgrid->GetRank() << ", " << i + dfd.getcolstartid() << std::endl;
+	}
+
+    }
+    CT<int64_t>::PDistVec chimeraVec(erase, commgrid);
+    return chimeraVec;
 }
-
-

@@ -30,6 +30,6 @@ public:
 
 std::vector<int> PackPileupVector(const std::vector<PileupVector>& pvs, std::vector<int>& lens, int& size);
 std::vector<PileupVector> UnpackPileupVector(const std::vector<int>& packed, const std::vector<int>& lens);
-std::vector<PileupVector> GetReadPileup(DistributedFastaData& dfd, CT<Overlap>::PSpParMat& Rmat);
+CT<int64_t>::PDistVec GetChimericReads(DistributedFastaData& dfd, CT<Overlap>::PSpParMat& Rmat);
 
 #endif
