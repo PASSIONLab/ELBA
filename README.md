@@ -82,10 +82,10 @@ The parameters and options of ELBA are as follows:
 - ```-x <integer>```: x-drop alignment threshold.
 - ``` -A <integer>```: matching score.
 - ```-B <integer>```: mismatch penalty.
-- ```G <integer>```:  gap penalty.
-- ```c <float> ```: bad read alignment cutoff.
-- ```o string```L output file name prefix "elba."
-- ```h```: help message.
+- ```-G <integer>```:  gap penalty.
+- ```-c <float> ```: bad read alignment cutoff.
+- ```-o string```L output file name prefix "elba."
+- ```-h```: help message.
 
 ## Run test program
 You can run the test dataset ```ecsample-sub1.fa``` as follows on one node (it's too small to run on multiple nodes), this command runs ELBA using x-drop alignment and ```x = 5```:

@@ -308,21 +308,7 @@ int main(int argc, char **argv)
 
 	timer.start();	
 	auto chimeras = GetChimericReads(dfd, *R);
-	//std::cout << myrank << "my size is " << chimeras.size() << std::endl;
-	//std::vector<int> c2; 
-	//for (int i = 0; i < chimeras.size(); i++){
-	//	auto k = chimeras[i];
-	//	auto inter = k.GetTrimmedInterval(1);
-		//std::cout << myrank << ", " << std::get<0>(inter) << ", " << std::get<1>(inter) << std::endl;
-	//	if (std::get<0>(inter) == -1){
-	//		c2.push_back(i);
-	//		std::cout << myrank << ", " << i << std::endl;
-
-	//	}
-	//}
-	//CT<int>::PDistVec chimeraVec(c2, commgrid);
 	R->PruneFull(chimeras,chimeras);
-	//exit(0);
 	timer.stop_and_log("chimeras removed");
 
         timer.start();

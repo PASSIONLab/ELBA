@@ -12,6 +12,7 @@
 #include "pw/PairwiseFunction.hpp"
 #include "AlignmentInfo.hpp"
 #include "kmer/CommonKmers.hpp"
+#include "common.h"
 
 class DistributedPairwiseRunner {
 public:
