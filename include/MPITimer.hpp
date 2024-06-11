@@ -37,7 +37,7 @@ struct MPITimer
         if (isroot)
         {
             std::cout << label << ":\n";
-            std::cout << "    total time (user seconds): " << std::fixed << std::setprecision(3) << elapsed << "\n";
+            std::cout << "    total time (user seconds): " << std::fixed << std::setprecision(3) << maxtime << "\n";
             std::cout << "    total cost (proc seconds): " << std::fixed << std::setprecision(3) << proctime << "\n" << std::endl;
             // std::cout << label << ": total time (user secs): " << std::fixed << std::setprecision(3) << elapsed << "\n"
                       // << label << ": total work (proc secs): " << std::fixed << std::setprecision(3) << proctime << "\n" << std::endl;

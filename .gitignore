@@ -6,6 +6,12 @@
 *.user
 *.sln.docstates
 
+# Data files
+elba.contigs.fa
+elba.overlap.paf
+elba.string.paf
+elba.B.mtx
+
 # Build results
 
 [Dd]ebug/

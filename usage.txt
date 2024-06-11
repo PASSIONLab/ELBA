@@ -3,7 +3,7 @@ To use ELBA on perlmutter, follow these steps:
     * Download prerequisites:
 
         $> git clone https://github.com/PASSIONLab/ELBA . && cd ELBA
-        $> git clone https://github.com/PASSIONLab/CombBLAS .
+        $> git clone https://github.com/PASSIONLab/CombBLAS
 
     * Load compiler:
 
@@ -19,10 +19,16 @@ To use ELBA on perlmutter, follow these steps:
 
     * To run ELBA on a FASTA dataset named "reads.fa", first index the file with
       the command:
-
+        $> module load spack
+        $> spack load samtools
         $> samtools faidx reads.fa
 
-      ELBA will crash if the input FASTA is not indexed.
+      ELBA will crash if the input FASTA is not indexed. You may need to run the following
+      command prior to loading spack:
+        $> module load cpu
+
+      which will disable the gpu module. However, remember to reload the gpu module before
+      running elba binary, or an error may occur during runtime.
 
     * ELBA must be run with a square number of processors. Suppose we want to run ELBA
       with 64 MPI tasks on a single perlmutter node. The slurm command would then be
@@ -33,7 +39,7 @@ To use ELBA on perlmutter, follow these steps:
       some further examples of valid slurm commands for ELBA:
 
         # 4 MPI tasks
-        $> srun -N 1 -n 4 -c 64 --cpu_bind=cores ./elba reads.fa
+        $> srun -N 1 -n 4 --cpu_bind=cores ./elba reads.fa
 
         # 1024 MPI tasks
         $> srun -N 8 -n 1024 -c 2 --cpu_bind=cores ./elba reads.fa
